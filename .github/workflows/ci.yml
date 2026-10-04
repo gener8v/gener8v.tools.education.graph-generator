@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Node ${{ matrix.node }} · React ${{ matrix.react }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+        react: [18, 19]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install pnpm
+        run: npm install --global pnpm@10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Use React ${{ matrix.react }}
+        if: matrix.react == 18
+        run: pnpm add --save-dev react@^18 react-dom@^18 @types/react@^18 @types/react-dom@^18
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Generated files are up to date
+        run: |
+          if [ -f scripts/generate.ts ]; then
+            pnpm generate
+            git diff --exit-code -- src/generated
+          else
+            echo "scripts/generate.ts not present yet; nothing to check."
+          fi
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Package metadata (publint)
+        run: pnpm publint
+
+      - name: Type resolution (Are the Types Wrong)
+        run: pnpm attw
+
+      - name: Bundle size
+        run: pnpm size
+
+      - name: Runtime dependencies are justified
+        run: pnpm check:deps
+
+      - name: Changesets carry a changelog category
+        run: pnpm check:changesets

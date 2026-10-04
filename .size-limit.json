@@ -1,0 +1,6 @@
+[
+  { "name": "entry component and all graph types (.)", "path": "dist/index.js", "limit": "120 kB" },
+  { "name": "./core", "path": "dist/core/index.js", "limit": "25 kB" },
+  { "name": "./tool", "path": "dist/tool/index.js", "limit": "25 kB" },
+  { "name": "./export", "path": "dist/export/index.js", "limit": "25 kB" }
+]

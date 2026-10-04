@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gener8v.github.io/gener8v.tools.education.graph-generator/schema.json",
+  "$comment": "Placeholder until graph-library/graph-specification-and-vocabulary/TICKET-005 generates the real schema. It accepts no description.",
+  "title": "Graph description",
+  "not": {}
+}
