@@ -1,0 +1,143 @@
+# Number Lines & Coordinate Graphs Specification
+
+## Overview
+
+Defines the three axis-based graph types: number lines, two-dimensional (x, y) coordinate graphs and three-dimensional (x, y, z) coordinate graphs. For each it defines the type-specific parameters a unified description carries, the domain rules those parameters must satisfy, and what the rendered graph must show. Positions on every graph are drawn in proportion to their values, so a figure can be trusted in a mathematics lesson.
+
+## Source Context
+
+**Parent PRD:** Curricular Graph Generator
+**Requirement prefix:** NLC
+**Status:** Approved
+**Approved by:** Product Owner — Thomas, 2026-10-04
+**Related Capabilities:** Graph Specification & Vocabulary (the unified description, validation, results, presentation options and default style these graph types rely on); Component Packaging & Source Export (the components and source export that render these graph types)
+
+## Functional Requirements
+
+### Shared Axis Behavior
+
+- **NLC-REQ-001** *(must · change: graph-library)*: The system should define the parameters of the number line, x,y coordinate graph and x,y,z coordinate graph types in the single definition of GSV-REQ-015, using vocabulary terms
+- **NLC-REQ-002** *(must · change: graph-library)*: The system should require, for every axis, a range given as a minimum and a maximum
+- **NLC-REQ-003** *(must · change: graph-library)*: The system should accept negative, zero and positive values for an axis minimum and maximum, including decimal values
+- **NLC-REQ-004** *(must · change: graph-library)*: The system should accept an optional tick spacing for each axis and place ticks at every whole multiple of that spacing that lies within the axis range
+- **NLC-REQ-005** *(must · change: graph-library)*: The system should choose a documented default tick spacing for an axis when none is supplied
+- **NLC-REQ-006** *(must · change: graph-library)*: The system should accept an option to show or hide tick labels on each axis, and show them by default
+- **NLC-REQ-007** *(must · change: graph-library)*: The system should draw each tick, point and segment at a position proportional to its value along each axis
+- **NLC-REQ-008** *(must · change: graph-library)*: The system should report a tick spacing that would produce more than 100 ticks on one axis
+- **NLC-REQ-009** *(must · change: graph-library)*: The system should report a tick spacing that is zero or negative
+- **NLC-REQ-010** *(must · change: graph-library)*: The system should report each point or segment endpoint whose value lies outside the corresponding axis range
+- **NLC-REQ-011** *(must · change: graph-library)*: The system should accept, for each point, an optional label and an optional color, applied per GSV-REQ-040..045
+- **NLC-REQ-012** *(must · change: graph-library)*: The system should give every rendered graph of these types a text alternative generated from its normalized description, stating the graph type, axis ranges and every marked point
+- **NLC-REQ-013** *(must · change: graph-library)*: The system should accept an optional caller-supplied text alternative that replaces the generated one
+
+### Number Lines
+
+- **NLC-REQ-014** *(must · change: graph-library)*: The system should render a number line over a range that is negative-only, positive-only or spans zero
+- **NLC-REQ-015** *(must · change: graph-library)*: The system should accept a separate arrowhead setting for each end of a number line
+- **NLC-REQ-016** *(must · change: graph-library)*: The system should draw an arrowhead at an end of a number line when, and only when, that end's arrowhead setting is on
+- **NLC-REQ-017** *(must · change: graph-library)*: The system should use a documented default arrowhead setting for an end when none is supplied
+- **NLC-REQ-018** *(must · change: graph-library)*: The system should mark each supplied point on a number line at its value
+- **NLC-REQ-019** *(must · change: graph-library)*: The system should accept custom tick labels that replace the numeric label at a given tick value
+- **NLC-REQ-020** *(must · change: graph-library)*: The system should report a custom tick label whose value is not a tick position
+- **NLC-REQ-021** *(must · change: graph-library)*: The system should accept an optional label for the number line as a whole
+
+### x,y Coordinate Graphs
+
+- **NLC-REQ-022** *(must · change: graph-library)*: The system should render an x,y coordinate graph from an x-axis range and a y-axis range
+- **NLC-REQ-023** *(must · change: graph-library)*: The system should show one, two or four quadrants as determined by whether each axis range includes negative values, positive values or both
+- **NLC-REQ-024** *(must · change: graph-library)*: The system should draw each axis through the origin when the other axis's range includes zero
+- **NLC-REQ-025** *(must · change: graph-library)*: The system should draw an axis along the nearest edge of the plotting area when the other axis's range excludes zero
+- **NLC-REQ-026** *(must · change: graph-library)*: The system should accept an option to show or hide grid lines, with grid lines at the tick positions
+- **NLC-REQ-027** *(must · change: graph-library)*: The system should accept separate tick spacing for the x-axis and the y-axis
+- **NLC-REQ-028** *(must · change: graph-library)*: The system should plot each supplied point at its (x, y) coordinates
+- **NLC-REQ-029** *(must · change: graph-library)*: The system should draw each supplied line segment between its two endpoint coordinates
+- **NLC-REQ-030** *(must · change: graph-library)*: The system should accept an optional label and an optional color for each line segment
+- **NLC-REQ-031** *(must · change: graph-library)*: The system should accept axis labels for the x-axis and the y-axis per GSV-REQ-040
+- **NLC-REQ-032** *(must · change: graph-library)*: The system should draw one unit on the x-axis and one unit on the y-axis at equal lengths by default
+- **NLC-REQ-033** *(must · change: graph-library)*: The system should report a line segment whose two endpoints are the same point
+
+### x,y,z Coordinate Graphs
+
+- **NLC-REQ-034** *(must · change: graph-library)*: The system should render an x,y,z coordinate graph from an x-axis, a y-axis and a z-axis range
+- **NLC-REQ-035** *(must · change: graph-library)*: The system should draw the three axes in one documented, fixed viewing projection
+- **NLC-REQ-036** *(must · change: graph-library)*: The system should label each of the three axes, using the supplied axis label or the axis name by default
+- **NLC-REQ-037** *(must · change: graph-library)*: The system should plot each supplied point at its (x, y, z) coordinates within the projection
+- **NLC-REQ-038** *(must · change: graph-library)*: The system should accept an option to draw guide lines from a point to its position on the x,y plane, so that its depth can be read
+- **NLC-REQ-039** *(must · change: graph-library)*: The system should accept tick spacing for each of the three axes
+
+## Non-Functional Requirements
+
+- **NLC-NFR-001** *(must · change: graph-library)*: Every tick, point and segment endpoint is drawn within 0.5 px of its computed position at the default size — **verified by:** a geometry test that renders generated descriptions of each type and compares element coordinates with positions computed from the values
+- **NLC-NFR-002** *(must · change: graph-library)*: Every graph of these types renders in a server environment with no browser globals — **verified by:** a server-rendering test of the example description of each type in Node.js, run in CI
+- **NLC-NFR-003** *(must · change: graph-library)*: Every rendered graph of these types exposes a non-empty text alternative to assistive technology — **verified by:** an accessibility test (axe rules for SVG images plus an assertion on the accessible name) over the example descriptions
+- **NLC-NFR-004** *(must · change: graph-library)*: Rendering a graph with 100 ticks per axis and 50 points takes ≤ 50 ms at p95 in a server render on a CI runner — **verified by:** a rendering benchmark run in the Delivery verification step
+
+## Behaviors & Rules
+
+### Ticks
+
+- When tick spacing is supplied, ticks fall at whole multiples of the spacing (…, −2s, −s, 0, s, 2s, …) inside the range; a range endpoint that is not a multiple is drawn without a tick
+- When tick spacing is not supplied, the system should choose a spacing from 1, 2 or 5 times a power of ten that gives between 5 and 20 ticks
+- When zero lies within a range, zero always receives a tick
+- Tick labels show the tick value with no more decimal places than the tick spacing needs
+
+### Arrowheads
+
+- An arrowhead indicates the line continues beyond the drawn range; when an end's arrowhead is off, that end is drawn as a plain endpoint
+- By default both ends of a number line show arrowheads
+
+### Points and Segments
+
+- When two points share coordinates, both are drawn, and both labels are placed so that neither hides the other
+- When a point lies exactly on a range endpoint, it is inside the range
+- A point's or segment's color applies to that element only; its label uses the default label color unless a label color is given
+
+### Projection
+
+- The x,y,z projection is the same for every graph, so that figures across a curriculum read consistently; the projection is documented with the graph type
+
+## Edge Cases & Error Handling
+
+| Scenario | Expected Behavior |
+|----------|-------------------|
+| Range minimum equals or exceeds maximum | Reported per GSV-REQ-022 |
+| Range is very narrow (for example, 0 to 0.001) | The system should accept it and choose a tick spacing per the default rule |
+| Tick spacing does not divide the range evenly | The system should accept it and place ticks at multiples only |
+| Tick spacing gives more than 100 ticks | The system should report it, stating the largest permitted tick count and a spacing that would fit |
+| Point outside the axis range | The system should report it, naming the point and the range it violates |
+| Number line with no marked points | The system should render the line, ticks and labels only |
+| x,y graph with no points or segments | The system should render empty axes and grid |
+| x,y graph whose ranges both exclude zero | The system should draw both axes along the nearest edges and label ticks with their true values |
+| Unequal unit lengths needed to fit a wide range | The system should keep equal units unless the description turns equal units off (see OQ-004) |
+| Custom tick label on a value that is not a tick | The system should report it per NLC-REQ-020 |
+| Very many labeled points close together | The system should draw every point; labels may overlap (see OQ-005) |
+
+## Data Requirements
+
+- For a number line: range, tick spacing, tick-label visibility, custom tick labels, left and right arrowhead settings, marked points (value, label, color), line label, text alternative
+- For an x,y graph: x and y ranges, x and y tick spacing, tick-label visibility, grid visibility, equal-unit setting, points (x, y, label, color), line segments (two endpoints, label, color), axis labels, title, text alternative
+- For an x,y,z graph: x, y and z ranges and tick spacing, axis labels, points (x, y, z, label, color), guide-line setting, title, text alternative
+- The system should hold the documented default tick-spacing rule, default arrowhead setting and the fixed x,y,z projection
+
+## User Interactions
+
+- A curriculum developer should be able to produce any of these graphs from ranges and values alone, with ticks, axes and arrowheads chosen by default
+- The rendered graph is static; there is no dragging, zooming or rotation in this change
+
+## Open Questions
+
+- [ ] **OQ-001**: Should tick labels support fractions (½, ¾) and mixed numbers as well as decimals? (Carried from PRD)
+- [ ] **OQ-002**: Should number lines support open and closed point markers and shaded ranges, for inequalities and intervals? (Carried from PRD)
+- [ ] **OQ-003**: Do x,y,z graphs need a rotatable view, or is one fixed projection enough? Which projection (isometric, oblique, cabinet)? (Carried from PRD)
+- [ ] **OQ-004**: Should a description be able to turn off equal unit lengths on an x,y graph, for ranges of very different size?
+- [ ] **OQ-005**: Must the system avoid label overlap automatically, or is placing labels the author's responsibility?
+- [ ] **OQ-006**: Should x,y graphs support full lines (through two points, or from slope and intercept) beyond segments? (Carried from PRD)
+- [ ] **OQ-007**: Should x,y,z graphs support segments as well as points?
+- [ ] **OQ-008**: Should an axis that excludes zero show an axis-break symbol?
+
+## Assumptions
+
+- Assumption: Validation, issue reporting, presentation options and default styling follow Graph Specification & Vocabulary (GSV-REQ-016..045); this specification adds only the type-specific parameters and domain rules
+- Assumption: Graphs are static figures; interaction is out of scope per the PRD
+- Assumption: The x,y,z projection is fixed until OQ-003 is answered
+- Assumption: A text alternative is required for every figure, as education material must be usable with assistive technology
