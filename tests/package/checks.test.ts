@@ -6,6 +6,7 @@ import { checkDependencies, justifiedDependencies } from "../../scripts/check-de
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const contributing = readFileSync("CONTRIBUTING.md", "utf8");
 
+// @spec CPSE-REQ-001, CPSE-REQ-002, CPSE-REQ-038, CPSE-REQ-040
 describe("package.json (CPSE-REQ-001..004, CPSE-REQ-037, CPSE-REQ-038, CPSE-REQ-040)", () => {
   it("has the package format and metadata the ticket requires", () => {
     expect(pkg.name).toBe("@gener8v/graph-generator");
@@ -39,6 +40,7 @@ describe("package.json (CPSE-REQ-001..004, CPSE-REQ-037, CPSE-REQ-038, CPSE-REQ-
   });
 });
 
+// @spec CPSE-REQ-037, CPSE-REQ-039
 describe("repository files (CPSE-REQ-037, CPSE-REQ-039)", () => {
   it("has an MIT LICENSE matching package.json", () => {
     expect(readFileSync("LICENSE", "utf8")).toMatch(/^MIT License/);
@@ -73,6 +75,21 @@ describe("runtime dependency check (CPSE-NFR-007)", () => {
     const notes = `${contributing}| \`left-pad\` | Pads strings; 1 kB, MIT. |\n`;
     expect(justifiedDependencies(notes).has("left-pad")).toBe(true);
     expect(checkDependencies({ dependencies: { "left-pad": "^1.0.0" } }, notes)).toEqual([]);
+  });
+
+  it("fails an unjustified optional dependency", () => {
+    expect(checkDependencies({ optionalDependencies: { "left-pad": "^1.0.0" } }, contributing)).toHaveLength(1);
+  });
+
+  it("fails an unjustified peer dependency other than react", () => {
+    const errors = checkDependencies({ peerDependencies: { react: "^18 || ^19", d3: "^7" } }, contributing);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("d3");
+  });
+
+  it("fails an unjustified bundled dependency", () => {
+    expect(checkDependencies({ bundleDependencies: ["left-pad"] }, contributing)).toHaveLength(1);
+    expect(checkDependencies({ bundledDependencies: ["left-pad"] }, contributing)).toHaveLength(1);
   });
 
   it("does not count a row with an empty justification", () => {

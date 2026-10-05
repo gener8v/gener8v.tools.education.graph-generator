@@ -36,6 +36,8 @@
 **Known Hazards:**
 - AD-016 and TQ-006 supersede a literal reading of CPSE-REQ-043 during `0.x`: breaking changes go in a minor release until `1.0.0`, per semantic versioning's initial-development rule. Document it in `docs/versioning.md` and the delivery record; do NOT bump to `1.0.0` to satisfy the requirement literally.
 - Trusted publishing requires the npm package (and scope organization) to exist and be configured for this repository (EXT-002, TQ-001). If the name or organization is not ready, deliver the workflow with publishing gated off and say so — never publish a placeholder.
+- Carried from graph-library/component-packaging-and-source-export-ticket-001-code-review/CR-005: the public GitHub repository `gener8v/gener8v.tools.education.graph-generator` does not exist yet, so the CI matrix has never run and TICKET-001's acceptance criterion 7 is Unverified. Create the repository and get a green pull-request run across Node.js 22/24 × React 18/19 BEFORE wiring the release workflow; record the run URL in this delivery. Do not publish from a repository whose CI has never passed.
+- Carried from graph-library/component-packaging-and-source-export-ticket-001-code-review/CR-003: `CHANGELOG.md` entries are labelled by category (`**Added:**` …) but Changesets groups them by semver bump, so TICKET-001's criterion "grouped as added / changed / deprecated / removed" is only Partial. Add a version step (e.g. `changeset version && tsx scripts/group-changelog.ts`) that regroups the newest release under `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, with a test over a fixture changelog.
 
 **Depends On:** TICKET-001
 **Blocks:** None

@@ -159,9 +159,15 @@ Defines how the graph generator reaches its users: as an open-source package on 
 
 | Requirement | Code Location(s) |
 |-------------|-----------------|
+| CPSE-REQ-001 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
+| CPSE-REQ-002 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
 | CPSE-REQ-003 | `tsup.config.ts`:default export |
 | CPSE-REQ-004 | `tsup.config.ts`:default export |
-| CPSE-REQ-005 | `eslint.config.js`:no-network rule block |
+| CPSE-REQ-005 | `eslint.config.js`:no-network rule block; `eslint.config.js`:boundary rule block |
 | CPSE-REQ-006 | `eslint.config.js`:boundary rule block; `src/core/index.ts`; `src/tool/index.ts`; `src/export/index.ts` |
+| CPSE-REQ-037 | `tests/package/checks.test.ts`:describe "repository files" (`LICENSE`, proven by test) |
+| CPSE-REQ-038 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
+| CPSE-REQ-039 | `tests/package/checks.test.ts`:describe "repository files" (`CONTRIBUTING.md`, proven by test) |
+| CPSE-REQ-040 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
 | CPSE-REQ-041 | `scripts/check-changesets.ts`:checkChangesetSummary; `.changeset/changelog.cjs` |
 | CPSE-NFR-007 | `scripts/check-dependencies.ts`:checkDependencies |

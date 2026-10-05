@@ -26,6 +26,31 @@ describe("import boundaries for non-rendering code (CPSE-REQ-006, prd/TC-005)", 
     });
   }
 
+  for (const ext of ["tsx", "mts", "js"]) {
+    it(`rejects importing react from a .${ext} file in src/core`, async () => {
+      const ids = await ruleIds(`import * as React from "react";\nexport const x = React;\n`, `src/core/fixture.${ext}`);
+      expect(ids).toContain("no-restricted-imports");
+    });
+  }
+
+  it("rejects a dynamic import of react in src/core", async () => {
+    const ids = await ruleIds(`export const load = () => import("react-dom/server");\n`, "src/core/fixture.ts");
+    expect(ids).toContain("no-restricted-syntax");
+  });
+
+  it("rejects require of react in src/layout", async () => {
+    const ids = await ruleIds(`export const r = require("react");\n`, "src/layout/fixture.cjs");
+    expect(ids).toContain("no-restricted-syntax");
+  });
+
+  it("rejects browser globals reached through self or globalThis in src/tool", async () => {
+    const ids = await ruleIds(
+      `export const a = globalThis.document;\nexport const b = self.navigator;\nexport const c = globalThis.window;\n`,
+      "src/tool/fixture.ts",
+    );
+    expect(ids.filter((id) => id === "no-restricted-syntax" || id === "no-restricted-globals").length).toBeGreaterThanOrEqual(3);
+  });
+
   it("allows react in the React renderer", async () => {
     const ids = await ruleIds(`import { useState } from "react";\nexport const x = useState;\n`, "src/react/fixture.ts");
     expect(ids).not.toContain("no-restricted-imports");
@@ -38,17 +63,30 @@ describe("import boundaries for non-rendering code (CPSE-REQ-006, prd/TC-005)", 
 });
 
 describe("no network access anywhere in src (CPSE-REQ-005, prd/CC-003)", () => {
+  const NETWORK_RULES = ["no-restricted-globals", "no-restricted-syntax", "no-restricted-imports"];
   const cases: Array<[string, string]> = [
     ["fetch", `export const r = fetch("https://example.com");\n`],
     ["globalThis.fetch", `export const r = globalThis.fetch("https://example.com");\n`],
+    ["self.fetch", `export const r = self.fetch("https://example.com");\n`],
+    ["computed globalThis[\"fetch\"]", `export const r = globalThis["fetch"]("https://example.com");\n`],
     ["XMLHttpRequest", `export const r = new XMLHttpRequest();\n`],
+    ["globalThis.XMLHttpRequest", `export const r = new globalThis.XMLHttpRequest();\n`],
     ["WebSocket", `export const r = new WebSocket("wss://example.com");\n`],
+    ["window.WebSocket", `export const r = new window.WebSocket("wss://example.com");\n`],
+    ["EventSource", `export const r = new EventSource("https://example.com");\n`],
     ["navigator.sendBeacon", `export const r = navigator.sendBeacon("https://example.com", "x");\n`],
+    ["window.navigator.sendBeacon", `export const r = window.navigator.sendBeacon("https://example.com", "x");\n`],
+    ["import node:https", `import https from "node:https";\nexport const r = https;\n`],
+    ["import net", `import net from "net";\nexport const r = net;\n`],
+    ["dynamic import node:http", `export const r = () => import("node:http");\n`],
+    ["require node:tls", `export const r = require("node:tls");\n`],
   ];
   for (const [name, code] of cases) {
-    it(`rejects ${name} in the React renderer`, async () => {
-      const ids = await ruleIds(code, "src/react/fixture.tsx");
-      expect(ids.some((id) => id === "no-restricted-globals" || id === "no-restricted-properties")).toBe(true);
-    });
+    for (const file of ["src/react/fixture.tsx", "src/core/fixture.ts", "src/react/fixture.js", "src/core/fixture.mts"]) {
+      it(`rejects ${name} in ${file}`, async () => {
+        const ids = await ruleIds(code, file);
+        expect(ids.some((id) => NETWORK_RULES.includes(id))).toBe(true);
+      });
+    }
   }
 });

@@ -228,4 +228,28 @@ Not annotated, because they live in files without comments: CPSE-REQ-001, CPSE-R
 
 ## Post-Review Amendments
 
-None
+Resolution of `graph-library/component-packaging-and-source-export-ticket-001-code-review`, 2026-10-05, decisions by the Product Owner.
+
+- **component-packaging-and-source-export-ticket-001-code-review/CR-001** — Boundary rule widened to every script extension in `src/{core,tool,export,layout}`; dynamic `import()`/`require()` of react/react-dom and `globalThis`/`self` access to `window`/`document`/`navigator` rejected; `self` restricted. Files: `eslint.config.js`, `tests/package/boundaries.test.ts`. Also resolves QR-001 and QR-002 of the quality review.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-002** — Network rule covers every script extension in `src/`; network APIs rejected through any object (dot or computed access); `http`, `https`, `http2`, `net`, `tls`, `dgram` rejected as static imports, dynamic imports and `require()`, with and without `node:`; boundary block repeats the network restrictions (flat config replaces rule options per block). Files: `eslint.config.js`, `tests/package/boundaries.test.ts`. Addresses the lint part of SEC-001.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-004** — `scripts/check-dependencies.ts` checks `dependencies`, `optionalDependencies`, `bundleDependencies`/`bundledDependencies` and non-React peers (new `runtimeDependencies()`); tests per field. Files: `scripts/check-dependencies.ts`, `tests/package/checks.test.ts`. Also resolves QR-004 and the manifest part of SEC-002.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-006** — `@spec` annotations added above the proving tests for CPSE-REQ-001, CPSE-REQ-002, CPSE-REQ-037..040; coverage rows added to the specification. File: `tests/package/checks.test.ts`.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-007** — `typescript` specifier `~6.0.3` (DEL-004 now matches the manifest). Files: `package.json`, `pnpm-lock.yaml`. Also resolves QR-003.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-008** — size budgets measured minified and gzipped (`"gzip": true`), matching CPSE-NFR-002. File: `.size-limit.json`. Also resolves QR-005.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-009** — DEL-007 (recorded post-review): the `bin` entry (`graph-generator`) is added by CPSE TICKET-006 and the `generate` script by GSV TICKET-005, the tickets that implement them; TICKET-001 ships neither.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-003** — Deferred → TICKET-009 (Known Hazard appended). Correction to Acceptance Criteria Verification above: the changelog criterion is **Partial**, not met — entries are labelled by category but grouped by semver bump.
+- **component-packaging-and-source-export-ticket-001-code-review/CR-005** — Deferred → TICKET-009 (Known Hazard appended). The CI-matrix criterion remains Unverified until the public repository's first pull-request run.
+
+Re-verification after the amendments (Node.js v24.1.0, React 19.3.0):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm lint` | 0 | no findings |
+| `pnpm typecheck` | 0 | no errors |
+| `pnpm test` | 0 | 3 files, 103 tests passed |
+| `pnpm build` | 0 | all entries and declarations emitted |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `pnpm size` | 0 | four entries, 0 B minified and gzipped |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm check:changesets` | 0 | 0 changesets |

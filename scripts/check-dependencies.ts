@@ -27,13 +27,35 @@ export function justifiedDependencies(contributing: string): Map<string, string>
  * Every runtime dependency must be justified in CONTRIBUTING.md; the React peer is the only
  * dependency the package expects. Returns one message per unjustified dependency.
  */
+export interface PackageDependencies {
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  bundleDependencies?: string[] | boolean;
+  bundledDependencies?: string[] | boolean;
+}
+
+/** The React peer is the one runtime dependency the package is expected to have. */
+export const EXPECTED_PEERS = new Set(["react"]);
+
+/** Every name that reaches a consumer at runtime: dependencies, optional, bundled and non-React peers. */
+export function runtimeDependencies(pkg: PackageDependencies): string[] {
+  const bundled = [pkg.bundleDependencies, pkg.bundledDependencies].flatMap((value) =>
+    Array.isArray(value) ? value : value === true ? Object.keys(pkg.dependencies ?? {}) : [],
+  );
+  const names = [
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.optionalDependencies ?? {}),
+    ...Object.keys(pkg.peerDependencies ?? {}).filter((name) => !EXPECTED_PEERS.has(name)),
+    ...bundled,
+  ];
+  return [...new Set(names)];
+}
+
 // @spec CPSE-NFR-007
-export function checkDependencies(
-  pkg: { dependencies?: Record<string, string> },
-  contributing: string,
-): string[] {
+export function checkDependencies(pkg: PackageDependencies, contributing: string): string[] {
   const justified = justifiedDependencies(contributing);
-  return Object.keys(pkg.dependencies ?? {})
+  return runtimeDependencies(pkg)
     .filter((name) => !justified.has(name))
     .map(
       (name) =>
@@ -48,6 +70,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const error of errors) console.error(error);
     process.exit(1);
   }
-  const count = Object.keys(pkg.dependencies ?? {}).length;
+  const count = runtimeDependencies(pkg).length;
   console.log(`Runtime dependencies: ${count}, all justified.`);
 }
