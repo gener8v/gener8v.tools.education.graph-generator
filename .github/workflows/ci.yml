@@ -72,6 +72,11 @@ jobs:
         env:
           GRAPH_GENERATOR_PREBUILT: "1"
 
+      - name: Validation speed (GSV-NFR-001)
+        run: pnpm bench
+        env:
+          GRAPH_GENERATOR_PREBUILT: "1"
+
       - name: Built output makes no network access
         run: pnpm check:dist
 

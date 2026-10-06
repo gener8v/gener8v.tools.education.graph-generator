@@ -53,6 +53,15 @@ describe("non-rendering entry points in plain Node.js (CPSE-REQ-006, prd/TC-005)
     expect(JSON.parse(output.trim())).toEqual({ window: "undefined", document: "undefined" });
   });
 
+  it("validates a description from ./core in plain Node.js (GSV-REQ-026)", () => {
+    const output = runWithHook(`
+      const { validate } = await import("@gener8v/graph-generator/core");
+      const result = validate({ type: "pie" });
+      console.log(JSON.stringify({ valid: result.valid, code: result.issues?.[0]?.code }));
+    `);
+    expect(JSON.parse(output.trim())).toEqual({ valid: false, code: "unknown_graph_type" });
+  });
+
   it("fails the same check when an entry does load React (the hook works)", () => {
     expect(() => runWithHook(`await import("react");`)).toThrow(/React was loaded/);
   });

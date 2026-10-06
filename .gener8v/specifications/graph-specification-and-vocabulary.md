@@ -177,7 +177,24 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-012 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/index.ts`:definitions, propertiesOf |
 | GSV-REQ-040 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties; `src/core/definitions/index.ts`:propertiesOf |
 | GSV-REQ-042 | `src/core/style.ts`:namedColors, resolveColor |
-| GSV-REQ-043 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/shared.ts`:sharedProperties |
+| GSV-REQ-043 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/shared.ts`:sharedProperties; `src/core/format.ts`:findUnsafeTextChar; `src/core/validate/structure.ts`:checkValue |
 | GSV-REQ-044 | `src/core/style.ts`:defaultStyle, seriesStyles |
 | GSV-REQ-045 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties |
 | GSV-NFR-004 | `src/core/style.ts`:namedColors, defaultStyle, seriesStyles |
+| GSV-REQ-001 | `src/core/validate/envelope.ts`:checkEnvelope |
+| GSV-REQ-002 | `src/core/validate/envelope.ts`:checkEnvelope |
+| GSV-REQ-004 | `src/core/validate/index.ts`:validate |
+| GSV-REQ-005 | `src/core/validate/envelope.ts`:checkEnvelope; `src/core/validate/structure.ts`:checkValue |
+| GSV-REQ-006 | `src/core/validate/envelope.ts`:checkEnvelope |
+| GSV-REQ-016 | `src/core/validate/index.ts`:validate |
+| GSV-REQ-017 | `src/core/validate/index.ts`:validate; `src/core/validate/structure.ts`:checkMap, checkStructure |
+| GSV-REQ-018 | `src/core/validate/structure.ts`:checkMap, checkStructure |
+| GSV-REQ-019 | `src/core/validate/structure.ts`:checkMap, checkStructure |
+| GSV-REQ-020 | `src/core/validate/suggest.ts`:closestTerm; `src/core/validate/structure.ts`:checkMap |
+| GSV-REQ-021 | `src/core/validate/structure.ts`:checkValue, checkStructure |
+| GSV-REQ-022 | `src/core/validate/structure.ts`:checkValue, checkStructure |
+| GSV-REQ-024 | `src/core/validate/envelope.ts`:checkEnvelope |
+| GSV-REQ-025 | `src/core/validate/envelope.ts`:checkEnvelope |
+| GSV-REQ-026 | `src/core/validate/index.ts`:validate |
+| GSV-REQ-041 | `src/core/validate/structure.ts`:checkMap, checkStructure |
+| GSV-NFR-001 | `tests/core/validate.bench.ts` (verification) |

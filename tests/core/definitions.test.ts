@@ -12,6 +12,7 @@ import {
   type PropertyMap,
   type ValueSpec,
 } from "../../src/core/definitions/types";
+import { fixtureRegistry as validatorFixtures } from "../fixtures/definitions/index";
 
 const CAMEL_CASE = /^[a-z][a-zA-Z0-9]*$/;
 const shared: readonly SharedPropertySpec[] = Object.values(sharedProperties);
@@ -33,7 +34,17 @@ function valueProblems(spec: ValueSpec, at: string): string[] {
   const problems: string[] = [];
   if (!(PROPERTY_KINDS as readonly string[]).includes(spec.kind)) problems.push(`${at}: unknown kind ${JSON.stringify(spec.kind)}`);
   if (typeof spec.description !== "string" || spec.description.trim() === "") problems.push(`${at}: no description`);
-  if (spec.kind === "object") problems.push(...vocabularyProblems(spec.properties, at));
+  if (spec.kind === "object") {
+    problems.push(...vocabularyProblems(spec.properties, at));
+    for (const pair of spec.ordered ?? []) {
+      for (const term of pair) {
+        const inner = propertySpec(spec.properties, term);
+        if (inner === undefined || (inner.kind !== "number" && inner.kind !== "integer")) {
+          problems.push(`${at}: ordered term ${JSON.stringify(term)} is not a number property`);
+        }
+      }
+    }
+  }
   if (spec.kind === "array") problems.push(...valueProblems(spec.items, `${at}/items`));
   if (spec.kind === "enum" && spec.values.length === 0) problems.push(`${at}: enum with no values`);
   return problems;
@@ -150,6 +161,13 @@ const numberLineFixture: GraphTypeDefinition = {
 
 const fixtureRegistry: Partial<Record<GraphType, GraphTypeDefinition>> = { circle: circleFixture, "number-line": numberLineFixture };
 
+// Every definition the tests below hold to the rules: this file's fixtures, the validator's
+// fixtures under tests/fixtures/definitions/, and every registered definition.
+const allDefinitions = (): GraphTypeDefinition[] =>
+  [...Object.values(fixtureRegistry), ...Object.values(validatorFixtures), ...Object.values(definitions)].filter(
+    (definition): definition is GraphTypeDefinition => definition !== undefined,
+  );
+
 describe("graph types (GSV-REQ-003)", () => {
   it("are exactly the eleven types of this change, in kebab case", () => {
     expect([...GRAPH_TYPES]).toMatchInlineSnapshot(`
@@ -194,8 +212,8 @@ describe("definitions registry", () => {
 describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
   it("every property name is its declared, camel-cased, documented term", () => {
     expect(vocabularyProblems(sharedProperties)).toEqual([]);
-    for (const definition of [...Object.values(fixtureRegistry), ...Object.values(definitions)]) {
-      expect(vocabularyProblems(definition!.properties), definition!.type).toEqual([]);
+    for (const definition of allDefinitions()) {
+      expect(vocabularyProblems(definition.properties), definition.type).toEqual([]);
     }
   });
 
@@ -206,6 +224,14 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
       LineLabel: { term: "LineLabel", kind: "string", required: false, description: "Pascal case." },
       height: { term: "height", kind: "number", required: true, description: " " },
       shape: { term: "shape", kind: "enum", values: [], required: false, description: "An empty enum." },
+      range: {
+        term: "range",
+        kind: "object",
+        required: false,
+        description: "An ordered pair naming a missing term.",
+        properties: { low: { term: "low", kind: "number", required: true, description: "The low end." } },
+        ordered: [["low", "high"]],
+      },
       caption: { term: "caption", kind: "html", required: false, description: "Not a kind." },
       point: {
         term: "point",
@@ -228,6 +254,7 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
       "/LineLabel: not a camel-cased term",
       "/height: no description",
       "/shape: enum with no values",
+      '/range: ordered term "high" is not a number property',
       '/caption: unknown kind "html"',
       "/point/x_value: not a camel-cased term",
       '/labels/items: unknown kind "markup"',
@@ -235,8 +262,11 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
   });
 
   it("defines each term once: shared terms by the same object, other terms with one kind and description", () => {
-    const maps = [sharedProperties, ...[...Object.values(fixtureRegistry), ...Object.values(definitions)].map((d) => d!.properties)];
-    expect(consistencyProblems(maps)).toEqual([]);
+    // Each registry is one set of graph types; a term needs one definition within its set.
+    for (const registry of [fixtureRegistry, validatorFixtures, definitions]) {
+      const maps = [sharedProperties, ...Object.values(registry).map((d) => d!.properties)];
+      expect(consistencyProblems(maps)).toEqual([]);
+    }
     const redefined = defineProperties({
       radius: { term: "radius", kind: "number", required: true, description: "Half the width." },
     });
@@ -283,8 +313,8 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
   });
 
   it("agree with every definition that uses them", () => {
-    for (const definition of [...Object.values(fixtureRegistry), ...Object.values(definitions)]) {
-      expect(applicabilityProblems(definition!), definition!.type).toEqual([]);
+    for (const definition of allDefinitions()) {
+      expect(applicabilityProblems(definition), definition.type).toEqual([]);
     }
   });
 

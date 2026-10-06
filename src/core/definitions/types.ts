@@ -84,6 +84,11 @@ export interface EnumValue extends ValueBase {
 export interface ObjectValue extends ValueBase {
   kind: "object";
   properties: PropertyMap;
+  /**
+   * Pairs of number terms whose values must increase: in each `[lower, upper]`, lower < upper,
+   * as for an axis's `min` and `max` (GSV-REQ-022). Checked once both values pass on their own.
+   */
+  ordered?: ReadonlyArray<readonly [lower: string, upper: string]>;
 }
 
 export interface ArrayValue extends ValueBase {

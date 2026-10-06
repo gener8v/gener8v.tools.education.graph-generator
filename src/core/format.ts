@@ -100,6 +100,26 @@ export function cleanText(text: string): string {
   return result.replace(/ {2,}/g, " ").trim();
 }
 
+// Characters plain text may not hold (Product Owner decision 2026-10-06, GSV TICKET-001 security
+// review SEC-002): control characters, line and paragraph separators, and direction overrides
+// and isolates. Zero-width joiner and non-joiner are allowed.
+const UNSAFE_TEXT: ReadonlyArray<readonly [number, number]> = [
+  [0x00, 0x1f],
+  [0x7f, 0x9f],
+  [0x2028, 0x2029],
+  [0x202a, 0x202e],
+  [0x2066, 0x2069],
+];
+
+/** The index of the first character plain text may not hold, or -1 when there is none. */
+// @spec GSV-REQ-043
+export function findUnsafeTextChar(text: string): number {
+  for (let i = 0; i < text.length; i++) {
+    if (within(UNSAFE_TEXT, text.charCodeAt(i))) return i;
+  }
+  return -1;
+}
+
 /** Caller text as a quotation in a text alternative: cleaned and in quotation marks. */
 export function quoteText(text: string): string {
   return `“${cleanText(text).replace(/[“”]/g, '"')}”`;

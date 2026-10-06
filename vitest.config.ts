@@ -6,5 +6,6 @@ export default defineConfig({
     include: ["tests/**/*.test.{ts,tsx}"],
     globalSetup: ["tests/setup/build.ts"],
     testTimeout: 30_000,
+    benchmark: { include: ["tests/**/*.bench.ts"] },
   },
 });
