@@ -26,11 +26,17 @@ describe("valid descriptions (GSV-REQ-001, GSV-REQ-004)", () => {
     expect(check(example).valid).toBe(true);
   });
 
-  it("returns the known properties, every value marked as supplied", () => {
+  it("returns the known properties, marking supplied and derived values", () => {
     expect(check({ type: "circle", radius: 5, lineColor: "Blue", unit: "cm" })).toEqual({
       valid: true,
-      description: { type: "circle", radius: 5, lineColor: "#0072b2", unit: "cm" },
-      provenance: { "/radius": "supplied", "/lineColor": "supplied", "/unit": "supplied" },
+      description: { type: "circle", radius: 5, lineColor: "#0072b2", unit: "cm", diameter: 10, circumference: 10 * Math.PI },
+      provenance: {
+        "/radius": "supplied",
+        "/lineColor": "supplied",
+        "/unit": "supplied",
+        "/diameter": "derived",
+        "/circumference": "derived",
+      },
     });
   });
 
@@ -43,7 +49,7 @@ describe("valid descriptions (GSV-REQ-001, GSV-REQ-004)", () => {
 
   it("treats an explicit undefined as absent", () => {
     expect(check({ type: "circle", radius: 5, unit: undefined })).toMatchObject({ valid: true, description: { type: "circle", radius: 5 } });
-    expect(codesAndPaths({ type: "circle", radius: undefined })).toEqual(["missing_property /radius"]);
+    expect(codesAndPaths({ type: "circle", radius: undefined })).toEqual(["insufficient "]);
   });
 });
 
@@ -58,7 +64,7 @@ describe("unknown and inapplicable properties (GSV-REQ-019, GSV-REQ-020, GSV-REQ
     const [issue] = issuesOf(check({ type: "circle", radius: 5, sparkle: true }));
     expect(issue).toMatchObject({ code: "unknown_property", path: "/sparkle" });
     expect(issue!.suggestion).toBeUndefined();
-    expect(issue!.allowed).toEqual(["title", "lineColor", "radius", "showCenter", "unit", "shadedFraction"]);
+    expect(issue!.allowed).toEqual(["title", "lineColor", "radius", "diameter", "circumference", "showCenter", "unit", "shadedFraction"]);
   });
 
   it("finds unknown properties inside objects and array items, with JSON Pointer paths", () => {

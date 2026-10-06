@@ -1,4 +1,5 @@
 import { sharedProperties } from "../../../src/core/definitions/shared";
+import { createIssue, pointer } from "../../../src/core/issues";
 import { defineProperties, type GraphTypeDefinition } from "../../../src/core/definitions/types";
 import { axis } from "./axis";
 
@@ -51,6 +52,26 @@ export const xyGraph: GraphTypeDefinition = {
     },
   }),
   derivations: [],
-  checks: [],
+  checks: [
+    {
+      name: "points inside the axes",
+      inputs: ["points", "xAxis", "yAxis"],
+      check: (description) => {
+        const points = description["points"] as Array<{ x: number; y: number }>;
+        const axes = { x: description["xAxis"], y: description["yAxis"] } as Record<"x" | "y", { min: number; max: number }>;
+        return points.flatMap((point, index) =>
+          (["x", "y"] as const)
+            .filter((axis) => point[axis] < axes[axis].min || point[axis] > axes[axis].max)
+            .map((axis) =>
+              createIssue("outside_axis_range", pointer("points", index, axis), {
+                term: `points[${index}].${axis}`,
+                got: point[axis],
+                range: { min: axes[axis].min, max: axes[axis].max },
+              }),
+            ),
+        );
+      },
+    },
+  ],
   describe: () => "An x,y graph.",
 };

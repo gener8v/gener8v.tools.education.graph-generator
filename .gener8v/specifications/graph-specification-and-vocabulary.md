@@ -198,3 +198,10 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-026 | `src/core/validate/index.ts`:validate |
 | GSV-REQ-041 | `src/core/validate/structure.ts`:checkMap, checkStructure |
 | GSV-NFR-001 | `tests/core/validate.bench.ts` (verification) |
+| GSV-REQ-023 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/domain.ts`:runDomainChecks |
+| GSV-REQ-028 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/index.ts`:validate, normalize |
+| GSV-REQ-035 | `src/core/definitions/types.ts`:Derivation |
+| GSV-REQ-036 | `src/core/validate/derive.ts`:checkDerivations |
+| GSV-REQ-037 | `src/core/validate/derive.ts`:checkDerivations |
+| GSV-REQ-038 | `src/core/validate/derive.ts`:withinTolerance, checkDerivations |
+| GSV-REQ-039 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/index.ts`:validate |

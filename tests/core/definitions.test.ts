@@ -138,8 +138,8 @@ const circleFixture: GraphTypeDefinition<CircleFixture> = {
   properties: defineProperties({
     radius: { term: "radius", kind: "number", min: 0, exclusiveMin: true, required: true, description: "The radius." },
   }),
-  derivations: [{ members: ["radius", "diameter"], derive: (_term, value) => ({ radius: value, diameter: value * 2 }) }],
-  checks: [(description) => (description.radius > 1e6 ? [] : [])],
+  derivations: [],
+  checks: [{ name: "a check written for circles", inputs: ["radius"], check: (description) => (description.radius > 1e6 ? [] : []) }],
   describe: (normalized) => `A circle of radius ${normalized.radius}.`,
 };
 
@@ -296,6 +296,49 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
       radius: { term: "radius", kind: "number", required: true, description: "Half the width." },
     });
     expect(consistencyProblems([circleFixture.properties, redefined])).toEqual(["radius: defined twice, differently"]);
+  });
+});
+
+/** Problems with a definition's derivation groups and domain checks (GSV-REQ-035; AD-004). */
+function stageProblems(definition: GraphTypeDefinition): string[] {
+  const problems: string[] = [];
+  const terms = new Set(Object.keys(propertiesOf(definition.type, { [definition.type]: definition })));
+  for (const group of definition.derivations) {
+    if (new Set(group.members).size !== group.members.length) problems.push(`${definition.type}: a group lists a member twice`);
+    if (group.members.length < 2) problems.push(`${definition.type}: a group needs at least two members`);
+    if (group.description.trim() === "") problems.push(`${definition.type}: a group has no description`);
+    for (const member of group.members) {
+      const spec = propertySpec(definition.properties, member);
+      if (spec === undefined || (spec.kind !== "number" && spec.kind !== "integer")) {
+        problems.push(`${definition.type}: group member ${member} is not a top-level number property`);
+      }
+    }
+  }
+  for (const check of definition.checks) {
+    for (const input of check.inputs) {
+      if (!terms.has(input)) problems.push(`${definition.type}: check "${check.name}" reads ${input}, which is not a term`);
+    }
+  }
+  return problems;
+}
+
+describe("derivation groups and domain checks are well formed (GSV-REQ-035)", () => {
+  it("holds for every definition", () => {
+    for (const definition of allDefinitions()) expect(stageProblems(definition), definition.type).toEqual([]);
+  });
+
+  it("catches bad members and inputs", () => {
+    const bad = {
+      ...circleFixture,
+      derivations: [{ members: ["radius", "radius", "unit"], description: " ", required: true, derive: () => ({}) }],
+      checks: [{ name: "reads nothing real", inputs: ["sparkle"], check: () => [] }],
+    } as unknown as GraphTypeDefinition;
+    expect(stageProblems(bad)).toEqual([
+      "circle: a group lists a member twice",
+      "circle: a group has no description",
+      "circle: group member unit is not a top-level number property",
+      "circle: check \"reads nothing real\" reads sparkle, which is not a term",
+    ]);
   });
 });
 

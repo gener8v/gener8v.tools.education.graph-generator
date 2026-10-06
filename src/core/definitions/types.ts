@@ -164,22 +164,40 @@ export interface DescriptionBase {
   readonly [property: string]: unknown;
 }
 
-/** A group of mutually determining values (GSV-REQ-035), such as radius, diameter and circumference. */
+/**
+ * A group of mutually determining values, such as radius, diameter and circumference
+ * (GSV-REQ-035). Readable data: the schema generator and the documentation publish `members`
+ * and `description`.
+ */
+// @spec GSV-REQ-035
 export interface Derivation {
-  /** The members, the preferred defining value first. */
+  /**
+   * The members, each a top-level number term of the type, in the documented defining order: the
+   * first supplied member that passed stage 2 defines the rest (GSV-REQ-036).
+   */
   members: Terms;
+  /** How the members relate, in plain English: "diameter = 2 × radius; circumference = 2π × radius". */
+  description: string;
+  /** Whether one member must be given; if none is, the graph cannot be determined (`insufficient`). */
+  required: boolean;
   /** Every member's value, from the value of one member. */
   derive(term: string, value: number): Readonly<Record<string, number>>;
 }
 
 /**
- * A type-specific check that reports issues the shape alone cannot (domain stage, AD-004).
- * Declared through method syntax so its parameter is bivariant: a check written for one graph
- * type's description can sit in the registry typed by `DescriptionBase`.
+ * A type-specific check that reports issues the shape alone cannot (domain stage, AD-004), such
+ * as points outside an axis range. It runs only when every input is present and nothing at or
+ * below an input failed an earlier stage, so its issues never follow from another issue.
  */
-export type DomainCheck<D extends DescriptionBase = DescriptionBase> = {
+export interface DomainCheck<D extends DescriptionBase = DescriptionBase> {
+  /** A short name for tests and documentation, such as "points inside the axes". */
+  name: string;
+  /** The top-level terms the check reads. */
+  inputs: Terms;
+  // Method syntax keeps the parameter bivariant, so a check written for one graph type's
+  // description can sit in the registry typed by `DescriptionBase`.
   check(description: D): readonly Issue[];
-}["check"];
+}
 
 /** Everything about one graph type, the single source for types, schemas, vocabulary and validation (AD-003). */
 export interface GraphTypeDefinition<D extends DescriptionBase = DescriptionBase> {
