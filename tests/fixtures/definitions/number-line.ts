@@ -12,6 +12,7 @@ export const numberLine: GraphTypeDefinition = {
     points: {
       term: "points",
       kind: "array",
+      maxItems: 1000,
       required: false,
       description: "Marked points.",
       items: {

@@ -1,20 +1,12 @@
-import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition } from "../definitions/types";
-import type { Terms } from "../issues";
-import { createIssue, pointer } from "../issues";
+import type { Registry } from "../definitions/index";
+import { GRAPH_TYPES, type GraphType } from "../definitions/types";
+import { asTerms, createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
+import { type ObjectContents, isPlainObject, readObject } from "./json";
 
 /** Schema versions this package accepts; a description without `version` is the current one. */
 export const SUPPORTED_VERSIONS = Object.freeze([1] as const);
 export const CURRENT_VERSION = 1;
-
-export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>;
-
-/** A JSON object: not an array, and made by an object literal, `JSON.parse` or `Object.create(null)`. */
-export function isPlainObject(value: unknown): value is Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const prototype: unknown = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-}
 
 /** The graph types with a registered definition, in `GRAPH_TYPES` order. */
 export function registeredTypes(registry: Registry): GraphType[] {
@@ -22,7 +14,14 @@ export function registeredTypes(registry: Registry): GraphType[] {
 }
 
 export type EnvelopeResult =
-  | { ok: true; description: Readonly<Record<string, unknown>>; type: GraphType }
+  | {
+      ok: true;
+      /** The description's own properties, read once; later stages never read the input again. */
+      contents: ObjectContents;
+      type: GraphType;
+      /** The checked version, when one was given. */
+      version: number | undefined;
+    }
   | { ok: false; issues: Issue[] };
 
 /**
@@ -32,29 +31,35 @@ export type EnvelopeResult =
  */
 // @spec GSV-REQ-001, GSV-REQ-002, GSV-REQ-005, GSV-REQ-006, GSV-REQ-024, GSV-REQ-025
 export function checkEnvelope(input: unknown, registry: Registry): EnvelopeResult {
-  if (!isPlainObject(input)) {
-    // JSON text is not parsed: parsing is the caller's job (GSV Assumptions).
+  // JSON text is not parsed: parsing is the caller's job (GSV Assumptions).
+  const contents = isPlainObject(input) ? readObject(input) : undefined;
+  if (contents === undefined) {
     return { ok: false, issues: [createIssue("not_an_object", pointer(), { got: input })] };
   }
   const issues: Issue[] = [];
+  for (const key of ["type", "version"]) {
+    if (contents.opaque.includes(key)) {
+      issues.push(createIssue("wrong_kind", pointer(key), { term: key, got: undefined, expected: "plain JSON data" }));
+    }
+  }
+  if (issues.length > 0) return { ok: false, issues };
 
   const registered = registeredTypes(registry);
-  // Only while no type is registered yet (before the type tickets land) is the full list shown.
-  const allowed = (registered.length > 0 ? registered : [...GRAPH_TYPES]) as unknown as Terms;
-  const type = Object.hasOwn(input, "type") ? input["type"] : undefined;
-  const known = typeof type === "string" && (registered as readonly string[]).includes(type);
+  // While no definition is registered (until the circle slice, GSS TICKET-002, registers the
+  // first), every declared type is listed, so the message never offers nothing.
+  const allowed = asTerms(registered.length > 0 ? registered : GRAPH_TYPES);
+  const type = contents.values.get("type");
   if (type === undefined) {
     issues.push(createIssue("unknown_graph_type", pointer("type"), { allowed }));
-  } else if (!known) {
+  } else if (typeof type !== "string" || !(registered as readonly string[]).includes(type)) {
     issues.push(createIssue("unknown_graph_type", pointer("type"), { got: type, allowed }));
   }
 
-  const version = Object.hasOwn(input, "version") ? input["version"] : undefined;
+  const version = contents.values.get("version");
   if (version !== undefined && !(SUPPORTED_VERSIONS as readonly unknown[]).includes(version)) {
-    const allowedVersions = SUPPORTED_VERSIONS.map(String) as unknown as Terms;
-    issues.push(createIssue("unsupported_version", pointer("version"), { got: version, allowed: allowedVersions }));
+    issues.push(createIssue("unsupported_version", pointer("version"), { got: version, allowed: asTerms(SUPPORTED_VERSIONS.map(String)) }));
   }
 
   if (issues.length > 0) return { ok: false, issues };
-  return { ok: true, description: input, type: type as GraphType };
+  return { ok: true, contents, type: type as GraphType, version: version as number | undefined };
 }

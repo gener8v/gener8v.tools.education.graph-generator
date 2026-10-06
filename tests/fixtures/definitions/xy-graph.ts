@@ -23,6 +23,7 @@ export const xyGraph: GraphTypeDefinition = {
     points: {
       term: "points",
       kind: "array",
+      maxItems: 1000,
       required: false,
       description: "Marked points.",
       items: {
@@ -34,6 +35,7 @@ export const xyGraph: GraphTypeDefinition = {
     segments: {
       term: "segments",
       kind: "array",
+      maxItems: 1000,
       required: false,
       description: "Line segments between two points.",
       items: {

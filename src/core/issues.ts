@@ -1,3 +1,4 @@
+import { forEachCodePoint, isUnsafeCodePoint } from "./format";
 import type { Issue, Range } from "./result";
 
 /**
@@ -31,6 +32,7 @@ export const ISSUE_CODES = Object.freeze([
   "unknown_color",
   "invalid_json",
   "internal_error",
+  "too_large",
 ] as const);
 
 export type IssueCode = (typeof ISSUE_CODES)[number];
@@ -75,11 +77,18 @@ export const issueDocs: Readonly<Record<IssueCode, string>> = Object.freeze(
     invalid_json: "The model tool's input is text that is not valid JSON. Emitted only by the tool handler.",
     internal_error:
       "A defect in the package stopped the check. It is not a problem with the description; report it.",
+    too_large: "A list, or the whole description, holds more values than its documented limit.",
   } satisfies Record<IssueCode, string>),
 );
 
 /** One or more names or values. */
 export type Terms = readonly [string, ...string[]];
+
+/** A list as `Terms`, checking that it is not empty; an empty list is a package defect. */
+export function asTerms(list: readonly string[]): Terms {
+  if (list.length === 0) throw new Error("An issue cannot list zero allowed values");
+  return list as unknown as Terms;
+}
 
 /**
  * A property's vocabulary term or readable path, e.g. "radius" or "points[2].x". It may come
@@ -141,39 +150,30 @@ export interface IssueParamsByCode {
    * page (security review SEC-003).
    */
   internal_error: Record<string, never>;
+  /**
+   * `limit` is the documented maximum; `count` the number found, when known (a description is
+   * not counted past its limit). `unit` names what is counted.
+   */
+  too_large: { term: Term; limit: number; unit: "items" | "values"; count?: number };
 }
 
 const MAX_VALUE_CHARS = 40;
 const MAX_TERM_CHARS = 64;
 const MAX_DETAIL_CHARS = 200;
 
-// Code points JSON.stringify leaves alone that can break lines, reorder text or hide it: DEL and
-// C1 controls, soft hyphen, Arabic letter mark, Mongolian vowel separator, zero-width and bidi
-// marks, line and paragraph separators, word joiners, bidi isolates, BOM. Written as numbers so
-// the source holds no invisible characters itself.
-const INVISIBLE: ReadonlyArray<readonly [number, number]> = [
-  [0x7f, 0x9f],
-  [0xad, 0xad],
-  [0x61c, 0x61c],
-  [0x180e, 0x180e],
-  [0x200b, 0x200f],
-  [0x2028, 0x202e],
-  [0x2060, 0x2064],
-  [0x2066, 0x206f],
-  [0xfeff, 0xfeff],
-];
 const TERM_SHAPE = /^[A-Za-z][A-Za-z0-9-]*(?:\.[A-Za-z][A-Za-z0-9-]*|\[\d+\])*$/;
 
-const isInvisible = (code: number) => INVISIBLE.some(([low, high]) => code >= low && code <= high);
-const isControl = (code: number) => code < 0x20;
+// Messages escape every code point plain text may not hold (the policy in ./format), and the
+// zero-width joiners too, so a message shows exactly what was supplied.
+const escapedInMessages = (code: number) => isUnsafeCodePoint(code) || code === 0x200c || code === 0x200d;
 
-/** Replace each matching character with its JSON-style \uXXXX escape. */
-function escapeChars(text: string, matches: (code: number) => boolean): string {
+/** Replace each escaped code point with JSON-style \uXXXX escapes, one per UTF-16 unit. */
+function escapeChars(text: string): string {
   let result = "";
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    result += matches(code) ? `\\u${code.toString(16).padStart(4, "0")}` : text[i];
-  }
+  forEachCodePoint(text, (code, char) => {
+    if (!escapedInMessages(code)) result += char;
+    else for (let i = 0; i < char.length; i++) result += `\\u${char.charCodeAt(i).toString(16).padStart(4, "0")}`;
+  });
   return result;
 }
 
@@ -182,7 +182,7 @@ const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0
 /** Quoted, clipped, with every control and invisible character escaped. */
 function quote(text: string, max: number): string {
   // JSON.stringify escapes the C0 controls, quotes and backslashes.
-  return escapeChars(JSON.stringify(clip(text, max)), isInvisible);
+  return escapeChars(JSON.stringify(clip(text, max)));
 }
 
 /** A short, readable rendering of a supplied value for messages. Never throws. */
@@ -218,7 +218,7 @@ export function describeTerm(term: string): string {
 
 /** Package-authored explanation, clipped, with control and invisible characters escaped. */
 function describeDetail(detail: string): string {
-  return escapeChars(clip(detail, MAX_DETAIL_CHARS), (code) => isControl(code) || isInvisible(code));
+  return escapeChars(clip(detail, MAX_DETAIL_CHARS));
 }
 
 /** A computed number rounded for reading, e.g. 9.549296585513721 → 9.549. */
@@ -333,6 +333,10 @@ const templates: Templates = {
     `The tool input is not valid JSON${p.detail === undefined ? "" : ` (${describeDetail(p.detail)})`}; send a JSON object.`,
   internal_error: () =>
     "The description could not be checked because of a defect in the package; please report it. The description itself may be valid.",
+  too_large: (p) =>
+    p.count === undefined
+      ? `${describeTerm(p.term)} has more than ${p.limit} ${p.unit}; use fewer.`
+      : `${describeTerm(p.term)} has ${p.count} ${p.unit}, more than the limit of ${p.limit}; use fewer.`,
 };
 
 /**

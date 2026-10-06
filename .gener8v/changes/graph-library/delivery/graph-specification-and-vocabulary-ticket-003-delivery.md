@@ -291,4 +291,64 @@ Provenance marks every kept leaf value (not containers) as `supplied`, by JSON P
 
 ## Post-Review Amendments
 
-None
+Resolution of `graph-library/graph-specification-and-vocabulary-ticket-003-code-review`, `-quality-review` and `-security-review`, 2026-10-06, decisions by the Product Owner. The reports overlapped, so the fixes are recorded once, by group.
+
+- **graph-specification-and-vocabulary-ticket-003-code-review/CR-003; graph-specification-and-vocabulary-ticket-003-quality-review/QR-001 (the stage-2 output contract):**
+  - `checkValue` returns an explicit `Outcome` (`passed`, `omitted` or `failed`), so the compiler makes every caller handle failure.
+  - `StructureResult` gains `failed`, the JSON Pointers of every value that failed, the upper end of a reversed `ordered` pair included.
+  - Failed values leave `description` and `provenance`. A failed list element stays as `null`, so later indices hold.
+  - A new test pins `checkStructure`'s output for an input with issues.
+  - **Correction to DEL-005 and the Notes:** TICKET-004 reads `failed`, not the issue paths. A Known Hazard on GSV TICKET-004 says so.
+  - File: `src/core/validate/structure.ts`.
+- **graph-specification-and-vocabulary-ticket-003-code-review/CR-001, CR-006; graph-specification-and-vocabulary-ticket-003-security-review/SEC-004; graph-specification-and-vocabulary-ticket-003-quality-review/QR-004 (values JSON cannot produce):**
+  - The new `src/core/validate/json.ts` reads caller data only through own data-property descriptors, so no getter runs and each value is read once.
+  - A getter, setter or hidden (non-enumerable) property is reported as `wrong_kind` ("plain JSON data"). At `type` or `version`, it stops the envelope stage.
+  - Lists are read position by position (a hole plus an extra key now fails), after a cheap key-count check.
+  - "Missing" is decided from the properties actually read.
+  - `isPlainObject` accepts JSON objects from another realm and never throws. A revoked or throwing Proxy is `not_an_object` (whole input) or `wrong_kind` (a value), never `internal_error`.
+  - Each hostile input has an exact-code test, plus a test with a cross-realm object made by `node:vm`.
+  - **Correction to DEL-002:** an accessor or hidden property is "not plain JSON data", not "absent".
+- **graph-specification-and-vocabulary-ticket-003-security-review/SEC-003; graph-specification-and-vocabulary-ticket-003-quality-review/QR-003:** the envelope returns the `version` it checked, and `checkStructure` takes it as an argument instead of reading the description again. The description, every nested normalized object and `provenance` are built on null prototypes. A test pollutes `Object.prototype.version` and `.lineColor`, then cleans up.
+- **graph-specification-and-vocabulary-ticket-003-security-review/SEC-001 (Product Owner decision: limit the input, not the issues):**
+  - `ArrayValue.maxItems` is required. A list over it gives one `too_large` issue, and its elements are not checked.
+  - `DESCRIPTION_VALUE_LIMIT` (10,000 values, counting every property and list element, known or not) gives one `too_large` issue for the whole description.
+  - New issue code `too_large`, with documentation and a message template. Adding a code is not a breaking change (GSV-REQ-034).
+  - A test checks that 1 MB hostile descriptions are answered with one issue within 250 ms.
+  - GSV-REQ-029 still holds: within the limits, every issue is returned.
+  - Known Hazards on every type ticket (set curriculum-sized `maxItems`), GSV TICKET-005 (publish `maxItems`), and CPSE TICKET-003 and TICKET-008 (document the limits).
+  - Files: `src/core/issues.ts`, `src/core/definitions/types.ts`, `src/core/validate/structure.ts`, the fixtures.
+- **graph-specification-and-vocabulary-ticket-003-security-review/SEC-002 (Product Owner decision: plain text also excludes invisible characters):**
+  - The policy now also rejects soft hyphen, the Arabic letter mark, the Mongolian vowel separator, zero-width space, direction marks, word joiners and invisible operators (U+2060–U+2065, U+206A–U+206F), the byte-order mark, the interlinear annotation marks, tag characters (U+E0000–U+E007F; the England, Scotland and Wales flags are therefore rejected), supplementary variation selectors and lone surrogates.
+  - Zero-width joiner and non-joiner and the emoji variation selectors stay allowed.
+  - `findUnsafeTextChar` and `cleanText` walk code points.
+  - Messages (`src/core/issues.ts`) escape the same set, plus the joiners.
+- **graph-specification-and-vocabulary-ticket-003-quality-review/QR-007:** the character ranges are defined once (`LINE_BREAKING`, `DIRECTION_CONTROLS`, `INVISIBLE_FORMAT`, `LONE_SURROGATE`) and shared by validation, `cleanText` and message escaping. A sweep test checks that `cleanText` neutralises every code point validation rejects.
+- **graph-specification-and-vocabulary-ticket-003-code-review/CR-002:** Known Hazards on NLC TICKET-001 (`ordered` on the axis group) and DGP TICKET-001 (`ordered` on `valueScale`). `tests/core/definitions.test.ts` fails on an object with `min`/`max` or `minimum`/`maximum` and no matching `ordered`.
+- **graph-specification-and-vocabulary-ticket-003-code-review/CR-005; graph-specification-and-vocabulary-ticket-003-quality-review/QR-002:**
+  - `benchmark.retainSamples: true`, so the bench asserts a true p95.
+  - It prints `GSV-NFR-001 <type>: p95 … ms over N runs` on every run, and `pnpm bench` uses the verbose reporter, so the CI log records the measurement.
+  - **Correction to the Verification Run and the GSV-NFR-001 criterion:** the original delivery asserted p99, because samples were not kept. It now asserts p95: circle 0.0082 ms, number-line 0.0166 ms, xy-graph 0.0312 ms.
+- **graph-specification-and-vocabulary-ticket-003-code-review/CR-004; graph-specification-and-vocabulary-ticket-003-quality-review/QR-006:** the empty-registry fallback is kept and commented. A Known Hazard on GSS TICKET-002 says to replace the "lists every declared type" test when the circle registers.
+- **graph-specification-and-vocabulary-ticket-003-code-review/CR-007:** Known Hazards on NLC TICKET-002 (custom tick labels), GSS TICKET-002 (custom measurement label text) and DGP TICKET-001 (the value-unit label). Each states what `""` means for its own label terms.
+- **graph-specification-and-vocabulary-ticket-003-quality-review/QR-009:** `inapplicable_property` now means the option applies nowhere in the graph type. A shared term that applies elsewhere in the type, such as `title` inside an axis or `label` on a segment's end, is `unknown_property` with the terms valid at that position.
+- **graph-specification-and-vocabulary-ticket-003-quality-review/QR-005:** new tests for `exclusiveMax` (a `shadedFraction` fixture term), the boundaries of every unsafe-character range (TAB included), nested `allowed`, an `ordered` pair with one member absent, and an enum given a number.
+- **graph-specification-and-vocabulary-ticket-003-quality-review/QR-008:**
+  - `Registry` is declared beside `definitions` (`src/core/definitions/index.ts`).
+  - `isPlainObject` moved to `src/core/validate/json.ts`.
+  - `asTerms` moved to `src/core/issues.ts` and is used at every site; the bare casts are gone.
+
+Re-verification after the amendments (Node.js v24.1.0, pnpm 10.28.2):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm lint` | 0 | no findings |
+| `pnpm typecheck` | 0 | no errors |
+| `pnpm test` | 0 | 11 files, 407 tests passed (validate-structure 71, validate-envelope 32, format 79, issues 37, definitions 17) |
+| `pnpm bench` | 0 | p95: circle 0.0082 ms, number-line 0.0166 ms, xy-graph 0.0312 ms (limit 5 ms) |
+| `pnpm build` | 0 | all entries and declarations emitted |
+| `pnpm check:dist` | 0 | no network APIs in built output |
+| `pnpm size` | 0 | `./core` 6.61 kB of 25 kB |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm check:changesets` | 0 | 0 changesets |

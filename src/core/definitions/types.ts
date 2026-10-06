@@ -95,6 +95,12 @@ export interface ArrayValue extends ValueBase {
   kind: "array";
   /** What each element is. */
   items: ValueSpec;
+  /**
+   * The most elements the list may hold, a curriculum-sized number set by each graph type. A
+   * longer list is reported once as `too_large`, and its elements are not checked (Product Owner
+   * decision 2026-10-06, GSV TICKET-003 security review SEC-001).
+   */
+  maxItems: number;
 }
 
 /** The kind of value accepted, with what that kind needs. */

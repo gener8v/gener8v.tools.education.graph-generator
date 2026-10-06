@@ -184,7 +184,7 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-001 | `src/core/validate/envelope.ts`:checkEnvelope |
 | GSV-REQ-002 | `src/core/validate/envelope.ts`:checkEnvelope |
 | GSV-REQ-004 | `src/core/validate/index.ts`:validate |
-| GSV-REQ-005 | `src/core/validate/envelope.ts`:checkEnvelope; `src/core/validate/structure.ts`:checkValue |
+| GSV-REQ-005 | `src/core/validate/envelope.ts`:checkEnvelope; `src/core/validate/structure.ts`:checkValue; `src/core/validate/json.ts`:isPlainObject, readObject, readList |
 | GSV-REQ-006 | `src/core/validate/envelope.ts`:checkEnvelope |
 | GSV-REQ-016 | `src/core/validate/index.ts`:validate |
 | GSV-REQ-017 | `src/core/validate/index.ts`:validate; `src/core/validate/structure.ts`:checkMap, checkStructure |

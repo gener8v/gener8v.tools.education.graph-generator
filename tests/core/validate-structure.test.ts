@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { GraphType, GraphTypeDefinition } from "../../src/core/definitions/types";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
+import { checkEnvelope } from "../../src/core/validate/envelope";
+import { DESCRIPTION_VALUE_LIMIT, checkStructure } from "../../src/core/validate/structure";
+import { runInNewContext } from "node:vm";
 import { closestTerm, editDistance } from "../../src/core/validate/suggest";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions/index";
-import { HOSTILE_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
+import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
 
 const check = (input: unknown) => validateWith(input, fixtureRegistry);
 
@@ -55,7 +58,7 @@ describe("unknown and inapplicable properties (GSV-REQ-019, GSV-REQ-020, GSV-REQ
     const [issue] = issuesOf(check({ type: "circle", radius: 5, sparkle: true }));
     expect(issue).toMatchObject({ code: "unknown_property", path: "/sparkle" });
     expect(issue!.suggestion).toBeUndefined();
-    expect(issue!.allowed).toEqual(["title", "lineColor", "radius", "showCenter", "unit"]);
+    expect(issue!.allowed).toEqual(["title", "lineColor", "radius", "showCenter", "unit", "shadedFraction"]);
   });
 
   it("finds unknown properties inside objects and array items, with JSON Pointer paths", () => {
@@ -69,7 +72,26 @@ describe("unknown and inapplicable properties (GSV-REQ-019, GSV-REQ-020, GSV-REQ
     const issues = issuesOf(check({ type: "circle", radius: 5, xAxisLabel: "x", label: "c" }));
     expect(issues.map((issue) => `${issue.code} ${issue.path}`)).toEqual(["inapplicable_property /xAxisLabel", "inapplicable_property /label"]);
     expect(issues[0]!.message).toBe("xAxisLabel does not apply for a circle; remove it.");
-    expect(codesAndPaths({ ...NUMBER_LINE, axis: { min: 0, max: 10, title: "t" } })).toEqual(["inapplicable_property /axis/title"]);
+  });
+
+  it("reports an option that applies elsewhere in the type as unknown at that position, with the terms valid there", () => {
+    // title applies to a number line, but not inside its axis (quality review QR-009).
+    const [axisTitle] = issuesOf(check({ ...NUMBER_LINE, axis: { min: 0, max: 10, title: "t" } }));
+    expect(axisTitle).toMatchObject({
+      code: "unknown_property",
+      path: "/axis/title",
+      allowed: ["min", "max", "tickSpacing", "showTickLabels"],
+    });
+    // label applies to xy-graph points and segments, but not to a segment's end.
+    const [endLabel] = issuesOf(check({ ...XY, segments: [{ from: { x: 0, y: 0, label: "A" }, to: { x: 1, y: 1 } }] }));
+    expect(endLabel).toMatchObject({ code: "unknown_property", path: "/segments/0/from/label", allowed: ["x", "y"] });
+    // label applies at no position of a circle.
+    expect(codesAndPaths({ type: "circle", radius: 1, label: "c" })).toEqual(["inapplicable_property /label"]);
+  });
+
+  it("lists the terms of the nested position for an unknown nested property", () => {
+    const [issue] = issuesOf(check({ ...NUMBER_LINE, points: [{ value: 1, sise: 2 }] }));
+    expect(issue).toMatchObject({ code: "unknown_property", path: "/points/0/sise", allowed: ["value", "label", "color"] });
   });
 
   it("treats inherited key names as unknown properties", () => {
@@ -150,8 +172,63 @@ describe("value kinds (GSV-REQ-005, GSV-REQ-021)", () => {
 
   it("checks a huge sparse list without walking it", () => {
     const start = performance.now();
-    expect(codesAndPaths({ ...NUMBER_LINE, points: new Array(1e9) })).toEqual(["wrong_kind /points"]);
+    expect(codesAndPaths({ ...NUMBER_LINE, points: new Array(1e9) })).toEqual(["too_large /points"]);
+    const holes: unknown[] = [];
+    holes[999] = { value: 1 };
+    expect(codesAndPaths({ ...NUMBER_LINE, points: holes })).toEqual(["wrong_kind /points"]);
     expect(performance.now() - start).toBeLessThan(100);
+  });
+
+  it("rejects values JSON cannot produce, without running getters (code review CR-001, security review SEC-004)", () => {
+    const holeAndKey = Object.assign([{ value: 1 }, undefined, { value: 3 }], { extra: { value: 99 } });
+    delete holeAndKey[1];
+    expect(codesAndPaths({ ...NUMBER_LINE, points: holeAndKey })).toEqual(["wrong_kind /points"]);
+
+    const hidden = { type: "circle" };
+    Object.defineProperty(hidden, "radius", { value: -5, enumerable: false });
+    expect(codesAndPaths(hidden)).toEqual(["wrong_kind /radius"]);
+
+    let reads = 0;
+    const getter = {
+      type: "circle",
+      get radius() {
+        reads += 1;
+        return 5;
+      },
+    };
+    expect(codesAndPaths(getter)).toEqual(["wrong_kind /radius"]);
+    const getterVersion = { type: "circle", radius: 1, get version() {
+      reads += 1;
+      return 1;
+    } };
+    expect(codesAndPaths(getterVersion)).toEqual(["wrong_kind /version"]);
+    expect(reads).toBe(0);
+    expect(issuesOf(check(hidden))[0]!.expected).toBe("plain JSON data");
+  });
+
+  it("classifies hostile objects as the caller's input, not a package defect (code review CR-006, quality review QR-004)", () => {
+    const revoked = Proxy.revocable({}, {});
+    revoked.revoke();
+    const throwingKeys = new Proxy({}, { ownKeys: () => { throw new Error("boom"); } });
+    const throwingDescriptor = new Proxy(
+      { type: "circle", radius: 1 },
+      { getOwnPropertyDescriptor: () => { throw new Error("boom"); } },
+    );
+    expect(codesAndPaths(revoked.proxy)).toEqual(["not_an_object "]);
+    expect(codesAndPaths(throwingKeys)).toEqual(["not_an_object "]);
+    expect(codesAndPaths(throwingDescriptor)).toEqual(["not_an_object "]);
+    expect(codesAndPaths({ type: "circle", radius: revoked.proxy })).toEqual(["wrong_kind /radius"]);
+    expect(codesAndPaths({ ...NUMBER_LINE, axis: revoked.proxy })).toEqual(["wrong_kind /axis"]);
+    expect(codesAndPaths({ ...NUMBER_LINE, points: new Proxy([{ value: 1 }], { getOwnPropertyDescriptor: () => { throw new Error("boom"); } }) })).toEqual([
+      "wrong_kind /points",
+    ]);
+  });
+
+  it("accepts a JSON object from another realm", () => {
+    const foreign = runInNewContext('JSON.parse(\'{"type":"circle","radius":2,"lineColor":"red"}\')') as unknown;
+    expect(check(foreign)).toMatchObject({ valid: true, description: { type: "circle", radius: 2, lineColor: "#c62828" } });
+    const foreignList = runInNewContext('JSON.parse(\'{"type":"number-line","axis":{"min":0,"max":1},"points":[{"value":0.5}]}\')') as unknown;
+    expect(check(foreignList).valid).toBe(true);
   });
 });
 
@@ -210,23 +287,31 @@ describe("colors (GSV-REQ-042)", () => {
 });
 
 describe("plain text (GSV-REQ-043; Product Owner decision on GSV TICKET-001 SEC-002)", () => {
-  it.each(Object.entries(UNSAFE_CHARS).filter(([name]) => !["zeroWidthSpace", "byteOrderMark"].includes(name)))(
+  it.each(Object.entries(UNSAFE_CHARS))(
     "rejects %s in a label",
     (_name, unsafe) => {
       const [issue] = issuesOf(check({ type: "circle", radius: 1, title: `A${unsafe}B` }));
       expect(issue).toMatchObject({
         code: "wrong_kind",
         path: "/title",
-        expected: "plain text without control, line-break or text-direction characters",
+        expected: "plain text without control, line-break, text-direction or invisible characters",
       });
       expect(issue!.message).not.toContain(unsafe);
     },
   );
 
-  it("accepts ordinary text, zero-width joiners and markup-like text, which is never interpreted", () => {
-    for (const title of ["{1, 2, 3}", "x < 5", "<b>bold</b>", `a${String.fromCharCode(0x200d)}b`, "Fractions */ x /*"]) {
+  it("accepts ordinary text, emoji, zero-width joiners and markup-like text, which is never interpreted", () => {
+    for (const title of [...BENIGN_TEXT, "<b>bold</b>", `a${String.fromCharCode(0x200d)}b`, "Fractions */ x /*"]) {
       expect(check({ type: "circle", radius: 1, title }).valid, title).toBe(true);
     }
+  });
+
+  it("rejects text that hides instructions in tag characters (security review SEC-002)", () => {
+    const [issue] = issuesOf(check({ type: "circle", radius: 1, title: SMUGGLED_TEXT }));
+    expect(issue).toMatchObject({ code: "wrong_kind", path: "/title" });
+    // The flags of England, Scotland and Wales are tag sequences, so they are rejected too.
+    const england = String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
+    expect(codesAndPaths({ type: "circle", radius: 1, title: england })).toEqual(["wrong_kind /title"]);
   });
 
   it("treats an empty label as no label", () => {
@@ -235,6 +320,113 @@ describe("plain text (GSV-REQ-043; Product Owner decision on GSV TICKET-001 SEC-
       description: { ...NUMBER_LINE, points: [{ value: 1 }] },
       provenance: { "/axis/min": "supplied", "/axis/max": "supplied", "/points/0/value": "supplied" },
     });
+  });
+});
+
+describe("ranges at their edges", () => {
+  it("checks an exclusive maximum", () => {
+    expect(check({ type: "circle", radius: 1, shadedFraction: 0.99 }).valid).toBe(true);
+    const [issue] = issuesOf(check({ type: "circle", radius: 1, shadedFraction: 1 }));
+    expect(issue).toMatchObject({ code: "out_of_range", range: { min: 0, max: 1, exclusiveMax: true } });
+    expect(issue!.message).toBe("shadedFraction must be a number at least 0 and less than 1; got 1.");
+  });
+
+  it("compares an ordered pair only when both values are present and passed", () => {
+    expect(codesAndPaths({ ...XY, xAxis: { max: -5 } })).toEqual(["missing_property /xAxis/min"]);
+  });
+
+  it("reports an enum given a number as a wrong kind", () => {
+    expect(codesAndPaths({ ...NUMBER_LINE, arrowheads: 2 })).toEqual(["wrong_kind /arrowheads"]);
+  });
+});
+
+describe("size limits (Product Owner decision on GSV TICKET-003 SEC-001)", () => {
+  it("reports a list longer than its maximum once, without checking its elements", () => {
+    const points = Array.from({ length: 1_001 }, () => "not a point");
+    const issues = issuesOf(check({ ...NUMBER_LINE, points }));
+    expect(issues).toEqual([
+      {
+        code: "too_large",
+        path: "/points",
+        message: "points has 1001 items, more than the limit of 1000; use fewer.",
+      },
+    ]);
+  });
+
+  it("reports a description over the value limit once", () => {
+    const description: Record<string, unknown> = { type: "circle", radius: 1 };
+    for (let i = 0; i < DESCRIPTION_VALUE_LIMIT; i++) description[`junk${i}`] = i;
+    expect(issuesOf(check(description))).toEqual([
+      { code: "too_large", path: "", message: `description has more than ${DESCRIPTION_VALUE_LIMIT} values; use fewer.` },
+    ]);
+  });
+
+  it("counts values at every depth", () => {
+    const xy = {
+      ...XY,
+      points: Array.from({ length: 1_000 }, (_, i) => ({ x: i, y: i, label: "p" })),
+      segments: Array.from({ length: 1_000 }, () => ({ from: { x: 0, y: 0 }, to: { x: 1, y: 1 } })),
+    };
+    expect(codesAndPaths(xy)).toEqual(["too_large "]);
+  });
+
+  it("answers a 1 MB hostile description quickly, with a bounded issue list", () => {
+    const keys = Object.fromEntries(Array.from({ length: 60_000 }, (_, i) => [`k${i}`, 0]));
+    const lists = { ...NUMBER_LINE, points: Array.from({ length: 500_000 }, () => 0) };
+    for (const input of [{ type: "circle", radius: 1, ...keys }, lists]) {
+      expect(JSON.stringify(input).length).toBeGreaterThan(500_000);
+      const start = performance.now();
+      const issues = issuesOf(check(input));
+      expect(performance.now() - start).toBeLessThan(250);
+      expect(issues).toHaveLength(1);
+    }
+  });
+});
+
+describe("the structure stage's output when issues exist (code review CR-003, quality review QR-001)", () => {
+  it("keeps only the values that passed, and names every failed value", () => {
+    const envelope = checkEnvelope(
+      { type: "xy-graph", xAxis: { min: 5, max: 1 }, yAxis: { min: "0", max: 5 }, points: [{ x: 1, y: 2 }, { x: Number.NaN, y: 1 }, 7] },
+      fixtureRegistry,
+    );
+    if (!envelope.ok) throw new Error("envelope failed");
+    const result = checkStructure(envelope.contents, envelope.type, envelope.version, fixtureRegistry);
+    expect(result.description).toEqual({
+      type: "xy-graph",
+      xAxis: { min: 5 },
+      yAxis: { max: 5 },
+      points: [{ x: 1, y: 2 }, { y: 1 }, null],
+    });
+    expect([...result.failed].sort()).toEqual(["/points/1/x", "/points/2", "/xAxis/max", "/yAxis/min"]);
+    expect(result.provenance).toEqual({
+      "/xAxis/min": "supplied",
+      "/yAxis/max": "supplied",
+      "/points/0/x": "supplied",
+      "/points/0/y": "supplied",
+      "/points/1/y": "supplied",
+    });
+    expect(JSON.stringify(result.description)).not.toContain("Symbol");
+  });
+});
+
+describe("prototype pollution elsewhere in the process (security review SEC-003, quality review QR-003)", () => {
+  it("never puts an inherited value into a valid result", () => {
+    const prototype = Object.prototype as Record<string, unknown>;
+    prototype["version"] = "polluted";
+    prototype["lineColor"] = 'red" onload="alert(1)';
+    try {
+      const result = check({ type: "circle", radius: 1 });
+      if (!result.valid) throw new Error("expected a valid result");
+      const description = result.description as Record<string, unknown>;
+      expect(Object.getPrototypeOf(description)).toBeNull();
+      expect(Object.getPrototypeOf(result.provenance)).toBeNull();
+      expect(description["version"]).toBeUndefined();
+      expect(description["lineColor"]).toBeUndefined();
+      expect(check(result.description).valid).toBe(true);
+    } finally {
+      delete prototype["version"];
+      delete prototype["lineColor"];
+    }
   });
 });
 
@@ -306,15 +498,6 @@ describe("never throws (Validation API; GSV TICKET-002 SEC-003)", () => {
     expect(JSON.stringify(result)).not.toMatch(/file:|node_modules| {4}at |secret/);
   });
 
-  it("returns a result for hostile inputs", () => {
-    const revoked = Proxy.revocable({}, {});
-    revoked.revoke();
-    const throwing = new Proxy({}, { ownKeys: () => { throw new Error("boom"); }, getPrototypeOf: () => Object.prototype });
-    for (const input of [revoked.proxy, throwing, { type: "circle", radius: revoked.proxy }]) {
-      expect(() => check(input)).not.toThrow();
-      expect(check(input).valid).toBe(false);
-    }
-  });
 });
 
 describe("suggestions (AD-004)", () => {

@@ -36,6 +36,13 @@ function valueProblems(spec: ValueSpec, at: string): string[] {
   if (typeof spec.description !== "string" || spec.description.trim() === "") problems.push(`${at}: no description`);
   if (spec.kind === "object") {
     problems.push(...vocabularyProblems(spec.properties, at));
+    // A range group must declare its order, or a reversed range passes (code review CR-002).
+    for (const [lower, upper] of [["min", "max"], ["minimum", "maximum"]] as const) {
+      const declared = (spec.ordered ?? []).some(([a, b]) => a === lower && b === upper);
+      if (propertySpec(spec.properties, lower) && propertySpec(spec.properties, upper) && !declared) {
+        problems.push(`${at}: has ${lower} and ${upper} without ordered [${lower}, ${upper}]`);
+      }
+    }
     for (const pair of spec.ordered ?? []) {
       for (const term of pair) {
         const inner = propertySpec(spec.properties, term);
@@ -45,7 +52,10 @@ function valueProblems(spec: ValueSpec, at: string): string[] {
       }
     }
   }
-  if (spec.kind === "array") problems.push(...valueProblems(spec.items, `${at}/items`));
+  if (spec.kind === "array") {
+    if (!Number.isInteger(spec.maxItems) || spec.maxItems < 1) problems.push(`${at}: maxItems must be a positive whole number`);
+    problems.push(...valueProblems(spec.items, `${at}/items`));
+  }
   if (spec.kind === "enum" && spec.values.length === 0) problems.push(`${at}: enum with no values`);
   return problems;
 }
@@ -141,6 +151,7 @@ const numberLineFixture: GraphTypeDefinition = {
     points: {
       term: "points",
       kind: "array",
+      maxItems: 1000,
       required: false,
       description: "Marked points.",
       items: {
@@ -232,6 +243,17 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
         properties: { low: { term: "low", kind: "number", required: true, description: "The low end." } },
         ordered: [["low", "high"]],
       },
+      scale: {
+        term: "scale",
+        kind: "object",
+        required: false,
+        description: "A range group with no declared order.",
+        properties: {
+          minimum: { term: "minimum", kind: "number", required: true, description: "The smallest value." },
+          maximum: { term: "maximum", kind: "number", required: true, description: "The largest value." },
+        },
+      },
+      steps: { term: "steps", kind: "array", maxItems: 0, required: false, description: "A list with no room.", items: { kind: "number", description: "A step." } },
       caption: { term: "caption", kind: "html", required: false, description: "Not a kind." },
       point: {
         term: "point",
@@ -243,6 +265,7 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
       labels: {
         term: "labels",
         kind: "array",
+        maxItems: 1000,
         required: false,
         description: "An array.",
         items: { kind: "markup", description: "Not a kind." },
@@ -255,6 +278,8 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
       "/height: no description",
       "/shape: enum with no values",
       '/range: ordered term "high" is not a number property',
+      "/scale: has minimum and maximum without ordered [minimum, maximum]",
+      "/steps: maxItems must be a positive whole number",
       '/caption: unknown kind "html"',
       "/point/x_value: not a camel-cased term",
       '/labels/items: unknown kind "markup"',
@@ -334,6 +359,7 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
         points: {
           term: "points",
           kind: "array",
+          maxItems: 1000,
           required: false,
           description: "Marked points.",
           items: {

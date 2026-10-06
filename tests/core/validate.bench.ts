@@ -14,10 +14,14 @@ describe("validation speed (GSV-NFR-001)", () => {
       const result = await bench(example.type, () => {
         validateWith(example, fixtureRegistry);
       }).run({ time: 300, warmupTime: 50 });
+      // Latencies in milliseconds, sorted ascending; kept by `benchmark.retainSamples`.
       const samples = result.latency.samples;
-      // Latencies are in milliseconds, sorted ascending; p99 bounds p95 if samples are absent.
-      const p95 = samples === undefined ? result.latency.p99 : samples[Math.floor(samples.length * 0.95)]!;
-      expect(p95, `${example.type}: p95 ${p95.toFixed(4)} ms over ${result.latency.samplesCount} runs`).toBeLessThanOrEqual(P95_LIMIT_MS);
+      if (samples === undefined || samples.length === 0) throw new Error("No latency samples were kept; set benchmark.retainSamples");
+      const p95 = samples[Math.floor(samples.length * 0.95)]!;
+      const summary = `${example.type}: p95 ${p95.toFixed(4)} ms over ${samples.length} runs`;
+      // Printed on every run, so the CI log records the measurement (quality review QR-002).
+      console.log(`GSV-NFR-001 ${summary}`);
+      expect(p95, summary).toBeLessThanOrEqual(P95_LIMIT_MS);
     });
   }
 });

@@ -1,8 +1,8 @@
-import { definitions } from "../definitions/index";
+import { type Registry, definitions } from "../definitions/index";
 import type { DescriptionBase } from "../definitions/types";
 import { createIssue, pointer } from "../issues";
 import { type ValidationResult, invalidResult, validResult } from "../result";
-import { type Registry, checkEnvelope } from "./envelope";
+import { checkEnvelope } from "./envelope";
 import { checkStructure } from "./structure";
 
 /**
@@ -14,7 +14,7 @@ export function validateWith(input: unknown, registry: Registry): ValidationResu
   try {
     const envelope = checkEnvelope(input, registry);
     if (!envelope.ok) return invalidResult(envelope.issues);
-    const structure = checkStructure(envelope.description, envelope.type, registry);
+    const structure = checkStructure(envelope.contents, envelope.type, envelope.version, registry);
     // Stages 3 (derivation) and 4 (domain) are added by GSV TICKET-004.
     if (structure.issues.length > 0) return invalidResult(structure.issues);
     return validResult(structure.description as DescriptionBase, structure.provenance);

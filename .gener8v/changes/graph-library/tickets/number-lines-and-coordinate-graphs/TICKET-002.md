@@ -73,6 +73,8 @@
   - Import text helpers from `src/core/format.ts`, never `src/core/describe.ts` (lint enforces it).
   - In `describe`, pass every caller string through `quoteText`, and state measurements with `formatMeasurement(value, provenance, unit)` so supplied values appear as written and derived values rounded.
   - Register the definition in `src/core/definitions/index.ts`, and run the applicability and consistency checks in `tests/core/definitions.test.ts` against it.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-003-code-review/CR-007: the rule "an empty label is no label" covers only the shared presentation options (it is keyed on `presentation`). State, in the definition and its tests, whether `""` on custom tick labels (NLC-REQ-019) means no label (drop it) or a blank label (keep it, for example a blank to fill in). If it means no label, add an explicit flag to `StringValue` rather than setting `presentation`.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-003-security-review/SEC-001 (Product Owner decision 2026-10-06): every `array` spec must set `maxItems` (the compiler requires it) to a curriculum-sized number. For example, at most 1,000 points or categories, or what the type's specification implies. A longer list is reported once as `too_large`. The whole description is capped at `DESCRIPTION_VALUE_LIMIT` (10,000 values, `src/core/validate/structure.ts`); keep every example well under both, and record the chosen limits in the definition's description text.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-005

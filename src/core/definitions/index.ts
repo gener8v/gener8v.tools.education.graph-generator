@@ -1,13 +1,16 @@
 import { sharedProperties } from "./shared";
 import { type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
+/** A set of graph-type definitions, keyed by `type` value. */
+export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>;
+
 /**
  * Every graph type's definition, keyed by its `type` value, on a null prototype. Each type ticket
  * adds one import and one entry here; TICKET-006 then requires all eleven graph types
  * (GSV-REQ-003).
  */
 // @spec GSV-REQ-003, GSV-REQ-012
-export const definitions: Readonly<Partial<Record<GraphType, GraphTypeDefinition>>> = Object.freeze(
+export const definitions: Registry = Object.freeze(
   Object.assign(Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {}),
 );
 
@@ -17,7 +20,7 @@ export const definitions: Readonly<Partial<Record<GraphType, GraphTypeDefinition
  * the documentation read a type's terms from (code review CR-002).
  */
 // @spec GSV-REQ-012, GSV-REQ-040
-export function propertiesOf(type: GraphType, registry = definitions): PropertyMap {
+export function propertiesOf(type: GraphType, registry: Registry = definitions): PropertyMap {
   const merged: Record<string, PropertySpec> = {};
   for (const spec of Object.values(sharedProperties)) {
     if ((spec.appliesTo as readonly GraphType[]).includes(type)) merged[spec.term] = spec;

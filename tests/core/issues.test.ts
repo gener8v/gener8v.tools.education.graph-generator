@@ -80,6 +80,7 @@ describe("issue-code set (GSV-REQ-030, GSV-REQ-034)", () => {
         "unknown_color",
         "invalid_json",
         "internal_error",
+        "too_large",
       ]
     `);
   });
@@ -147,6 +148,7 @@ const SAMPLES: Samples = {
   unknown_color: { term: "lineColor", got: "blurple", allowed: ["black", "blue", "red"] },
   invalid_json: { detail: "Unexpected token '}' at position 14" },
   internal_error: {},
+  too_large: { term: "points", limit: 1000, unit: "items", count: 5000 },
 };
 
 const sampleMessage = <C extends IssueCode>(code: C) => issueMessage(code, SAMPLES[code]);
@@ -174,6 +176,7 @@ describe("issue messages (GSV-REQ-031)", () => {
         "tick_interval_not_dividing": "valueScale.tickInterval must divide the value scale into whole intervals; got 7. Use a value that divides the scale range exactly.",
         "tick_label_not_on_tick": "tickLabels[0].value is at 2.5, which is not a tick position; use a value that is a multiple of the tick spacing.",
         "tick_spacing_invalid": "xAxis.tickSpacing must be a number greater than 0; got 0.",
+        "too_large": "points has 5000 items, more than the limit of 1000; use fewer.",
         "too_many_ticks": "xAxis.tickSpacing would draw 20001 ticks, more than the limit of 100; use a larger tick spacing, such as 0.2.",
         "unknown_color": "lineColor must be a color name (black, blue, red) or a hex code such as #0072b2; got "blurple".",
         "unknown_graph_type": "type must be one of: circle, square; got "pie".",
@@ -301,6 +304,12 @@ describe("caller text in messages is neutralised (security review SEC-001, SEC-0
     for (const term of ["radius", "lineColor", "points[2].x", "series[1].values", "xAxis.tickSpacing", "xy-graph"]) {
       expect(describeTerm(term)).toBe(term);
     }
+  });
+
+  it("escapes tag characters and lone surrogates, one escape per UTF-16 unit", () => {
+    expect(describeValue(`A${String.fromCodePoint(0xe0041)}`)).toBe('"A\\udb40\\udc41"');
+    expect(describeValue(`A${String.fromCharCode(0xd800)}`)).toBe('"A\\ud800"');
+    expect(describeValue(`a${String.fromCharCode(0x200d)}b`)).toBe('"a\\u200db"');
   });
 
   it("escapes invisible characters in supplied values and clips long ones", () => {

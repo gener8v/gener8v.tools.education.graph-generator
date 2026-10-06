@@ -64,7 +64,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "bench": "vitest bench --run",
+    "bench": "vitest bench --run --reporter=verbose",
     "size": "size-limit",
     "publint": "publint --strict",
     "attw": "attw --pack . --profile esm-only",

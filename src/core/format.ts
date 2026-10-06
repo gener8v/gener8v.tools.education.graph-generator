@@ -65,57 +65,93 @@ export function formatList(items: readonly string[]): string {
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-// Code points that break lines or are control characters: replaced with a space.
-const BREAKING: ReadonlyArray<readonly [number, number]> = [
+type Ranges = ReadonlyArray<readonly [number, number]>;
+
+// The plain-text character policy, by Product Owner decision (2026-10-06, GSV TICKET-001
+// security review SEC-002; extended the same day by GSV TICKET-003 security review SEC-002).
+// Validation rejects every code point in these ranges, and `cleanText` neutralises the same set,
+// so the two can never drift (quality review QR-007).
+
+/** Control characters and line and paragraph separators: replaced with a space by `cleanText`. */
+const LINE_BREAKING: Ranges = [
   [0x00, 0x1f],
   [0x7f, 0x9f],
   [0x2028, 0x2029],
 ];
-// Invisible formatting that can reorder or hide text: dropped. Zero-width joiner and non-joiner
-// (U+200C, U+200D) stay, because some writing systems need them.
-const INVISIBLE: ReadonlyArray<readonly [number, number]> = [
+/** Direction overrides and isolates, which reorder text. */
+const DIRECTION_CONTROLS: Ranges = [
+  [0x202a, 0x202e],
+  [0x2066, 0x2069],
+];
+/**
+ * Invisible format characters that hide text or carry hidden text: soft hyphen, Arabic letter
+ * mark, Mongolian vowel separator, zero-width space, direction marks, word joiners and invisible
+ * operators, deprecated format characters, byte-order mark, interlinear annotation marks, tag
+ * characters (U+E0000–U+E007F, read by language models as ASCII) and supplementary variation
+ * selectors. Zero-width joiner and non-joiner (U+200C, U+200D) and the emoji variation selectors
+ * (U+FE00–U+FE0F) stay allowed.
+ */
+const INVISIBLE_FORMAT: Ranges = [
+  [0xad, 0xad],
   [0x61c, 0x61c],
+  [0x180e, 0x180e],
   [0x200b, 0x200b],
   [0x200e, 0x200f],
-  [0x202a, 0x202e],
-  [0x2060, 0x2064],
-  [0x2066, 0x2069],
+  [0x2060, 0x2065],
+  [0x206a, 0x206f],
   [0xfeff, 0xfeff],
+  [0xfff9, 0xfffb],
+  [0xe0000, 0xe007f],
+  [0xe0100, 0xe01ef],
 ];
-const within = (ranges: ReadonlyArray<readonly [number, number]>, code: number) =>
-  ranges.some(([low, high]) => code >= low && code <= high);
+/** Half of a surrogate pair standing alone: it does not survive UTF-8 encoding. */
+const LONE_SURROGATE: Ranges = [[0xd800, 0xdfff]];
+
+const within = (ranges: Ranges, code: number) => ranges.some(([low, high]) => code >= low && code <= high);
+
+const isLineBreaking = (code: number) => within(LINE_BREAKING, code);
+const isHidden = (code: number) =>
+  within(DIRECTION_CONTROLS, code) || within(INVISIBLE_FORMAT, code) || within(LONE_SURROGATE, code);
+
+/** Whether plain text may not hold this code point. */
+export function isUnsafeCodePoint(code: number): boolean {
+  return isLineBreaking(code) || isHidden(code);
+}
+
+/**
+ * Visit each code point of a string with its text. A surrogate pair is one code point; a
+ * surrogate standing alone is its own code point (in U+D800–U+DFFF).
+ */
+export function forEachCodePoint(text: string, visit: (code: number, char: string) => void): void {
+  for (let i = 0; i < text.length; ) {
+    const code = text.codePointAt(i)!;
+    const size = code > 0xffff ? 2 : 1;
+    visit(code, text.slice(i, i + size));
+    i += size;
+  }
+}
 
 /**
  * Caller text made safe to read aloud or hand to a model: control characters and line breaks
- * become spaces, invisible direction and zero-width marks are dropped, and spaces are collapsed
- * (security review SEC-002).
+ * become spaces, hidden characters (direction controls, invisible format characters, tag
+ * characters, lone surrogates) are dropped, and spaces are collapsed.
  */
 export function cleanText(text: string): string {
   let result = "";
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    if (within(BREAKING, code)) result += " ";
-    else if (!within(INVISIBLE, code)) result += text[i];
-  }
+  forEachCodePoint(text, (code, char) => {
+    if (isLineBreaking(code)) result += " ";
+    else if (!isHidden(code)) result += char;
+  });
   return result.replace(/ {2,}/g, " ").trim();
 }
 
-// Characters plain text may not hold (Product Owner decision 2026-10-06, GSV TICKET-001 security
-// review SEC-002): control characters, line and paragraph separators, and direction overrides
-// and isolates. Zero-width joiner and non-joiner are allowed.
-const UNSAFE_TEXT: ReadonlyArray<readonly [number, number]> = [
-  [0x00, 0x1f],
-  [0x7f, 0x9f],
-  [0x2028, 0x2029],
-  [0x202a, 0x202e],
-  [0x2066, 0x2069],
-];
-
-/** The index of the first character plain text may not hold, or -1 when there is none. */
+/** The index (in UTF-16 units) of the first code point plain text may not hold, or -1. */
 // @spec GSV-REQ-043
 export function findUnsafeTextChar(text: string): number {
-  for (let i = 0; i < text.length; i++) {
-    if (within(UNSAFE_TEXT, text.charCodeAt(i))) return i;
+  for (let i = 0; i < text.length; ) {
+    const code = text.codePointAt(i)!;
+    if (isUnsafeCodePoint(code)) return i;
+    i += code > 0xffff ? 2 : 1;
   }
   return -1;
 }
