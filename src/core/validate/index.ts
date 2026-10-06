@@ -2,7 +2,6 @@ import { type Registry, definitions } from "../definitions/index";
 import type { DescriptionBase } from "../definitions/types";
 import { createIssue, pointer } from "../issues";
 import { type ValidationResult, invalidResult, validResult } from "../result";
-import { propertiesOf } from "../definitions/index";
 import { checkDerivations } from "./derive";
 import { runDomainChecks } from "./domain";
 import { checkEnvelope } from "./envelope";
@@ -31,7 +30,7 @@ export function validateWith(input: unknown, registry: Registry): ValidationResu
       failed: new Set(structure.failed),
       issues: [...structure.issues],
     };
-    checkDerivations(definition, propertiesOf(envelope.type, registry), envelope.type, state);
+    checkDerivations(definition, state);
     runDomainChecks(definition, state);
 
     if (state.issues.length > 0) return invalidResult(state.issues);

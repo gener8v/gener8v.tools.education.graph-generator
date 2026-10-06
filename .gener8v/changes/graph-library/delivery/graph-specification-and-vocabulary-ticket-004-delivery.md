@@ -239,4 +239,56 @@ Node.js v24.1.0, pnpm 10.28.2, branch `ticket/gsv-004`.
 
 ## Post-Review Amendments
 
-None
+Resolution of `graph-library/graph-specification-and-vocabulary-ticket-004-code-review`, `-quality-review` and `-security-review`, 2026-10-06, decisions by the Product Owner. The reports overlapped, so the fixes are recorded once, by group.
+
+- **graph-specification-and-vocabulary-ticket-004-code-review/CR-001, CR-004; graph-specification-and-vocabulary-ticket-004-quality-review/QR-001, QR-003, QR-004; graph-specification-and-vocabulary-ticket-004-security-review/SEC-001, SEC-002 (derived values within their own limits):**
+  - Stage 3 checks every derived value against its own member's range. A value that is non-finite counts as above the maximum, and an underflow to 0 is below the minimum.
+  - On failure, the supplied defining value gets `out_of_range`, with a range that keeps every member within its own. The range is the defining spec's own, narrowed by what each member's bound derives back to; a member with no bound on a side is bounded by what keeps it finite and non-zero. For example, "radius must be a number between 0.111 and 75; got 100".
+  - The "derived 0 is impossible" assertion is removed. A `derive` that omits a member or returns NaN throws, which the validator reports as `internal_error` (a real package defect).
+  - Shared `rangeOf` and `rangeBroken` now live in `src/core/validate/numbers.ts`, used by stages 2 and 3.
+  - A new `tests/core/definitions.test.ts` rule:
+    - every derivation member is a `number` with a positive `min` and a finite `max`;
+    - `derive` returns every member as a finite positive number from the bounds and their geometric mean, and round-trips;
+    - no member is in two groups.
+  - The fixture circle now has curriculum-sized limits.
+  - Tests cover a ranged circle (derived over a member's maximum), idempotence at the limits, underflow and overflow with other issues kept, a broken `derive`, and an optional group.
+  - **Correction to DEL-004:** the bound is computed as above, never `Number.MAX_SAFE_INTEGER`.
+  - **Correction to the Notes:** "a derived 0 is treated as a package defect" no longer holds.
+- **graph-specification-and-vocabulary-ticket-004-quality-review/QR-002; graph-specification-and-vocabulary-ticket-004-security-review/SEC-003:** `checkStructure` records a missing required property in `failed`, so a check that reads it is skipped. A test uses a check that dereferences a required nested value, and confirms `missing_property` and the other issues survive. This changes the TICKET-003 output contract that this ticket's gate depends on; `StructureResult.failed` documents it.
+- **graph-specification-and-vocabulary-ticket-004-code-review/CR-003 (precise domain gating):**
+  - Unknown and inapplicable keys are no longer recorded in `failed`, since they never reach the description.
+  - `DomainCheck.inputs` are now path patterns (`xAxis/min`, `points/*/x`), so a check is skipped only for failures on paths it reads.
+  - `touchesFailed` matches patterns segment by segment, and has its own unit tests.
+  - The xy-graph fixture check names its paths. The definitions test checks that every input path exists.
+  - **Correction to DEL-005:** it now reads through path patterns, as above.
+  - Known Hazards on every type ticket that writes checks.
+- **graph-specification-and-vocabulary-ticket-004-code-review/CR-002:** `withinTolerance` allows a relative slack of 1e-9 for binary rounding, so exactly 1% in decimal is accepted for every value tested (7.07/7, 6.93/7, 2.02/2, 1.01/1, 0.99/1, 70.7/70 and more), while 1.01% is still rejected. **Correction to DEL-003's rationale.**
+- **graph-specification-and-vocabulary-ticket-004-security-review/SEC-004:**
+  - The description is deep-frozen before stage 4, so the valid result is frozen and a mutating check throws.
+  - Each issue a check returns must have a real code, a string path and a message of at most 2,000 characters; otherwise it is a package defect.
+  - Known Hazards on the checking tickets: build issues with `createIssue`, and make cost grow with size, not magnitude.
+- **graph-specification-and-vocabulary-ticket-004-security-review/SEC-005:**
+  - The public `describe(input)` validates first and throws one fixed error for an invalid input.
+  - `describeNormalized(description)` is the internal dispatcher for package code that already validated; `describeWith` is the registry-taking form.
+  - Known Hazards on CPSE TICKET-003, TICKET-007 and TICKET-008.
+- **graph-specification-and-vocabulary-ticket-004-code-review/CR-005:** a Known Hazard on GSV TICKET-005 to publish each group's members in defining order, its description and `required`, plus `ordered` and `maxItems`. **Open follow-up:** the design's Data Model (`.gener8v/technical-design/system-design.md`, GraphTypeDefinition and PropertySpec) still shows the pre-TICKET-003 contract. It should be amended through the Technical Design skill to add `Derivation.description`/`required`, `DomainCheck.name`/`inputs` (paths), `ObjectValue.ordered` and `ArrayValue.maxItems`.
+- **graph-specification-and-vocabulary-ticket-004-quality-review/QR-005, QR-006:**
+  - Tests were added for an optional group, the full overflow result, and `touchesFailed`'s cases.
+  - `checkDerivations(definition, state)` loses its redundant parameters.
+  - The duplicate import in `src/core/validate/index.ts` is merged.
+
+Re-verification after the amendments (Node.js v24.1.0, pnpm 10.28.2):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm lint` | 0 | no findings |
+| `pnpm typecheck` | 0 | no errors |
+| `pnpm test` | 0 | 13 files, 457 tests passed (validate-derive 25, validate-domain 21, describe 5, definitions 19, validate-structure 71) |
+| `pnpm bench` | 0 | p95: circle 0.0108 ms, number-line 0.0157 ms, xy-graph 0.0353 ms (limit 5 ms) |
+| `pnpm build` | 0 | all entries and declarations emitted |
+| `pnpm check:dist` | 0 | no network APIs in built output |
+| `pnpm size` | 0 | `./core` 7.71 kB of 25 kB |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm check:changesets` | 0 | 0 changesets |

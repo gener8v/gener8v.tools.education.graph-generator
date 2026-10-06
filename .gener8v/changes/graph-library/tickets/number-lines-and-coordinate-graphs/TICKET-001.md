@@ -61,6 +61,11 @@
 - A 100-tick limit check must not compute the tick array first for absurd spacings (spacing 1e-12 on 0..1 would allocate 10¹² entries). Compute the count arithmetically before generating ticks.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-003-code-review/CR-002: the axis group must declare `ordered: [["min", "max"]]` on its object spec. The GSV structure stage compares only declared pairs and reports a reversed or equal pair as `out_of_range` at `/…/max`. `tests/core/definitions.test.ts` fails on an object with `min` and `max` and no matching `ordered`. See `tests/fixtures/definitions/axis.ts`.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-003-security-review/SEC-001 (Product Owner decision 2026-10-06): every `array` spec must set `maxItems` (the compiler requires it) to a curriculum-sized number. For example, at most 1,000 points or categories, or what the type's specification implies. A longer list is reported once as `too_large`. The whole description is capped at `DESCRIPTION_VALUE_LIMIT` (10,000 values, `src/core/validate/structure.ts`); keep every example well under both, and record the chosen limits in the definition's description text.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-004-code-review/CR-003 and graph-library/graph-specification-and-vocabulary-ticket-004-security-review/SEC-004: domain checks (`DomainCheck`, `src/core/definitions/types.ts`):
+  - `inputs` are the paths the check reads, as JSON Pointers without the leading slash, with `*` for any list position (`["xAxis/min", "xAxis/max", "points/*/x"]`). The check is skipped only when an earlier failure touches one of them; `tests/core/definitions.test.ts` checks that every path exists.
+  - The description a check receives is frozen; never change it.
+  - Build every issue with `createIssue`. A hand-built issue, or one with a message over 2,000 characters, is treated as a package defect.
+  - A check's work must grow with the description's size, never with a value's magnitude. For example, count ticks arithmetically (`floor(range / spacing)`) and compare with the limit before enumerating anything.
 
 **Depends On:** None
 **Blocks:** TICKET-002, TICKET-003, TICKET-004

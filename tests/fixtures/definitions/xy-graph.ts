@@ -55,7 +55,7 @@ export const xyGraph: GraphTypeDefinition = {
   checks: [
     {
       name: "points inside the axes",
-      inputs: ["points", "xAxis", "yAxis"],
+      inputs: ["points/*/x", "points/*/y", "xAxis/min", "xAxis/max", "yAxis/min", "yAxis/max"],
       check: (description) => {
         const points = description["points"] as Array<{ x: number; y: number }>;
         const axes = { x: description["xAxis"], y: description["yAxis"] } as Record<"x" | "y", { min: number; max: number }>;

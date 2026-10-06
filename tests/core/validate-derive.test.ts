@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { defineProperties, type GraphType, type GraphTypeDefinition } from "../../src/core/definitions/types";
+import { circle } from "../fixtures/definitions/circle";
 import { normalize } from "../../src/core/index";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { withinTolerance } from "../../src/core/validate/derive";
@@ -53,19 +55,97 @@ describe("deriving dependent values (GSV-REQ-036, GSV-REQ-037)", () => {
     expect(issuesOf(result).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["wrong_kind /radius"]);
   });
 
-  it("reports a value so large that a derived value overflows", () => {
-    const [issue] = issuesOf(check({ type: "circle", radius: 1e308 }));
-    expect(issue).toMatchObject({ code: "out_of_range", path: "/radius", range: { max: Number.MAX_SAFE_INTEGER } });
+  it("rejects a measurement outside its own limits before deriving anything", () => {
+    expect(issuesOf(check({ type: "circle", diameter: 5e-324 }))).toEqual([
+      {
+        code: "out_of_range",
+        path: "/diameter",
+        message: "diameter must be a number between 0.000002 and 2000000; got 5e-324.",
+        range: { min: 0.000002, max: 2_000_000 },
+      },
+    ]);
+  });
+});
+
+/** The fixture circle with other limits on its members, for the derived-value checks. */
+function circleWith(limits: Record<"radius" | "diameter" | "circumference", { min?: number; max?: number; exclusiveMin?: boolean }>) {
+  const property = (term: keyof typeof limits) => ({ term, kind: "number", required: false, description: `The ${term}.`, ...limits[term] }) as const;
+  const definition: GraphTypeDefinition = {
+    ...(circle as GraphTypeDefinition),
+    properties: defineProperties({ radius: property("radius"), diameter: property("diameter"), circumference: property("circumference") }),
+  };
+  return (input: unknown) => validateWith(input, { circle: definition } as Partial<Record<GraphType, GraphTypeDefinition>>);
+}
+
+describe("derived values stay within their own limits (quality review QR-001, security reviews SEC-001 and SEC-002)", () => {
+  const ranged = circleWith({ radius: { min: 0.1, max: 100 }, diameter: { min: 0.2, max: 150 }, circumference: { min: 0.7, max: 1000 } });
+
+  it("reports the supplied value, with the range that keeps every derived member inside its own", () => {
+    const result = ranged({ type: "circle", radius: 100 });
+    // Narrowed by every member: the diameter's maximum (150) and the circumference's minimum (0.7).
+    const minimum = 0.7 / (2 * Math.PI);
+    expect(issuesOf(result)).toEqual([
+      {
+        code: "out_of_range",
+        path: "/radius",
+        message: `radius must be a number between ${minimum} and 75; got 100.`,
+        range: { min: minimum, max: 75 },
+      },
+    ]);
+    expect(ranged({ type: "circle", radius: 75 }).valid).toBe(true);
+  });
+
+  it("validates again to the same description at the edge of the limits (idempotence)", () => {
+    for (const input of [{ type: "circle", radius: 75 }, { type: "circle", diameter: 0.23 }, { type: "circle", circumference: 471.2 }]) {
+      const first = validOf(ranged(input));
+      expect(validOf(ranged(first.description)).description).toEqual(first.description);
+    }
+  });
+
+  it("reports a value whose derived member would underflow, as the caller's value, keeping other issues", () => {
+    const unbounded = circleWith({ radius: { min: 0, exclusiveMin: true }, diameter: { min: 0, exclusiveMin: true }, circumference: { min: 0, exclusiveMin: true } });
+    const issues = issuesOf(unbounded({ type: "circle", diameter: 5e-324, sparkle: 1 }));
+    expect(issues.map((issue) => `${issue.code} ${issue.path}`)).toEqual(["unknown_property /sparkle", "out_of_range /diameter"]);
+    expect(issuesOf(unbounded({ type: "circle", circumference: 1e-323 }))[0]).toMatchObject({ code: "out_of_range", path: "/circumference" });
+  });
+
+  it("reports a value whose derived member would overflow, with a limit the validator enforces", () => {
+    const unbounded = circleWith({ radius: { min: 0, exclusiveMin: true }, diameter: { min: 0, exclusiveMin: true }, circumference: { min: 0, exclusiveMin: true } });
+    const issues = issuesOf(unbounded({ type: "circle", radius: 1e308 }));
+    expect(issues.map((issue) => `${issue.code} ${issue.path}`)).toEqual(["out_of_range /radius"]);
+    const max = issues[0]!.range!.max!;
+    expect(max).toBeLessThan(1e308);
+    expect(unbounded({ type: "circle", radius: max }).valid).toBe(true);
+  });
+
+  it("reports a broken derive as a package defect", () => {
+    const broken: GraphTypeDefinition = {
+      ...(circle as GraphTypeDefinition),
+      derivations: [{ ...circle.derivations[0]!, derive: (term, value) => ({ [term]: value }) }],
+    };
+    const result = validateWith({ type: "circle", radius: 5 }, { circle: broken } as Partial<Record<GraphType, GraphTypeDefinition>>);
+    expect(issuesOf(result).map((issue) => issue.code)).toEqual(["internal_error"]);
+  });
+
+  it("asks for nothing when an optional group has no member", () => {
+    const optional: GraphTypeDefinition = { ...(circle as GraphTypeDefinition), derivations: [{ ...circle.derivations[0]!, required: false }] };
+    const result = validateWith({ type: "circle", showCenter: true }, { circle: optional } as Partial<Record<GraphType, GraphTypeDefinition>>);
+    expect(result).toEqual({ valid: true, description: { type: "circle", showCenter: true }, provenance: { "/showCenter": "supplied" } });
   });
 });
 
 describe("checking supplied dependent values (GSV-REQ-023, GSV-REQ-038)", () => {
   it("accepts values within 1%, the boundary included, and rejects values just over it", () => {
     expect(withinTolerance(10.099, 10)).toBe(true); // 0.99%
-    expect(withinTolerance(10.1, 10)).toBe(true); // exactly 1%
-    expect(withinTolerance(9.9, 10)).toBe(true); // exactly 1% below
-    expect(withinTolerance(10.101, 10)).toBe(false); // 1.01%
-    expect(withinTolerance(9.899, 10)).toBe(false);
+    // Exactly 1% in decimal, for values that do and do not round in favor in binary (code review CR-002).
+    for (const [given, derived] of [[10.1, 10], [9.9, 10], [7.07, 7], [6.93, 7], [2.02, 2], [1.01, 1], [0.99, 1], [70.7, 70], [3.03, 3], [5.05, 5]] as const) {
+      expect(withinTolerance(given, derived), `${given} against ${derived}`).toBe(true);
+    }
+    // 1.01% off is still rejected.
+    for (const [given, derived] of [[10.101, 10], [9.899, 10], [7.0707, 7], [1.0101, 1], [0.9899, 1]] as const) {
+      expect(withinTolerance(given, derived), `${given} against ${derived}`).toBe(false);
+    }
+    expect(check({ type: "circle", radius: 3.5, diameter: 7.07 }).valid).toBe(true);
     expect(check({ type: "circle", radius: 5, diameter: 10.099 }).valid).toBe(true);
     expect(codesAndPaths({ type: "circle", radius: 5, diameter: 10.101 })).toEqual(["contradiction /diameter"]);
   });

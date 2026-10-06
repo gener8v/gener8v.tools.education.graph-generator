@@ -1,10 +1,19 @@
-import type { GraphType, GraphTypeDefinition, PropertyMap } from "../definitions/types";
+import type { Derivation, GraphTypeDefinition, NumberValue } from "../definitions/types";
 import { propertySpec } from "../definitions/types";
 import { createIssue, pointer } from "../issues";
+import type { Range } from "../result";
+import { type RangeSide, rangeBroken, rangeOf } from "./numbers";
 import { type StageState, touchesFailed } from "./state";
 
 /** A supplied dependent value agrees within 1% (relative) of the derived value (GSV Behaviors & Rules). */
 export const TOLERANCE = 0.01;
+
+/**
+ * Slack for binary rounding at the boundary: 7.07 against 7 is exactly 1% in decimal, but not in
+ * binary floating point. One part in a billion keeps "exactly 1% is accepted" true for every
+ * value and still rejects 1.01% (code review CR-002 on TICKET-004).
+ */
+const BOUNDARY_SLACK = 1e-9;
 
 /**
  * Whether a supplied value agrees with the derived one: within 1% of it, exactly 1% included,
@@ -12,14 +21,14 @@ export const TOLERANCE = 0.01;
  */
 // @spec GSV-REQ-038
 export function withinTolerance(supplied: number, derived: number): boolean {
-  return Math.abs(supplied - derived) <= TOLERANCE * Math.abs(derived);
+  return Math.abs(supplied - derived) <= TOLERANCE * Math.abs(derived) * (1 + BOUNDARY_SLACK);
 }
 
 /** "a or b", "a, b or c". */
 const alternatives = (terms: readonly string[]) =>
   terms.length === 1 ? terms[0]! : `${terms.slice(0, -1).join(", ")} or ${terms[terms.length - 1]}`;
 
-/** Remove a value that failed from the result, and mark it failed. */
+/** Remove a value that did not pass from the result, and mark it failed. */
 function dropFailed(state: StageState, term: string): void {
   const path = pointer(term);
   state.failed.add(path);
@@ -27,30 +36,73 @@ function dropFailed(state: StageState, term: string): void {
   delete state.provenance[path];
 }
 
+/** A group member's spec. Definitions are checked to make every member a number property. */
+function memberSpec(definition: GraphTypeDefinition, term: string): NumberValue {
+  const spec = propertySpec(definition.properties, term);
+  if (spec === undefined || spec.kind !== "number") throw new Error(`Derivation member ${term} is not a number property`);
+  return spec;
+}
+
+/**
+ * Every member's value from the defining one, checked for package defects: a `derive` that
+ * leaves a member out or returns something that is not a number throws, which the validator
+ * reports as `internal_error` (code review CR-004 on TICKET-004).
+ */
+function deriveAll(group: Derivation, term: string, value: number): Readonly<Record<string, number>> {
+  const derived = group.derive(term, value);
+  for (const member of group.members) {
+    if (typeof derived[member] !== "number" || Number.isNaN(derived[member])) {
+      throw new Error(`Derivation did not give a number for ${member}`);
+    }
+  }
+  return derived;
+}
+
+/**
+ * The range the defining value must stay in so that every derived member stays in its own: the
+ * defining spec's range, narrowed by the defining value each member's bound would derive (a
+ * diameter of at most 150 gives a radius of at most 75). A member with no bound on a side is
+ * bounded by what keeps it finite and non-zero.
+ */
+function definingRange(group: Derivation, definition: GraphTypeDefinition, defining: string): Range {
+  const range = rangeOf(memberSpec(definition, defining));
+  for (const member of group.members) {
+    if (member === defining) continue;
+    const spec = memberSpec(definition, member);
+    const low = group.derive(member, spec.min ?? Number.MIN_VALUE)[defining];
+    if (low !== undefined && Number.isFinite(low) && (range.min === undefined || low > range.min)) {
+      range.min = low;
+      if (spec.exclusiveMin) range.exclusiveMin = true;
+      else delete range.exclusiveMin;
+    }
+    const high = group.derive(member, spec.max ?? Number.MAX_VALUE)[defining];
+    if (high !== undefined && Number.isFinite(high) && (range.max === undefined || high < range.max)) {
+      range.max = high;
+      if (spec.exclusiveMax) range.exclusiveMax = true;
+      else delete range.exclusiveMax;
+    }
+  }
+  return range;
+}
+
 /**
  * Stage 3 (AD-004): for each derivation group, take the first supplied member that passed stage 2
  * as defining (in the group's documented order), derive every other member, check each other
- * supplied member against its derived value, and add the members that were not supplied.
+ * supplied member against its derived value, and add the members that were not supplied. Every
+ * derived value must stay within its own member's range; when one would not, the defining value
+ * is reported out of range, with the range that would keep every member in its own.
  */
 // @spec GSV-REQ-023, GSV-REQ-028, GSV-REQ-036, GSV-REQ-037, GSV-REQ-038, GSV-REQ-039
-export function checkDerivations(
-  definition: GraphTypeDefinition,
-  properties: PropertyMap,
-  graphType: GraphType,
-  state: StageState,
-): void {
+export function checkDerivations(definition: GraphTypeDefinition, state: StageState): void {
   for (const group of definition.derivations) {
-    const failed = (term: string) => touchesFailed(pointer(term), state.failed);
+    const failed = (term: string) => touchesFailed(term, state.failed);
     const supplied = group.members.filter((term) => Object.hasOwn(state.description, term) && !failed(term));
 
     if (supplied.length === 0) {
-      // A member that failed stage 2 was reported already; asking for one again would cascade.
+      // A member that did not pass stage 2 was reported already; asking for one again would cascade.
       if (group.required && !group.members.some(failed)) {
         state.issues.push(
-          createIssue("insufficient", pointer(), {
-            term: graphType,
-            detail: `one of ${alternatives(group.members)} is needed`,
-          }),
+          createIssue("insufficient", pointer(), { term: definition.type, detail: `one of ${alternatives(group.members)} is needed` }),
         );
       }
       continue;
@@ -58,13 +110,22 @@ export function checkDerivations(
 
     const defining = supplied[0]!;
     const definingValue = state.description[defining] as number;
-    const derived = group.derive(defining, definingValue);
+    const derived = deriveAll(group, defining, definingValue);
+    const toAdd = group.members.filter((term) => term !== defining && !supplied.includes(term) && !failed(term));
 
-    // A value so large that a derived value overflows (a radius of 1e308) cannot be drawn.
-    if (group.members.some((term) => !Number.isFinite(derived[term]))) {
-      const spec = propertySpec(properties, defining);
-      const max = spec !== undefined && (spec.kind === "number" || spec.kind === "integer") && spec.max !== undefined ? spec.max : Number.MAX_SAFE_INTEGER;
-      state.issues.push(createIssue("out_of_range", pointer(defining), { term: defining, got: definingValue, range: { max } }));
+    // Every derived value must satisfy its own member's spec (quality review QR-001, security
+    // reviews SEC-001 and SEC-002 on TICKET-004): too small (including underflow to 0), too large
+    // (including overflow to Infinity). The defining value is the cause, so it carries the issue.
+    const broken = toAdd
+      .map((term) => {
+        const value = derived[term]!;
+        const side: RangeSide | undefined = Number.isFinite(value) ? rangeBroken(value, rangeOf(memberSpec(definition, term))) : "max";
+        return { term, side };
+      })
+      .find((entry) => entry.side !== undefined);
+    if (broken !== undefined) {
+      const range = definingRange(group, definition, defining);
+      state.issues.push(createIssue("out_of_range", pointer(defining), { term: defining, got: definingValue, range }));
       dropFailed(state, defining);
       continue;
     }
@@ -72,9 +133,6 @@ export function checkDerivations(
     for (const term of group.members) {
       if (term === defining) continue;
       const value = derived[term]!;
-      // Every member is strictly positive by its stage-2 range, so no derived value is 0 and the
-      // relative tolerance is always defined.
-      if (value === 0) throw new Error("A derivation produced 0");
       const path = pointer(term);
       if (supplied.includes(term)) {
         const given = state.description[term] as number;
@@ -90,7 +148,7 @@ export function checkDerivations(
           );
           dropFailed(state, term);
         }
-      } else if (!failed(term)) {
+      } else if (toAdd.includes(term)) {
         // Added by vocabulary term on the null-prototype description, never by an input key.
         state.description[term] = value;
         state.provenance[path] = "derived";

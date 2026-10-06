@@ -3,9 +3,10 @@ import { sharedProperties } from "../definitions/shared";
 import { type GraphType, type PropertyMap, type ValueSpec, propertySpec } from "../definitions/types";
 import { findUnsafeTextChar } from "../format";
 import { asTerms, createIssue, pointer } from "../issues";
-import type { Issue, Provenance, Range } from "../result";
+import type { Issue, Provenance } from "../result";
 import { namedColors, resolveColor } from "../style";
 import { type ObjectContents, isPlainObject, readList, readObject } from "./json";
+import { rangeBroken, rangeOf } from "./numbers";
 import { closestTerm } from "./suggest";
 
 /**
@@ -37,8 +38,10 @@ export interface StructureResult {
   /** Every kept leaf value, by JSON Pointer, marked as supplied. */
   provenance: Provenance;
   /**
-   * The JSON Pointer of every value that failed its own check, including the upper end of an
-   * `ordered` pair. Later stages skip any value at or below one of these (AD-004).
+   * The JSON Pointer of every value that did not pass: one that failed its own check (including
+   * the upper end of an `ordered` pair), a required value that is missing, and a property that is
+   * not plain data. Unknown keys are not listed: they never reach `description`. Later stages skip
+   * anything these touch (AD-004).
    */
   failed: ReadonlySet<string>;
 }
@@ -81,22 +84,6 @@ function count(walk: Walk, values: number): void {
   if (walk.count > DESCRIPTION_VALUE_LIMIT) throw new TooLarge();
 }
 
-function rangeOf(spec: ValueSpec & { kind: "number" | "integer" }): Range {
-  const range: Range = {};
-  if (spec.min !== undefined) range.min = spec.min;
-  if (spec.max !== undefined) range.max = spec.max;
-  if (spec.exclusiveMin) range.exclusiveMin = true;
-  if (spec.exclusiveMax) range.exclusiveMax = true;
-  return range;
-}
-
-function outOfRange(value: number, range: Range): boolean {
-  const { min, max, exclusiveMin, exclusiveMax } = range;
-  if (min !== undefined && (exclusiveMin ? value <= min : value < min)) return true;
-  if (max !== undefined && (exclusiveMax ? value >= max : value > max)) return true;
-  return false;
-}
-
 /** Check one value against its spec. */
 // @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043
 function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, presentation: boolean): Outcome {
@@ -119,7 +106,7 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
       if (typeof value !== "number" || !Number.isFinite(value)) return wrongKind(spec.kind === "integer" ? "a whole number" : "a number");
       if (spec.kind === "integer" && !Number.isInteger(value)) return wrongKind("a whole number");
       const range = rangeOf(spec);
-      if (outOfRange(value, range)) return fail(createIssue("out_of_range", path, { term: place.term, got: value, range }));
+      if (rangeBroken(value, range) !== undefined) return fail(createIssue("out_of_range", path, { term: place.term, got: value, range }));
       return pass(value);
     }
     case "string": {
@@ -216,7 +203,8 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
     const path = pointer(...at.segments);
     const spec = propertySpec(properties, key);
     if (spec === undefined) {
-      walk.failed.add(path);
+      // Not recorded in `failed`: an unknown key never reaches the description, so no later
+      // check can read it (code review CR-003 on TICKET-004).
       if (appliesToType(key, walk.graphType) === false) {
         // A presentation option this graph type has nowhere (GSV-REQ-041).
         walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType }));
@@ -244,7 +232,11 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
     // Presence is decided from the properties actually read (security review SEC-004).
     if (spec.required && contents.values.get(spec.term) === undefined && !contents.opaque.includes(spec.term)) {
       const at = child(place, spec.term);
-      walk.issues.push(createIssue("missing_property", pointer(...at.segments), { term: at.term, graphType: walk.graphType }));
+      const path = pointer(...at.segments);
+      walk.issues.push(createIssue("missing_property", path, { term: at.term, graphType: walk.graphType }));
+      // A required value that is missing did not pass, so checks that read it are skipped
+      // (quality review QR-002, security review SEC-003 on TICKET-004).
+      walk.failed.add(path);
     }
   }
   return normalized;

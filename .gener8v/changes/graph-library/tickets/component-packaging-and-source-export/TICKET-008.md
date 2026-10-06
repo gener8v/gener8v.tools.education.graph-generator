@@ -38,6 +38,7 @@
 - Model-tool examples in the docs must not add a provider SDK to `package.json` (CPSE-REQ-029); keep them as code snippets or dev-only story code.
 - The site is complete only when all eleven types have examples (DEP-008, soft). Build it now and let stories appear as type tickets add examples; dependency-map OQ-004 leaves open whether completeness blocks the first release — note coverage in the delivery record.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-003-security-review/SEC-001 and SEC-002: document the input limits (per-list `maxItems`, 10,000 values per description) and the plain-text character policy (control, line-break, direction, invisible and tag characters rejected; zero-width joiners and emoji variation selectors allowed) on the vocabulary and issue-code pages.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-004-security-review/SEC-005: document that `describe(input)` validates its input, and throws for an invalid one (call `validate` to learn why), and that `normalize` does the same.
 
 **Depends On:** TICKET-003
 **Blocks:** None

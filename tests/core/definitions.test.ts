@@ -299,24 +299,67 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
   });
 });
 
+/** Whether a check's input path names a property, `*` standing for a list position. */
+function pathExists(properties: PropertyMap, path: string): boolean {
+  let spec: ValueSpec | undefined;
+  let map: PropertyMap | undefined = properties;
+  for (const segment of path.split("/")) {
+    if (segment === "*") {
+      if (spec?.kind !== "array") return false;
+      spec = spec.items;
+    } else {
+      if (map === undefined) return false;
+      spec = propertySpec(map, segment);
+      if (spec === undefined) return false;
+    }
+    map = spec.kind === "object" ? spec.properties : undefined;
+  }
+  return true;
+}
+
 /** Problems with a definition's derivation groups and domain checks (GSV-REQ-035; AD-004). */
 function stageProblems(definition: GraphTypeDefinition): string[] {
   const problems: string[] = [];
-  const terms = new Set(Object.keys(propertiesOf(definition.type, { [definition.type]: definition })));
+  const properties = propertiesOf(definition.type, { [definition.type]: definition });
+  const seen = new Set<string>();
   for (const group of definition.derivations) {
     if (new Set(group.members).size !== group.members.length) problems.push(`${definition.type}: a group lists a member twice`);
     if (group.members.length < 2) problems.push(`${definition.type}: a group needs at least two members`);
     if (group.description.trim() === "") problems.push(`${definition.type}: a group has no description`);
+    const specs: Record<string, { min: number; max: number }> = {};
     for (const member of group.members) {
+      if (seen.has(member)) problems.push(`${definition.type}: member ${member} is in two groups`);
+      seen.add(member);
       const spec = propertySpec(definition.properties, member);
-      if (spec === undefined || (spec.kind !== "number" && spec.kind !== "integer")) {
+      if (spec === undefined || spec.kind !== "number") {
         problems.push(`${definition.type}: group member ${member} is not a top-level number property`);
+      } else if (spec.min === undefined || !(spec.min > 0) || spec.max === undefined || !Number.isFinite(spec.max)) {
+        problems.push(`${definition.type}: group member ${member} needs a positive min and a finite max`);
+      } else {
+        specs[member] = { min: spec.min, max: spec.max };
+      }
+    }
+    // derive returns every member, finite and positive, and round-trips (quality review QR-004).
+    for (const [member, { min, max }] of Object.entries(specs)) {
+      for (const sample of [min, Math.sqrt(min * max), max]) {
+        const derived = group.derive(member, sample);
+        for (const other of group.members) {
+          const value = derived[other];
+          if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+            problems.push(`${definition.type}: derive(${member}, ${sample}) gives no finite positive ${other}`);
+            continue;
+          }
+          const back = group.derive(other, value)[member];
+          if (back === undefined || Math.abs(back - sample) > 1e-9 * sample) {
+            problems.push(`${definition.type}: deriving ${member} back from ${other} does not round-trip`);
+          }
+        }
       }
     }
   }
   for (const check of definition.checks) {
     for (const input of check.inputs) {
-      if (!terms.has(input)) problems.push(`${definition.type}: check "${check.name}" reads ${input}, which is not a term`);
+      if (!pathExists(properties, input)) problems.push(`${definition.type}: check "${check.name}" reads ${input}, which is not a property path`);
     }
   }
   return problems;
@@ -327,18 +370,44 @@ describe("derivation groups and domain checks are well formed (GSV-REQ-035)", ()
     for (const definition of allDefinitions()) expect(stageProblems(definition), definition.type).toEqual([]);
   });
 
-  it("catches bad members and inputs", () => {
+  it("catches bad members, unbounded members, a broken derive and bad input paths", () => {
+    const circle = validatorFixtures.circle!;
     const bad = {
-      ...circleFixture,
-      derivations: [{ members: ["radius", "radius", "unit"], description: " ", required: true, derive: () => ({}) }],
-      checks: [{ name: "reads nothing real", inputs: ["sparkle"], check: () => [] }],
+      ...circle,
+      derivations: [
+        { members: ["radius", "radius", "unit"], description: " ", required: true, derive: () => ({}) },
+        {
+          members: ["diameter", "circumference"],
+          description: "A broken formula.",
+          required: false,
+          derive: (term: string, value: number) => (term === "diameter" ? { diameter: value } : { diameter: value, circumference: value }),
+        },
+      ],
+      checks: [{ name: "reads nothing real", inputs: ["sparkle", "radius/*", "radius"], check: () => [] }],
     } as unknown as GraphTypeDefinition;
-    expect(stageProblems(bad)).toEqual([
-      "circle: a group lists a member twice",
-      "circle: a group has no description",
-      "circle: group member unit is not a top-level number property",
-      "circle: check \"reads nothing real\" reads sparkle, which is not a term",
-    ]);
+    const problems = stageProblems(bad);
+    expect(problems).toContain("circle: a group lists a member twice");
+    expect(problems).toContain("circle: a group has no description");
+    expect(problems).toContain("circle: group member unit is not a top-level number property");
+    expect(problems).toContain("circle: derive(diameter, 0.000002) gives no finite positive circumference");
+    expect(problems).toContain("circle: deriving circumference back from diameter does not round-trip");
+    expect(problems).toContain('circle: check "reads nothing real" reads sparkle, which is not a property path');
+    expect(problems).toContain('circle: check "reads nothing real" reads radius/*, which is not a property path');
+    expect(problems).not.toContain('circle: check "reads nothing real" reads radius, which is not a property path');
+
+    const unbounded = {
+      ...circle,
+      properties: defineProperties({
+        radius: { term: "radius", kind: "number", required: false, min: 0, exclusiveMin: true, description: "Unbounded." },
+        diameter: { term: "diameter", kind: "number", required: false, min: 0.1, max: 10, description: "Bounded." },
+      }),
+      derivations: [{ ...circle.derivations[0]!, members: ["radius", "diameter"] }],
+      checks: [],
+    } as unknown as GraphTypeDefinition;
+    expect(stageProblems(unbounded)).toEqual(["circle: group member radius needs a positive min and a finite max"]);
+
+    const twice = { ...circle, derivations: [circle.derivations[0]!, circle.derivations[0]!], checks: [] } as GraphTypeDefinition;
+    expect(stageProblems(twice)).toContain("circle: member radius is in two groups");
   });
 });
 

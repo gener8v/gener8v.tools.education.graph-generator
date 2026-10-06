@@ -56,6 +56,7 @@
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-002-security-review/SEC-001: the placeholder renders issue text only as React text children. Never use `dangerouslySetInnerHTML`, Markdown or HTML rendering for messages or paths.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-002-security-review/SEC-003: never put exception text, `error.message` or `error.stack` into an issue or a message. An unexpected exception becomes `createIssue("internal_error", "", {})`, whose message is fixed; for `invalid_json`, pass only the JSON parser's message as `detail`. Add a test that a thrown internal exception yields no `file:`, `/node_modules/` or `    at ` frame in the output.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-003-security-review/SEC-001: `validate` bounds its own cost (a list over its `maxItems` and a description over 10,000 values each give one `too_large` issue). It still reads the whole input object, so a server-rendering consumer must keep its own request-body limit. Say so in the component documentation.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-004-security-review/SEC-005: the public `describe(input)` validates its input and throws for an invalid one. Package code that already holds `validate(...).description` should call `describeNormalized(description)` (`src/core/describe.ts`, internal) to avoid validating twice.
 
 **Depends On:** TICKET-002
 **Blocks:** TICKET-004, TICKET-005, TICKET-008

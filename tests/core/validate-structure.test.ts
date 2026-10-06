@@ -244,8 +244,8 @@ describe("ranges (GSV-REQ-022)", () => {
     expect(issue).toEqual({
       code: "out_of_range",
       path: "/radius",
-      message: `radius must be a number greater than 0; got ${radius}.`,
-      range: { min: 0, exclusiveMin: true },
+      message: `radius must be a number between 0.000001 and 1000000; got ${radius}.`,
+      range: { min: 0.000001, max: 1_000_000 },
     });
   });
 

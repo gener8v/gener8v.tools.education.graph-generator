@@ -172,8 +172,9 @@ export interface DescriptionBase {
 // @spec GSV-REQ-035
 export interface Derivation {
   /**
-   * The members, each a top-level number term of the type, in the documented defining order: the
-   * first supplied member that passed stage 2 defines the rest (GSV-REQ-036).
+   * The members, each a top-level `number` term of the type with a positive `min` and a finite
+   * `max`, in the documented defining order: the first supplied member that passed stage 2 defines
+   * the rest (GSV-REQ-036). Every derived value is checked against its own member's range.
    */
   members: Terms;
   /** How the members relate, in plain English: "diameter = 2 × radius; circumference = 2π × radius". */
@@ -186,13 +187,20 @@ export interface Derivation {
 
 /**
  * A type-specific check that reports issues the shape alone cannot (domain stage, AD-004), such
- * as points outside an axis range. It runs only when every input is present and nothing at or
- * below an input failed an earlier stage, so its issues never follow from another issue.
+ * as points outside an axis range. It runs only when the top-level property of each input is
+ * present and no earlier failure touches any path it reads, so its issues never follow from
+ * another issue. It receives the normalized description frozen, must build every issue with
+ * `createIssue`, and must do work that grows with the description's size, never with a value's
+ * magnitude.
  */
 export interface DomainCheck<D extends DescriptionBase = DescriptionBase> {
   /** A short name for tests and documentation, such as "points inside the axes". */
   name: string;
-  /** The top-level terms the check reads. */
+  /**
+   * The paths the check reads, as JSON Pointers without the leading slash; `*` stands for any
+   * list position: `["xAxis/min", "xAxis/max", "points/*\/x"]`. A failure elsewhere, such as a
+   * bad tick spacing or a typo in another key, does not stop the check.
+   */
   inputs: Terms;
   // Method syntax keeps the parameter bivariant, so a check written for one graph type's
   // description can sit in the registry typed by `DescriptionBase`.
