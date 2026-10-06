@@ -174,10 +174,10 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-033 | `src/core/result.ts`:Issue, ValidationResult; `src/core/issues.ts`:createIssue |
 | GSV-REQ-034 | `src/core/issues.ts`:ISSUE_CODES |
 | GSV-REQ-003 | `src/core/definitions/types.ts`:GRAPH_TYPES; `src/core/definitions/index.ts`:definitions |
-| GSV-REQ-012 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/index.ts`:definitions |
-| GSV-REQ-040 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties, itemProperties |
+| GSV-REQ-012 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/index.ts`:definitions, propertiesOf |
+| GSV-REQ-040 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties; `src/core/definitions/index.ts`:propertiesOf |
 | GSV-REQ-042 | `src/core/style.ts`:namedColors, resolveColor |
-| GSV-REQ-043 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/shared.ts`:sharedProperties, itemProperties |
+| GSV-REQ-043 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/shared.ts`:sharedProperties |
 | GSV-REQ-044 | `src/core/style.ts`:defaultStyle, seriesStyles |
-| GSV-REQ-045 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:itemProperties |
+| GSV-REQ-045 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties |
 | GSV-NFR-004 | `src/core/style.ts`:namedColors, defaultStyle, seriesStyles |

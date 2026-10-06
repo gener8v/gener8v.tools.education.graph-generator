@@ -90,3 +90,22 @@ describe("no network access anywhere in src (CPSE-REQ-005, prd/CC-003)", () => {
     }
   }
 });
+
+describe("graph-type definitions import helpers without a cycle (GSV TICKET-001 quality review QR-001)", () => {
+  for (const source of ["../describe", "../describe.ts", "../describe.js", "../../core/describe"]) {
+    it(`rejects importing ${source} from src/core/definitions`, async () => {
+      const ids = await ruleIds(`import { describe } from "${source}";\nexport const x = describe;\n`, "src/core/definitions/circle.ts");
+      expect(ids).toContain("no-restricted-imports");
+    });
+  }
+
+  it("allows the format helpers, and keeps the React and network rules", async () => {
+    expect(await ruleIds(`import { formatList } from "../format";\nexport const x = formatList;\n`, "src/core/definitions/circle.ts")).toEqual([]);
+    expect(await ruleIds(`import { useState } from "react";\nexport const x = useState;\n`, "src/core/definitions/circle.ts")).toContain(
+      "no-restricted-imports",
+    );
+    expect(await ruleIds(`import net from "node:net";\nexport const x = net;\n`, "src/core/definitions/circle.ts")).toContain(
+      "no-restricted-imports",
+    );
+  });
+});

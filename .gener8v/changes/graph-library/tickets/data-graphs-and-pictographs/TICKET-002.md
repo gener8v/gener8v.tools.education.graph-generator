@@ -56,6 +56,15 @@
 - GSV-REQ-040 defines line color and line label as graph-level shared options, but on a line graph they apply **per series** (spec Shared Mechanics) — put `lineColor`/`lineLabel` on each series object, and report them at the graph level as inapplicable
 - DGP-NFR-004 checks greyscale distinction only; prd/CC-002 goes further — markers and dash patterns are required even if the luminance check passes (AD-011)
 - No `<marker>` elements or ids for point markers — draw each marker as its own shape (AD-008)
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-005: the default series palette was retuned in GSV TICKET-001 to meet both 3:1 contrast and DGP-NFR-004, read as a 15% *relative* luminance difference (|La − Lb| / max(La, Lb)). That reading is the only one compatible with GSV-NFR-004, because an absolute 0.15 cannot hold for six colors that are each 3:1 on white. `tests/core/style.test.ts` already checks it. Point `tests/core/series-palette.test.ts` at that check, or extend it, but do not change the palette without re-running both checks.
+- Series elements nest the shared `lineColor` and `lineLabel` spec objects (`elementsOf: ["line-graph"]`).
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-002 and graph-library/graph-specification-and-vocabulary-ticket-001-quality-review/QR-001, QR-002 (the definition contract, RES-001):
+  - Build every properties map with `defineProperties` (`src/core/definitions/types.ts`), which freezes it and removes prototypes.
+  - Never list a shared top-level option (`title`, `lineColor`, axis labels…) in `properties`: `propertiesOf(type)` adds it from its `appliesTo`.
+  - Nest the shared `label`/`color` (or `lineLabel`/`lineColor` for series) spec objects themselves in element specs, exactly when `elementsOf` lists the type.
+  - Import text helpers from `src/core/format.ts`, never `src/core/describe.ts` (lint enforces it).
+  - In `describe`, pass every caller string through `quoteText`, and state measurements with `formatMeasurement(value, provenance, unit)` so supplied values appear as written and derived values rounded.
+  - Register the definition in `src/core/definitions/index.ts`, and run the applicability and consistency checks in `tests/core/definitions.test.ts` against it.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-006

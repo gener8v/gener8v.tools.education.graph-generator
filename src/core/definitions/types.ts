@@ -37,11 +37,12 @@ export const PROPERTY_KINDS = Object.freeze([
 export type PropertyKind = (typeof PROPERTY_KINDS)[number];
 
 /**
- * Which shared presentation option a property is (GSV-REQ-040). `itemLabel` and `itemColor` sit
- * on one point, segment or series, so they affect that element only (GSV-REQ-045).
+ * Which shared presentation option a property is (GSV-REQ-040). `elementLabel` and
+ * `elementColor` sit on one point, segment or category, so they affect that element only
+ * (GSV-REQ-045).
  */
 // @spec GSV-REQ-040, GSV-REQ-045
-export type PresentationOption = "title" | "lineColor" | "lineLabel" | "axisLabel" | "itemLabel" | "itemColor";
+export type PresentationOption = "title" | "lineColor" | "lineLabel" | "axisLabel" | "elementLabel" | "elementColor";
 
 interface ValueBase {
   /** Plain-English definition, published with the schema and the vocabulary. */
@@ -57,7 +58,11 @@ export interface NumberValue extends ValueBase {
   exclusiveMax?: boolean;
 }
 
-/** Plain text, never interpreted as markup (GSV-REQ-043). */
+/**
+ * Plain text, never interpreted as markup (GSV-REQ-043). Every output encodes it for its own
+ * context: React text, an escaped string literal in exported source, quoted and cleaned text in
+ * a text alternative or message. It is never rendered as HTML, Markdown or code.
+ */
 export interface StringValue extends ValueBase {
   kind: "string";
 }
@@ -102,7 +107,45 @@ export type PropertySpec = ValueSpec & {
   presentation?: PresentationOption;
 };
 
+/** A map of properties by term. Built with `defineProperties`, so it is frozen and has no prototype. */
 export type PropertyMap = Readonly<Record<string, PropertySpec>>;
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const inner of Object.values(value)) deepFreeze(inner);
+  }
+  return value;
+}
+
+/**
+ * A copy of an object on a null prototype, with nested objects treated the same. An object that
+ * is already frozen was already defined, so it is kept as is: shared specs stay the same object
+ * wherever they are used.
+ */
+function withoutPrototype<T extends object>(value: T): T {
+  const copy = Object.assign(Object.create(null) as T, value);
+  for (const [key, inner] of Object.entries(copy)) {
+    if (inner !== null && typeof inner === "object" && !Array.isArray(inner) && !Object.isFrozen(inner)) {
+      (copy as Record<string, unknown>)[key] = withoutPrototype(inner);
+    }
+  }
+  return copy;
+}
+
+/**
+ * A property map as definitions must publish it: every map and spec on a null prototype, and
+ * frozen all the way down, so description keys such as `__proto__` or `toString` find nothing
+ * and no module can change the vocabulary at runtime.
+ */
+export function defineProperties<const M extends PropertyMap>(properties: M): M {
+  return deepFreeze(withoutPrototype(properties));
+}
+
+/** The spec for a key of a description, looked up as an own property only. */
+export function propertySpec(properties: PropertyMap, key: string): PropertySpec | undefined {
+  return Object.hasOwn(properties, key) ? properties[key] : undefined;
+}
 
 /** A description of some graph type, before its type-specific shape is known. */
 export interface DescriptionBase {
@@ -133,6 +176,10 @@ export interface GraphTypeDefinition<D extends DescriptionBase = DescriptionBase
   /** A short name, e.g. "Circle". */
   title: string;
   description: string;
+  /**
+   * The type's own terms, built with `defineProperties`. Shared top-level options are never
+   * listed here: `propertiesOf(type)` merges in those whose `appliesTo` names the type.
+   */
   properties: PropertyMap;
   derivations: readonly Derivation[];
   checks: readonly DomainCheck<D>[];

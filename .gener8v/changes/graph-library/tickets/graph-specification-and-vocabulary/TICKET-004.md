@@ -49,6 +49,8 @@
 - GSV-REQ-039 says the normalized description "should mark each value"; the design (Data Model › NormalizedDescription and Provenance) keeps provenance as a separate map *beside* the description so the normalized description stays a valid description. Implement the separate map; do NOT wrap values in `{ value, source }` objects.
 - Tolerance is 1% relative (GSV Behaviors & Rules); GSV OQ-003 asks whether it should be configurable — do not add a per-description tolerance property now.
 - Relative tolerance against a derived value of zero is undefined; no derivation group in this change can derive zero (all members are strictly positive by stage 2 ranges), so assert that and do not special-case it.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-006: export `describe` from `src/core/index.ts` together with `validate` and `normalize` (AD-001). It already guards bad input and caps its error text (graph-library/graph-specification-and-vocabulary-ticket-001-security-review/SEC-005).
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-security-review/SEC-003: build the normalized description and its provenance map on a null prototype (or with `Object.defineProperty`), never by assigning keys from the input; test with a `JSON.parse`d `__proto__` key.
 
 **Depends On:** TICKET-003
 **Blocks:** TICKET-006

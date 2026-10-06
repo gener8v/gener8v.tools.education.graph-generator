@@ -44,6 +44,8 @@
 - AD-008 supersedes any instinct to use `<marker>`, `<clipPath>`, `useId` or `aria-labelledby`: none may appear in a Scene or in `SceneSvg`. Arrowheads are polygons; partial images use a nested `svg` node.
 - `SceneSvg` and TICKET-005's printer are a matched pair: attribute order and names must be identical or CPSE-NFR-001 fails. Keep the node-to-element mapping in one table that both can import.
 - The 400-unit width is a contract (AD-007); downstream accuracy tests compute tolerances in those units.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-007 and graph-library/graph-specification-and-vocabulary-ticket-001-quality-review/QR-003: build `displayValue(n, supplied)` on `formatSupplied` and `formatDerived` from `src/core/format.ts`, not on a second rounding rule, so labels and text alternatives state the same numbers. AD-007's `fmt()` for drawing coordinates is separate.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-security-review/SEC-001: render every Scene string as a React text child or attribute value only, and assert that every string in `tests/fixtures/plain-text.ts` (`BENIGN_TEXT`, `HOSTILE_TEXT`) renders literally (GSV-REQ-043).
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-003, TICKET-005

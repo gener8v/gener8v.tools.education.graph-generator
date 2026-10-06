@@ -36,6 +36,7 @@
 **Known Hazards:**
 - This ticket cannot be completed until every type ticket in the three rendering areas is delivered (DEP-005). Orchestrate will show it ready once TICKET-005 is delivered, because cross-area tickets are not on `Depends On`; check that all eleven types are registered before starting.
 - If a type ticket added an issue code without documentation, fix it in `src/core/issues.ts` here rather than weakening the test.
+- Carried from GSV TICKET-001 DEL-005 (graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-006): once all eleven definitions are registered, tighten `definitions` to `Readonly<Record<GraphType, GraphTypeDefinition>>` and run the applicability and consistency checks over the full registry.
 
 **Depends On:** TICKET-004, TICKET-005
 **Blocks:** None

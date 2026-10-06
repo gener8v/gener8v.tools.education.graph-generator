@@ -7,6 +7,8 @@ const NETWORK_MESSAGE =
   "The package makes no network requests and collects no data (CPSE-REQ-005, prd/CC-003).";
 const BOUNDARY_MESSAGE =
   "Non-rendering code must not load React or browser globals (AD-001, prd/TC-005).";
+const CYCLE_MESSAGE =
+  "Graph-type definitions import helpers from src/core/format.ts, never src/core/describe.ts, which imports the registry (import cycle; GSV TICKET-001 quality review QR-001).";
 
 const SCRIPT_EXTENSIONS = "{ts,tsx,mts,cts,js,jsx,mjs,cjs}";
 const NON_RENDERING_DIRS = ["core", "tool", "export", "layout"];
@@ -38,6 +40,15 @@ const networkImportPaths = NETWORK_MODULES.flatMap((name) => [
   { name, message: NETWORK_MESSAGE },
   { name: `node:${name}`, message: NETWORK_MESSAGE },
 ]);
+
+const boundaryImportOptions = {
+  paths: [
+    { name: "react", message: BOUNDARY_MESSAGE },
+    { name: "react-dom", message: BOUNDARY_MESSAGE },
+    ...networkImportPaths,
+  ],
+  patterns: [{ group: ["react/*", "react-dom/*"], message: BOUNDARY_MESSAGE }],
+};
 
 const boundarySyntax = [
   { selector: `ImportExpression[source.value=/${REACT_PATTERN}/]`, message: BOUNDARY_MESSAGE },
@@ -73,17 +84,7 @@ export default defineConfig(
     // @spec CPSE-REQ-005, CPSE-REQ-006
     files: NON_RENDERING_DIRS.map((dir) => `src/${dir}/**/*.${SCRIPT_EXTENSIONS}`),
     rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          paths: [
-            { name: "react", message: BOUNDARY_MESSAGE },
-            { name: "react-dom", message: BOUNDARY_MESSAGE },
-            ...networkImportPaths,
-          ],
-          patterns: [{ group: ["react/*", "react-dom/*"], message: BOUNDARY_MESSAGE }],
-        },
-      ],
+      "no-restricted-imports": ["error", boundaryImportOptions],
       "no-restricted-globals": [
         "error",
         ...networkGlobals,
@@ -93,6 +94,22 @@ export default defineConfig(
         { name: "self", message: BOUNDARY_MESSAGE },
       ],
       "no-restricted-syntax": ["error", ...networkSyntax, ...boundarySyntax],
+    },
+  },
+  {
+    // Repeats the boundary import options, which this block's rule options replace.
+    files: [`src/core/definitions/**/*.${SCRIPT_EXTENSIONS}`],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          ...boundaryImportOptions,
+          patterns: [
+            ...boundaryImportOptions.patterns,
+            { group: ["**/describe", "**/describe.*"], message: CYCLE_MESSAGE },
+          ],
+        },
+      ],
     },
   },
 );

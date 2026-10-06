@@ -55,6 +55,8 @@
 - The tool schema is not the published schema: it wraps the description in `graph` and uses the strict profile with nullable optionals (AD-006). Do not try to make one schema serve both; generate both from the definitions.
 - Image names in the pictograph `unitImage` enum come from the image manifest (graph-library/data-graphs-and-pictographs/TICKET-004); read them from the manifest at generate time, never hard-code them.
 - RES-001 (RD-001): the generator walks `GraphTypeDefinition`; if the circle vertical slice changes the contract, update the generator in that same delivery.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-002, CR-004 and CR-006: generate each type's schema and vocabulary from `propertiesOf(type)`. Leave the `appliesTo` and `elementsOf` fields out of the published output. Publish one vocabulary entry per term, since the consistency check in `tests/core/definitions.test.ts` guarantees one definition per term.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-006 and graph-library/graph-specification-and-vocabulary-ticket-001-security-review/SEC-004: `validate` accepts color names in any ASCII case (`"Blue"`), so the published `color` schema must too (for example, a case-insensitive pattern of the names plus the hex pattern). Otherwise schema and validator disagree (GSV-REQ-011, GSV-NFR-003).
 
 **Depends On:** TICKET-001, TICKET-003
 **Blocks:** TICKET-006

@@ -46,6 +46,10 @@
 - TQ-005 resolved: `.tsx` output only for now. Do not add a `.jsx` mode.
 - The specification's pictograph edge case allows "embed or reference"; AD-012 decides **embed**. Exports never reference the package or a URL.
 - The equality test closes CPSE-NFR-001 for the change only once all eleven types have examples; report covered types in the delivery record.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-security-review/SEC-001: caller text (titles, labels, the text alternative) must never become code in the exported file.
+  - Print every Scene string, both text content and attribute values, as a JavaScript string literal inside an expression container (`<title>{"…"}</title>`, `aria-label={"…"}`). Build the literal with `JSON.stringify`, then escape U+2028, U+2029 and the invisible characters as `\u` escapes. Never interpolate caller text into JSX text or a quoted JSX attribute.
+  - In the header's description JSON, write `*/` as `*\/` and apply the same `\u` escaping, or hold the description in a string constant instead of a comment.
+  - Test with every string in `tests/fixtures/plain-text.ts`: the exported module compiles, runs nothing at load or render, and renders each string literally.
 
 **Depends On:** TICKET-002, TICKET-003
 **Blocks:** TICKET-006

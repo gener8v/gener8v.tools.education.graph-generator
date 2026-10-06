@@ -65,6 +65,14 @@
 - Spec OQ-002 (open/closed markers, shaded ranges for inequalities) and OQ-001 (fraction tick labels) are unresolved — do NOT add properties for them. Custom tick labels (NLC-REQ-019) are the supported way to show "½" on a tick.
 - Spec OQ-005 says labels may overlap when many points are close; the system design (AD-010) still routes every label through `placeLabel`. Use `placeLabel` with its candidate positions; if no candidate is free, place at the first candidate rather than dropping the label — every point must be drawn.
 - The text alternative is produced by the definition's `describe` (core, no React) so that the tool handler can reuse it as its summary; do not build it inside the React component.
+- Product Owner decision 2026-10-06 (graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-003): a number line accepts `title` and `lineColor` (both list `number-line` in `appliesTo`). Draw the title, color the line, and state the title in the text alternative, with tests.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-002 and graph-library/graph-specification-and-vocabulary-ticket-001-quality-review/QR-001, QR-002 (the definition contract, RES-001):
+  - Build every properties map with `defineProperties` (`src/core/definitions/types.ts`), which freezes it and removes prototypes.
+  - Never list a shared top-level option (`title`, `lineColor`, axis labels…) in `properties`: `propertiesOf(type)` adds it from its `appliesTo`.
+  - Nest the shared `label`/`color` (or `lineLabel`/`lineColor` for series) spec objects themselves in element specs, exactly when `elementsOf` lists the type.
+  - Import text helpers from `src/core/format.ts`, never `src/core/describe.ts` (lint enforces it).
+  - In `describe`, pass every caller string through `quoteText`, and state measurements with `formatMeasurement(value, provenance, unit)` so supplied values appear as written and derived values rounded.
+  - Register the definition in `src/core/definitions/index.ts`, and run the applicability and consistency checks in `tests/core/definitions.test.ts` against it.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-005

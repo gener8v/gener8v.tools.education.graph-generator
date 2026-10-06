@@ -52,6 +52,7 @@
 - DGP-REQ-006 says the default scale "starts at zero", but DGP-REQ-015 extends it below zero for negative line-graph values — implement `allowNegative` (true only for line graphs) and do not apply the zero floor there
 - A value-scale minimum above zero is an error on bar graphs (edge case table, bars must start at zero) but allowed on line graphs — the check belongs to the bar-graph definition (TICKET-003); this ticket provides the scale check only for "excludes a value" and interval
 - `tick_spacing_invalid` may already be added by graph-library/number-lines-and-coordinate-graphs/TICKET-001 — reuse the code, do not create a second code for the same condition (RES-008)
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-004: `categoryAxisLabel` and `valueAxisLabel` are already defined in `src/core/definitions/shared.ts` with `appliesTo: ["line-graph", "bar-graph"]`, and `propertiesOf` adds them to those types. Do NOT redefine them in `categories.ts`; `valueUnitLabel`, `categories` and `valueScale` stay there. The consistency check in `tests/core/definitions.test.ts` fails on a second definition.
 
 **Depends On:** None
 **Blocks:** TICKET-002, TICKET-003, TICKET-005

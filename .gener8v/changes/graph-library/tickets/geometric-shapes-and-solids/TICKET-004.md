@@ -52,6 +52,13 @@
 - `Math.acos` of a value a hair outside [−1, 1] returns NaN near degenerate triangles (TR-008): clamp before calling.
 - GSS OQ-004 (let a description choose one SSA solution) is open; implement rejection as specified, do not add a chooser property.
 - Degenerate means "equals, not exceeds": sides 3, 4, 7 must be rejected even though the sum is equal.
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-002 and graph-library/graph-specification-and-vocabulary-ticket-001-quality-review/QR-001, QR-002 (the definition contract, RES-001):
+  - Build every properties map with `defineProperties` (`src/core/definitions/types.ts`), which freezes it and removes prototypes.
+  - Never list a shared top-level option (`title`, `lineColor`, axis labels…) in `properties`: `propertiesOf(type)` adds it from its `appliesTo`.
+  - Nest the shared `label`/`color` (or `lineLabel`/`lineColor` for series) spec objects themselves in element specs, exactly when `elementsOf` lists the type.
+  - Import text helpers from `src/core/format.ts`, never `src/core/describe.ts` (lint enforces it).
+  - In `describe`, pass every caller string through `quoteText`, and state measurements with `formatMeasurement(value, provenance, unit)` so supplied values appear as written and derived values rounded.
+  - Register the definition in `src/core/definitions/index.ts`, and run the applicability and consistency checks in `tests/core/definitions.test.ts` against it.
 
 **Depends On:** None
 **Blocks:** TICKET-005

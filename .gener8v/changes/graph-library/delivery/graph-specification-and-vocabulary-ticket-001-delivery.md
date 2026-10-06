@@ -252,4 +252,60 @@ Okabe–Ito yellow (1.3:1) and sky blue (2.3:1) are dropped.
 
 ## Post-Review Amendments
 
-None
+Resolution of `graph-library/graph-specification-and-vocabulary-ticket-001-code-review`, `-quality-review` and `-security-review`, 2026-10-06, decisions by the Product Owner. The reports overlapped, so the fixes are recorded once, by group.
+
+- **graph-specification-and-vocabulary-ticket-001-code-review/CR-001, CR-002; graph-specification-and-vocabulary-ticket-001-quality-review/QR-002 (one source for where options apply):**
+  - `sharedProperties` is now the single map of presentation options. Each option has `appliesTo` (top-level graph types) and `elementsOf` (graph types whose points, segments, series or categories carry it).
+  - `itemProperties` is removed. `label` and `color` are entries of `sharedProperties`: `label` on number-line, xy-graph and xyz-graph elements; `color` on those plus bar-graph categories (DGP-REQ-019). Series of a line graph carry `lineColor` and `lineLabel` (DGP-REQ-011).
+  - A definition never lists a shared top-level option. The new `propertiesOf(type)` (`src/core/definitions/index.ts`) merges the shared options into the type's own terms. Element options are nested as the same spec objects.
+  - New tests check every definition: options listed at the top level, redefined, or nested where `elementsOf` does not allow, or the reverse.
+  - **Correction to DEL-002:** it now reads through `appliesTo` and `elementsOf` as above. `PresentationOption` renames `itemLabel`/`itemColor` to `elementLabel`/`elementColor`.
+  - Files: `src/core/definitions/shared.ts`, `src/core/definitions/index.ts`, `src/core/definitions/types.ts`, `tests/core/definitions.test.ts`.
+- **graph-specification-and-vocabulary-ticket-001-code-review/CR-003 (Product Owner decision):** a number line keeps `title` and `lineColor`. A Known Hazard on NLC TICKET-002 requires it to draw and describe them. Recorded in the `sharedProperties` doc comment.
+- **graph-specification-and-vocabulary-ticket-001-code-review/CR-004:** a Known Hazard on DGP TICKET-001 says not to redefine `categoryAxisLabel` and `valueAxisLabel`. A new consistency test fails when a term has two definitions (shared terms must be the same object; other terms must have one kind and description). This is the check DEL-001 deferred.
+- **graph-specification-and-vocabulary-ticket-001-code-review/CR-005:** the series palette is retuned to `#006fad`, `#bd5300`, `#a77200`, `#009a70`, `#cb78a6` and `#000000`.
+  - Every color is at least 3.1:1 on white, and the closest pair differs by 15.4% in relative luminance (DGP-NFR-004, read as relative as DGP TICKET-002 states).
+  - The luminance check sits beside the contrast check in `tests/core/style.test.ts`.
+  - **Correction to DEL-003:** these values replace the series colors listed there. The markers and dashes are unchanged, and the named colors are unchanged.
+  - DGP TICKET-002 has a Known Hazard.
+- **graph-specification-and-vocabulary-ticket-001-quality-review/QR-001:**
+  - The helpers move to `src/core/format.ts`, which imports nothing. `describe.ts` keeps only the dispatcher.
+  - A lint rule in `eslint.config.js` stops `src/core/definitions/**` from importing `describe`, and `tests/package/boundaries.test.ts` checks it.
+  - **Deviation from the ticket's Output:** the helpers live in `format.ts`, not `describe.ts`. `tests/core/format.test.ts` is new.
+- **graph-specification-and-vocabulary-ticket-001-quality-review/QR-003; graph-specification-and-vocabulary-ticket-001-code-review/CR-007:** `formatNumber` is replaced by:
+  - `formatSupplied`: the value as written, never in exponent form or as `-0`.
+  - `formatDerived`: two decimals, rounded half away from zero on the decimal digits, so `1.005` gives "1.01". A small non-zero value keeps two significant figures instead of showing "0".
+  - `formatMeasurement(value, provenance, unit?)` chooses between them.
+  - `describeNumber` in `issues.ts` stays separate: issue messages state a value to type in, at 4 significant figures.
+  - CPSE TICKET-002 has a Known Hazard to build `displayValue` on these.
+- **graph-specification-and-vocabulary-ticket-001-quality-review/QR-004; graph-specification-and-vocabulary-ticket-001-security-review/SEC-003:**
+  - `defineProperties` builds every map and nested spec on a null prototype and deep-freezes it. Shared specs keep their identity.
+  - `propertySpec(map, key)` looks up own keys only.
+  - The registry and `propertiesOf` results have no prototype either.
+  - Tests cover freezing at every depth, runtime mutation throwing, and `__proto__`/`constructor`/`toString` keys finding nothing.
+  - The style freeze test now walks every depth.
+  - GSV TICKET-003 and TICKET-004 have Known Hazards.
+- **graph-specification-and-vocabulary-ticket-001-quality-review/QR-005:** the vocabulary-check fixture now has an empty enum and a top-level unknown kind, and both are asserted.
+- **graph-specification-and-vocabulary-ticket-001-security-review/SEC-001:**
+  - `StringValue` documents that every output encodes plain text for its context.
+  - The new `tests/fixtures/plain-text.ts` holds benign and hostile strings for every renderer and the exporter.
+  - The exporter's encoding rules are deferred to CPSE TICKET-005, plus CPSE TICKET-006 and TICKET-002, as Known Hazards.
+- **graph-specification-and-vocabulary-ticket-001-security-review/SEC-002 (Product Owner decision):** plain text excludes control characters, line and paragraph separators, and direction overrides and isolates. The validator reports them (Known Hazard on GSV TICKET-003). Now: `cleanText` and `quoteText` in `format.ts` for every caller string a text alternative carries; zero-width joiners are kept.
+- **graph-specification-and-vocabulary-ticket-001-security-review/SEC-004:** `resolveColor` matches names on ASCII letters only, and the Kelvin-sign spelling is in the rejection tests.
+- **graph-specification-and-vocabulary-ticket-001-security-review/SEC-005:** `describe` checks that `type` is a string before looking it up. Its error shows the type through `describeValue` (quoted, escaped, at most 40 characters). Tests cover null, bigint, symbol, object and million-character types.
+- **graph-specification-and-vocabulary-ticket-001-code-review/CR-006:** Known Hazards on GSV TICKET-004 (export `describe`), TICKET-005 (one vocabulary entry per term; color names in any case in the schema) and TICKET-006 (full `Record` type). **Correction to Notes:** treating an empty label as no label is GSV TICKET-003's criterion, not TICKET-004's.
+
+Re-verification after the amendments (Node.js v24.1.0, pnpm 10.28.2):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm lint` | 0 | no findings, including the new definitions block |
+| `pnpm typecheck` | 0 | no errors |
+| `pnpm test` | 0 | 9 files, 254 tests passed (`tests/core`: definitions 17, style 52, format 31, describe 3, issues 36; boundaries +5) |
+| `pnpm build` | 0 | all entries and declarations emitted |
+| `pnpm check:dist` | 0 | no network APIs in built output |
+| `pnpm size` | 0 | `./core` 1.24 kB of 25 kB |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm check:changesets` | 0 | 0 changesets |

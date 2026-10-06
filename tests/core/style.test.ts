@@ -70,16 +70,33 @@ describe("default style values (GSV-REQ-044, AD-010, AD-011)", () => {
     expect(defaultStyle.fontFamily).not.toMatch(/url\(|@font-face/);
   });
 
-  it("cannot be changed at runtime", () => {
-    expect(Object.isFrozen(defaultStyle)).toBe(true);
-    expect(Object.isFrozen(defaultStyle.colors)).toBe(true);
-    expect(Object.isFrozen(namedColors)).toBe(true);
-    expect(Object.isFrozen(seriesStyles)).toBe(true);
-    expect(Object.isFrozen(seriesStyles[0])).toBe(true);
+  it("cannot be changed at runtime, at any depth", () => {
+    const unfrozen: string[] = [];
+    const visit = (value: unknown, path: string) => {
+      if (value !== null && typeof value === "object") {
+        if (!Object.isFrozen(value)) unfrozen.push(path);
+        for (const [key, inner] of Object.entries(value)) visit(inner, `${path}.${key}`);
+      }
+    };
+    visit(defaultStyle, "defaultStyle");
+    visit(namedColors, "namedColors");
+    visit(seriesStyles, "seriesStyles");
+    expect(unfrozen).toEqual([]);
   });
 });
 
 describe("series styles (AD-011, prd/CC-002)", () => {
+  it("differ pairwise by at least 15% relative luminance, so they stay apart in greyscale (DGP-NFR-004)", () => {
+    // Relative difference |La - Lb| / max(La, Lb), the reading DGP TICKET-002 states; an
+    // absolute 0.15 cannot coexist with 3:1 contrast on white (code review CR-005).
+    for (let i = 0; i < seriesStyles.length; i++) {
+      for (let j = i + 1; j < seriesStyles.length; j++) {
+        const [a, b] = [luminance(seriesStyles[i]!.color), luminance(seriesStyles[j]!.color)];
+        expect(Math.abs(a - b) / Math.max(a, b), `series ${i} and ${j}`).toBeGreaterThanOrEqual(0.15);
+      }
+    }
+  });
+
   it("give every default series its own color, marker shape and dash pattern", () => {
     expect(seriesStyles).toHaveLength(6);
     for (const field of ["color", "marker", "dash"] as const) {
@@ -108,7 +125,7 @@ describe("colors in descriptions (GSV-REQ-042)", () => {
     expect(resolveColor(value)).toBe(hex);
   });
 
-  it.each(["blurple", "grey ", " blue", "#abcd", "#aabbccdd", "#ggg", "aabbcc", "rgb(0, 0, 0)", "", "toString", "constructor"])(
+  it.each(["blurple", "grey ", " blue", "#abcd", "#aabbccdd", "#ggg", "aabbcc", "rgb(0, 0, 0)", "", "toString", "constructor", `blac${String.fromCharCode(0x212a)}`])(
     "rejects %j",
     (value) => {
       expect(resolveColor(value)).toBeUndefined();

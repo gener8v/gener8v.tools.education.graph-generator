@@ -17,6 +17,7 @@ export const namedColors = Object.freeze({
 export type ColorName = keyof typeof namedColors;
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+const ASCII_WORD = /^[A-Za-z]+$/;
 
 /**
  * A color name (any case) or a `#rgb` / `#rrggbb` code, as lowercase `#rrggbb`; `undefined` for
@@ -25,8 +26,9 @@ const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 // @spec GSV-REQ-042
 export function resolveColor(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
-  const name = value.toLowerCase();
-  if (Object.hasOwn(namedColors, name)) return namedColors[name as ColorName];
+  // Lowercase ASCII letters only: full Unicode case mapping turns the Kelvin sign into "k".
+  const name = ASCII_WORD.test(value) ? value.toLowerCase() : undefined;
+  if (name !== undefined && Object.hasOwn(namedColors, name)) return namedColors[name as ColorName];
   const hex = HEX.exec(value)?.[1]?.toLowerCase();
   if (hex === undefined) return undefined;
   return `#${hex.length === 3 ? [...hex].map((digit) => digit + digit).join("") : hex}`;
@@ -77,19 +79,21 @@ export interface SeriesStyle {
 }
 
 /**
- * Default styles for series in order. Colors come from the Okabe–Ito palette, with yellow and sky
- * blue dropped and orange darkened to reach 3:1 on white (AD-011). Each series also differs in
- * marker shape and dash pattern, so color is never the only cue (prd/CC-002).
+ * Default styles for series in order. Colors are Okabe–Ito hues (yellow and sky blue dropped),
+ * each scaled in brightness so that every one has at least 3:1 contrast on white (GSV-NFR-004)
+ * and any two differ by at least 15% in relative luminance, so they stay apart in greyscale
+ * (DGP-NFR-004; code review CR-005). Each series also differs in marker shape and dash pattern,
+ * so color is never the only cue (prd/CC-002).
  */
 // @spec GSV-REQ-044, GSV-NFR-004
 export const seriesStyles: readonly SeriesStyle[] = Object.freeze(
   (
     [
-      { color: "#0072b2", marker: "circle", dash: "none" },
-      { color: "#d55e00", marker: "square", dash: "8 4" },
-      { color: "#009e73", marker: "triangle", dash: "2 4" },
-      { color: "#cc79a7", marker: "diamond", dash: "8 4 2 4" },
-      { color: "#b36b00", marker: "cross", dash: "12 4" },
+      { color: "#006fad", marker: "circle", dash: "none" },
+      { color: "#bd5300", marker: "square", dash: "8 4" },
+      { color: "#a77200", marker: "triangle", dash: "2 4" },
+      { color: "#009a70", marker: "diamond", dash: "8 4 2 4" },
+      { color: "#cb78a6", marker: "cross", dash: "12 4" },
       { color: "#000000", marker: "star", dash: "4 4" },
     ] as const
   ).map((style) => Object.freeze({ ...style })),

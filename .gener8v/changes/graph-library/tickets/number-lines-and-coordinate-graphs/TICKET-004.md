@@ -57,6 +57,13 @@
 - Accuracy in NLC-NFR-001 is "within 0.5 px of its computed position" — for 3D, the computed position is the isometric projection, not the 3D value. Tests compare against `isometric()` output, not against linear scales.
 - Spec OQ-007 (segments on x,y,z graphs) is unresolved — points only.
 - Isometric axes can make tick labels on the y-axis and x-axis collide near the origin; route every label through `placeLabel` (AD-010).
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-001-code-review/CR-002 and graph-library/graph-specification-and-vocabulary-ticket-001-quality-review/QR-001, QR-002 (the definition contract, RES-001):
+  - Build every properties map with `defineProperties` (`src/core/definitions/types.ts`), which freezes it and removes prototypes.
+  - Never list a shared top-level option (`title`, `lineColor`, axis labels…) in `properties`: `propertiesOf(type)` adds it from its `appliesTo`.
+  - Nest the shared `label`/`color` (or `lineLabel`/`lineColor` for series) spec objects themselves in element specs, exactly when `elementsOf` lists the type.
+  - Import text helpers from `src/core/format.ts`, never `src/core/describe.ts` (lint enforces it).
+  - In `describe`, pass every caller string through `quoteText`, and state measurements with `formatMeasurement(value, provenance, unit)` so supplied values appear as written and derived values rounded.
+  - Register the definition in `src/core/definitions/index.ts`, and run the applicability and consistency checks in `tests/core/definitions.test.ts` against it.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-005
