@@ -1,5 +1,18 @@
 {
-  "$comment": "Placeholder until graph-library/graph-specification-and-vocabulary/TICKET-005 generates the real vocabulary.",
-  "graphTypes": [],
-  "terms": []
+  "version": 1,
+  "terms": {},
+  "graphTypes": {},
+  "colors": {
+    "black": "#000000",
+    "gray": "#595959",
+    "red": "#c62828",
+    "orange": "#b36b00",
+    "green": "#2e7d32",
+    "blue": "#0072b2",
+    "purple": "#6a1b9a",
+    "brown": "#795548"
+  },
+  "limits": {
+    "descriptionValues": 10000
+  }
 }

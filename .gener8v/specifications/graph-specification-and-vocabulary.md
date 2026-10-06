@@ -205,3 +205,13 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-037 | `src/core/validate/derive.ts`:checkDerivations |
 | GSV-REQ-038 | `src/core/validate/derive.ts`:withinTolerance, checkDerivations |
 | GSV-REQ-039 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/index.ts`:validate |
+| GSV-REQ-007 | `src/core/schema.ts`:buildSchema |
+| GSV-REQ-008 | `src/core/schema.ts`:buildSchema |
+| GSV-REQ-009 | `src/core/schema.ts`:buildSchema |
+| GSV-REQ-010 | `src/core/schema.ts`:getSchema, getVocabulary |
+| GSV-REQ-011 | `src/core/schema.ts`:buildSchema |
+| GSV-REQ-013 | `src/core/schema.ts`:buildVocabulary, getVocabulary |
+| GSV-REQ-014 | `src/core/schema.ts`:buildVocabulary |
+| GSV-REQ-015 | `src/core/schema.ts`:buildSchema, buildToolSchema, buildVocabulary, buildDescriptionTypes |
+| GSV-NFR-002 | `tests/core/schema-meta.test.ts` (verification) |
+| GSV-NFR-003 | `tests/core/schema-agreement.test.ts` (verification) |

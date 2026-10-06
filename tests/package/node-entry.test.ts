@@ -62,6 +62,22 @@ describe("non-rendering entry points in plain Node.js (CPSE-REQ-006, prd/TC-005)
     expect(JSON.parse(output.trim())).toEqual({ valid: false, code: "unknown_graph_type" });
   });
 
+  it("serves the schema and vocabulary from ./core and as static files (GSV-REQ-010)", () => {
+    const output = runWithHook(`
+      const core = await import("@gener8v/graph-generator/core");
+      const { readFileSync } = await import("node:fs");
+      const { createRequire } = await import("node:module");
+      const require = createRequire(import.meta.url);
+      const file = (name) => JSON.parse(readFileSync(require.resolve("@gener8v/graph-generator/" + name), "utf8"));
+      console.log(JSON.stringify({
+        schema: JSON.stringify(core.getSchema()) === JSON.stringify(file("schema.json")),
+        vocabulary: JSON.stringify(core.getVocabulary()) === JSON.stringify(file("vocabulary.json")),
+        tool: core.getToolSchema().type,
+      }));
+    `);
+    expect(JSON.parse(output.trim())).toEqual({ schema: true, vocabulary: true, tool: "object" });
+  });
+
   it("fails the same check when an entry does load React (the hook works)", () => {
     expect(() => runWithHook(`await import("react");`)).toThrow(/React was loaded/);
   });

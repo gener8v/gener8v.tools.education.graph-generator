@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "properties": {
+    "graph": {
+      "description": "No graph types are registered yet.",
+      "not": {}
+    }
+  },
+  "required": [
+    "graph"
+  ],
+  "additionalProperties": false
+}
