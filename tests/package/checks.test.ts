@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkChangesetSummary } from "../../scripts/check-changesets";
 import { checkDependencies, justifiedDependencies } from "../../scripts/check-dependencies";
+import { scanSource } from "../../scripts/check-dist";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const contributing = readFileSync("CONTRIBUTING.md", "utf8");
@@ -119,5 +120,23 @@ describe("changeset categories (CPSE-REQ-041)", () => {
     const { getReleaseLine } = await import("../../.changeset/changelog.cjs");
     const line = await getReleaseLine({ summary: "Deprecated: the `size` property\nUse `sideLength`." }, "minor", null);
     expect(line).toBe("- **Deprecated:** the `size` property\n  Use `sideLength`.");
+  });
+});
+
+describe("built-output network scan (CPSE-REQ-005, SEC-001, SEC-002)", () => {
+  it("passes code with no network access", () => {
+    expect(scanSource("export const add = (a, b) => a + b;")).toEqual([]);
+  });
+
+  it("finds network APIs however they are reached", () => {
+    expect(scanSource('const f = globalThis["fetch"]; new self.WebSocket("wss://x");')).toEqual(["WebSocket", "fetch"]);
+  });
+
+  it("finds Node network modules in bundled code", () => {
+    expect(scanSource('import x from "node:https"; const n = require("net");')).toEqual(["net", "node:https"]);
+  });
+
+  it("does not flag words that only contain an API name", () => {
+    expect(scanSource("const prefetched = 1; const fetchCount = 2;")).toEqual([]);
   });
 });

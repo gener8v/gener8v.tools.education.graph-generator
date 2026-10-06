@@ -34,6 +34,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 Further checks that CI runs:
 
 ```sh
+pnpm check:dist       # the built output makes no network access (after pnpm build)
 pnpm publint          # package metadata
 pnpm attw             # type resolution of the packed package
 pnpm size             # bundle size budgets

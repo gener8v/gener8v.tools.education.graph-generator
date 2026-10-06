@@ -16,27 +16,33 @@ jobs:
   check:
     name: Node ${{ matrix.node }} · React ${{ matrix.react }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         node: [22, 24]
         react: [18, 19]
     steps:
-      - uses: actions/checkout@v5
+      # Actions are pinned to commit SHAs; Dependabot proposes updates (.github/dependabot.yml).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v5
+      # The version matches package.json `packageManager`.
+      - name: Install pnpm
+        run: npm install --global pnpm@10.28.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
-
-      - name: Install pnpm
-        run: npm install --global pnpm@10
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Use React ${{ matrix.react }}
+      - name: Use React 18
         if: matrix.react == 18
-        run: pnpm add --save-dev react@^18 react-dom@^18 @types/react@^18 @types/react-dom@^18
+        run: pnpm add --save-dev --save-exact react@18.3.1 react-dom@18.3.1 @types/react@18.3.31 @types/react-dom@18.3.7
 
       - name: Lint
         run: pnpm lint
@@ -48,16 +54,26 @@ jobs:
         run: |
           if [ -f scripts/generate.ts ]; then
             pnpm generate
-            git diff --exit-code -- src/generated
+            changes="$(git status --porcelain -- src/generated)"
+            if [ -n "$changes" ]; then
+              echo "Generated files are out of date or untracked; run pnpm generate and commit:"
+              echo "$changes"
+              exit 1
+            fi
           else
             echo "scripts/generate.ts not present yet; nothing to check."
           fi
 
-      - name: Test
-        run: pnpm test
-
       - name: Build
         run: pnpm build
+
+      - name: Test
+        run: pnpm test
+        env:
+          GRAPH_GENERATOR_PREBUILT: "1"
+
+      - name: Built output makes no network access
+        run: pnpm check:dist
 
       - name: Package metadata (publint)
         run: pnpm publint

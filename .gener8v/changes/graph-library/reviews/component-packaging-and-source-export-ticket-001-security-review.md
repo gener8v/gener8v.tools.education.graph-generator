@@ -210,7 +210,8 @@ Nothing checks the built output, so anything the source-level rule misses is pub
 6. Add the bypass fixtures listed above to `tests/package/boundaries.test.ts` as cases the rule must reject.
 
 **Compliance Impact:** prd/CC-003 is weakened: the control has gaps. The delivered code does not violate it, since it ships empty barrels. CPSE-REQ-005 is affected.
-**Status:** Open
+**Status:** Resolved
+**Resolution:** Lint gaps closed with code-review CR-002 (all extensions, any-object access, Node network modules, extra APIs `fetchLater`, `WebTransport`, `RTCPeerConnection`, `importScripts`). New `scripts/check-dist.ts` scans every built file for network APIs and network module specifiers; runs in CI after the build. Banning all global-object aliases (`globalThis`, `self`, `frames`…) everywhere in `src/` was not adopted: the any-object selector plus the built-output scan cover the same bypasses without forbidding `globalThis` outright.
 
 ---
 
@@ -263,7 +264,8 @@ Separately, some fields cause consumer-side installs without being checked:
 4. Lint `src/**` imports so that only relative paths and the React peer are allowed. Use a `no-restricted-imports` pattern, or `import-x/no-extraneous-dependencies` with `devDependencies: false` for `src/**`.
 
 **Compliance Impact:** prd/CC-001 and prd/CC-003 are weakened: their controls have gaps. Neither is violated, since `dist/` currently contains no third-party code. CPSE-NFR-007 is affected.
-**Status:** Open
+**Status:** Resolved
+**Resolution:** Manifest fields covered by code-review CR-004; bundled code is covered by the built-output scan (`pnpm check:dist`), which sees anything tsup bundles into `dist/`.
 
 ---
 
@@ -297,7 +299,8 @@ Separately, some fields cause consumer-side installs without being checked:
 4. At resolution, consider recording this as a Known Hazard on TICKET-009 so the release workflow does not inherit the pattern.
 
 **Compliance Impact:** None
-**Status:** Open
+**Status:** Resolved
+**Resolution:** pnpm pinned to 10.28.2; the React 18 cell installs exact versions (`react@18.3.1`, `react-dom@18.3.1`, `@types/react@18.3.31`, `@types/react-dom@18.3.7`).
 
 ---
 
@@ -328,7 +331,8 @@ Separately, some fields cause consumer-side installs without being checked:
 3. When the repository is created, consider enabling the policy that requires actions to be pinned to a full-length SHA.
 
 **Compliance Impact:** None
-**Status:** Open
+**Status:** Resolved
+**Resolution:** `actions/checkout` pinned to `3d3c42e5…` (v7.0.1) and `actions/setup-node` to `82076278…` (v7.0.0); Dependabot added for GitHub Actions and npm.
 
 ---
 
@@ -350,7 +354,8 @@ Separately, some fields cause consumer-side installs without being checked:
 **Recommendation:** Update once `tsup` and `vite` accept esbuild ≥ 0.28.1, either with `pnpm update` or with a `pnpm.overrides` entry `"esbuild": "^0.28.1"` if the versions are compatible. Re-run the Verification Run afterwards. Otherwise, record it as a dev-only accepted risk.
 
 **Compliance Impact:** None
-**Status:** Open
+**Status:** Resolved
+**Resolution:** `pnpm.overrides` forces `esbuild ^0.28.1`; every esbuild in the tree resolves to 0.28.2; build and tests pass.
 
 ---
 
@@ -379,22 +384,23 @@ Separately, some fields cause consumer-side installs without being checked:
 3. When the repository is created, require approval for workflows from outside collaborators, and make the CI matrix a required status check on `main`.
 
 **Compliance Impact:** None
-**Status:** Open
+**Status:** Resolved
+**Resolution:** `persist-credentials: false` on checkout and `timeout-minutes: 15` on the job. Repository settings (branch protection, Actions permissions) are applied when the repository is created under TICKET-009.
 
 ## Resolution Log
 
 | Finding | Decision | Action Taken | Risk Accepted | File Updated |
 |---------|----------|-------------|---------------|--------------|
+| SEC-001 | Approved | Lint gaps closed with code-review CR-002 (all extensions, any-object access, Node network modules, extra APIs `fetchLater`, `WebTransport`, `RTCPeerConnection`, `importScripts`) | — | `eslint.config.js`, `scripts/check-dist.ts`, `.github/workflows/ci.yml` |
+| SEC-002 | Approved | Manifest fields covered by code-review CR-004; bundled code is covered by the built-output scan (`pnpm check:dist`), which sees anything tsup bundles into `dist/` | — | `scripts/check-dependencies.ts`, `scripts/check-dist.ts` |
+| SEC-003 | Approved | pnpm pinned to 10 | — | `.github/workflows/ci.yml`, `package.json` |
+| SEC-004 | Approved | `actions/checkout` pinned to `3d3c42e5…` (v7 | — | `.github/workflows/ci.yml`, `.github/dependabot.yml` |
+| SEC-005 | Approved | `pnpm | — | `package.json`, `pnpm-lock.yaml` |
+| SEC-006 | Approved | `persist-credentials: false` on checkout and `timeout-minutes: 15` on the job | — | `.github/workflows/ci.yml` |
 
 ## Verdict
 
-**Result:** Approved with Notes
+**Result:** Approved
 **Unresolved Critical/High:** 0
 **Accepted Risks:** 0
-**Notes:**
-- **Provisional:** this verdict comes from the findings phase. The final verdict and any risk acceptances are decided at resolution with the user (steps 13–15).
-- **Fix SEC-001 and SEC-002 first:** they should be fixed before any ticket adds runtime code under `src/`, and in any case before TICKET-009 publishes a release. Today the CC-003 and CC-001 guards would let a network call or an unreviewed third-party library reach `dist/` with CI green.
-- **Fix SEC-003 and SEC-004 with or before TICKET-009:** the release workflow will hold `id-token: write`.
-- **For Code Review:**
-  - The acceptance criterion "fails on any use of `fetch` … in `src/`" is only partly met (see SEC-001).
-  - The boundary block's `*.ts` glob does not cover `.tsx` files under `src/core`, `src/tool`, `src/export` and `src/layout`. In those files, importing `react` and using `document` both passed lint. Neither does the block catch `globalThis.document`. Those are prd/TC-005 gaps rather than security findings.
+**Notes:** Resolved with the Product Owner on 2026-10-05. All six findings resolved and re-verified (lint, typecheck, build, 110 tests, `pnpm check:dist`, publint, attw, size, check:deps, check:changesets — delivery record, Post-Review Amendments). Repository-level hardening from SEC-006 (branch protection, default Actions permissions) is applied when the repository is created under TICKET-009, whose Known Hazards carry it.

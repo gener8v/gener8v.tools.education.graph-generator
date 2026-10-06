@@ -104,8 +104,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** The React/browser boundary block matches `src/{core,tool,export,layout}/**/*.ts` only. Probing the real config through the ESLint API shows that `import { useState } from "react"` in `src/core/x.tsx` and `src/core/x.mts`, and `document.title` in `src/export/x.tsx`, all lint clean. The network block matches `src/**/*.{ts,tsx}`, so `fetch(...)` in `src/core/x.js`, `src/core/x.mts` or `src/react/x.mjs` also lints clean. The two blocks also use different glob shapes. All boundary fixtures in `boundaries.test.ts` use `.ts`, so the suite cannot reveal the gap.
 **Impact:** This rule is the only automated enforcement of AD-001 and prd/TC-005 for every downstream ticket (the delivery record's Notes direct non-rendering code to these directories "where the linter enforces the React/browser boundary"). A contributor who adds a `.tsx` helper under `src/export` or `src/layout`, or a `.mts` module under `src/core`, can import React or reference `document` with no lint error. The failure would surface only at runtime in a consumer's Node.js process, or not at all if the path is untested.
 **Recommendation:** Match every source extension in both blocks, for example `files: ["src/{core,tool,export,layout}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"]` and `files: ["src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"]`, and use one shared glob constant for the extension list. In `boundaries.test.ts`, add at least one `.tsx` fixture per non-rendering directory (for example parametrise the existing loop over `["ts", "tsx"]`), so a narrowed glob fails the suite.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** Fixed with code-review CR-001: boundary rules cover every script extension.
 
 ---
 
@@ -117,8 +117,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** In flat config, a later block that configures the same rule for a file replaces the earlier block's options rather than merging them. The boundary block therefore repeats `fetch`, `XMLHttpRequest`, `WebSocket` and `EventSource` alongside `window`/`document`/`navigator`. That repetition is the only reason `fetch` is banned in `src/core`, `src/tool`, `src/export` and `src/layout`. I demonstrated this by loading `eslint.config.js` with the boundary block reduced to `window`/`document`/`navigator`: `fetch("https://e.com")` in `src/core/x.ts` then produced no errors. Nothing in the file explains why the list appears twice. The "no network access anywhere in src" tests lint only `src/react/fixture.tsx` (`boundaries.test.ts:50`), so none of them would fail. Separately, the Node-targeted entries can still open connections through `node:https`, `node:http` or `node:net` imports, and `new globalThis.WebSocket(...)` or `new window.XMLHttpRequest()` lint clean. The guard is narrower than its describe block claims.
 **Impact:** The duplicate looks like redundant copy-paste, so a well-meaning cleanup, or adding a new network API to only the first list, silently removes or narrows the no-network guarantee (CPSE-REQ-005, prd/CC-003) for exactly the entry points that run in Node.js. CI would stay green.
 **Recommendation:** Extract `const NETWORK_GLOBALS = [{ name: "fetch", message: NETWORK_MESSAGE }, ...]`, spread it into both blocks, and add a one-line comment that flat config replaces rule options, so the boundary block must restate them. Parametrise the network test cases over `src/react/fixture.tsx` and each non-rendering directory. Optionally, add `node:http`, `node:https`, `node:net`, `node:dgram`, `node:tls`, `node:http2` and their bare forms to the boundary block's `no-restricted-imports`, and `globalThis.WebSocket`/`globalThis.XMLHttpRequest`/`window.XMLHttpRequest` to `no-restricted-properties`.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** Fixed with code-review CR-001/CR-002: network lists are built once from shared constants and spread into both blocks, with a comment explaining why the boundary block repeats them; tests cover the network rules in `src/core` files.
 
 ---
 
@@ -130,8 +130,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** TICKET-001/DEL-004 records the decision "Pin `typescript@~6.0.3`" because typescript-eslint requires a TypeScript below 6.1. The installed `typescript-eslint` 8.71.0 declares the peer `typescript: >=4.8.4 <6.1.0`. `package.json` declares `"typescript": "^6.0.3"`, which admits every 6.x release. Only the lockfile (resolved to 6.0.3) currently holds the version in place.
 **Impact:** Any lockfile refresh, `pnpm update`, or dependency-bot bump can move TypeScript to 6.1+. That puts it outside typescript-eslint's supported range (a peer warning, not an install failure, under pnpm's defaults), and the `ignoreDeprecations: "6.0"` workaround in `tsup.config.ts:16` was only validated against 6.0. The breakage would show up as lint or declaration-build failures in an unrelated ticket. The delivery record tells readers the version is pinned, so nobody would look here first.
 **Recommendation:** Change to `"typescript": "~6.0.3"` to match DEL-004. Optionally, add a comment next to `ignoreDeprecations` in `tsup.config.ts` naming the typescript-eslint peer constraint as the reason for the pin.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** Fixed with code-review CR-007: `typescript` is `~6.0.3`; Dependabot ignores TypeScript minor/major updates.
 
 ---
 
@@ -143,8 +143,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** `checkDependencies` takes `{ dependencies?: Record<string, string> }` and inspects only that field. A package added under `optionalDependencies` (installed at runtime by default), `bundleDependencies`/`bundledDependencies` (shipped inside the tarball), or a second `peerDependencies` entry (a runtime requirement pushed onto every consumer) passes `pnpm check:deps` with "Runtime dependencies: 0, all justified." `tests/package/checks.test.ts:61-82` tests only the `dependencies` field.
 **Impact:** CPSE-NFR-007 exists to stop unjustified runtime weight from reaching consumers, and this script is its only verification method. The check can be bypassed, accidentally, by any of three common `package.json` fields, and no test would notice.
 **Recommendation:** Collect names from `dependencies`, `optionalDependencies`, `bundleDependencies`/`bundledDependencies`, and `peerDependencies` minus `react`, then require a justification row for each. Make the success message count all of them, and add one failing-input test per field to the "runtime dependency check" describe block.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** Fixed with code-review CR-004: every runtime dependency field is checked.
 
 ---
 
@@ -156,8 +156,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** The 120 kB and 25 kB limits are CPSE-NFR-002's budgets, which that requirement states as "minified and gzipped". `.size-limit.json` sets no compression option, so size-limit 14 uses its default, brotli. `pnpm size` confirms this, labelling each result "with all dependencies, minified and brotlied". size-limit supports `"gzip": true` per entry. (Whether this breaches the requirement is for Code Review to decide. The quality issue is that the gate measures a different quantity than the number it carries, and nothing in the file says so.)
 **Impact:** Brotli output is typically 15–20% smaller than gzip for JavaScript, so the gate is looser than its numbers suggest. A graph-type entry at about 28 kB gzipped can pass a 25 kB brotli check. The gap appears only when the graph-type tickets fill the entries, and nobody will look for it because CI is green.
 **Recommendation:** Add `"gzip": true` to each entry in `.size-limit.json`. If brotli is the intended measure, record that decision and rename the budgets accordingly.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** Fixed with code-review CR-008: budgets measured with gzip.
 
 ---
 
@@ -169,8 +169,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** The same set of entry points is listed in the `exports` map, the tsup `entry` object, the size-limit config, and three separate literal arrays in the tests. The delivery record's Notes tell each graph-type ticket to add its entry to `tsup.config.ts`, `exports` and `.size-limit.json` by hand. publint catches a missing tsup entry, because the export target is then missing. Nothing catches an export with no size-limit entry, or a test list that was not extended.
 **Impact:** With about a dozen graph-type tickets each editing three lists, an omitted size-limit entry is likely, and it silently removes that type's budget (CPSE-NFR-002), because size-limit only measures what it is told to.
 **Recommendation:** Add one test to `checks.test.ts` that derives code entries from `pkg.exports` (keys whose value has `types`). It should assert that each has a matching `dist/...js` path in `.size-limit.json` and a matching key in the tsup config (importing `tsup.config.ts`, or exporting the entry map from it). Reuse the derived list in the declaration-existence test instead of the literal arrays.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** `tests/package/entries.test.ts` fails when `exports`, the tsup entries and the size-limit entries disagree, or when an export's types do not sit beside its JavaScript.
 
 ---
 
@@ -182,8 +182,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** Both tests repeat the same five lines (create a temp dir, write `hooks.mjs`, write `register.mjs`). Neither removes the directory: 8 `graph-generator-node-*` directories were in the OS temp dir after four test runs. The hook URL is built with `new URL(\`file://${hooks}\`)`, which does not percent-encode the path and is wrong on Windows (`file://C:\...`) and for paths containing `#`, `%` or spaces.
 **Impact:** Minor, but the temp directories accumulate on every developer machine and CI runner, and the duplication means a change to the hook setup must be made twice. The URL construction only works because macOS and Linux temp paths happen to need no encoding.
 **Recommendation:** Move the setup into a `beforeAll` (or a small `writeHooks()` helper) that returns the register path, remove the directory in `afterAll` with `rmSync(dir, { recursive: true, force: true })`, and use `pathToFileURL(hooks).href` from `node:url`.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** Setup shared in `beforeAll`, the temporary directory removed in `afterAll`, file URLs built with `pathToFileURL`.
 
 ---
 
@@ -195,8 +195,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** The step runs `pnpm generate` and then `git diff --exit-code -- src/generated`. `git diff` compares tracked files only, so a generated file that `scripts/generate.ts` creates but that was never committed (for example a new `src/generated/types.ts`) does not fail the step.
 **Impact:** The step is dormant until graph-library/graph-specification-and-vocabulary/TICKET-005. Once that ticket lands, a generator that gains an output file can pass CI while the committed tree lacks that file. This is the kind of drift the step exists to catch.
 **Recommendation:** Replace the diff with a check that also sees untracked files, for example `test -z "$(git status --porcelain -- src/generated)" || { git status --porcelain -- src/generated; exit 1; }`.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** The freshness step fails on any `git status --porcelain -- src/generated` output, which includes untracked files.
 
 ---
 
@@ -208,8 +208,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** `engines.node` is `>=22` and the CI matrix includes Node.js 22, but `@types/node` is `^26.6.4` (26.6.4 installed). `pnpm typecheck` therefore accepts Node.js APIs added in 23–26 in `src/core`, `src/tool` and `src/export`, which must work on Node.js 22 (prd/TC-006). `tsconfig.json` also applies `types: ["node"]` to all of `src/`, including the future browser renderer.
 **Impact:** Use of a newer API is caught only at runtime on the Node.js 22 CI cell, and only if a test exercises that path. Consumers on Node.js 22 hit it in production otherwise.
 **Recommendation:** Set `@types/node` to `^22` (the lowest supported major) so the type checker reflects the support floor. Consider a separate tsconfig (or `types` override) for the React renderer when it lands.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** `@types/node` pinned to `~22.20.5`, the oldest supported Node.js line.
 
 ---
 
@@ -221,8 +221,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** `CATEGORIES` in the check script, the `CATEGORY` regex in the formatter, and the literal array in the test each list `Added`, `Changed`, `Deprecated`, `Removed` and `Fixed` independently. The two regexes also differ: the checker requires whitespace after the colon (`:\s+\S`), while the formatter accepts none (`:\s*`).
 **Impact:** Adding a category (for example `Security:`) to the checker but not the formatter produces changelog lines without the bold label, with no test failure. The reverse lets the formatter format a category the checker rejects.
 **Recommendation:** Make `.changeset/changelog.cjs` the single source: export `CATEGORIES` from it, build its regex from that list, and import it in `scripts/check-changesets.ts` and the test. The test already imports the `.cjs` with types from `.changeset/changelog.d.cts`, so this pattern is established.
-**Status:** Open
-**Resolution:** —
+**Status:** Deferred → TICKET-009
+**Resolution:** The changelog-grouping script TICKET-009 adds rewrites the same files; consolidating the category list belongs there. Known Hazard appended to TICKET-009.
 
 ---
 
@@ -234,8 +234,8 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** pnpm is installed with `npm install --global pnpm@10`, and `package.json` has no `packageManager` field. Contributors and the four matrix cells may therefore run different pnpm 10.x minors. `actions/setup-node` is not given `cache: pnpm`, so every cell does a cold install of the full toolchain (eslint, typescript, tsup, vitest, size-limit, attw, changesets). `pnpm test` builds in its global setup and the next step runs `pnpm build` again.
 **Impact:** Each pull request pays for slower runs (four cold installs) and pnpm version drift. The double build costs little today and more as the library grows.
 **Recommendation:** Add `"packageManager": "pnpm@10.28.2"` to `package.json`. Install pnpm with `pnpm/action-setup` before `actions/setup-node`, and pass `cache: pnpm` to setup-node. Optionally, drop the separate Build step, or make the test global setup skip the build when an environment flag says `dist/` is fresh.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** pnpm pinned to 10.28.2 (`packageManager` and CI), `setup-node` caches the pnpm store, and CI builds once: the test step sets `GRAPH_GENERATOR_PREBUILT=1` so the test setup skips its build.
 
 ---
 
@@ -247,15 +247,28 @@ Two small weaknesses. The four `tsup` "empty chunk" warnings are expected noise 
 **Description:** In the installed typescript-eslint 8.71.0, `tseslint.config()` is marked `@deprecated` (`node_modules/typescript-eslint/dist/config-helper.d.ts:67`) in favour of ESLint core's `defineConfig()` from `eslint/config`.
 **Impact:** Low today. It still works. But this is the file every downstream ticket extends, and a deprecated helper is likely to be removed in a future typescript-eslint major, turning a routine upgrade into a config rewrite.
 **Recommendation:** Replace it with `import { defineConfig } from "eslint/config"` and `export default defineConfig(...)`. The configuration objects carry over unchanged.
-**Status:** Open
-**Resolution:** —
+**Status:** Resolved
+**Resolution:** `eslint.config.js` uses `defineConfig` from `eslint/config`.
 
 ## Resolution Log
 
 | Finding | Decision | Action Taken | File Updated |
 |---------|----------|-------------|--------------|
+| QR-001 | Approved | Fixed with code-review CR-001: boundary rules cover every script extension. | `eslint.config.js` |
+| QR-002 | Approved | Fixed with code-review CR-001/CR-002: network lists are built once from shared constants and spread into both blocks, with a comment explaining why the boundary block repeats them; tests cover the network rules in `src/core` files. | `eslint.config.js`, `tests/package/boundaries.test.ts` |
+| QR-003 | Approved | Fixed with code-review CR-007: `typescript` is `~6.0.3`; Dependabot ignores TypeScript minor/major updates. | `package.json`, `.github/dependabot.yml` |
+| QR-004 | Approved | Fixed with code-review CR-004: every runtime dependency field is checked. | `scripts/check-dependencies.ts` |
+| QR-005 | Approved | Fixed with code-review CR-008: budgets measured with gzip. | `.size-limit.json` |
+| QR-006 | Approved | `tests/package/entries.test.ts` fails when `exports`, the tsup entries and the size-limit entries disagree, or when an export's types do not sit beside its JavaScript. | `tests/package/entries.test.ts` |
+| QR-007 | Approved | Setup shared in `beforeAll`, the temporary directory removed in `afterAll`, file URLs built with `pathToFileURL`. | `tests/package/node-entry.test.ts` |
+| QR-008 | Approved | The freshness step fails on any `git status --porcelain -- src/generated` output, which includes untracked files. | `.github/workflows/ci.yml` |
+| QR-009 | Approved | `@types/node` pinned to `~22.20.5`, the oldest supported Node.js line. | `package.json` |
+| QR-010 | Deferred | Deferred → TICKET-009 | `.gener8v/changes/graph-library/tickets/component-packaging-and-source-export/TICKET-009.md` |
+| QR-011 | Approved | pnpm pinned to 10.28.2 (`packageManager` and CI), `setup-node` caches the pnpm store, and CI builds once: the test step sets `GRAPH_GENERATOR_PREBUILT=1` so the test setup skips its build. | `.github/workflows/ci.yml`, `package.json`, `tests/setup/build.ts` |
+| QR-012 | Approved | `eslint.config.js` uses `defineConfig` from `eslint/config`. | `eslint.config.js` |
 
 ## Verdict
 
 **Result:** Approved with Notes
-**Unresolved Findings:** 12 — 5 Concerns, 7 Suggestions
+**Unresolved Findings:** 0 open. 11 resolved (QR-001..QR-009, QR-011, QR-012; QR-001..QR-005 through the code-review fixes); 1 deferred to TICKET-009 (QR-010)
+**Notes:** Resolved with the Product Owner on 2026-10-05. Re-verified: lint, typecheck, build, 110 tests, check:dist, publint, attw, size, check:deps, check:changesets all exit 0 (delivery record, Post-Review Amendments).

@@ -253,3 +253,34 @@ Re-verification after the amendments (Node.js v24.1.0, React 19.3.0):
 | `pnpm size` | 0 | four entries, 0 B minified and gzipped |
 | `pnpm check:deps` | 0 | 0 runtime dependencies |
 | `pnpm check:changesets` | 0 | 0 changesets |
+
+Resolution of `graph-library/component-packaging-and-source-export-ticket-001-quality-review` and `graph-library/component-packaging-and-source-export-ticket-001-security-review`, 2026-10-05, decisions by the Product Owner. (QR-001..QR-005 and the lint/manifest parts of SEC-001/SEC-002 were fixed by the code-review amendments above.)
+
+- **…-security-review/SEC-001, SEC-002** — `scripts/check-dist.ts` (`pnpm check:dist`, in CI after the build) scans every built file for network APIs and Node network module specifiers, covering bundled code lint never sees; lint gains `fetchLater`, `WebTransport`, `RTCPeerConnection`, `importScripts`. Files: `scripts/check-dist.ts`, `eslint.config.js`, `package.json`, `.github/workflows/ci.yml`, `tests/package/checks.test.ts`.
+- **…-security-review/SEC-003** — CI installs pnpm 10.28.2 (matching new `packageManager`) and exact React 18 versions. Files: `.github/workflows/ci.yml`, `package.json`.
+- **…-security-review/SEC-004** — actions pinned to commit SHAs (checkout v7.0.1, setup-node v7.0.0); Dependabot for actions and npm. Files: `.github/workflows/ci.yml`, `.github/dependabot.yml`.
+- **…-security-review/SEC-005** — `pnpm.overrides.esbuild: ^0.28.1`; all esbuild copies resolve to 0.28.2. Files: `package.json`, `pnpm-lock.yaml`.
+- **…-security-review/SEC-006** — `persist-credentials: false`, `timeout-minutes: 15`; repository settings carried to TICKET-009. File: `.github/workflows/ci.yml`.
+- **…-quality-review/QR-006** — `tests/package/entries.test.ts` keeps `exports`, tsup entries and size budgets in agreement. Graph-type tickets must update all three.
+- **…-quality-review/QR-007** — `tests/package/node-entry.test.ts` shares setup, removes its temporary directory, uses `pathToFileURL`.
+- **…-quality-review/QR-008** — freshness step fails on untracked generated files. File: `.github/workflows/ci.yml`.
+- **…-quality-review/QR-009** — `@types/node` `~22.20.5`. File: `package.json`.
+- **…-quality-review/QR-011** — pnpm pinned and cached; one build per CI run (`GRAPH_GENERATOR_PREBUILT=1`). Files: `.github/workflows/ci.yml`, `tests/setup/build.ts`.
+- **…-quality-review/QR-012** — `defineConfig` from `eslint/config`. File: `eslint.config.js`.
+- **…-quality-review/QR-010** — Deferred → TICKET-009 (Known Hazard appended).
+
+Re-verification after these amendments (Node.js v24.1.0, React 19.3.0):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm lint` | 0 | no findings |
+| `pnpm typecheck` | 0 | no errors |
+| `pnpm build` | 0 | all entries and declarations emitted |
+| `pnpm test` | 0 | 4 files, 110 tests passed |
+| `GRAPH_GENERATOR_PREBUILT=1 pnpm test` | 0 | setup skipped the build; 110 passed |
+| `pnpm check:dist` | 0 | 4 built files, no network APIs or modules |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `pnpm size` | 0 | four entries, 0 B minified and gzipped |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm check:changesets` | 0 | 0 changesets |

@@ -1,5 +1,6 @@
 import js from "@eslint/js";
 import globals from "globals";
+import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 
 const NETWORK_MESSAGE =
@@ -11,7 +12,8 @@ const SCRIPT_EXTENSIONS = "{ts,tsx,mts,cts,js,jsx,mjs,cjs}";
 const NON_RENDERING_DIRS = ["core", "tool", "export", "layout"];
 
 // Network APIs, reached directly or through any object (`self.fetch`, `globalThis["WebSocket"]`).
-const NETWORK_NAMES = "fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon";
+const NETWORK_NAMES =
+  "fetch|fetchLater|XMLHttpRequest|WebSocket|WebTransport|EventSource|sendBeacon|RTCPeerConnection|importScripts";
 // Node.js modules that open network connections.
 const NETWORK_MODULES = ["http", "https", "http2", "net", "tls", "dgram"];
 const NETWORK_MODULE_PATTERN = `^(node:)?(${NETWORK_MODULES.join("|")})$`;
@@ -49,7 +51,7 @@ const boundarySyntax = [
   },
 ];
 
-export default tseslint.config(
+export default defineConfig(
   { ignores: ["dist/", "coverage/", "storybook-static/", "node_modules/"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
