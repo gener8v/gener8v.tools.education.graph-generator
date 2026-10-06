@@ -1,4 +1,5 @@
 import type { GraphType, GraphTypeDefinition } from "../../../src/core/definitions/types";
+import type { GraphDescription } from "../generated/description";
 import { circle } from "./circle";
 import { numberLine } from "./number-line";
 import { xyGraph } from "./xy-graph";
@@ -12,7 +13,11 @@ export const fixtureRegistry: Readonly<Partial<Record<GraphType, GraphTypeDefini
   }),
 );
 
-/** One valid description of each fixture type, as the benchmark and the timing test use. */
+/**
+ * One valid description of each fixture type, used by the benchmark and as the base of the
+ * schema-agreement generator. Checked as literals against the generated `GraphDescription`, so a
+ * property missing from the generated types fails typecheck (quality review QR-003 on TICKET-005).
+ */
 export const fixtureExamples = [
   { type: "circle", radius: 5, showCenter: true, unit: "cm", title: "A circle", lineColor: "blue" },
   {
@@ -36,4 +41,4 @@ export const fixtureExamples = [
     xAxisLabel: "x",
     yAxisLabel: "y",
   },
-] as const;
+] as const satisfies readonly GraphDescription[];

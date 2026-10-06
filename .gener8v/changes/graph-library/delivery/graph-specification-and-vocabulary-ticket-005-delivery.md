@@ -268,4 +268,63 @@ Node.js v24.1.0, pnpm 10.28.2, branch `ticket/gsv-005`.
 
 ## Post-Review Amendments
 
-None
+Resolution of `graph-library/graph-specification-and-vocabulary-ticket-005-code-review`, `-quality-review` and `-security-review`, 2026-10-06, decisions by the Product Owner. The reports overlapped, so the fixes are recorded once, by group.
+
+- **graph-specification-and-vocabulary-ticket-005-code-review/CR-001, CR-008; graph-specification-and-vocabulary-ticket-005-quality-review/QR-001, QR-002 (the agreement test's power):**
+  - `tests/core/schema-agreement.test.ts` now works one fault away from a valid base description of each type. The families are: the base itself; one change at one place at any depth (a value replaced, a property deleted, or an unknown key added beside it, list elements included); a list grown to exactly `maxItems` or one past it; `version` variants; the base under another type; and random JSON.
+  - Registered types take their base from `examples/<type>.json`. A missing file fails with a message naming it.
+  - Each type must have over 10% of descriptions rejected by the schema and over 10% accepted by both.
+  - A negative control injects a nested schema-only rule (number-line `tickCount` at most 10), and the test must find a counterexample.
+  - A test confirms lists of 1,000 and 1,001 elements are generated.
+  - **Correction to the Deviation** on known-valid examples: superseded by this generator.
+  - **Correction to the GSV-NFR-003 criterion evidence:** agreement covers the JSON form of a description. An `undefined`-valued key is not JSON; this is now stated in the schema's root description, and a Known Hazard on CPSE TICKET-008 covers it.
+- **graph-specification-and-vocabulary-ticket-005-code-review/CR-007; graph-specification-and-vocabulary-ticket-005-quality-review/QR-003 (type-level test):**
+  - The fixture examples are now literals checked with `as const satisfies readonly GraphDescription[]`, so a property missing from the generated types fails typecheck.
+  - A structural test checks that every term at every depth is declared, optional exactly when the term is.
+- **graph-specification-and-vocabulary-ticket-005-code-review/CR-002; graph-specification-and-vocabulary-ticket-005-quality-review/QR-005, QR-006 (vocabulary completeness, one source for versions and types):**
+  - The vocabulary publishes `type` and `version` as terms, and in every type's properties.
+  - The schema, the tool schema, the vocabulary and the generated types all take their wording from `TYPE_DEFINITION` and `VERSION_DEFINITION`, and their versions from `SUPPORTED_VERSIONS`. The published `version` is now `enum: [1]`.
+  - `Vocabulary.version` is replaced by `descriptionVersions`.
+  - `SUPPORTED_VERSIONS`, `CURRENT_VERSION` and `registeredTypes` moved to `src/core/definitions/index.ts` and are used by the envelope stage, the builders and the tests. `envelope.ts` re-exports them.
+  - `tests/core/definitions.test.ts` rejects `type` and `version` as definition terms.
+- **graph-specification-and-vocabulary-ticket-005-code-review/CR-006; graph-specification-and-vocabulary-ticket-005-quality-review/QR-004 (tool schema):**
+  - The tool-profile tests run on both registries, and `not` joins the forbidden keywords.
+  - With no type registered, `graph` is a closed, empty object.
+  - New tests: every example in tool form is accepted; `null` for a required property and unknown keys are rejected; every tool property is described.
+- **graph-specification-and-vocabulary-ticket-005-security-review/SEC-001:**
+  - The published schema's strings carry `PLAIN_TEXT_PATTERN` (`src/core/format.ts`), built from the same ranges as `isUnsafeCodePoint` (up to U+FFFF) and written only with `\uXXXX` escapes.
+  - A property test (20,000 strings, with and without the `u` flag) shows it never rejects what the validator accepts.
+  - The root description states which characters only the validator checks.
+  - The tool profile is left to CPSE TICKET-007; CPSE TICKET-008 documents that `validate()` is the gate.
+  - **Correction to DEL-003:** the character policy is now partly encoded.
+- **graph-specification-and-vocabulary-ticket-005-security-review/SEC-002:** the vocabulary's term table has a null prototype and is written through an own-property check. A test pollutes `Object.prototype.radius` and `.title`, and every term remains. `tests/core/definitions.test.ts` rejects built-in object names (`toString`, `constructor` and others) as terms.
+- **graph-specification-and-vocabulary-ticket-005-code-review/CR-003 (manifest hand-off), recorded as DEL-008:**
+  - The schema generator reads only definitions.
+  - DGP TICKET-005's pictograph definition builds its `unitImage` enum from `getImageNames()` and the manifest's descriptions.
+  - `EnumValue` gains optional `valueDescriptions`, which the vocabulary publishes as `TermUse.valueDescriptions`; the definitions test checks that they describe real values.
+  - Known Hazards on DGP TICKET-004 and TICKET-005.
+- **graph-specification-and-vocabulary-ticket-005-code-review/CR-004:** the coverage rows for GSV-REQ-035 and GSV-REQ-012 list `buildVocabulary`, and the row for GSV-REQ-043 lists `PLAIN_TEXT_PATTERN`.
+- **graph-specification-and-vocabulary-ticket-005-code-review/CR-005:**
+  - **Addition to Deviations:** DEL-007 (`enum` in place of `const` for the tool profile's `type`) was not in the approved plan, which named only optional enums and `version`.
+  - No documentation tables are generated; a Known Hazard on CPSE TICKET-008 says to build them from `vocabulary.json`.
+  - **Open Technical Design follow-up** (with TICKET-004's Data Model amendment): record AD-006's tool `type` form (DEL-007) and that AD-003's documentation tables are built by CPSE TICKET-008.
+- **graph-specification-and-vocabulary-ticket-005-quality-review/QR-007:** the getters return `DeepReadonly<…>` types and their doc comments say "Frozen; copy it to change it". A `@ts-expect-error` test confirms that a write does not compile and throws at run time.
+- **graph-specification-and-vocabulary-ticket-005-quality-review/QR-008:** the plain-text and color rules are stated once, in the root and `graph` descriptions, instead of on every property. The repeated notes are gone from the per-property descriptions.
+- **graph-specification-and-vocabulary-ticket-005-quality-review/QR-009:** `scripts/generated-files.ts` (`generatedFiles()`) is the one list the generator writes and the freshness test checks. `tests/helpers/ajv.ts` (`createAjv()`) is the one Ajv configuration.
+
+Re-verification after the amendments (Node.js v24.1.0, pnpm 10.28.2):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm generate` | 0 | the five files regenerated; committed with this resolution |
+| `pnpm lint` | 0 | no findings |
+| `pnpm typecheck` | 0 | no errors; includes the literal `satisfies` check of the fixture examples |
+| `pnpm test` | 0 | 16 files, 500 tests passed (schema-shape 32, schema-agreement 5, schema-meta 5, definitions 19) |
+| `pnpm bench` | 0 | p95: circle 0.0094 ms, number-line 0.0165 ms, xy-graph 0.0380 ms |
+| `pnpm build` | 0 | entries, declarations, `dist/schema.json` and `dist/vocabulary.json` |
+| `pnpm check:dist` | 0 | no network APIs in built output |
+| `pnpm size` | 0 | `./core` 9.44 kB of 25 kB |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm check:changesets` | 0 | 0 changesets |

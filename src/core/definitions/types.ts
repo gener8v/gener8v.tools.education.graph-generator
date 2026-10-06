@@ -79,6 +79,8 @@ export interface ColorValue extends ValueBase {
 export interface EnumValue extends ValueBase {
   kind: "enum";
   values: Terms;
+  /** A plain-English description of some or all values, published in the vocabulary (such as each pictograph image). */
+  valueDescriptions?: Readonly<Record<string, string>>;
 }
 
 export interface ObjectValue extends ValueBase {

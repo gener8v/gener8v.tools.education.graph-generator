@@ -145,6 +145,21 @@ export function cleanText(text: string): string {
   return result.replace(/ {2,}/g, " ").trim();
 }
 
+const hex4 = (code: number) => code.toString(16).toUpperCase().padStart(4, "0");
+const escapeFor = (code: number) => `\\u${hex4(code)}`;
+
+/**
+ * A JSON Schema `pattern` for the part of the plain-text policy up to U+FFFF, built from the same
+ * ranges as `isUnsafeCodePoint`, written only with `\uXXXX` escapes so it behaves the same with
+ * and without a regular expression's Unicode flag. Tag characters, supplementary variation
+ * selectors and lone surrogates stay validator-only (security review SEC-001 on TICKET-005).
+ */
+// @spec GSV-REQ-043
+export const PLAIN_TEXT_PATTERN = `^[^${[...LINE_BREAKING, ...DIRECTION_CONTROLS, ...INVISIBLE_FORMAT]
+  .filter(([low]) => low <= 0xffff)
+  .map(([low, high]) => (low === high ? escapeFor(low) : `${escapeFor(low)}-${escapeFor(high)}`))
+  .join("")}]*$`;
+
 /** The index (in UTF-16 units) of the first code point plain text may not hold, or -1. */
 // @spec GSV-REQ-043
 export function findUnsafeTextChar(text: string): number {

@@ -1,17 +1,10 @@
-import type { Registry } from "../definitions/index";
+import { type Registry, SUPPORTED_VERSIONS, registeredTypes } from "../definitions/index";
 import { GRAPH_TYPES, type GraphType } from "../definitions/types";
 import { asTerms, createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
 import { type ObjectContents, isPlainObject, readObject } from "./json";
 
-/** Schema versions this package accepts; a description without `version` is the current one. */
-export const SUPPORTED_VERSIONS = Object.freeze([1] as const);
-export const CURRENT_VERSION = 1;
-
-/** The graph types with a registered definition, in `GRAPH_TYPES` order. */
-export function registeredTypes(registry: Registry): GraphType[] {
-  return GRAPH_TYPES.filter((type) => Object.hasOwn(registry, type) && registry[type] !== undefined);
-}
+export { CURRENT_VERSION, SUPPORTED_VERSIONS, registeredTypes } from "../definitions/index";
 
 export type EnvelopeResult =
   | {

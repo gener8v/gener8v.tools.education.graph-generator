@@ -2,7 +2,9 @@
 
 /** A number line with marked points. */
 export interface NumberLineDescription {
+  /** The graph type: which kind of graph the description draws. */
   type: "number-line";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
   /** A title shown above the graph, as plain text. */
   title?: string;
@@ -38,7 +40,9 @@ export interface NumberLineDescription {
 
 /** A coordinate plane with points and segments. */
 export interface XyGraphDescription {
+  /** The graph type: which kind of graph the description draws. */
   type: "xy-graph";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
   /** A title shown above the graph, as plain text. */
   title?: string;
@@ -106,7 +110,9 @@ export interface XyGraphDescription {
 
 /** A circle drawn from its radius. */
 export interface CircleDescription {
+  /** The graph type: which kind of graph the description draws. */
   type: "circle";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
   /** A title shown above the graph, as plain text. */
   title?: string;

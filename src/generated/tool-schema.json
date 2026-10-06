@@ -2,8 +2,11 @@
   "type": "object",
   "properties": {
     "graph": {
+      "type": "object",
       "description": "No graph types are registered yet.",
-      "not": {}
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
     }
   },
   "required": [

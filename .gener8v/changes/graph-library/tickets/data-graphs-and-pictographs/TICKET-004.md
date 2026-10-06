@@ -45,6 +45,7 @@
 - Who supplies the images is still open (DGP OQ-001, OQ-002; EXT-001) — do NOT pull images from icon packs or the web; draw simple shapes in-house under MIT, record provenance per image, and flag in the delivery record that the final set needs Product Owner sign-off
 - Image names become part of the public contract once released (RES-009) — choose plain, durable names and avoid renaming later
 - The pictograph type must include every image because names arrive at runtime (AD-012) — keep each drawing to a handful of paths so the pictograph stays within the 25 kB budget (CPSE-NFR-002, TR-004)
+- Carried from graph-library/graph-specification-and-vocabulary-ticket-005-code-review/CR-003 (GSV TICKET-005 DEL-008): the schema generator does NOT read the manifest. Expose `getImageNames()` and each image's description, and DGP TICKET-005's pictograph definition builds its `unitImage` enum (`values` and `valueDescriptions`) from them. Read this ticket's criterion "so the schema generator emits it" as "so the pictograph definition, which the generator reads, carries it".
 
 **Depends On:** None
 **Blocks:** TICKET-005

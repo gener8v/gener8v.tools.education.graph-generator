@@ -29,6 +29,7 @@ export const numberLine: GraphTypeDefinition = {
       term: "arrowheads",
       kind: "enum",
       values: ["none", "left", "right", "both"],
+      valueDescriptions: { none: "No arrowheads.", both: "An arrowhead at each end." },
       required: false,
       description: "Which ends of the line have arrowheads.",
     },

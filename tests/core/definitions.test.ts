@@ -15,6 +15,7 @@ import {
 import { fixtureRegistry as validatorFixtures } from "../fixtures/definitions/index";
 
 const CAMEL_CASE = /^[a-z][a-zA-Z0-9]*$/;
+const BUILT_IN_NAMES = new Set([...Object.getOwnPropertyNames(Object.prototype), "type", "version"]);
 const shared: readonly SharedPropertySpec[] = Object.values(sharedProperties);
 const sharedTerms = new Set(shared.map((spec) => spec.term));
 
@@ -25,6 +26,8 @@ function vocabularyProblems(properties: PropertyMap, path = ""): string[] {
     const at = `${path}/${key}`;
     if (spec.term !== key) problems.push(`${at}: key differs from its term ${JSON.stringify(spec.term)}`);
     if (!CAMEL_CASE.test(key)) problems.push(`${at}: not a camel-cased term`);
+    // A built-in object name would shadow or vanish in ordinary objects (security review SEC-002 on TICKET-005).
+    if (BUILT_IN_NAMES.has(key)) problems.push(`${at}: a built-in object name cannot be a term`);
     problems.push(...valueProblems(spec, at));
   }
   return problems;
@@ -57,6 +60,12 @@ function valueProblems(spec: ValueSpec, at: string): string[] {
     problems.push(...valueProblems(spec.items, `${at}/items`));
   }
   if (spec.kind === "enum" && spec.values.length === 0) problems.push(`${at}: enum with no values`);
+  if (spec.kind === "enum") {
+    for (const [described, text] of Object.entries(spec.valueDescriptions ?? {})) {
+      if (!(spec.values as readonly string[]).includes(described)) problems.push(`${at}: describes ${described}, which is not a value`);
+      if (text.trim() === "") problems.push(`${at}: an empty value description`);
+    }
+  }
   return problems;
 }
 
@@ -235,6 +244,15 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
       LineLabel: { term: "LineLabel", kind: "string", required: false, description: "Pascal case." },
       height: { term: "height", kind: "number", required: true, description: " " },
       shape: { term: "shape", kind: "enum", values: [], required: false, description: "An empty enum." },
+      toString: { term: "toString", kind: "string", required: false, description: "A built-in name." },
+      ends: {
+        term: "ends",
+        kind: "enum",
+        values: ["left"],
+        valueDescriptions: { right: "Not a value." },
+        required: false,
+        description: "An enum describing a value it lacks.",
+      },
       range: {
         term: "range",
         kind: "object",
@@ -277,6 +295,8 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
       "/LineLabel: not a camel-cased term",
       "/height: no description",
       "/shape: enum with no values",
+      "/toString: a built-in object name cannot be a term",
+      "/ends: describes right, which is not a value",
       '/range: ordered term "high" is not a number property',
       "/scale: has minimum and maximum without ordered [minimum, maximum]",
       "/steps: maxItems must be a positive whole number",

@@ -1,14 +1,12 @@
-import Ajv2020 from "ajv/dist/2020";
 import { describe, expect, it } from "vitest";
 import { definitions } from "../../src/core/definitions/index";
 import { buildSchema, buildToolSchema } from "../../src/core/schema";
 import { fixtureRegistry } from "../fixtures/definitions/index";
+import { createAjv } from "../helpers/ajv";
 
 // GSV-NFR-002: the published schema is valid against the meta-schema it declares (JSON Schema
 // 2020-12). The tool schema is checked against the same meta-schema. Runs in CI with `pnpm test`.
-// strictRequired is an Ajv lint, not a JSON Schema rule: a derivation group's `anyOf: [{ required }]`
-// names properties defined beside it, which the specification allows.
-const ajv = new Ajv2020({ strict: true, strictTypes: false, strictRequired: false, allowUnionTypes: true });
+const ajv = createAjv();
 
 describe("schemas are valid JSON Schema 2020-12 (GSV-NFR-002)", () => {
   for (const [name, registry] of [

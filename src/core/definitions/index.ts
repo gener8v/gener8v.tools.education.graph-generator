@@ -1,5 +1,5 @@
 import { sharedProperties } from "./shared";
-import { type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
+import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 /** A set of graph-type definitions, keyed by `type` value. */
 export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>;
@@ -13,6 +13,18 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
 export const definitions: Registry = Object.freeze(
   Object.assign(Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {}),
 );
+
+/** Schema versions this package accepts; a description without `version` is the current one. */
+export const SUPPORTED_VERSIONS = Object.freeze([1] as const);
+export const CURRENT_VERSION = 1;
+
+/**
+ * The graph types with a registered definition, in `GRAPH_TYPES` order. The one rule the
+ * validator, the schema, the vocabulary and the types all use (quality review QR-005 on TICKET-005).
+ */
+export function registeredTypes(registry: Registry): GraphType[] {
+  return GRAPH_TYPES.filter((type) => Object.hasOwn(registry, type) && registry[type] !== undefined);
+}
 
 /**
  * Every top-level term a graph type accepts: its definition's own properties plus each shared

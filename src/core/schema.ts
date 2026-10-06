@@ -1,9 +1,10 @@
-import { type Registry, definitions, propertiesOf } from "./definitions/index";
-import { GRAPH_TYPES, type GraphType, type PropertyKind, type PropertyMap, type PropertySpec, type ValueSpec } from "./definitions/types";
+import { type Registry, SUPPORTED_VERSIONS, definitions, propertiesOf, registeredTypes } from "./definitions/index";
+import type { GraphType, PropertyKind, PropertyMap, PropertySpec, ValueSpec } from "./definitions/types";
+import { PLAIN_TEXT_PATTERN } from "./format";
 import type { Range } from "./result";
 import { namedColors } from "./style";
-import { DESCRIPTION_VALUE_LIMIT } from "./validate/structure";
 import { deepFreeze } from "./validate/state";
+import { DESCRIPTION_VALUE_LIMIT } from "./validate/structure";
 
 // The published schema, the strict tool schema, the vocabulary and the description types are all
 // built here from the one set of definitions (AD-003, GSV-REQ-015). `scripts/generate.ts` writes
@@ -13,15 +14,25 @@ import { deepFreeze } from "./validate/state";
 /** A JSON Schema object, as plain JSON data. */
 export type JsonSchema = { [keyword: string]: unknown };
 
-const SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema";
+/** A value and everything inside it, read-only: what the getters return, frozen. */
+export type DeepReadonly<T> = T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> } : T;
 
-// Rules the validator enforces that JSON Schema does not express, or that would cost providers.
-// They make the validator stricter than the schema, which GSV-REQ-011 and GSV-NFR-003 allow.
-const PLAIN_TEXT_NOTE = "Plain text: control, line-break, text-direction and invisible characters are not accepted.";
-const VALIDATOR_NOTE =
-  `The package's validator also checks what this schema cannot: values that determine one another must agree within 1%, ` +
-  `ranges must have their minimum below their maximum, type-specific rules (such as points inside the axes), and a description ` +
-  `may hold at most ${DESCRIPTION_VALUE_LIMIT} values.`;
+const SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema";
+const COLOR_NAMES = Object.keys(namedColors);
+
+/** The `type` and `version` terms every description carries, described once for every output. */
+const TYPE_DEFINITION = "The graph type: which kind of graph the description draws.";
+const VERSION_DEFINITION = `The schema version the description is written for. Leave it out for the current version, ${SUPPORTED_VERSIONS[SUPPORTED_VERSIONS.length - 1]}.`;
+
+// The rules every value follows, stated once at the root rather than on every property (quality
+// review QR-008 on TICKET-005), including those only the validator checks (DEL-003).
+const RULES =
+  `Text is plain text: control, line-break, text-direction and invisible characters are not accepted. ` +
+  `A color is a color name (${COLOR_NAMES.join(", ")}) in any case, or a hex code such as #0072b2. ` +
+  `The package's validator also checks what this schema cannot: tag characters, rare variation selectors and broken ` +
+  `surrogates in text; values that determine one another must agree within 1%; ranges must have their minimum below ` +
+  `their maximum; type-specific rules such as points inside the axes; and at most ${DESCRIPTION_VALUE_LIMIT} values in ` +
+  `one description. Schema and validator agree on the JSON form of a description.`;
 
 /** "radius, diameter or circumference". */
 const alternatives = (terms: readonly string[]) =>
@@ -31,11 +42,9 @@ const alternatives = (terms: readonly string[]) =>
  * A pattern accepting what `resolveColor` accepts: a named color in any ASCII case, or a `#rgb`
  * or `#rrggbb` code (code review CR-006 and security review SEC-004 on TICKET-001).
  */
-export const COLOR_PATTERN = `^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|${Object.keys(namedColors)
-  .map((name) => [...name].map((letter) => `[${letter.toUpperCase()}${letter}]`).join(""))
-  .join("|")})$`;
-
-const COLOR_NOTE = `A color name (${Object.keys(namedColors).join(", ")}), in any case, or a hex code such as #0072b2.`;
+export const COLOR_PATTERN = `^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|${COLOR_NAMES.map((name) =>
+  [...name].map((letter) => `[${letter.toUpperCase()}${letter}]`).join(""),
+).join("|")})$`;
 
 type Profile = "published" | "tool";
 
@@ -52,8 +61,6 @@ const JSON_TYPE: Record<PropertyKind, string> = {
 
 function describeValue(spec: ValueSpec): string {
   const notes = [spec.description];
-  if (spec.kind === "string") notes.push(PLAIN_TEXT_NOTE);
-  if (spec.kind === "color") notes.push(COLOR_NOTE);
   if (spec.kind === "object") {
     for (const [lower, upper] of spec.ordered ?? []) notes.push(`${upper} must be greater than ${lower}.`);
   }
@@ -69,6 +76,11 @@ function valueSchema(spec: ValueSpec, profile: Profile, nullable: boolean): Json
     case "integer":
       if (spec.min !== undefined) schema[spec.exclusiveMin ? "exclusiveMinimum" : "minimum"] = spec.min;
       if (spec.max !== undefined) schema[spec.exclusiveMax ? "exclusiveMaximum" : "maximum"] = spec.max;
+      break;
+    case "string":
+      // The published schema checks the plain-text policy up to U+FFFF (security review SEC-001);
+      // the tool profile leaves it to the validator, which the tool handler always runs.
+      if (profile === "published") schema["pattern"] = PLAIN_TEXT_PATTERN;
       break;
     case "color":
       schema["pattern"] = COLOR_PATTERN;
@@ -100,11 +112,6 @@ function objectSchema(properties: PropertyMap, profile: Profile, extra: Record<s
   return { properties: schemas, required, additionalProperties: false };
 }
 
-/** The registered graph types, in `GRAPH_TYPES` order. */
-function registered(registry: Registry): GraphType[] {
-  return GRAPH_TYPES.filter((type) => Object.hasOwn(registry, type) && registry[type] !== undefined);
-}
-
 /** One graph type's closed object, in either profile (AD-006). */
 function typeSchema(type: GraphType, registry: Registry, profile: Profile): JsonSchema {
   const definition = registry[type]!;
@@ -113,15 +120,17 @@ function typeSchema(type: GraphType, registry: Registry, profile: Profile): Json
     definition.description,
     ...groups.map((group) => `Give one of ${alternatives(group.members)}; the others are worked out from it.`),
   ].join(" ");
+  const versions = [...SUPPORTED_VERSIONS];
   const envelope: Record<string, JsonSchema> =
     profile === "published"
       ? {
-          type: { const: type, description: "The graph type." },
-          version: { const: 1, description: "The schema version. Leave it out for the current version, 1." },
+          type: { const: type, description: TYPE_DEFINITION },
+          version: { enum: versions, description: VERSION_DEFINITION },
         }
       : {
-          type: { type: "string", enum: [type], description: "The graph type." },
-          version: { type: ["integer", "null"], enum: [1, null], description: "The schema version: 1, or null for the current version." },
+          // `enum`, not `const`: the most widely supported form in provider subsets (DEL-007).
+          type: { type: "string", enum: [type], description: TYPE_DEFINITION },
+          version: { type: ["integer", "null"], enum: [...versions, null], description: `${VERSION_DEFINITION} Null means the current version.` },
         };
   const schema: JsonSchema = { type: "object", title: definition.title, description, ...objectSchema(propertiesOf(type, registry), profile, envelope) };
   if (profile === "published") {
@@ -143,12 +152,12 @@ const NO_TYPES = "No graph types are registered yet.";
  */
 // @spec GSV-REQ-007, GSV-REQ-008, GSV-REQ-009, GSV-REQ-011, GSV-REQ-015
 export function buildSchema(registry: Registry): JsonSchema {
-  const types = registered(registry);
+  const types = registeredTypes(registry);
   const root: JsonSchema = { $schema: SCHEMA_DIALECT, title: "Graph description" };
   if (types.length === 0) return { ...root, description: NO_TYPES, not: {} };
   return {
     ...root,
-    description: `One graph, described by its type and the values that type accepts. ${VALIDATOR_NOTE}`,
+    description: `One graph, described by its type and the values that type accepts. ${RULES}`,
     anyOf: types.map((type) => typeSchema(type, registry, "published")),
   };
 }
@@ -159,12 +168,13 @@ export function buildSchema(registry: Registry): JsonSchema {
  */
 // @spec GSV-REQ-015
 export function buildToolSchema(registry: Registry): JsonSchema {
-  const types = registered(registry);
+  const types = registeredTypes(registry);
   const graph: JsonSchema =
     types.length === 0
-      ? { description: NO_TYPES, not: {} }
+      ? // Still within the strict profile while no type exists (code review CR-006 on TICKET-005).
+        { type: "object", description: NO_TYPES, properties: {}, required: [], additionalProperties: false }
       : {
-          description: `One graph, described by its type and the values that type accepts; null means "not given". ${VALIDATOR_NOTE}`,
+          description: `One graph, described by its type and the values that type accepts; null means "not given". ${RULES}`,
           anyOf: types.map((type) => typeSchema(type, registry, "tool")),
         };
   return { type: "object", properties: { graph }, required: ["graph"], additionalProperties: false };
@@ -176,6 +186,8 @@ export interface TermUse {
   required?: boolean;
   range?: Range;
   values?: string[];
+  /** Plain-English descriptions of enum values, where the definition gives them. */
+  valueDescriptions?: Record<string, string>;
   maxItems?: number;
   ordered?: Array<[string, string]>;
   items?: TermUse;
@@ -183,7 +195,8 @@ export interface TermUse {
 }
 
 export interface Vocabulary {
-  version: 1;
+  /** The description schema versions this package accepts; the last is the current one. */
+  descriptionVersions: number[];
   /** Every term once, with its plain-English definition and the kind of value it takes. */
   terms: Record<string, { definition: string; kind: PropertyKind }>;
   /** Per graph type: what it is, the terms it accepts, and how values determine one another. */
@@ -203,7 +216,14 @@ export interface Vocabulary {
   limits: { descriptionValues: number };
 }
 
-function termUse(spec: ValueSpec, required: boolean | undefined, terms: Vocabulary["terms"]): TermUse {
+type Terms = Vocabulary["terms"];
+
+/** Record a term's definition once; the table has no prototype, so any term name is safe (SEC-002). */
+function defineTerm(terms: Terms, term: string, definition: string, kind: PropertyKind): void {
+  if (!Object.hasOwn(terms, term)) terms[term] = { definition, kind };
+}
+
+function termUse(spec: ValueSpec, required: boolean | undefined, terms: Terms): TermUse {
   const use: TermUse = { kind: spec.kind };
   if (required !== undefined) use.required = required;
   if (spec.kind === "number" || spec.kind === "integer") {
@@ -214,7 +234,10 @@ function termUse(spec: ValueSpec, required: boolean | undefined, terms: Vocabula
     if (spec.exclusiveMax) range.exclusiveMax = true;
     if (Object.keys(range).length > 0) use.range = range;
   }
-  if (spec.kind === "enum") use.values = [...spec.values];
+  if (spec.kind === "enum") {
+    use.values = [...spec.values];
+    if (spec.valueDescriptions !== undefined) use.valueDescriptions = { ...spec.valueDescriptions };
+  }
   if (spec.kind === "array") {
     use.maxItems = spec.maxItems;
     use.items = termUse(spec.items, undefined, terms);
@@ -226,11 +249,11 @@ function termUse(spec: ValueSpec, required: boolean | undefined, terms: Vocabula
   return use;
 }
 
-function termUses(properties: PropertyMap, terms: Vocabulary["terms"]): Record<string, TermUse> {
+function termUses(properties: PropertyMap, terms: Terms): Record<string, TermUse> {
   const uses: Record<string, TermUse> = {};
   for (const spec of Object.values(properties) as PropertySpec[]) {
     // One entry per term: the definitions test guarantees each term has one definition.
-    terms[spec.term] ??= { definition: spec.description, kind: spec.kind };
+    defineTerm(terms, spec.term, spec.description, spec.kind);
     uses[spec.term] = termUse(spec, spec.required, terms);
   }
   return uses;
@@ -239,19 +262,30 @@ function termUses(properties: PropertyMap, terms: Vocabulary["terms"]): Record<s
 /**
  * The published vocabulary: every term with its definition, and per graph type the terms it
  * accepts (required or optional, kind, range), its derivation groups and its checks
- * (GSV-REQ-013, GSV-REQ-014, GSV-REQ-035). The shared options' `appliesTo` and `elementsOf` are
- * not published; their effect is in each type's terms.
+ * (GSV-REQ-013, GSV-REQ-014, GSV-REQ-035). `type` and `version` are terms too (GSV-REQ-012). The
+ * shared options' `appliesTo` and `elementsOf` are not published; their effect is in each type's
+ * terms.
  */
-// @spec GSV-REQ-013, GSV-REQ-014, GSV-REQ-015, GSV-REQ-035
+// @spec GSV-REQ-012, GSV-REQ-013, GSV-REQ-014, GSV-REQ-015, GSV-REQ-035
 export function buildVocabulary(registry: Registry): Vocabulary {
-  const terms: Vocabulary["terms"] = {};
+  const terms = Object.create(null) as Terms;
   const graphTypes: Vocabulary["graphTypes"] = {};
-  for (const type of registered(registry)) {
+  const types = registeredTypes(registry);
+  if (types.length > 0) {
+    defineTerm(terms, "type", TYPE_DEFINITION, "enum");
+    defineTerm(terms, "version", VERSION_DEFINITION, "integer");
+  }
+  const versions = [...SUPPORTED_VERSIONS];
+  for (const type of types) {
     const definition = registry[type]!;
     graphTypes[type] = {
       title: definition.title,
       description: definition.description,
-      properties: termUses(propertiesOf(type, registry), terms),
+      properties: {
+        type: { kind: "enum", required: true, values: [type] },
+        version: { kind: "integer", required: false, range: { min: Math.min(...versions), max: Math.max(...versions) } },
+        ...termUses(propertiesOf(type, registry), terms),
+      },
       derivations: definition.derivations.map((group) => ({
         members: [...group.members],
         description: group.description,
@@ -260,9 +294,15 @@ export function buildVocabulary(registry: Registry): Vocabulary {
       checks: definition.checks.map((check) => check.name),
     };
   }
-  const sortedTerms: Vocabulary["terms"] = {};
+  const sortedTerms: Terms = {};
   for (const term of Object.keys(terms).sort()) sortedTerms[term] = terms[term]!;
-  return { version: 1, terms: sortedTerms, graphTypes, colors: { ...namedColors }, limits: { descriptionValues: DESCRIPTION_VALUE_LIMIT } };
+  return {
+    descriptionVersions: versions,
+    terms: sortedTerms,
+    graphTypes,
+    colors: { ...namedColors },
+    limits: { descriptionValues: DESCRIPTION_VALUE_LIMIT },
+  };
 }
 
 const pascal = (type: string) => type.split("-").map((part) => part[0]!.toUpperCase() + part.slice(1)).join("");
@@ -299,14 +339,17 @@ function tsMembers(properties: PropertyMap, indent: string): string {
  */
 // @spec GSV-REQ-015
 export function buildDescriptionTypes(registry: Registry): string {
-  const types = registered(registry);
+  const types = registeredTypes(registry);
   const header = "// Generated by scripts/generate.ts from the graph-type definitions. Do not edit.\n";
+  const versions = SUPPORTED_VERSIONS.map(String).join(" | ");
   const interfaces = types.map((type) => {
     const definition = registry[type]!;
     return (
       `${comment(definition.description, "")}export interface ${pascal(type)}Description {\n` +
+      comment(TYPE_DEFINITION, "  ") +
       `  type: ${JSON.stringify(type)};\n` +
-      `  version?: 1;\n` +
+      comment(VERSION_DEFINITION, "  ") +
+      `  version?: ${versions};\n` +
       tsMembers(propertiesOf(type, registry), "  ") +
       "}\n"
     );
@@ -322,19 +365,25 @@ function built() {
   return cache;
 }
 
-/** The published JSON Schema of the description, as also shipped in `./schema.json` (GSV-REQ-010). */
+/**
+ * The published JSON Schema of the description, as also shipped in `./schema.json`
+ * (GSV-REQ-010). Frozen; copy it (`structuredClone`) to change it.
+ */
 // @spec GSV-REQ-010
-export function getSchema(): JsonSchema {
+export function getSchema(): DeepReadonly<JsonSchema> {
   return built().schema;
 }
 
-/** The strict tool-profile schema, for the model tool (AD-006). */
-export function getToolSchema(): JsonSchema {
+/** The strict tool-profile schema, for the model tool (AD-006). Frozen; copy it to change it. */
+export function getToolSchema(): DeepReadonly<JsonSchema> {
   return built().toolSchema;
 }
 
-/** The published vocabulary, as also shipped in `./vocabulary.json` (GSV-REQ-010, GSV-REQ-013). */
+/**
+ * The published vocabulary, as also shipped in `./vocabulary.json` (GSV-REQ-010, GSV-REQ-013).
+ * Frozen; copy it to change it.
+ */
 // @spec GSV-REQ-010, GSV-REQ-013
-export function getVocabulary(): Vocabulary {
+export function getVocabulary(): DeepReadonly<Vocabulary> {
   return built().vocabulary;
 }

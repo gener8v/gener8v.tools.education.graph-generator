@@ -1,24 +1,31 @@
-import Ajv2020 from "ajv/dist/2020";
+import { existsSync, readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { type Registry, definitions, propertiesOf } from "../../src/core/definitions/index";
+import { type Registry, definitions, propertiesOf, registeredTypes } from "../../src/core/definitions/index";
 import { GRAPH_TYPES, type GraphType, type PropertyMap, type ValueSpec } from "../../src/core/definitions/types";
-import { buildSchema } from "../../src/core/schema";
+import { type JsonSchema, buildSchema } from "../../src/core/schema";
 import { namedColors } from "../../src/core/style";
 import { validateWith } from "../../src/core/validate/index";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions/index";
+import { createAjv } from "../helpers/ajv";
 
 // GSV-NFR-003 (and GSV-REQ-011): no description the published schema rejects passes `validate`.
-// fast-check generates at least 1,000 descriptions per registered graph type, in three families:
-// built from the definition (mostly well-formed), mutated (wrong kinds, out-of-range values, extra
-// and dropped keys) and random JSON. The registered types join as each type ticket lands; the
-// fixture types stand in until then.
+// A counterexample is a description the validator accepts and the schema rejects, so the
+// generator works one fault away from a valid base description of each type (code review CR-001,
+// quality reviews QR-001 and QR-002 on TICKET-005):
+//   - the base itself;
+//   - one change at one place, at any depth: a value replaced, a property deleted, or an unknown
+//     key added beside it;
+//   - a list grown to exactly its maxItems, or one past it;
+//   - the base under another type, and random JSON.
+// Registered types take their base from examples/<type>.json, which each type ticket produces.
+// The test covers the JSON form of a description (an `undefined`-valued key is not JSON).
 const RUNS = 1_000;
-// strictRequired is an Ajv lint, not a JSON Schema rule: a derivation group's `anyOf: [{ required }]`
-// names properties defined beside it, which the specification allows.
-const ajv = new Ajv2020({ strict: true, strictTypes: false, strictRequired: false, allowUnionTypes: true });
-
+const ajv = createAjv();
 const colorNames = Object.keys(namedColors);
+
+type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+type Path = Array<string | number>;
 
 /** Values for one spec: usually well-formed, sometimes not. */
 function value(spec: ValueSpec): fc.Arbitrary<unknown> {
@@ -35,7 +42,7 @@ function value(spec: ValueSpec): fc.Arbitrary<unknown> {
       return fc.oneof({ weight: 6, arbitrary: inside }, fc.double({ noNaN: true, noDefaultInfinity: true }), fc.constantFrom(min, max, 0, -1), anything);
     }
     case "string":
-      return fc.oneof({ weight: 4, arbitrary: fc.string({ maxLength: 12 }) }, fc.constantFrom("", "A title", "x < 5"), anything);
+      return fc.oneof({ weight: 4, arbitrary: fc.string({ maxLength: 12, unit: "binary" }) }, fc.constantFrom("", "A title", "x < 5"), anything);
     case "boolean":
       return fc.oneof({ weight: 4, arbitrary: fc.boolean() }, anything);
     case "color":
@@ -47,81 +54,164 @@ function value(spec: ValueSpec): fc.Arbitrary<unknown> {
     case "enum":
       return fc.oneof({ weight: 4, arbitrary: fc.constantFrom(...spec.values) }, fc.string({ maxLength: 6 }), anything);
     case "object":
-      return fc.oneof({ weight: 6, arbitrary: object(spec.properties) }, anything);
     case "array":
-      return fc.oneof({ weight: 6, arbitrary: fc.array(value(spec.items), { maxLength: Math.min(spec.maxItems + 1, 4) }) }, anything);
+      return anything;
   }
 }
 
-/** An object for a property map: required keys usually present, optional ones sometimes, and now and then an extra key. */
-function object(properties: PropertyMap): fc.Arbitrary<Record<string, unknown>> {
-  const specs = Object.values(properties);
-  const record = fc.record(Object.fromEntries(specs.map((spec) => [spec.term, value(spec)])), {
-    requiredKeys: specs.filter((spec) => spec.required).map((spec) => spec.term),
+/** A place a single fault can go, found by walking a base description along its spec. */
+type Site =
+  | { kind: "value"; path: Path; spec: ValueSpec; deletable: boolean }
+  | { kind: "extra"; path: Path }
+  | { kind: "length"; path: Path; maxItems: number };
+
+function sites(base: Json, properties: PropertyMap, path: Path = [], found: Site[] = []): Site[] {
+  found.push({ kind: "extra", path });
+  const object = base as Record<string, Json>;
+  for (const spec of Object.values(properties)) {
+    const at = [...path, spec.term];
+    found.push({ kind: "value", path: at, spec, deletable: true });
+    const inner = object[spec.term];
+    if (inner === undefined) continue;
+    if (spec.kind === "object") sites(inner, spec.properties, at, found);
+    if (spec.kind === "array" && Array.isArray(inner)) {
+      if (inner.length > 0) found.push({ kind: "length", path: at, maxItems: spec.maxItems });
+      inner.forEach((element, index) => {
+        if (spec.items.kind === "object") sites(element, spec.items.properties, [...at, index], found);
+        else found.push({ kind: "value", path: [...at, index], spec: spec.items, deletable: false });
+      });
+    }
+  }
+  return found;
+}
+
+/** The parent object (or list) of a path, and the last key, in a copy of the base. */
+function locate(root: Json, path: Path): [Record<string | number, unknown>, string | number] {
+  let parent = root as Record<string | number, unknown>;
+  for (const key of path.slice(0, -1)) parent = parent[key] as Record<string | number, unknown>;
+  return [parent, path[path.length - 1]!];
+}
+
+function oneFault(base: Json, properties: PropertyMap): fc.Arbitrary<unknown> {
+  const all = sites(base, properties);
+  return fc.constantFrom(...all).chain((site) => {
+    switch (site.kind) {
+      case "value": {
+        const change = site.deletable ? fc.oneof({ weight: 4, arbitrary: value(site.spec).map((v) => ({ set: v })) }, fc.constant({ delete: true })) : value(site.spec).map((v) => ({ set: v }));
+        return change.map((action) => {
+          const copy = structuredClone(base);
+          const [parent, key] = locate(copy, site.path);
+          if ("delete" in action) delete parent[key];
+          else parent[key] = action.set;
+          return copy;
+        });
+      }
+      case "extra":
+        return fc.tuple(fc.constantFrom("sparkle", "raduis", "colour", "lable"), fc.jsonValue({ maxDepth: 1 })).map(([key, extra]) => {
+          const copy = structuredClone(base);
+          const target = site.path.reduce<Record<string | number, unknown>>((node, step) => node[step] as Record<string | number, unknown>, copy as Record<string, unknown>);
+          target[key] = extra;
+          return copy;
+        });
+      case "length":
+        return fc.constantFrom(site.maxItems, site.maxItems + 1).map((length) => {
+          const copy = structuredClone(base);
+          const [parent, key] = locate(copy, site.path);
+          const list = parent[key] as Json[];
+          parent[key] = Array.from({ length }, (_, index) => structuredClone(list[index % list.length]!));
+          return copy;
+        });
+    }
   });
-  return fc
-    .tuple(record, fc.option(fc.tuple(fc.constantFrom("sparkle", "raduis", "colour"), fc.jsonValue({ maxDepth: 1 })), { freq: 8 }), fc.option(fc.constantFrom(...specs.map((spec) => spec.term)), { freq: 6 }))
-    .map(([base, extra, drop]) => {
-      const result: Record<string, unknown> = { ...base };
-      if (extra !== null) result[extra[0]] = extra[1];
-      if (drop !== null) delete result[drop];
-      return result;
-    });
 }
 
-/** Descriptions of one type: built, mutated, of another type, random, and known-valid examples. */
-function descriptions(type: GraphType, registry: Registry, examples: readonly unknown[]): fc.Arbitrary<unknown> {
-  const body = object(propertiesOf(type, registry));
-  const version = fc.option(fc.constantFrom<unknown>(1, 2, "1", null), { freq: 4 });
-  const built = fc.tuple(body, version).map(([properties, v]) => ({ type, ...properties, ...(v === null ? {} : { version: v }) }));
-  const otherType = fc.tuple(body, fc.constantFrom<unknown>("pie", ...GRAPH_TYPES)).map(([properties, t]) => ({ ...properties, type: t }));
-  const families = [
-    { weight: 6, arbitrary: built },
+function descriptions(type: GraphType, registry: Registry, base: Json): fc.Arbitrary<unknown> {
+  const properties = propertiesOf(type, registry);
+  const otherType = fc.constantFrom<unknown>("pie", ...GRAPH_TYPES.filter((other) => other !== type)).map((other) => ({
+    ...(base as object),
+    type: other,
+  }));
+  const version = fc.constantFrom<unknown>(1, 2, "1", null).map((v) => ({ ...(base as object), version: v }));
+  return fc.oneof(
+    { weight: 1, arbitrary: fc.constant(base) },
+    { weight: 12, arbitrary: oneFault(base, properties) },
+    { weight: 1, arbitrary: version },
     { weight: 1, arbitrary: otherType },
-    { weight: 1, arbitrary: fc.jsonValue({ maxDepth: 3 }) as fc.Arbitrary<unknown> },
-  ];
-  if (examples.length > 0) families.push({ weight: 1, arbitrary: fc.constantFrom(...examples) });
-  return fc.oneof(...families);
+    { weight: 1, arbitrary: fc.jsonValue({ maxDepth: 3 }) },
+  );
 }
 
-const examplesOf = (type: GraphType, examples: readonly unknown[]) =>
-  examples.filter((example) => (example as { type?: unknown }).type === type);
+/** The base description of a registered type: examples/<type>.json, which each type ticket produces. */
+function exampleFile(type: GraphType): Json {
+  const file = new URL(`../../examples/${type}.json`, import.meta.url);
+  if (!existsSync(file)) {
+    throw new Error(`No examples/${type}.json: add a valid ${type} description there; the agreement test (GSV-NFR-003) mutates it.`);
+  }
+  return JSON.parse(readFileSync(file, "utf8")) as Json;
+}
 
-const registered = (registry: Registry) => GRAPH_TYPES.filter((type) => registry[type] !== undefined);
+/** Run the agreement property for one type; returns how often each side was exercised. */
+function agreement(type: GraphType, registry: Registry, base: Json, schema: JsonSchema = buildSchema(registry), runs = RUNS) {
+  const accepts = ajv.compile(schema);
+  let schemaRejected = 0;
+  let bothAccepted = 0;
+  const outcome = fc.check(
+    fc.property(descriptions(type, registry, base), (description) => {
+      const schemaValid = accepts(description);
+      const result = validateWith(description, registry);
+      if (!schemaValid) schemaRejected += 1;
+      if (schemaValid && result.valid) bothAccepted += 1;
+      // The validator may be stricter than the schema, never looser.
+      return schemaValid || !result.valid;
+    }),
+    { numRuns: runs },
+  );
+  return { outcome, schemaRejected, bothAccepted };
+}
 
 describe("the published schema and the validator agree (GSV-NFR-003, GSV-REQ-011)", () => {
-  for (const [name, registry] of [
-    ["fixture", fixtureRegistry],
-    ["registered", definitions],
-  ] as const) {
-    const accepts = ajv.compile(buildSchema(registry));
-    for (const type of registered(registry)) {
+  const legs: Array<[string, Registry, (type: GraphType) => Json]> = [
+    ["fixture", fixtureRegistry, (type) => fixtureExamples.find((example) => example.type === type) as unknown as Json],
+    ["registered", definitions, exampleFile],
+  ];
+  for (const [name, registry, baseOf] of legs) {
+    for (const type of registeredTypes(registry)) {
       it(`${name} ${type}: nothing the schema rejects passes validate (${RUNS} descriptions)`, () => {
-        let schemaRejected = 0;
-        let bothAccepted = 0;
-        fc.assert(
-          fc.property(descriptions(type, registry, examplesOf(type, name === "fixture" ? fixtureExamples : [])), (description) => {
-            const schemaValid = accepts(description);
-            const result = validateWith(description, registry);
-            if (!schemaValid) schemaRejected += 1;
-            if (schemaValid && result.valid) bothAccepted += 1;
-            // The validator may be stricter than the schema, never looser.
-            return schemaValid || !result.valid;
-          }),
-          { numRuns: RUNS },
-        );
-        // The generator explores both sides of the boundary.
-        expect(schemaRejected).toBeGreaterThan(RUNS / 10);
-        expect(bothAccepted).toBeGreaterThan(0);
+        const base = baseOf(type);
+        expect(validateWith(base, registry).valid, `the ${type} base description must be valid`).toBe(true);
+        const { outcome, schemaRejected, bothAccepted } = agreement(type, registry, base);
+        expect(outcome.failed, outcome.counterexample ? JSON.stringify(outcome.counterexample) : "").toBe(false);
+        // Both sides of the boundary are exercised in earnest.
+        expect(schemaRejected, "descriptions the schema rejected").toBeGreaterThan(RUNS / 10);
+        expect(bothAccepted, `descriptions both accepted; check the ${type} base description`).toBeGreaterThan(RUNS / 10);
       });
     }
   }
 
-  it("accepts every fixture example in both", () => {
-    const accepts = ajv.compile(buildSchema(fixtureRegistry));
-    for (const example of fixtureExamples) {
-      expect(accepts(example), JSON.stringify(accepts.errors)).toBe(true);
-      expect(validateWith(example, fixtureRegistry).valid).toBe(true);
-    }
+  it("finds a validator that misses a nested schema rule (negative control)", () => {
+    // A schema stricter than the validator in one nested place: number-line tickCount at most 10.
+    const strict = structuredClone(buildSchema(fixtureRegistry)) as JsonSchema;
+    const numberLine = (strict["anyOf"] as JsonSchema[]).find(
+      (entry) => ((entry["properties"] as Record<string, JsonSchema>)["type"]!["const"] as string) === "number-line",
+    )!;
+    (numberLine["properties"] as Record<string, JsonSchema>)["tickCount"]!["maximum"] = 10;
+    const base = fixtureExamples.find((example) => example.type === "number-line") as unknown as Json;
+    const { outcome } = agreement("number-line", fixtureRegistry, base, strict);
+    expect(outcome.failed).toBe(true);
+  });
+
+  it("reaches a list's maxItems and one past it", () => {
+    const base = fixtureExamples.find((example) => example.type === "xy-graph") as unknown as Json;
+    const lengths = new Set<number>();
+    fc.assert(
+      fc.property(descriptions("xy-graph", fixtureRegistry, base), (description) => {
+        const points = description !== null && typeof description === "object" ? (description as { points?: unknown }).points : undefined;
+        if (Array.isArray(points)) lengths.add(points.length);
+        return true;
+      }),
+      { numRuns: RUNS },
+    );
+    expect(lengths.has(1_000)).toBe(true);
+    expect(lengths.has(1_001)).toBe(true);
   });
 });
