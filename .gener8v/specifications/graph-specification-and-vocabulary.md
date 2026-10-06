@@ -161,3 +161,15 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 - Assumption: Validation is strict — unknown and inapplicable properties are errors, not warnings, so a model's mistakes are always surfaced
 - Assumption: The type-specific parameters (ranges, points, series, side lengths and so on) are defined by the three rendering areas and enter this area's single definition; this area owns the mechanism, the shared properties and the rules that apply across types
 - Assumption: Parsing JSON text into an object is done by the caller or by the model-tool handler in Component Packaging & Source Export
+
+## @spec Coverage
+
+| Requirement | Code Location(s) |
+|-------------|-----------------|
+| GSV-REQ-027 | `src/core/result.ts`:ValidationResult |
+| GSV-REQ-029 | `src/core/result.ts`:Issue, ValidationResult; `src/core/issues.ts`:pointer, createIssue |
+| GSV-REQ-030 | `src/core/result.ts`:Issue; `src/core/issues.ts`:ISSUE_CODES, issueDocs |
+| GSV-REQ-031 | `src/core/result.ts`:Issue; `src/core/issues.ts`:issueMessage, createIssue |
+| GSV-REQ-032 | `src/core/result.ts`:Issue; `src/core/issues.ts`:createIssue |
+| GSV-REQ-033 | `src/core/result.ts`:Issue, ValidationResult; `src/core/issues.ts`:createIssue |
+| GSV-REQ-034 | `src/core/issues.ts`:ISSUE_CODES |
