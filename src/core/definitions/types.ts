@@ -1,0 +1,141 @@
+import type { Terms } from "../issues";
+import type { Issue } from "../result";
+
+/**
+ * The graph types of this change (GSV-REQ-003), as `type` values in kebab case (AD-005).
+ * TICKET-006 checks that every one of them has a registered definition.
+ */
+// @spec GSV-REQ-003
+export const GRAPH_TYPES = Object.freeze([
+  "number-line",
+  "xy-graph",
+  "xyz-graph",
+  "line-graph",
+  "bar-graph",
+  "pictograph",
+  "circle",
+  "square",
+  "triangle",
+  "cube",
+  "cylinder",
+] as const);
+
+export type GraphType = (typeof GRAPH_TYPES)[number];
+
+/** The kinds of value a property accepts. There is no markup kind: text is always plain. */
+export const PROPERTY_KINDS = Object.freeze([
+  "number",
+  "integer",
+  "string",
+  "boolean",
+  "color",
+  "enum",
+  "object",
+  "array",
+] as const);
+
+export type PropertyKind = (typeof PROPERTY_KINDS)[number];
+
+/**
+ * Which shared presentation option a property is (GSV-REQ-040). `itemLabel` and `itemColor` sit
+ * on one point, segment or series, so they affect that element only (GSV-REQ-045).
+ */
+// @spec GSV-REQ-040, GSV-REQ-045
+export type PresentationOption = "title" | "lineColor" | "lineLabel" | "axisLabel" | "itemLabel" | "itemColor";
+
+interface ValueBase {
+  /** Plain-English definition, published with the schema and the vocabulary. */
+  description: string;
+}
+
+/** A number; bounds are inclusive unless the matching flag is set, as in an issue's `range`. */
+export interface NumberValue extends ValueBase {
+  kind: "number" | "integer";
+  min?: number;
+  max?: number;
+  exclusiveMin?: boolean;
+  exclusiveMax?: boolean;
+}
+
+/** Plain text, never interpreted as markup (GSV-REQ-043). */
+export interface StringValue extends ValueBase {
+  kind: "string";
+}
+
+export interface BooleanValue extends ValueBase {
+  kind: "boolean";
+}
+
+/** A published color name or a hexadecimal code (GSV-REQ-042); see `resolveColor`. */
+export interface ColorValue extends ValueBase {
+  kind: "color";
+}
+
+export interface EnumValue extends ValueBase {
+  kind: "enum";
+  values: Terms;
+}
+
+export interface ObjectValue extends ValueBase {
+  kind: "object";
+  properties: PropertyMap;
+}
+
+export interface ArrayValue extends ValueBase {
+  kind: "array";
+  /** What each element is. */
+  items: ValueSpec;
+}
+
+/** The kind of value accepted, with what that kind needs. */
+export type ValueSpec = NumberValue | StringValue | BooleanValue | ColorValue | EnumValue | ObjectValue | ArrayValue;
+
+/**
+ * One property of a description. A property's key in its map equals its `term`, and the spec
+ * declares that term with its definition (GSV-REQ-012).
+ */
+// @spec GSV-REQ-012, GSV-REQ-043
+export type PropertySpec = ValueSpec & {
+  /** The vocabulary term, a camel-cased noun phrase (AD-005). */
+  term: string;
+  required: boolean;
+  presentation?: PresentationOption;
+};
+
+export type PropertyMap = Readonly<Record<string, PropertySpec>>;
+
+/** A description of some graph type, before its type-specific shape is known. */
+export interface DescriptionBase {
+  readonly type: GraphType;
+  readonly [property: string]: unknown;
+}
+
+/** A group of mutually determining values (GSV-REQ-035), such as radius, diameter and circumference. */
+export interface Derivation {
+  /** The members, the preferred defining value first. */
+  members: Terms;
+  /** Every member's value, from the value of one member. */
+  derive(term: string, value: number): Readonly<Record<string, number>>;
+}
+
+/**
+ * A type-specific check that reports issues the shape alone cannot (domain stage, AD-004).
+ * Declared through method syntax so its parameter is bivariant: a check written for one graph
+ * type's description can sit in the registry typed by `DescriptionBase`.
+ */
+export type DomainCheck<D extends DescriptionBase = DescriptionBase> = {
+  check(description: D): readonly Issue[];
+}["check"];
+
+/** Everything about one graph type, the single source for types, schemas, vocabulary and validation (AD-003). */
+export interface GraphTypeDefinition<D extends DescriptionBase = DescriptionBase> {
+  type: D["type"];
+  /** A short name, e.g. "Circle". */
+  title: string;
+  description: string;
+  properties: PropertyMap;
+  derivations: readonly Derivation[];
+  checks: readonly DomainCheck<D>[];
+  /** The plain-text alternative for a normalized description. */
+  describe(normalized: D): string;
+}
