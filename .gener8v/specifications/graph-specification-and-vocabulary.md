@@ -168,8 +168,8 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 |-------------|-----------------|
 | GSV-REQ-027 | `src/core/result.ts`:ValidationResult |
 | GSV-REQ-029 | `src/core/result.ts`:Issue, ValidationResult; `src/core/issues.ts`:pointer, createIssue |
-| GSV-REQ-030 | `src/core/result.ts`:Issue; `src/core/issues.ts`:ISSUE_CODES, issueDocs |
-| GSV-REQ-031 | `src/core/result.ts`:Issue; `src/core/issues.ts`:issueMessage, createIssue |
-| GSV-REQ-032 | `src/core/result.ts`:Issue; `src/core/issues.ts`:createIssue |
+| GSV-REQ-030 | `src/core/result.ts`:Issue; `src/core/issues.ts`:ISSUE_CODES, isIssueCode, issueDocs |
+| GSV-REQ-031 | `src/core/result.ts`:Issue; `src/core/issues.ts`:IssueParamsByCode, templates, issueMessage, createIssue |
+| GSV-REQ-032 | `src/core/result.ts`:Issue; `src/core/issues.ts`:IssueParamsByCode, createIssue |
 | GSV-REQ-033 | `src/core/result.ts`:Issue, ValidationResult; `src/core/issues.ts`:createIssue |
 | GSV-REQ-034 | `src/core/issues.ts`:ISSUE_CODES |

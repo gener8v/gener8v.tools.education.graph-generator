@@ -155,4 +155,35 @@ None — implementation followed the approved plan. `describeValue`, `describeRa
 
 ## Post-Review Amendments
 
-None
+Resolution of `graph-library/graph-specification-and-vocabulary-ticket-002-code-review`, `-quality-review` and `-security-review`, 2026-10-05, decisions by the Product Owner. The three reports overlapped, so the fixes are recorded once, by group.
+
+- **graph-specification-and-vocabulary-ticket-002-quality-review/QR-001, QR-002, QR-003; graph-specification-and-vocabulary-ticket-002-code-review/CR-001, CR-002**: inputs typed per code. The flat `IssueParams` is replaced by `IssueParamsByCode`, so the compiler requires exactly the inputs each message uses, and the filler text ("none", "a valid value", "a different kind of value", "a different number of") is gone. The `switch` is replaced by a `templates` record keyed by code; a missing key is a compile error. Message-only values have their own names (`conflictTerms`, `tickCount`, `maxTicks`, `fittingSpacing`, `valueCount`, `categoryCount`) and `createIssue` never copies them. It copies only `expected`, `range`, `conflicts`, `suggestion` and `allowed`, which now always mean what `Issue` documents. `too_many_ticks` names the spacing that would fit (NLC TICKET-001). The contradiction message names the other properties by vocabulary term. **Correction to the Notes above:** the third bullet's advice to "pass vocabulary terms in `conflicts` for display" is superseded. Pass pointers in `conflicts` and terms in `conflictTerms`. The 24 per-code tests are replaced by one inline snapshot holding every message, plus a snapshot of the other branches. Files: `src/core/issues.ts`, `tests/core/issues.test.ts`.
+- **graph-specification-and-vocabulary-ticket-002-code-review/CR-003; graph-specification-and-vocabulary-ticket-002-quality-review/QR-004**: `normalizeRange` keeps only finite bounds and only the exclusive flags whose bound remains. `createIssue` omits `range` when nothing remains, and messages describe the same normalised range. File: `src/core/issues.ts`.
+- **graph-specification-and-vocabulary-ticket-002-code-review/CR-004; graph-specification-and-vocabulary-ticket-002-quality-review/QR-005**: `./core` exports only the contract: `ISSUE_CODES`, `isIssueCode`, `issueDocs`, and the types `IssueCode`, `Issue`, `Issues`, `Provenance`, `Range`, `ValidationResult`. Construction and formatting helpers stay internal, and package code imports them by path. **Correction to Deviations above:** the helpers are no longer published. `./core` is 1.17 kB minified and gzipped. File: `src/core/index.ts`.
+- **graph-specification-and-vocabulary-ticket-002-security-review/SEC-001 (core parts), SEC-003 (core parts), SEC-004, SEC-005; graph-specification-and-vocabulary-ticket-002-quality-review/QR-007**: every caller input is cleaned once, in `src/core/issues.ts`.
+  - `describeTerm` shows a term as written only when it is term-shaped and at most 64 characters; otherwise it is quoted and escaped. It is used for `term`, `graphType`, `suggestion` and every list item.
+  - `describeValue` escapes DEL, C1, bidi, zero-width, separator and BOM characters, which `JSON.stringify` leaves alone. Functions, symbols and big integers are described by kind, never by their text, and a revoked Proxy no longer throws.
+  - `detail` is escaped and capped at 200 characters.
+  - `not_an_object`, `unknown_graph_type`, `unsupported_version` and `invalid_json` have fixed subjects. `internal_error` takes no inputs and has a fixed message.
+  - `issueMessage` throws on a string that is not a code (`Object.hasOwn` guard), instead of returning `undefined`.
+  - `issueDocs` has a null prototype, and `isIssueCode` is added.
+  - The invisible-character set is written as numeric code-point ranges, so the source contains no invisible characters.
+  - Tests cover newline, ESC/BEL, CSI, RLO, U+2028, zero-width, markup and 10,000-character keys.
+- **graph-specification-and-vocabulary-ticket-002-quality-review/QR-006**: a `RELEASED_CODES` list checked with `arrayContaining`, which fails only on a rename or removal. The code-list snapshot is kept for review visibility. File: `tests/core/issues.test.ts`.
+- **graph-specification-and-vocabulary-ticket-002-quality-review/QR-008**: agreeing values and fitting spacings are rounded to 4 significant figures, "a"/"an" is chosen correctly ("an xy-graph"), and axis and scale ranges read "from -10 to 10" (`describeInterval`). File: `src/core/issues.ts`.
+- **graph-specification-and-vocabulary-ticket-002-security-review/SEC-001 (sink parts), SEC-002, SEC-003 (sink parts)**: Deferred to graph-library/component-packaging-and-source-export/TICKET-003, TICKET-006 and TICKET-007, and graph-library/graph-specification-and-vocabulary/TICKET-003, with Known Hazards appended: one shared `formatIssue` that escapes `path`, the placeholder rendered as React text only, display capped at the first 20 issues, and no exception text in issues. **Product Owner decision (SEC-002):** the validator does not cap issues, and GSV-REQ-029 stands as written.
+
+Re-verification after the amendments (Node.js v24.1.0, pnpm 10.28.2):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm lint` | 0 | no findings |
+| `pnpm typecheck` | 0 | no errors |
+| `pnpm test` | 0 | 5 files, 146 tests passed (`tests/core/issues.test.ts`: 36; the 24 per-code tests became one snapshot) |
+| `pnpm build` | 0 | all entries and declarations emitted |
+| `pnpm check:dist` | 0 | no network APIs in built output |
+| `pnpm size` | 0 | `./core` 1.17 kB of 25 kB |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm check:changesets` | 0 | 0 changesets |
