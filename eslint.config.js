@@ -13,6 +13,9 @@ const CYCLE_MESSAGE =
 const RENDER_MESSAGE =
   "Rendering code must give the same output on the server and in the browser, so it may not read browser globals (CPSE-REQ-011, prd/TC-001).";
 
+const PURE_MESSAGE =
+  "Components are pure: no hooks, state, effects or client boundary, so they work as React Server Components (AD-014, prd/IC-002).";
+
 const SCRIPT_EXTENSIONS = "{ts,tsx,mts,cts,js,jsx,mjs,cjs}";
 const NON_RENDERING_DIRS = ["core", "tool", "export", "layout"];
 
@@ -60,6 +63,18 @@ const browserGlobalSyntax = (message) => ({
   message,
 });
 
+// Hooks reached by name (`useState`) or through an object (`React.useState`), and the
+// "use client" directive.
+const HOOK_PATTERN = "^use([A-Z]|$)";
+const pureImportOptions = {
+  paths: networkImportPaths,
+  patterns: [{ group: ["react", "react-dom", "react-dom/*"], importNamePattern: HOOK_PATTERN, message: PURE_MESSAGE }],
+};
+const pureSyntax = [
+  { selector: `CallExpression[callee.property.name=/${HOOK_PATTERN}/]`, message: PURE_MESSAGE },
+  { selector: "ExpressionStatement[directive='use client']", message: PURE_MESSAGE },
+];
+
 const boundarySyntax = [
   { selector: `ImportExpression[source.value=/${REACT_PATTERN}/]`, message: BOUNDARY_MESSAGE },
   {
@@ -103,12 +118,14 @@ export default defineConfig(
   {
     // React is allowed here, browser globals are not: the type checker no longer catches them,
     // because @types/jsdom brings the DOM library into the program (quality review QR-003).
+    // Hooks and "use client" are rejected too (AD-014, prd/IC-002).
     // Repeats the network restrictions, which this block's rule options replace.
     // @spec CPSE-REQ-011
     files: [`src/react/**/*.${SCRIPT_EXTENSIONS}`],
     rules: {
       "no-restricted-globals": ["error", ...networkGlobals, ...browserGlobals(RENDER_MESSAGE)],
-      "no-restricted-syntax": ["error", ...networkSyntax, browserGlobalSyntax(RENDER_MESSAGE)],
+      "no-restricted-imports": ["error", pureImportOptions],
+      "no-restricted-syntax": ["error", ...networkSyntax, browserGlobalSyntax(RENDER_MESSAGE), ...pureSyntax],
     },
   },
   {

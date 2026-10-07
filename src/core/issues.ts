@@ -382,3 +382,19 @@ export function createIssue<C extends IssueCode>(code: C, path: string, params: 
   if (fields.allowed !== undefined) issue.allowed = [...fields.allowed];
   return issue;
 }
+
+const MAX_PATH_CHARS = 200;
+
+/**
+ * One issue as a line of text: `<path>: <message>`, or the message alone for the whole
+ * description. The path is a faithful JSON Pointer and may hold raw control or invisible
+ * characters from caller keys, so it is clipped and escaped exactly as caller text in messages is;
+ * the message is escaped again, which leaves a package-built message unchanged. Every place the
+ * package prints an issue as text uses this (GSV TICKET-002 security review SEC-001).
+ */
+// @spec CPSE-REQ-015
+export function formatIssue(issue: Pick<Issue, "path" | "message">): string {
+  const message = escapeChars(String(issue.message));
+  const path = String(issue.path);
+  return path === "" ? message : `${escapeChars(clip(path, MAX_PATH_CHARS))}: ${message}`;
+}

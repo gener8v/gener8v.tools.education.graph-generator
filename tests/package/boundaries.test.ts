@@ -66,13 +66,40 @@ describe("import boundaries for non-rendering code (CPSE-REQ-006, prd/TC-005)", 
   });
 
   it("allows react in the React renderer", async () => {
-    const ids = await ruleIds(`import { useState } from "react";\nexport const x = useState;\n`, "src/react/fixture.ts");
-    expect(ids).not.toContain("no-restricted-imports");
+    const ids = await ruleIds(`import { createElement } from "react";\nexport const x = createElement;\n`, "src/react/fixture.ts");
+    expect(ids).toEqual([]);
   });
 
   it("accepts a clean non-rendering module", async () => {
     const ids = await ruleIds(`export function add(a: number, b: number): number {\n  return a + b;\n}\n`, "src/core/fixture.ts");
     expect(ids).toEqual([]);
+  });
+});
+
+describe("components are pure: no hooks, state, effects or client boundary (AD-014, prd/IC-002)", () => {
+  const cases: Array<[string, string, string]> = [
+    ["useState", `import { useState } from "react";\nexport const x = useState;\n`, "no-restricted-imports"],
+    ["useEffect, renamed", `import { useEffect as run } from "react";\nexport const x = run;\n`, "no-restricted-imports"],
+    ["use", `import { use } from "react";\nexport const x = use;\n`, "no-restricted-imports"],
+    ["useFormStatus", `import { useFormStatus } from "react-dom";\nexport const x = useFormStatus;\n`, "no-restricted-imports"],
+    ["React.useState", `import * as React from "react";\nexport const f = () => React.useState(0);\n`, "no-restricted-syntax"],
+    ["\"use client\"", `"use client";\nexport const x = 1;\n`, "no-restricted-syntax"],
+  ];
+  for (const [name, code, rule] of cases) {
+    it(`rejects ${name} in src/react`, async () => {
+      expect(await ruleIds(code, "src/react/fixture.tsx")).toContain(rule);
+    });
+  }
+
+  it("does not mistake other names starting with use", async () => {
+    expect(await ruleIds(`export const user = { useful: () => 1 };\nexport const u = user.useful();\n`, "src/react/fixture.tsx")).toEqual([]);
+  });
+
+  it("passes every shipped component", async () => {
+    const { readdirSync, readFileSync } = await import("node:fs");
+    for (const file of readdirSync("src/react")) {
+      expect([file, await ruleIds(readFileSync(`src/react/${file}`, "utf8"), `src/react/${file}`)]).toEqual([file, []]);
+    }
   });
 });
 

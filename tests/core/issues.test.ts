@@ -8,6 +8,7 @@ import {
   describeRange,
   describeTerm,
   describeValue,
+  formatIssue,
   isIssueCode,
   issueDocs,
   issueMessage,
@@ -484,5 +485,31 @@ describe("JSON Pointer paths (RFC 6901, AD-005)", () => {
     expect(pointer("a/b")).toBe("/a~1b");
     expect(pointer("m~n")).toBe("/m~0n");
     expect(pointer("~/")).toBe("/~0~1");
+  });
+});
+
+describe("formatIssue (GSV TICKET-002 security review SEC-001)", () => {
+  const message = "radius must be greater than 0; got -1.";
+
+  it("prints path and message, or the message alone for the whole description", () => {
+    expect(formatIssue({ path: "/radius", message })).toBe(`/radius: ${message}`);
+    expect(formatIssue(createIssue("internal_error", "", {}))).toBe(issueMessage("internal_error", {}));
+  });
+
+  it("escapes control, bidi and zero-width characters in the path", () => {
+    const path = pointer(`a\u0000b\u202ec\u200bd\u200de\n`);
+    expect(formatIssue({ path, message })).toBe(`/a\\u0000b\\u202ec\\u200bd\\u200de\\u000a: ${message}`);
+  });
+
+  it("clips a long path", () => {
+    const line = formatIssue({ path: `/${"k".repeat(10_000)}`, message });
+    expect(line.length).toBeLessThan(200 + message.length + 3);
+    expect(line).toContain("...: ");
+  });
+
+  it("leaves a package-built message unchanged, and escapes one that is not", () => {
+    const issue = createIssue("unknown_property", pointer("x\u202e"), { term: "x\u202e", graphType: "circle", allowed: ["radius"] });
+    expect(formatIssue(issue)).toBe(`/x\\u202e: ${issue.message}`);
+    expect(formatIssue({ path: "", message: "a\u202eb" })).toBe("a\\u202eb");
   });
 });

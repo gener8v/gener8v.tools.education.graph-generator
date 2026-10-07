@@ -1,0 +1,20 @@
+import type { ReactElement } from "react";
+import { type GraphProps, renderGraph } from "./createGraphComponent";
+
+/**
+ * The entry component (CPSE-REQ-008): renders a description of any graph type as an accessible
+ * SVG that scales to its container, or, for an invalid description, the chosen `fallback`
+ * (default: a placeholder listing the issues). Pure, with no hooks, state or effects, so it works
+ * as a React Server Component (AD-014, prd/IC-002). Never throws because of its description
+ * (CPSE-REQ-018); its output for a valid description is exactly the per-type component's
+ * (CPSE-REQ-010).
+ *
+ * The validator bounds its own work, but it still reads the whole input object: a server that
+ * renders descriptions from requests must keep its own request-body size limit (GSV TICKET-003
+ * security review SEC-001).
+ */
+// @spec CPSE-REQ-008, CPSE-REQ-010, CPSE-REQ-014, CPSE-REQ-015, CPSE-REQ-016, CPSE-REQ-017, CPSE-REQ-018
+export function Graph(props: GraphProps): ReactElement {
+  // A fragment keeps the return type an element whatever the fallback returns; it adds no markup.
+  return <>{renderGraph(props)}</>;
+}
