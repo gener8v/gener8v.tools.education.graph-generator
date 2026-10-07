@@ -1,3 +1,5 @@
+import { cleanText } from "../core/format";
+
 // The framework-neutral drawing every layout produces and every printer prints (AD-002). A Scene
 // is plain data: `SceneSvg` (src/react/SceneSvg.tsx) and the source exporter's JSX printer
 // (CPSE TICKET-005) both read the two mapping tables below, so their markup cannot drift
@@ -91,19 +93,38 @@ export const REACT_PROP = Object.freeze({
 
 export type SvgAttr = keyof typeof REACT_PROP;
 
-/** A string (a color, a `points` list built with `fmtPoints`, a keyword) or a `fmt()`-ed number. */
+/**
+ * A string (a color, a keyword, or a `points`, `d` or `transform` value built with `fmtPoints`,
+ * `pathData` or `translate`) or a `fmt()`-ed number. Strings are checked by `checkScene`
+ * (src/layout/kit/check.ts), which every layout test runs: no unrounded numbers, no `url(…)`.
+ */
 export type AttrValue = string | Rounded;
 
-/** One SVG primitive. `attrs` print in the order given. */
-// @spec CPSE-REQ-011
-export interface SceneNode {
-  readonly kind: SceneNodeKind;
-  readonly attrs: ReadonlyArray<readonly [SvgAttr, AttrValue]>;
-  /** Child nodes of a `group` or `svg`. */
-  readonly children?: readonly SceneNode[];
-  /** The text content of a `text` node, printed as a text child, never as markup. */
-  readonly text?: string;
+export type Attrs = ReadonlyArray<readonly [SvgAttr, AttrValue]>;
+
+/** A primitive with no content. */
+export interface ShapeNode {
+  readonly kind: Exclude<SceneNodeKind, "text" | "group" | "svg">;
+  readonly attrs: Attrs;
 }
+
+/** A `text` node: its content prints as a text child, never as markup. */
+export interface TextNode {
+  readonly kind: "text";
+  readonly attrs: Attrs;
+  readonly text: string;
+}
+
+/** A `group` or nested `svg` viewport (which clips its children; AD-008). */
+export interface ContainerNode {
+  readonly kind: "group" | "svg";
+  readonly attrs: Attrs;
+  readonly children: readonly SceneNode[];
+}
+
+/** One SVG primitive. `attrs` print in the order given; each name appears at most once. */
+// @spec CPSE-REQ-011
+export type SceneNode = ShapeNode | TextNode | ContainerNode;
 
 /** A whole drawing in the 400-unit space, with its generated text alternative. */
 // @spec CPSE-REQ-011, CPSE-REQ-012, CPSE-REQ-013
@@ -112,4 +133,35 @@ export interface Scene {
   readonly height: Rounded;
   readonly textAlternative: string;
   readonly nodes: readonly SceneNode[];
+}
+
+// Any letter, number, punctuation or symbol (marks alone do not count), excluding blank-looking
+// symbols (braille blank, Hangul fillers) that would leave the graph effectively unnamed.
+const VISIBLE = /[^\s\p{Cc}\p{Cf}\p{M}\p{Z}\u2800\u115f\u1160\u3164\uffa0]/u;
+
+/**
+ * The accessible name a graph carries: the caller's text alternative, cleaned like any caller text
+ * (control and hidden characters removed), when anything visible is left; otherwise the Scene's
+ * generated one (prd/CC-002). Never throws, whatever the caller passed.
+ */
+// @spec CPSE-REQ-012
+export function textAlternativeFor(scene: Scene, supplied: unknown): string {
+  if (typeof supplied !== "string") return scene.textAlternative;
+  const cleaned = cleanText(supplied);
+  return VISIBLE.test(cleaned) ? cleaned : scene.textAlternative;
+}
+
+/**
+ * The root `<svg>` attributes, in print order, for a Scene and its accessible name. The printed
+ * markup is: `<svg {rootAttrs}>`, then `<title>{name}</title>` as the first child, then each node in
+ * Scene order. `SceneSvg` and the source exporter's printer (CPSE TICKET-005) both follow this.
+ */
+// @spec CPSE-REQ-012, CPSE-REQ-013
+export function rootAttrs(scene: Scene, name: string): ReadonlyArray<readonly [string, string]> {
+  return [
+    ["role", "img"],
+    ["aria-label", name],
+    ["viewBox", `0 0 ${scene.width} ${scene.height}`],
+    ["width", "100%"],
+  ];
 }

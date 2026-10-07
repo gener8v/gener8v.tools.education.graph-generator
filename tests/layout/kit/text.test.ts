@@ -22,8 +22,16 @@ describe("textWidth (AD-010)", () => {
 
   it("gives East Asian characters a full em and combining marks no width", () => {
     expect(textWidth("数轴", 10)).toBeCloseTo(2 * 10 * 1.1, 10);
-    expect(textWidth("é", 10)).toBeCloseTo(textWidth("e", 10), 10);
-    expect(textWidth(`${String.fromCodePoint(0x1f44d)}️`, 10)).toBeCloseTo(11, 10);
+    expect(textWidth("e\u0301", 10)).toBeCloseTo(textWidth("e", 10), 10); // decomposed é
+    expect(textWidth(`${String.fromCodePoint(0x1f44d)}\ufe0f`, 10)).toBeCloseTo(11, 10);
+  });
+
+  it("gives no-break spaces a real width and Devanagari spacing vowel signs an advance (CR-004)", () => {
+    expect(textWidth("5\u00a0cm", 10)).toBeCloseTo(textWidth("5 cm", 10), 10);
+    expect(textWidth("\u2007", 10)).toBeCloseTo(textWidth("0", 10), 10);
+    expect(textWidth("\u0915\u093e", 10)).toBeGreaterThan(textWidth("\u0915", 10)); // का
+    expect(textWidth("\u093d", 10)).toBeGreaterThan(0); // avagraha is a letter
+    expect(textWidth("\u0915\u094d", 10)).toBeCloseTo(textWidth("\u0915", 10), 10); // virama has no advance
   });
 
   it("estimates every fixture string as a positive finite width", () => {
@@ -65,6 +73,32 @@ describe("wrap (prd/TC-011)", () => {
     const lines = wrap(text, 20, 14);
     expect(lines.join("")).toBe(text);
     for (const line of lines) expect(line).toBe(String.fromCodePoint(0x1f600));
+  });
+
+  it("keeps no-break spaces as written and never breaks at them (QR-006, CR-004)", () => {
+    const text = "radius 5\u00a0cm and 12\u202f%";
+    const lines = wrap(text, 70, 14);
+    expect(lines.some((line) => line.includes("5\u00a0cm"))).toBe(true);
+    expect(lines.some((line) => line.includes("12\u202f%"))).toBe(true);
+    expect(lines.join(" ")).toBe(text);
+  });
+
+  it("splits an over-long word only between clusters (QR-007)", () => {
+    const teacher = String.fromCodePoint(0x1f469, 0x200d, 0x1f3eb); // woman teacher (ZWJ sequence), one cluster
+    const flag = String.fromCodePoint(0x1f1ec, 0x1f1e7); // flag of the United Kingdom, one cluster
+    const accented = "e\u0301"; // é, decomposed
+    const thumbs = `${String.fromCodePoint(0x1f44d)}\ufe0f`;
+    for (const cluster of [teacher, flag, accented, thumbs, "\u0915\u093e"]) {
+      const lines = wrap(cluster.repeat(8), 1, 14);
+      expect(lines).toEqual(Array(8).fill(cluster));
+    }
+  });
+
+  it("rejects sizes that cannot be valid (QR-009)", () => {
+    for (const bad of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => wrap("a b", bad, 14)).toThrow(RangeError);
+      expect(() => wrap("a b", 100, bad)).toThrow(RangeError);
+    }
   });
 
   it("keeps one code point per line when a single character is wider than the line", () => {

@@ -21,4 +21,10 @@ describe("linearScale (AD-007)", () => {
     expect(linearScale([5, 5], [0, 400])(5)).toBe(200);
     expect(linearScale([5, 5], [0, 400])(99)).toBe(200);
   });
+
+  it("maps a domain too narrow for a finite ratio to the middle of the range (SEC-003)", () => {
+    const x = linearScale([0, 1e-310], [0, 400]);
+    expect(x(0)).toBe(200);
+    expect(x(1e-310)).toBe(200);
+  });
 });

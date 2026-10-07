@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDerived, formatSupplied } from "../../../src/core/format";
-import { displayValue, fmt, fmtPoints } from "../../../src/layout/kit/format";
+import { displayValue, fmt, fmtPoints, pathData, translate } from "../../../src/layout/kit/format";
 import type { SceneNode } from "../../../src/layout/scene";
 
 describe("fmt (AD-007, prd/TC-002)", () => {
@@ -37,9 +37,34 @@ describe("fmt (AD-007, prd/TC-002)", () => {
     expect(() => fmt(Number.NEGATIVE_INFINITY)).toThrow(RangeError);
   });
 
+  it("throws when the result overflows or would print in exponent form (QR-009, SEC-003)", () => {
+    expect(() => fmt(1e307)).toThrow(RangeError); // n * 100 overflows to Infinity
+    expect(() => fmt(1e306)).toThrow(RangeError); // finite, but String() gives "1e+306"
+    expect(() => fmt(-2e21)).toThrow(RangeError);
+    expect(String(fmt(1e20))).toBe("100000000000000000000");
+  });
+
   it("builds points lists from rounded coordinates", () => {
     expect(fmtPoints([[0.001, -0.001], [10.126, 20.5]])).toBe("0,0 10.13,20.5");
     expect(fmtPoints([])).toBe("");
+  });
+});
+
+describe("pathData and translate build strings only from fmt()-ed numbers (CR-001, QR-004)", () => {
+  it("prints path commands with rounded numbers", () => {
+    expect(pathData([["M", 0.001, -0.001], ["L", 10.126, 20], ["A", 5, 5, 0, 0, 1, 1 / 3, 2 / 3], ["Z"]])).toBe(
+      "M 0 0 L 10.13 20 A 5 5 0 0 1 0.33 0.67 Z",
+    );
+    expect(pathData([])).toBe("");
+  });
+
+  it("prints a translation with rounded numbers", () => {
+    expect(translate(Math.PI, -0.001)).toBe("translate(3.14 0)");
+  });
+
+  it("throws rather than print a non-finite number", () => {
+    expect(() => pathData([["M", Number.NaN, 0]])).toThrow(RangeError);
+    expect(() => translate(Number.POSITIVE_INFINITY, 0)).toThrow(RangeError);
   });
 });
 
@@ -56,24 +81,24 @@ describe("Scene attrs accept only fmt()-ed numbers", () => {
 
 describe("displayValue (GSS-REQ-034; GSV TICKET-001 CR-007)", () => {
   it("returns a supplied value as given", () => {
-    expect(displayValue(3.14159, true)).toBe("3.14159");
-    expect(displayValue(5, true)).toBe("5");
-    expect(displayValue(-0, true)).toBe("0");
-    expect(displayValue(1e21, true)).toBe("1000000000000000000000");
+    expect(displayValue(3.14159, "supplied")).toBe("3.14159");
+    expect(displayValue(5, "supplied")).toBe("5");
+    expect(displayValue(-0, "supplied")).toBe("0");
+    expect(displayValue(1e21, "supplied")).toBe("1000000000000000000000");
   });
 
   it("returns a derived value at the display precision", () => {
-    expect(displayValue(2 * Math.PI * 5, false)).toBe("31.42");
-    expect(displayValue(1.005, false)).toBe("1.01");
-    expect(displayValue(-2.5, false)).toBe("-2.5");
-    expect(displayValue(-0.001, false)).toBe("-0.001");
-    expect(displayValue(0.0012, false)).toBe("0.0012");
+    expect(displayValue(2 * Math.PI * 5, "derived")).toBe("31.42");
+    expect(displayValue(1.005, "derived")).toBe("1.01");
+    expect(displayValue(-2.5, "derived")).toBe("-2.5");
+    expect(displayValue(-0.001, "derived")).toBe("-0.001");
+    expect(displayValue(0.0012, "derived")).toBe("0.0012");
   });
 
   it("agrees with the text-alternative formatters, so labels and text alternatives match", () => {
     for (const n of [0, -0, 1, 1.005, 2.675, -3.14159, 1e-7, 123456.789, 0.1 + 0.2]) {
-      expect(displayValue(n, true)).toBe(formatSupplied(n));
-      expect(displayValue(n, false)).toBe(formatDerived(n));
+      expect(displayValue(n, "supplied")).toBe(formatSupplied(n));
+      expect(displayValue(n, "derived")).toBe(formatDerived(n));
     }
   });
 });

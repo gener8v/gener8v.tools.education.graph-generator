@@ -51,6 +51,20 @@ describe("import boundaries for non-rendering code (CPSE-REQ-006, prd/TC-005)", 
     expect(ids.filter((id) => id === "no-restricted-syntax" || id === "no-restricted-globals").length).toBeGreaterThanOrEqual(3);
   });
 
+  it("rejects browser globals in the React renderer, which must render the same on the server (QR-003)", async () => {
+    const ids = await ruleIds(
+      `export const w = window.innerWidth;\nexport const d = document.title;\nexport const g = globalThis.navigator;\n`,
+      "src/react/fixture.tsx",
+    );
+    expect(ids.filter((id) => id === "no-restricted-globals")).toHaveLength(2);
+    expect(ids).toContain("no-restricted-syntax");
+  });
+
+  it("still rejects network APIs in the React renderer", async () => {
+    const ids = await ruleIds(`export const f = () => fetch("https://x");\n`, "src/react/fixture.tsx");
+    expect(ids).toContain("no-restricted-globals");
+  });
+
   it("allows react in the React renderer", async () => {
     const ids = await ruleIds(`import { useState } from "react";\nexport const x = useState;\n`, "src/react/fixture.ts");
     expect(ids).not.toContain("no-restricted-imports");

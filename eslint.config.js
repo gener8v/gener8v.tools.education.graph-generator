@@ -10,6 +10,9 @@ const BOUNDARY_MESSAGE =
 const CYCLE_MESSAGE =
   "Graph-type definitions import helpers from src/core/format.ts, never src/core/describe.ts, which imports the registry (import cycle; GSV TICKET-001 quality review QR-001).";
 
+const RENDER_MESSAGE =
+  "Rendering code must give the same output on the server and in the browser, so it may not read browser globals (CPSE-REQ-011, prd/TC-001).";
+
 const SCRIPT_EXTENSIONS = "{ts,tsx,mts,cts,js,jsx,mjs,cjs}";
 const NON_RENDERING_DIRS = ["core", "tool", "export", "layout"];
 
@@ -50,16 +53,20 @@ const boundaryImportOptions = {
   patterns: [{ group: ["react/*", "react-dom/*"], message: BOUNDARY_MESSAGE }],
 };
 
+const browserGlobals = (message) =>
+  ["window", "document", "navigator", "self"].map((name) => ({ name, message }));
+const browserGlobalSyntax = (message) => ({
+  selector: "MemberExpression[object.name=/^(globalThis|self)$/][property.name=/^(window|document|navigator)$/]",
+  message,
+});
+
 const boundarySyntax = [
   { selector: `ImportExpression[source.value=/${REACT_PATTERN}/]`, message: BOUNDARY_MESSAGE },
   {
     selector: `CallExpression[callee.name='require'][arguments.0.value=/${REACT_PATTERN}/]`,
     message: BOUNDARY_MESSAGE,
   },
-  {
-    selector: "MemberExpression[object.name=/^(globalThis|self)$/][property.name=/^(window|document|navigator)$/]",
-    message: BOUNDARY_MESSAGE,
-  },
+  browserGlobalSyntax(BOUNDARY_MESSAGE),
 ];
 
 export default defineConfig(
@@ -88,12 +95,20 @@ export default defineConfig(
       "no-restricted-globals": [
         "error",
         ...networkGlobals,
-        { name: "window", message: BOUNDARY_MESSAGE },
-        { name: "document", message: BOUNDARY_MESSAGE },
-        { name: "navigator", message: BOUNDARY_MESSAGE },
-        { name: "self", message: BOUNDARY_MESSAGE },
+        ...browserGlobals(BOUNDARY_MESSAGE),
       ],
       "no-restricted-syntax": ["error", ...networkSyntax, ...boundarySyntax],
+    },
+  },
+  {
+    // React is allowed here, browser globals are not: the type checker no longer catches them,
+    // because @types/jsdom brings the DOM library into the program (quality review QR-003).
+    // Repeats the network restrictions, which this block's rule options replace.
+    // @spec CPSE-REQ-011
+    files: [`src/react/**/*.${SCRIPT_EXTENSIONS}`],
+    rules: {
+      "no-restricted-globals": ["error", ...networkGlobals, ...browserGlobals(RENDER_MESSAGE)],
+      "no-restricted-syntax": ["error", ...networkSyntax, browserGlobalSyntax(RENDER_MESSAGE)],
     },
   },
   {

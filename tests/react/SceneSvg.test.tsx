@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
+import { act } from "react";
 import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { fmt, fmtPoints } from "../../src/layout/kit/format";
+import { checkScene } from "../../src/layout/kit/check";
+import { fmt, fmtPoints, pathData } from "../../src/layout/kit/format";
 import { ELEMENT_FOR_KIND, REACT_PROP, SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
 import { SceneSvg } from "../../src/react/SceneSvg";
-import { BENIGN_TEXT, HOSTILE_TEXT } from "../fixtures/plain-text";
+import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
 
 const stroke = [
   ["stroke", "#222222"],
@@ -27,7 +29,7 @@ const sample: Scene = {
         { kind: "ellipse", attrs: [["cx", fmt(200)], ["cy", fmt(125)], ["rx", fmt(50)], ["ry", fmt(28.87)]] },
         { kind: "line", attrs: [["x1", fmt(100)], ["y1", fmt(125)], ["x2", fmt(300)], ["y2", fmt(-0.001)], ["stroke-dasharray", "8 4"]] },
         { kind: "polyline", attrs: [["points", fmtPoints([[0, 0], [10.126, 20], [30, 5]])]] },
-        { kind: "path", attrs: [["d", `M ${fmt(10)} ${fmt(10)} L ${fmt(20)} ${fmt(20)}`], ["stroke-linecap", "round"]] },
+        { kind: "path", attrs: [["d", pathData([["M", 10, 10], ["L", 20, 20]])], ["stroke-linecap", "round"]] },
       ],
     },
     // An arrowhead is a polygon, not a <marker> (AD-008).
@@ -52,6 +54,10 @@ function parse(markup: string): Document {
 describe("SceneSvg markup (AD-002, AD-008, CPSE-REQ-013)", () => {
   const markup = renderToStaticMarkup(<SceneSvg scene={sample} />);
 
+  it("prints a sound sample Scene", () => {
+    expect(checkScene(sample)).toEqual([]);
+  });
+
   it("opens with role, accessible name, a 400-unit viewBox and container width, in that order", () => {
     expect(markup.startsWith(
       `<svg role="img" aria-label="A circle with radius 5 cm, and its diameter." viewBox="0 0 400 250" width="100%">` +
@@ -64,9 +70,10 @@ describe("SceneSvg markup (AD-002, AD-008, CPSE-REQ-013)", () => {
     const check = (element: Element, node: SceneNode) => {
       expect(element.tagName).toBe(ELEMENT_FOR_KIND[node.kind]);
       expect([...element.attributes].map((a) => [a.name, a.value])).toEqual(node.attrs.map(([n, v]) => [n, String(v)]));
-      if (node.text !== undefined) expect(element.textContent).toBe(node.text);
-      expect(element.children).toHaveLength(node.children?.length ?? 0);
-      node.children?.forEach((child, i) => check(element.children[i]!, child));
+      const children = "children" in node ? node.children : [];
+      if ("text" in node) expect(element.textContent).toBe(node.text);
+      expect(element.children).toHaveLength(children.length);
+      children.forEach((child, i) => check(element.children[i]!, child));
     };
     const [title, ...rest] = [...svg.children];
     expect(title!.tagName).toBe("title");
@@ -119,6 +126,35 @@ describe("text alternative (CPSE-REQ-012, prd/CC-002)", () => {
     expect(nameOf(renderToStaticMarkup(<SceneSvg scene={sample} textAlternative={supplied} />))).toEqual([supplied, supplied]);
   });
 
+  it("cleans a supplied text alternative like any caller text (SEC-001)", () => {
+    const cases: Array<[string, string]> = [
+      [`Line one${UNSAFE_CHARS.newline}line two`, "Line one line two"],
+      [`abc${UNSAFE_CHARS.rightToLeftOverride}def`, "abcdef"],
+      [`${UNSAFE_CHARS.escape}]0;title`, "]0;title"],
+      [SMUGGLED_TEXT, "Fractions"],
+    ];
+    for (const [supplied, expected] of cases) {
+      expect(nameOf(renderToStaticMarkup(<SceneSvg scene={sample} textAlternative={supplied} />))).toEqual([expected, expected]);
+    }
+  });
+
+  it("keeps the generated one when nothing visible is left of the supplied text (SEC-001)", () => {
+    const invisible = ["\u200b", "\u200d", "\ufe0f", "\u2800", "\u3164", "\u115f\u1160", "\u0301", "\u00a0\u202f", UNSAFE_CHARS.tagLetterA];
+    for (const supplied of invisible) {
+      expect(nameOf(renderToStaticMarkup(<SceneSvg scene={sample} textAlternative={supplied} />))).toEqual([
+        sample.textAlternative,
+        sample.textAlternative,
+      ]);
+    }
+  });
+
+  it("keeps the generated one, without throwing, when the supplied value is not a string (SEC-001)", () => {
+    for (const supplied of [null, 42, {}, ["a"]]) {
+      const markup = renderToStaticMarkup(<SceneSvg scene={sample} textAlternative={supplied as unknown as string} />);
+      expect(nameOf(markup)).toEqual([sample.textAlternative, sample.textAlternative]);
+    }
+  });
+
   it("keeps the generated one when the supplied text alternative is blank", () => {
     for (const blank of ["", "   "]) {
       expect(nameOf(renderToStaticMarkup(<SceneSvg scene={sample} textAlternative={blank} />))).toEqual([
@@ -166,28 +202,29 @@ describe("server and browser render the same markup (CPSE-REQ-011, prd/TC-001, p
     const globals = globalThis as Record<string, unknown>;
     globals.window = dom.window;
     globals.document = dom.window.document;
+    // act() flushes all of React's work, including what unmount schedules, before it returns, so
+    // nothing runs after the globals are removed (quality review QR-002).
+    globals.IS_REACT_ACT_ENVIRONMENT = true;
     try {
       const { createRoot } = await import("react-dom/client");
-      const { flushSync } = await import("react-dom");
-      scenes.forEach((scene, i) => {
+      for (const [i, scene] of scenes.entries()) {
         const container = dom.window.document.createElement("div");
         dom.window.document.body.append(container);
         const root = createRoot(container);
-        flushSync(() => root.render(<SceneSvg scene={scene} />));
+        await act(async () => root.render(<SceneSvg scene={scene} />));
         // Serialize the server string through the same DOM, so the comparison is of trees, not of
         // React's and jsdom's different (equally valid) text escaping.
         const fromServer = dom.window.document.createElement("div");
         fromServer.innerHTML = serverMarkup[i]!;
         expect(container.innerHTML).toBe(fromServer.innerHTML);
         expect(container.firstElementChild!.isEqualNode(fromServer.firstElementChild)).toBe(true);
-        root.unmount();
+        await act(async () => root.unmount());
         container.remove();
-      });
-      // Let React's scheduler finish its queued work while the DOM globals still exist.
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      }
     } finally {
       delete globals.window;
       delete globals.document;
+      delete globals.IS_REACT_ACT_ENVIRONMENT;
       dom.window.close();
     }
   });

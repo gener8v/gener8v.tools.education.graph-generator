@@ -211,4 +211,38 @@ All covered requirements annotated. `displayValue` carries no CPSE annotation: i
 
 ## Post-Review Amendments
 
-None
+Resolution of `graph-library/component-packaging-and-source-export-ticket-002-code-review`, `…-quality-review` and `…-security-review`, 2026-10-07, every recommendation approved by the Engineer (Thomas). The reviews' overlapping findings were decided once.
+
+- **…-code-review/CR-001, …-quality-review/QR-004** — `pathData` and `translate` build `d`/`transform` strings from `fmt()` values; new `checkScene` (`src/layout/kit/check.ts`) reports unrounded or exponent-form numbers in string attributes and numbers that skipped `fmt()`. Correction to Acceptance Criteria Verification above: criterion 7 was **Partial** at delivery (strings were unguarded); it is now met by the type for numbers plus `checkScene` for strings, which every layout test must run (Known Hazard on GSS TICKET-002). Correction to DEL-002: types alone do not catch numbers written as strings. Files: `src/layout/kit/format.ts`, `src/layout/kit/check.ts`, `tests/layout/kit/format.test.ts`, `tests/layout/kit/check.test.ts`.
+- **…-code-review/CR-002, …-security-review/SEC-002** — `checkScene` reports `url(` in any attribute value. Correction to DEL-001: the closed set limits names, not values. File: `src/layout/kit/check.ts`.
+- **…-code-review/CR-003, …-quality-review/QR-001, QR-005** — `SceneNode` is `ShapeNode | TextNode | ContainerNode`; `rootAttrs` and `textAlternativeFor` in `src/layout/scene.ts` hold the root attributes and order, the `<title>`-first rule and the naming rule; `checkScene` reports repeated attributes and misplaced `text`/`children`. TICKET-005's printer imports `rootAttrs`, `textAlternativeFor`, `ELEMENT_FOR_KIND` and `REACT_PROP`. Files: `src/layout/scene.ts`, `src/react/SceneSvg.tsx`.
+- **…-security-review/SEC-001** — DEL-007 revised: a supplied text alternative goes through `cleanText` and is used only when a visible character remains; non-strings fall back without throwing. Files: `src/layout/scene.ts`, `tests/react/SceneSvg.test.tsx`.
+- **…-security-review/SEC-003, …-quality-review/QR-009, …-code-review/CR-006** — `fmt` throws on a non-finite result or one of 1e21 or more (exponent form); `linearScale` maps an overflowing ratio to the range midpoint; `wrap` rejects non-positive or non-finite sizes. Known Hazard appended to CPSE TICKET-003 (catch layout errors, route to the fallback). Files: `src/layout/kit/format.ts`, `src/layout/kit/scale.ts`, `src/layout/kit/text.ts`, `.gener8v/changes/graph-library/tickets/component-packaging-and-source-export/TICKET-003.md`.
+- **…-quality-review/QR-002** — parity test uses `act()` for render and unmount; the 20 ms timer is removed (DEL-006 revised). File: `tests/react/SceneSvg.test.tsx`.
+- **…-quality-review/QR-003** — `src/react/**` lint block rejects browser globals (`@types/jsdom` puts the DOM library in the type-check program). Files: `eslint.config.js`, `tests/package/boundaries.test.ts`.
+- **…-code-review/CR-004, …-quality-review/QR-006, QR-007** — `wrap` breaks only at breaking whitespace (no-break spaces kept); over-long words split between clusters; Devanagari spacing signs have an advance (DEL-004 revised). File: `src/layout/kit/text.ts`, `tests/layout/kit/text.test.ts`.
+- **…-quality-review/QR-008** — `placeLabel(size, candidates, obstacles, padding = 0)`. File: `src/layout/kit/labels.ts`.
+- **…-quality-review/QR-010** — `displayValue(n, "supplied" | "derived")`. File: `src/layout/kit/format.ts`.
+- **…-quality-review/QR-011** — invisible characters in tests written as `\u` escapes. File: `tests/layout/kit/text.test.ts`.
+- **…-quality-review/QR-012** — `jsdom` `^26.1.0`, `@types/jsdom` `^21.1.7`, within `engines >=22`. Files: `package.json`, `pnpm-lock.yaml`.
+- **…-code-review/CR-005** — Known Hazard appended to GSS TICKET-002 (one display-precision rule; `checkScene`, `pathData`, `translate` in layout tests).
+- **…-security-review/SEC-004** — Accepted Risk (Security — Thomas, 2026-10-07): `placeLabel` is quadratic in label count, bounded by the validator's cap; documented in code.
+- Specification `## @spec Coverage` rows for CPSE-REQ-011..013 updated with `pathData`, `translate`, `checkScene`, `textAlternativeFor`, `rootAttrs` and the `src/react` lint block.
+
+Re-verification after the amendments (Node.js v24.1.0, React 19.3.0, pnpm 10.28.2):
+
+| Command | Exit | Evidence |
+|---------|------|----------|
+| `pnpm lint` | 0 | no findings |
+| `pnpm typecheck` | 0 | no errors; `@ts-expect-error` checks live |
+| `pnpm test` | 0 | 22 files, 590 tests passed |
+| `pnpm build` | 0 | all entries and declarations emitted |
+| `pnpm check:dist` | 0 | 4 built files, no network APIs or modules |
+| `pnpm check:deps` | 0 | 0 runtime dependencies |
+| `pnpm size` | 0 | all entries within budget |
+| `pnpm publint` | 0 | "All good!" |
+| `pnpm attw` | 0 | no problems in the ESM-only profile |
+| `GRAPH_GENERATOR_PREBUILT=1 pnpm vitest run tests/react` ×10 | 0 | 37 passed each run, no unhandled errors |
+| Mutation: root `width` depends on `typeof window` → `pnpm vitest run tests/react` | 1 (expected) | parity test failed cleanly; source restored |
+| React 18.3.1 (scratch copy, CI's swap command) → `pnpm typecheck`; `pnpm vitest run tests/react tests/layout` | 0; 0 | 88 passed |
+| `gener8v-state.py lint` | 0 | 0 errors, 0 warnings |

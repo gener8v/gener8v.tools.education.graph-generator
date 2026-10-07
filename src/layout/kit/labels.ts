@@ -68,17 +68,23 @@ function overlaps(box: Box, obstacle: Obstacle): boolean {
 /**
  * The first candidate position, in the order given, at which a label of `size` overlaps no
  * obstacle (AD-010, prd/RF-001); `undefined` when every candidate is blocked, so the layout
- * decides what to do. Candidates are top-left corners.
+ * decides what to do. Candidates are top-left corners. `padding` keeps that much clearance on
+ * every side (for example half a line's stroke width plus a gap); the returned box is the label's
+ * own, without it. Curves are given as obstacles by the layout, as segments or boxes.
+ *
+ * Cost is candidates × obstacles; as AD-010 uses it (each placed label becomes an obstacle) it is
+ * quadratic in the label count, bounded by the validator's cap on values (security review SEC-004).
  */
 // @spec CPSE-REQ-011
 export function placeLabel(
   size: { readonly width: number; readonly height: number },
   candidates: ReadonlyArray<{ readonly x: number; readonly y: number }>,
   obstacles: readonly Obstacle[],
+  padding = 0,
 ): Box | undefined {
   for (const { x, y } of candidates) {
-    const box: Box = { x, y, width: size.width, height: size.height };
-    if (!obstacles.some((obstacle) => overlaps(box, obstacle))) return box;
+    const clearance: Box = { x: x - padding, y: y - padding, width: size.width + 2 * padding, height: size.height + 2 * padding };
+    if (!obstacles.some((obstacle) => overlaps(clearance, obstacle))) return { x, y, width: size.width, height: size.height };
   }
   return undefined;
 }

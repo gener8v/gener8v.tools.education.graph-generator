@@ -1,9 +1,16 @@
 import { createElement, type ReactElement, type ReactNode } from "react";
-import { ELEMENT_FOR_KIND, REACT_PROP, type Scene, type SceneNode } from "../layout/scene";
+import {
+  ELEMENT_FOR_KIND,
+  REACT_PROP,
+  rootAttrs,
+  textAlternativeFor,
+  type Scene,
+  type SceneNode,
+} from "../layout/scene";
 
 export interface SceneSvgProps {
   readonly scene: Scene;
-  /** The caller's text alternative; replaces the Scene's generated one when it is not blank. */
+  /** The caller's text alternative; replaces the Scene's generated one when anything visible is left after cleaning. */
   readonly textAlternative?: string;
 }
 
@@ -11,7 +18,9 @@ export interface SceneSvgProps {
 function toElement(node: SceneNode): ReactElement {
   const props: Record<string, string | number> = {};
   for (const [name, value] of node.attrs) props[REACT_PROP[name]] = value;
-  const children: ReactNode[] = node.text !== undefined ? [node.text] : (node.children ?? []).map(toElement);
+  let children: ReactNode[] = [];
+  if (node.kind === "text") children = [node.text];
+  else if (node.kind === "group" || node.kind === "svg") children = node.children.map(toElement);
   // Children are passed as arguments, not an array, so React needs no keys.
   return createElement(ELEMENT_FOR_KIND[node.kind], props, ...children);
 }
@@ -23,16 +32,15 @@ function toElement(node: SceneNode): ReactElement {
  * so server and browser render the same markup. Every Scene string reaches React as a text child
  * or an attribute value, never as markup (GSV-REQ-043).
  *
- * The source exporter's printer (CPSE TICKET-005) must produce this exact element and attribute
- * order; both read `ELEMENT_FOR_KIND` and `REACT_PROP`.
+ * The source exporter's printer (CPSE TICKET-005) prints the same markup from the same contract:
+ * `rootAttrs`, `textAlternativeFor`, `ELEMENT_FOR_KIND` and `REACT_PROP` in src/layout/scene.ts.
  */
 // @spec CPSE-REQ-011, CPSE-REQ-012, CPSE-REQ-013
 export function SceneSvg({ scene, textAlternative }: SceneSvgProps): ReactElement {
-  const name =
-    textAlternative !== undefined && textAlternative.trim() !== "" ? textAlternative : scene.textAlternative;
+  const name = textAlternativeFor(scene, textAlternative);
   return createElement(
     "svg",
-    { role: "img", "aria-label": name, viewBox: `0 0 ${scene.width} ${scene.height}`, width: "100%" },
+    Object.fromEntries(rootAttrs(scene, name)),
     createElement("title", null, name),
     ...scene.nodes.map(toElement),
   );

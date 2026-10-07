@@ -57,4 +57,12 @@ describe("placeLabel (AD-010, prd/RF-001)", () => {
     expect(placeLabel(size, [{ x: 0, y: 0 }, { x: 200, y: 200 }], [wall])).toBeUndefined();
     expect(placeLabel(size, [], [])).toBeUndefined();
   });
+
+  it("keeps clearance on every side when given padding, and returns the label's own box (QR-008)", () => {
+    const line: Obstacle = { x1: 0, y1: 25, x2: 400, y2: 25 }; // 5 units below a label at y 0..20
+    expect(placeLabel(size, [{ x: 0, y: 0 }], [line])).toEqual({ x: 0, y: 0, width: 40, height: 20 });
+    expect(placeLabel(size, [{ x: 0, y: 0 }], [line], 6)).toBeUndefined();
+    expect(placeLabel(size, [{ x: 0, y: 0 }, { x: 0, y: -10 }], [line], 4)).toEqual({ x: 0, y: 0, width: 40, height: 20 });
+    expect(placeLabel(size, [{ x: 0, y: 0 }, { x: 0, y: -10 }], [line], 6)).toEqual({ x: 0, y: -10, width: 40, height: 20 });
+  });
 });
