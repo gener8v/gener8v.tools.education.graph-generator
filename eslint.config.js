@@ -14,7 +14,7 @@ const RENDER_MESSAGE =
   "Rendering code must give the same output on the server and in the browser, so it may not read browser globals (CPSE-REQ-011, prd/TC-001).";
 
 const PURE_MESSAGE =
-  "Components are pure: no hooks, state, effects or client boundary, so they work as React Server Components (AD-014, prd/IC-002).";
+  "Components are pure: no hooks, state, context, event handlers or client boundary, so they work as React Server Components (AD-014, prd/IC-002).";
 
 const SCRIPT_EXTENSIONS = "{ts,tsx,mts,cts,js,jsx,mjs,cjs}";
 const NON_RENDERING_DIRS = ["core", "tool", "export", "layout"];
@@ -63,15 +63,21 @@ const browserGlobalSyntax = (message) => ({
   message,
 });
 
-// Hooks reached by name (`useState`) or through an object (`React.useState`), and the
-// "use client" directive.
+// What a Server Component cannot hold (prd/IC-002): hooks, reached by name (`useState`) or through
+// an object (`React.useState`); class components, which carry state; context; event handlers; and
+// the "use client" directive (code review CR-004 on CPSE TICKET-003).
 const HOOK_PATTERN = "^use([A-Z]|$)";
+const STATEFUL_REACT_PATTERN = "^(use([A-Z].*)?|Component|PureComponent|createContext)$";
 const pureImportOptions = {
   paths: networkImportPaths,
-  patterns: [{ group: ["react", "react-dom", "react-dom/*"], importNamePattern: HOOK_PATTERN, message: PURE_MESSAGE }],
+  patterns: [{ group: ["react", "react-dom", "react-dom/*"], importNamePattern: STATEFUL_REACT_PATTERN, message: PURE_MESSAGE }],
 };
 const pureSyntax = [
   { selector: `CallExpression[callee.property.name=/${HOOK_PATTERN}/]`, message: PURE_MESSAGE },
+  { selector: "CallExpression[callee.property.name='createContext']", message: PURE_MESSAGE },
+  { selector: ":matches(ClassDeclaration, ClassExpression)[superClass.property.name=/^(Pure)?Component$/]", message: PURE_MESSAGE },
+  { selector: "JSXAttribute[name.name=/^on[A-Z]/]", message: PURE_MESSAGE },
+  { selector: "CallExpression[callee.name='createElement'] > ObjectExpression > Property[key.name=/^on[A-Z]/]", message: PURE_MESSAGE },
   { selector: "ExpressionStatement[directive='use client']", message: PURE_MESSAGE },
 ];
 

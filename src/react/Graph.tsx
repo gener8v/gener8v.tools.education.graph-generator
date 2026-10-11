@@ -1,5 +1,10 @@
 import type { ReactElement } from "react";
-import { type GraphProps, renderGraph } from "./createGraphComponent";
+import { definitions } from "../core/definitions/index";
+import { layouts } from "../layout/registry";
+import { type GraphProps, type Registries, renderGraph } from "./createGraphComponent";
+
+// Every graph type: the entry component is the one place that draws with all of them (AD-001).
+const packageRegistries: Registries = { definitions, layouts };
 
 /**
  * The entry component (CPSE-REQ-008): renders a description of any graph type as an accessible
@@ -16,5 +21,5 @@ import { type GraphProps, renderGraph } from "./createGraphComponent";
 // @spec CPSE-REQ-008, CPSE-REQ-010, CPSE-REQ-014, CPSE-REQ-015, CPSE-REQ-016, CPSE-REQ-017, CPSE-REQ-018
 export function Graph(props: GraphProps): ReactElement {
   // A fragment keeps the return type an element whatever the fallback returns; it adds no markup.
-  return <>{renderGraph(props)}</>;
+  return <>{renderGraph(props, packageRegistries)}</>;
 }

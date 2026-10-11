@@ -84,6 +84,13 @@ describe("components are pure: no hooks, state, effects or client boundary (AD-0
     ["useFormStatus", `import { useFormStatus } from "react-dom";\nexport const x = useFormStatus;\n`, "no-restricted-imports"],
     ["React.useState", `import * as React from "react";\nexport const f = () => React.useState(0);\n`, "no-restricted-syntax"],
     ["\"use client\"", `"use client";\nexport const x = 1;\n`, "no-restricted-syntax"],
+    ["Component", `import { Component } from "react";\nexport class C extends Component { state = { n: 0 }; render() { return null; } }\n`, "no-restricted-imports"],
+    ["PureComponent", `import { PureComponent } from "react";\nexport const x = PureComponent;\n`, "no-restricted-imports"],
+    ["React.Component", `import * as React from "react";\nexport class C extends React.Component { render() { return null; } }\n`, "no-restricted-syntax"],
+    ["createContext", `import { createContext } from "react";\nexport const Ctx = createContext(0);\n`, "no-restricted-imports"],
+    ["React.createContext", `import * as React from "react";\nexport const Ctx = React.createContext(0);\n`, "no-restricted-syntax"],
+    ["an onClick attribute", `export const C = () => <svg onClick={() => 1} />;\n`, "no-restricted-syntax"],
+    ["an onClick prop to createElement", `import { createElement } from "react";\nexport const C = () => createElement("svg", { onClick: () => 1 });\n`, "no-restricted-syntax"],
   ];
   for (const [name, code, rule] of cases) {
     it(`rejects ${name} in src/react`, async () => {

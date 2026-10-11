@@ -165,18 +165,18 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-004 | `tsup.config.ts`:default export |
 | CPSE-REQ-005 | `eslint.config.js`:no-network rule block; `eslint.config.js`:boundary rule block |
 | CPSE-REQ-006 | `eslint.config.js`:boundary rule block; `src/core/index.ts`; `src/tool/index.ts`; `src/export/index.ts` |
-| CPSE-REQ-007 | `src/layout/registry.ts`:layouts; `src/react/createGraphComponent.tsx`:createGraphComponent, TypedGraph |
+| CPSE-REQ-007 | `src/layout/registry.ts`:layouts; `src/react/createGraphComponent.tsx`:createGraphComponent |
 | CPSE-REQ-008 | `src/layout/registry.ts`:layouts, getLayout; `src/react/createGraphComponent.tsx`:renderGraph; `src/react/Graph.tsx`:Graph |
 | CPSE-REQ-009 | `src/graph.ts`:createGraph |
-| CPSE-REQ-010 | `src/react/createGraphComponent.tsx`:createGraphComponent, TypedGraph; `src/react/Graph.tsx`:Graph |
+| CPSE-REQ-010 | `src/react/createGraphComponent.tsx`:createGraphComponent; `src/react/Graph.tsx`:Graph |
 | CPSE-REQ-011 | `src/layout/scene.ts`:SceneNode, Scene; `src/layout/kit/format.ts`:fmt, fmtPoints, pathData, translate; `src/layout/kit/check.ts`:checkScene; `src/layout/kit/text.ts`:textWidth, wrap; `src/layout/kit/labels.ts`:placeLabel; `src/react/SceneSvg.tsx`:SceneSvg; `eslint.config.js`:React renderer browser-globals block |
 | CPSE-REQ-012 | `src/layout/scene.ts`:Scene, textAlternativeFor, rootAttrs; `src/react/SceneSvg.tsx`:SceneSvg |
 | CPSE-REQ-013 | `src/layout/scene.ts`:Scene, rootAttrs; `src/layout/kit/scale.ts`:linearScale; `src/react/SceneSvg.tsx`:SceneSvg |
-| CPSE-REQ-014 | `src/graph.ts`:createGraph; `src/react/createGraphComponent.tsx`:renderFallback, renderGraph, TypedGraph; `src/react/Graph.tsx`:Graph |
+| CPSE-REQ-014 | `src/graph.ts`:createGraph; `src/react/createGraphComponent.tsx`:renderFallback, renderGraph, createGraphComponent; `src/react/Graph.tsx`:Graph |
 | CPSE-REQ-015 | `src/react/Placeholder.tsx`:Placeholder; `src/core/issues.ts`:formatIssue; `src/react/createGraphComponent.tsx`:renderFallback; `src/react/Graph.tsx`:Graph |
-| CPSE-REQ-016 | `src/react/createGraphComponent.tsx`:renderFallback, TypedGraph; `src/react/Graph.tsx`:Graph |
-| CPSE-REQ-017 | `src/react/createGraphComponent.tsx`:renderFallback, TypedGraph; `src/react/Graph.tsx`:Graph |
-| CPSE-REQ-018 | `src/graph.ts`:createGraph; `src/react/createGraphComponent.tsx`:renderGraph, TypedGraph; `src/react/Graph.tsx`:Graph |
+| CPSE-REQ-016 | `src/react/createGraphComponent.tsx`:renderFallback, createGraphComponent; `src/react/Graph.tsx`:Graph |
+| CPSE-REQ-017 | `src/react/createGraphComponent.tsx`:renderFallback, createGraphComponent; `src/react/Graph.tsx`:Graph |
+| CPSE-REQ-018 | `src/graph.ts`:createGraph; `src/react/createGraphComponent.tsx`:renderGraph, createGraphComponent; `src/react/Graph.tsx`:Graph |
 | CPSE-REQ-037 | `tests/package/checks.test.ts`:describe "repository files" (`LICENSE`, proven by test) |
 | CPSE-REQ-038 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
 | CPSE-REQ-039 | `tests/package/checks.test.ts`:describe "repository files" (`CONTRIBUTING.md`, proven by test) |

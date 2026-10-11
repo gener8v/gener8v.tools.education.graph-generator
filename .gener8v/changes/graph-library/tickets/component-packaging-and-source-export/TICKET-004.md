@@ -38,6 +38,7 @@
 - These checks are only as complete as `examples/`. They can be merged with whatever examples exist; the final run that closes CPSE-NFR-002, CPSE-NFR-003 and CPSE-NFR-005 for the change must happen after all eleven graph types have landed (Phase 3 in the dependency map). Say which types were covered in the delivery record.
 - If a cross-engine difference appears, do NOT loosen the comparison; fix the number formatting in `src/layout/kit/format.ts` or snap the offending trigonometric value (TR-002 mitigation).
 - Keep the full matrix on pull requests to main only if CI time becomes a problem (prd/OC-004); never drop a React major from the release workflow.
+- Carried from graph-library/component-packaging-and-source-export-ticket-003-code-review/CR-002: per-type components draw with their own definition and layout (`createGraphComponent(type, { definition, layout })`), and `tests/package/per-type-bundle.test.ts` proves a per-type bundle leaves out another type's layout. The GSV `definitions` table still leaks into every per-type bundle through the `registry = definitions` defaults of `propertiesOf` and `describeNormalized` and its unmarked construction (see the matching hazard on graph-library/geometric-shapes-and-solids/TICKET-002). The per-type 25 kB budgets (CPSE-NFR-002) only mean something once that is fixed: check that each `./<type>` size-limit entry excludes the other types' definitions and layouts, for example by extending the bundle test with definition markers.
 
 **Depends On:** TICKET-003
 **Blocks:** None

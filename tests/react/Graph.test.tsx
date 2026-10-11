@@ -8,16 +8,21 @@ import type { Issue } from "../../src/core/result";
 import { Graph } from "../../src/react/Graph";
 import { PLACEHOLDER_ISSUE_LIMIT } from "../../src/react/Placeholder";
 import { SceneSvg } from "../../src/react/SceneSvg";
-import { type GraphProps, type Registries, createGraphComponentWith, renderGraph } from "../../src/react/createGraphComponent";
+import { type GraphComponent, type GraphProps, type Registries, createGraphComponent, renderGraph } from "../../src/react/createGraphComponent";
+import { definitions } from "../../src/core/definitions/index";
+import { layouts } from "../../src/layout/registry";
 import * as entry from "../../src/index";
+import { existsSync, readFileSync } from "node:fs";
+import { registeredTypes } from "../../src/core/definitions/index";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions";
-import { fixtureLayouts, throwingLayouts } from "../fixtures/layouts";
+import { circleLayout, fixtureLayouts, throwingLayouts } from "../fixtures/layouts";
 import { HOSTILE_TEXT } from "../fixtures/plain-text";
 
 const fixtures: Registries = { definitions: fixtureRegistry, layouts: fixtureLayouts };
 // `Graph` with the test-only definitions and layouts: the same render routine `Graph` calls.
 const TestGraph = (props: GraphProps) => <>{renderGraph(props, fixtures)}</>;
-const CircleGraph = createGraphComponentWith("circle", fixtures);
+const circleDefinition = fixtureRegistry.circle!;
+const CircleGraph = createGraphComponent("circle", { definition: circleDefinition, layout: circleLayout });
 
 const circle = fixtureExamples[0];
 const html = (node: ReactNode) => renderToStaticMarkup(<>{node}</>);
@@ -34,6 +39,34 @@ describe("public entry point (CPSE-REQ-008, CPSE-REQ-009)", () => {
   });
 });
 
+describe("the package's graph types fit together (code review CR-003; CPSE-REQ-008, CPSE-REQ-010)", () => {
+  // Empty until the first graph-type ticket lands; each type then joins every check below.
+  const registered = registeredTypes(definitions);
+  const shipped = Object.values(entry).filter(
+    (value): value is GraphComponent => typeof value === "function" && "graphType" in value,
+  );
+
+  it("gives every defined type a layout, and every layout a definition", () => {
+    expect(Object.keys(layouts).sort()).toEqual([...registered].sort());
+  });
+
+  it("exports one per-type component for every defined type", () => {
+    expect(shipped.map((component) => component.graphType).sort()).toEqual([...registered].sort());
+  });
+
+  it("draws each type's documented example identically through Graph and its per-type component", () => {
+    for (const component of shipped) {
+      const file = new URL(`../../examples/${component.graphType}.json`, import.meta.url);
+      expect([component.graphType, existsSync(file)]).toEqual([component.graphType, true]);
+      const example: unknown = JSON.parse(readFileSync(file, "utf8"));
+      const PerType = component;
+      const markup = html(<PerType description={example} />);
+      expect(markup.startsWith("<svg")).toBe(true);
+      expect(html(<Graph description={example} />)).toBe(markup);
+    }
+  });
+});
+
 describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)", () => {
   it("draws a valid description with its type's layout", () => {
     const result = createGraphWith(circle, fixtureRegistry, fixtureLayouts);
@@ -46,13 +79,18 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     const registered = fixtureExamples.filter((example) => Object.hasOwn(fixtureLayouts, example.type));
     expect(registered.length).toBeGreaterThan(0);
     for (const example of registered) {
-      const PerType = createGraphComponentWith(example.type, fixtures);
+      const PerType = createGraphComponent(example.type, { definition: fixtureRegistry[example.type]!, layout: fixtureLayouts[example.type]! });
       for (const textAlternative of [undefined, "A circle.", "   ", ...HOSTILE_TEXT]) {
         expect(html(<TestGraph description={example} textAlternative={textAlternative} />)).toBe(
           html(<PerType description={example} textAlternative={textAlternative} />),
         );
       }
     }
+  });
+
+  it("tags each per-type component with its type, and refuses another type's definition", () => {
+    expect(CircleGraph.graphType).toBe("circle");
+    expect(() => createGraphComponent("square", { definition: circleDefinition, layout: circleLayout })).toThrow(/for "circle", not "square"/);
   });
 
   it("passes textAlternative to SceneSvg unchanged (CPSE TICKET-002 DEL-005)", () => {
@@ -176,15 +214,43 @@ describe("invalid to valid (CPSE-REQ-014, specification Behaviors)", () => {
 describe("components never throw because of the description (CPSE-REQ-018)", () => {
   it("sends a layout that throws to the fallback as internal_error, with no stack in the output (CPSE TICKET-002 CR-006, SEC-003)", () => {
     const Throwing = (props: GraphProps) => <>{renderGraph(props, { definitions: fixtureRegistry, layouts: throwingLayouts })}</>;
-    const ThrowingCircle = createGraphComponentWith("circle", { definitions: fixtureRegistry, layouts: throwingLayouts });
+    const ThrowingCircle = createGraphComponent("circle", { definition: circleDefinition, layout: throwingLayouts.circle! });
     for (const Component of [Throwing, ThrowingCircle]) {
       const received: Issue[][] = [];
-      expect(html(<Component description={circle} fallback={(issues) => (received.push(issues), null)} />)).toBe("");
+      expect(html(<Component description={circle} fallback={(issues: Issue[]) => (received.push(issues), null)} />)).toBe("");
       expect(received).toEqual([[expect.objectContaining({ code: "internal_error", path: "" })]]);
       const markup = html(<Component description={circle} />);
       expect(markup).toContain("defect in the package");
       expect(markup).not.toMatch(LEAKED_FRAME);
       expect(markup).not.toMatch(/RangeError|Infinity/);
+    }
+  });
+
+  it("renders hostile values in both components: revoked proxies, throwing getters, inherited or lying type (code review CR-001)", () => {
+    const { proxy: revoked, revoke } = Proxy.revocable({}, {});
+    revoke();
+    const throwingGetter = Object.defineProperty({ radius: 1 }, "type", {
+      enumerable: true,
+      get() {
+        throw new Error("boom at file:///secret.js");
+      },
+    });
+    const inherited = Object.create({ type: "circle" }) as object;
+    // Answers "circle" when read, but holds "number-line" as its own property.
+    const lying = new Proxy({ type: "number-line", axis: { min: 0, max: 1 } }, { get: (target, key) => (key === "type" ? "circle" : Reflect.get(target, key)) });
+    const cases: Array<[unknown, string]> = [
+      [revoked, "not_an_object"],
+      [throwingGetter, "wrong_kind"],
+      [inherited, "not_an_object"],
+      [lying, "unknown_graph_type"],
+    ];
+    for (const [description, code] of cases) {
+      for (const Component of [TestGraph, CircleGraph]) {
+        const received: Issue[][] = [];
+        expect(html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />)).toBe("");
+        expect(received[0]?.map((issue) => issue.code)).toContain(code);
+        expect(html(<Component description={description} />)).not.toMatch(LEAKED_FRAME);
+      }
     }
   });
 
@@ -195,7 +261,7 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
           html(<Component description={description} textAlternative={textAlternative ?? undefined} />);
         }
         // Graph is exactly the shared render routine with the package's registries.
-        expect(html(<Graph description={description} />)).toBe(html(renderGraph({ description })));
+        expect(html(<Graph description={description} />)).toBe(html(renderGraph({ description }, { definitions, layouts })));
       }),
       { numRuns: 300 },
     );

@@ -238,4 +238,34 @@ The `src/react/**` pure-component lint block sits under the existing `@spec CPSE
 
 ## Post-Review Amendments
 
-None
+- **graph-library/component-packaging-and-source-export-ticket-003-code-review/CR-002**: per-type components draw with their own definition and layout.
+  - `createGraphComponent(type, { definition, layout })` builds one-entry tables, refuses a definition of another type, and returns a `GraphComponent<T>` tagged with `graphType`. `createGraphComponentWith` and the `Registries` default are removed.
+  - `renderGraph(props, registries)` and `getLayout(type, registry)` take their tables explicitly. `Graph` holds the package tables.
+  - The construction of `layouts` is marked `/* @__PURE__ */`.
+  - New `tests/package/per-type-bundle.test.ts` (esbuild; new dev dependency `esbuild ^0.28.2`) proves a per-type bundle leaves out another type's layout.
+  - **Corrects DEL-003's rationale:** a static table tree-shakes only where nothing reads it by a runtime key. Per-type components therefore must not draw through it.
+  - **Corrects the record's Notes for type tickets:** write `createGraphComponent("circle", { definition: circle, layout: circleLayout })`, and also add the layout to `layouts` so `Graph` draws it.
+  - The GSV `definitions` half is carried as Known Hazards on graph-library/geometric-shapes-and-solids/TICKET-002 and graph-library/component-packaging-and-source-export/TICKET-004.
+  - Files: `src/react/createGraphComponent.tsx`, `src/react/Graph.tsx`, `src/layout/registry.ts`, `src/index.ts`, `tests/react/Graph.test.tsx`, `tests/package/per-type-bundle.test.ts`, `package.json`, `pnpm-lock.yaml`.
+- **…-code-review/CR-001**: the per-type mismatch pre-check `mismatch()` is removed.
+  - The validator, checking against the component's one-type table, reports a wrong or missing `type` as `unknown_graph_type` at `/type` with only that type allowed. It reads the input through `isPlainObject`/`readObject`, so no component reads the raw input and a revoked Proxy no longer throws.
+  - **Corrects DEL-002:** a `type` getter is reported as `wrong_kind` ("type must be plain JSON data"), not `internal_error`; an inherited `type` gives `not_an_object`.
+  - Tests: revoked Proxy, throwing getter, inherited `type` and a Proxy whose `get` disagrees with its own property, for both `Graph` and a per-type component.
+  - File: `tests/react/Graph.test.tsx`.
+- **…-code-review/CR-003**: a package-level describe block in `tests/react/Graph.test.tsx` asserts three things, and passes trivially until the first type lands:
+  - the keys of `layouts` equal `registeredTypes(definitions)`;
+  - `src/index.ts` exports one `graphType`-tagged component per defined type;
+  - `Graph` and each component draw `examples/<type>.json` as identical SVG.
+
+  `GraphComponent` is exported as a type from `.`. Files: `src/react/createGraphComponent.tsx`, `src/index.ts`, `tests/react/Graph.test.tsx`.
+- **…-code-review/CR-004**: the `src/react/**` lint block also rejects:
+  - importing `Component`, `PureComponent` or `createContext` from React;
+  - `React.createContext(...)`;
+  - classes extending `(Pure)Component`;
+  - `on*` JSX attributes;
+  - `on*` keys in `createElement` props.
+
+  `PURE_MESSAGE` was updated. Files: `eslint.config.js`, `tests/package/boundaries.test.ts` (7 cases).
+- **Re-verification (all four):**
+  - Exit 0: `pnpm lint`, `pnpm typecheck`, `pnpm test` (25 files, 644 tests), `pnpm build`, `pnpm check:dist`, `pnpm check:deps`, `pnpm size` (`.` 9.1 kB of 120 kB; `./core` 9.63 kB), `pnpm publint`, `pnpm attw`.
+  - Mutation checks, each failing as expected: raw input read in `TypedGraph`; definition-type check removed; pure marks removed; a default parameter reaching `layouts`.

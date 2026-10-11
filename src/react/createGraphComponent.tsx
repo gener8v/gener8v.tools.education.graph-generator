@@ -1,10 +1,10 @@
 import type { ReactElement, ReactNode } from "react";
-import { type Registry, definitions } from "../core/definitions/index";
-import type { GraphType } from "../core/definitions/types";
-import { createIssue, pointer } from "../core/issues";
+import type { Registry } from "../core/definitions/index";
+import type { GraphType, GraphTypeDefinition } from "../core/definitions/types";
+import { describeValue } from "../core/issues";
 import type { Issue, Issues } from "../core/result";
-import { type LayoutRegistry, layouts } from "../layout/registry";
-import { type CreateGraphResult, createGraphWith } from "../graph";
+import type { Layout, LayoutRegistry } from "../layout/registry";
+import { createGraphWith } from "../graph";
 import { Placeholder } from "./Placeholder";
 import { SceneSvg } from "./SceneSvg";
 
@@ -27,13 +27,11 @@ export interface GraphProps {
   fallback?: Fallback;
 }
 
-/** @internal The definitions and layouts a component draws with; the tests supply their own. */
+/** @internal The definitions and layouts a component draws with. */
 export interface Registries {
   definitions: Registry;
   layouts: LayoutRegistry;
 }
-
-const packageRegistries: Registries = { definitions, layouts };
 
 // @spec CPSE-REQ-014, CPSE-REQ-015, CPSE-REQ-016, CPSE-REQ-017
 function renderFallback(issues: Issues, fallback: unknown): ReactNode {
@@ -43,60 +41,54 @@ function renderFallback(issues: Issues, fallback: unknown): ReactNode {
   return <Placeholder issues={issues} />;
 }
 
-/** The graph, or the fallback, for a result of `createGraph`. */
-function renderResult(result: CreateGraphResult, textAlternative: unknown, fallback: unknown): ReactNode {
+/**
+ * What a component renders, drawing with the given definitions and layouts: the graph, or the
+ * fallback. Pure: no hooks, state or effects (AD-014, prd/IC-002). Never throws because of the
+ * description (CPSE-REQ-018). The registries are always passed, never defaulted, so a per-type
+ * component reaches no other type's code (AD-001, CPSE-REQ-004; code review CR-002).
+ */
+// @spec CPSE-REQ-008, CPSE-REQ-014, CPSE-REQ-018
+export function renderGraph(props: GraphProps, registries: Registries): ReactNode {
+  const { description, textAlternative, fallback } = props ?? ({} as GraphProps);
+  const result = createGraphWith(description, registries.definitions, registries.layouts);
   if (!result.ok) return renderFallback(result.issues, fallback);
   return <SceneSvg scene={result.scene} textAlternative={textAlternative as string | undefined} />;
 }
 
-/**
- * What `Graph` renders, with the given definitions and layouts. Pure: no hooks, state or effects
- * (AD-014, prd/IC-002). Never throws because of the description (CPSE-REQ-018).
- */
-// @spec CPSE-REQ-008, CPSE-REQ-014, CPSE-REQ-018
-export function renderGraph(props: GraphProps, registries: Registries = packageRegistries): ReactNode {
-  const { description, textAlternative, fallback } = props ?? ({} as GraphProps);
-  return renderResult(createGraphWith(description, registries.definitions, registries.layouts), textAlternative, fallback);
+/** What a per-type component draws with: its type's definition and layout, and nothing else. */
+export interface GraphTypeParts {
+  definition: GraphTypeDefinition;
+  layout: Layout;
 }
 
+/** A per-type component, carrying the graph type it draws. */
+export type GraphComponent<T extends GraphType = GraphType> = ((props: GraphProps) => ReactElement) & { readonly graphType: T };
+
+/** A frozen one-entry record on a null prototype, like the package tables. */
+const only = <V,>(type: GraphType, value: V): Readonly<Partial<Record<GraphType, V>>> =>
+  Object.freeze(Object.assign(Object.create(null) as Partial<Record<GraphType, V>>, { [type]: value }));
+
 /**
- * The issue for a description object given to another type's component: a graph-type mismatch,
- * reported as `unknown_graph_type` at `/type` with this component's type as the only one allowed.
- * `undefined` when the description is not an object (the validator reports that) or is this type.
+ * The React component for one graph type (CPSE-REQ-007), drawing with that type's own definition
+ * and layout, so importing it brings in no other graph type (AD-001, CPSE-REQ-004). It accepts the
+ * type's description, `textAlternative` and `fallback`. A description of another type, or with no
+ * `type`, is invalid: the validator, checking against this one type, reports a graph-type mismatch
+ * as `unknown_graph_type` at `/type` naming this type as the only one allowed. For a valid
+ * description it renders exactly what `Graph` renders (CPSE-REQ-010). Every
+ * `src/react/graphs/<Pascal>Graph.tsx` is made with this:
+ * `createGraphComponent("circle", { definition: circle, layout: circleLayout })`.
  */
-function mismatch(description: unknown, type: GraphType): Issue | undefined {
-  if (typeof description !== "object" || description === null || Array.isArray(description)) return undefined;
-  let got: unknown;
-  try {
-    got = (description as { type?: unknown }).type;
-  } catch {
-    // A getter or Proxy that throws: the validator reports it as internal_error.
-    return undefined;
+// @spec CPSE-REQ-007, CPSE-REQ-010, CPSE-REQ-014, CPSE-REQ-016, CPSE-REQ-017, CPSE-REQ-018
+export function createGraphComponent<T extends GraphType>(type: T, parts: GraphTypeParts): GraphComponent<T> {
+  if (parts.definition.type !== type) {
+    throw new Error(`createGraphComponent: the definition is for ${describeValue(parts.definition.type)}, not ${describeValue(type)}`);
   }
-  if (got === type) return undefined;
-  return createIssue("unknown_graph_type", pointer("type"), got === undefined ? { allowed: [type] } : { got, allowed: [type] });
-}
-
-/** @internal `createGraphComponent` with the given definitions and layouts. */
-export function createGraphComponentWith(type: GraphType, registries: Registries) {
-  // @spec CPSE-REQ-007, CPSE-REQ-010, CPSE-REQ-014, CPSE-REQ-016, CPSE-REQ-017, CPSE-REQ-018
+  const registries: Registries = { definitions: only(type, parts.definition), layouts: only(type, parts.layout) };
   function TypedGraph(props: GraphProps): ReactElement {
-    const { description, fallback } = props ?? ({} as GraphProps);
-    const wrongType = mismatch(description, type);
-    const node = wrongType === undefined ? renderGraph(props, registries) : renderFallback([wrongType], fallback);
     // A fragment keeps the return type an element whatever the fallback returns; it adds no markup.
-    return <>{node}</>;
+    return <>{renderGraph(props, registries)}</>;
   }
-  return TypedGraph;
-}
-
-/**
- * The React component for one graph type (CPSE-REQ-007). It accepts that type's description,
- * `textAlternative` and `fallback`; a description of another type is invalid, reported as a
- * graph-type mismatch. It renders exactly what `Graph` renders for the same valid description
- * (CPSE-REQ-010). Every `src/react/graphs/<Pascal>Graph.tsx` is made with this.
- */
-// @spec CPSE-REQ-007, CPSE-REQ-010
-export function createGraphComponent(type: GraphType) {
-  return createGraphComponentWith(type, packageRegistries);
+  // The type it draws, so the package test can pair each shipped component with its type's
+  // example (code review CR-003).
+  return Object.assign(TypedGraph, { graphType: type } as const);
 }
