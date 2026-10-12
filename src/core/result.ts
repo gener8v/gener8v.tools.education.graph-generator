@@ -15,7 +15,11 @@ export interface Range {
 // @spec GSV-REQ-029, GSV-REQ-030, GSV-REQ-031, GSV-REQ-032, GSV-REQ-033
 export interface Issue {
   code: IssueCode;
-  /** JSON Pointer (RFC 6901) to the offending property; `""` is the whole description. */
+  /**
+   * JSON Pointer (RFC 6901) to the offending property; `""` is the whole description. Faithful to
+   * the caller's keys, so it may hold any characters, including line breaks and direction
+   * controls: print it with `formatIssue`, never raw (CPSE TICKET-003 security review SEC-003).
+   */
   path: string;
   /** Plain-English message naming the property and what would make it acceptable. */
   message: string;

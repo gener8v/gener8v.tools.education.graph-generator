@@ -4,6 +4,7 @@ import { asTerms, createIssue, pointer } from "./core/issues";
 import type { Issues, Provenance } from "./core/result";
 import { type LayoutRegistry, getLayout, layouts } from "./layout/registry";
 import type { Scene } from "./layout/scene";
+import { checkScene } from "./layout/kit/check";
 import { validateWith } from "./core/validate/index";
 
 /**
@@ -32,10 +33,15 @@ export function createGraphWith(input: unknown, registry: Registry, layoutRegist
           : createIssue("internal_error", pointer(), {});
       return { ok: false, issues: [issue] };
     }
-    return { ok: true, description, provenance, scene: layout(description) };
+    const scene = layout(description);
+    // A layout that returns a malformed Scene, rather than throwing, is the same defect: the
+    // components would throw while drawing it. checkScene throws on some shapes; the catch below
+    // takes those too (security review SEC-002).
+    if (checkScene(scene).length > 0) return internalError();
+    return { ok: true, description, provenance, scene };
   } catch {
-    // A layout that throws (for example `fmt()` on an extreme value) is a package defect. Its
-    // message and stack never reach the caller (GSV TICKET-002 security review SEC-003).
+    // A layout that throws (for example `fmt()` on an extreme value), or a malformed Scene, is a
+    // package defect. Its message and stack never reach the caller (GSV TICKET-002 SEC-003).
     return internalError();
   }
 }

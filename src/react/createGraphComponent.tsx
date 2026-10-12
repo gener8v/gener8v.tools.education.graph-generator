@@ -14,13 +14,23 @@ import { SceneSvg } from "./SceneSvg";
  * returns what to render. The function is how the consumer is told the issues (CPSE-REQ-017): it
  * is called during render, with no side effect. A consumer who needs a side effect, such as
  * logging, calls `validate()` from `./core` itself. An error thrown by the function is the
- * consumer's own and is not caught.
+ * consumer's own and is not caught. An issue's `path` is the caller's keys verbatim: print issues
+ * with `formatIssue` from `./core`, never the raw path (security review SEC-003).
  */
 export type Fallback = "placeholder" | "none" | ((issues: Issue[]) => ReactNode);
 
 /** The props of `Graph` and of every per-type component. */
 export interface GraphProps {
-  /** The graph description: any value; an invalid one renders the fallback. */
+  /**
+   * The graph description: any value; an invalid one renders the fallback.
+   *
+   * It is validated on every render (the components are pure, with no memoization; DEL-001). A
+   * page that re-renders often with a large description should keep the element stable, for
+   * example by memoizing it, or validate once with `createGraph` and render the result
+   * (security review SEC-005). The validator bounds its own work but reads the whole input
+   * object: a server rendering descriptions from requests must keep its own request-body size
+   * limit (GSV TICKET-003 security review SEC-001; CPSE TICKET-003 security review SEC-006).
+   */
   description: unknown;
   /** The accessible name; when absent or blank the generated text alternative is used. */
   textAlternative?: string;

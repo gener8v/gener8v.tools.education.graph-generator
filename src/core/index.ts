@@ -7,7 +7,7 @@
 // @spec CPSE-REQ-006
 export { GRAPH_TYPES } from "./definitions/types";
 export type { GraphType } from "./definitions/types";
-export { ISSUE_CODES, isIssueCode, issueDocs } from "./issues";
+export { ISSUE_CODES, formatIssue, isIssueCode, issueDocs } from "./issues";
 export type { IssueCode } from "./issues";
 export type { Issue, Issues, Provenance, Range, ValidationResult } from "./result";
 export { describe } from "./describe";

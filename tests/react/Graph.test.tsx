@@ -26,7 +26,7 @@ import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions";
 import { type Circle, circle as circleFixture } from "../fixtures/definitions/circle";
 import type { DescriptionBase, GraphType } from "../../src/core/definitions/types";
 import type { Layout } from "../../src/layout/registry";
-import { circleLayout, fixtureLayouts, throwingLayouts } from "../fixtures/layouts";
+import { circleLayout, fixtureLayouts, malformedLayouts, throwingLayouts } from "../fixtures/layouts";
 import { HOSTILE_TEXT } from "../fixtures/plain-text";
 
 const fixtures: Registries = { definitions: fixtureRegistry, layouts: fixtureLayouts };
@@ -223,7 +223,7 @@ describe("invalid descriptions (CPSE-REQ-014, CPSE-REQ-015, CPSE-REQ-016, CPSE-R
     const description = { type: "circle", radius: 1, "<img src=x onerror=alert(1)>\u0007\u202e": 1 };
     const markup = html(<TestGraph description={description} />);
     expect(markup).not.toContain("<img");
-    expect(markup).toContain("/&lt;img src=x onerror=alert(1)&gt;\\u0007\\u202e: ");
+    expect(markup).toContain("&quot;/&lt;img src=x onerror=alert(1)&gt;\\u0007\\u202e&quot;: ");
   });
 });
 
@@ -296,6 +296,18 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
         expect(html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />)).toBe("");
         expect(received[0]?.map((issue) => issue.code)).toContain(code);
         expect(html(<Component description={description} />)).not.toMatch(LEAKED_FRAME);
+      }
+    }
+  });
+
+  it("renders the fallback, not a crash, when a layout returns a malformed Scene (security review SEC-002)", () => {
+    for (const [defect, layout] of malformedLayouts) {
+      const table = Object.freeze(Object.assign(Object.create(null) as Record<string, unknown>, { circle: layout })) as Registries["layouts"];
+      const Entry = (props: GraphProps) => <>{renderGraph(props, { definitions: fixtureRegistry, layouts: table })}</>;
+      const PerType = createGraphComponent("circle", { definition: circleFixture, layout });
+      for (const Component of [Entry, PerType]) {
+        const markup = html(<Component description={circle} />);
+        expect([defect, markup.includes("defect in the package")]).toEqual([defect, true]);
       }
     }
   });

@@ -6,7 +6,7 @@ import { GRAPH_TYPES } from "../src/core/definitions/types";
 import { type LayoutRegistry, getLayout, layouts } from "../src/layout/registry";
 import { checkScene } from "../src/layout/kit/check";
 import { fixtureRegistry } from "./fixtures/definitions";
-import { circleLayout, fixtureLayouts, throwingLayouts } from "./fixtures/layouts";
+import { circleLayout, fixtureLayouts, malformedLayouts, throwingLayouts } from "./fixtures/layouts";
 
 const LEAKED_FRAME = /file:|\/node_modules\/| {4}at /;
 
@@ -71,6 +71,14 @@ describe("createGraph never throws (CPSE-REQ-018; CPSE TICKET-002 CR-006, SEC-00
     const text = JSON.stringify(result);
     expect(text).not.toMatch(LEAKED_FRAME);
     expect(text).not.toMatch(/RangeError|fmt\(\)/);
+  });
+
+  it("sends a layout that returns a malformed Scene to internal_error (security review SEC-002)", () => {
+    for (const [defect, layout] of malformedLayouts) {
+      const layouts = Object.freeze(Object.assign(Object.create(null) as Record<string, unknown>, { circle: layout })) as LayoutRegistry;
+      const result = createGraphWith({ type: "circle", radius: 1 }, fixtureRegistry, layouts);
+      expect([defect, result]).toEqual([defect, { ok: false, issues: [expect.objectContaining({ code: "internal_error", path: "" })] }]);
+    }
   });
 
   it("returns a result for any JSON value", () => {

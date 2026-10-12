@@ -496,20 +496,32 @@ describe("formatIssue (GSV TICKET-002 security review SEC-001)", () => {
     expect(formatIssue(createIssue("internal_error", "", {}))).toBe(issueMessage("internal_error", {}));
   });
 
-  it("escapes control, bidi and zero-width characters in the path", () => {
-    const path = pointer(`a\u0000b\u202ec\u200bd\u200de\n`);
-    expect(formatIssue({ path, message })).toBe(`/a\\u0000b\\u202ec\\u200bd\\u200de\\u000a: ${message}`);
+  it("prints a plain pointer as written", () => {
+    expect(formatIssue({ path: "/points/2/x", message })).toBe(`/points/2/x: ${message}`);
+    expect(formatIssue({ path: "/x-axis/tick_spacing", message })).toBe(`/x-axis/tick_spacing: ${message}`);
   });
 
-  it("clips a long path", () => {
+  it("quotes and escapes a path holding control, bidi or zero-width characters (SEC-004)", () => {
+    const path = pointer(`a\u0000b\u202ec\u200bd\u200de\n`);
+    expect(formatIssue({ path, message })).toBe(`"/a\\u0000b\\u202ec\\u200bd\\u200de\\n": ${message}`);
+    expect(formatIssue({ path: "/a b", message })).toBe(`"/a b": ${message}`);
+  });
+
+  it("quotes and clips a long path at 64 characters, like terms in messages (SEC-004)", () => {
     const line = formatIssue({ path: `/${"k".repeat(10_000)}`, message });
-    expect(line.length).toBeLessThan(200 + message.length + 3);
-    expect(line).toContain("...: ");
+    expect(line).toBe(`"/${"k".repeat(60)}...": ${message}`);
   });
 
   it("leaves a package-built message unchanged, and escapes one that is not", () => {
     const issue = createIssue("unknown_property", pointer("x\u202e"), { term: "x\u202e", graphType: "circle", allowed: ["radius"] });
-    expect(formatIssue(issue)).toBe(`/x\\u202e: ${issue.message}`);
+    expect(formatIssue(issue)).toBe(`"/x\\u202e": ${issue.message}`);
     expect(formatIssue({ path: "", message: "a\u202eb" })).toBe("a\\u202eb");
+  });
+});
+
+describe("formatIssue is public (CPSE TICKET-003 security review SEC-003)", () => {
+  it("is exported from ./core, so consumers print issues the same way", async () => {
+    const core = await import("../../src/core/index");
+    expect(core.formatIssue).toBe(formatIssue);
   });
 });

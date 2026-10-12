@@ -41,6 +41,10 @@
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-004-security-review/SEC-005: document that `describe(input)` validates its input, and throws for an invalid one (call `validate` to learn why), and that `normalize` does the same.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-005-code-review/CR-005: no documentation tables are generated. Build each type's input table from `src/generated/vocabulary.json` (terms, required, kind, range, values with `valueDescriptions`, `maxItems`, `ordered`, derivation groups, check names, `descriptionVersions`).
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-005-security-review/SEC-001 and graph-library/graph-specification-and-vocabulary-ticket-005-code-review/CR-008: document that `schema.json` describes the shape and checks the plain-text policy only up to U+FFFF, and that `validate()` is the gate for untrusted text. Also document that schema and validator agree on the JSON form of a description: an `undefined`-valued key, which JSON cannot hold, is ignored by `validate` but rejected by a JSON Schema validator.
+- Carried from graph-library/component-packaging-and-source-export-ticket-003-security-review/SEC-003 and SEC-006:
+  - An issue's `path` is the caller's keys verbatim and may hold line breaks and direction controls. Every fallback, logging or error-display example on the site prints issues with `formatIssue` from `./core`, never `issue.path` raw.
+  - State on the site, next to the component props, that the validator reads the whole input object, so a server rendering descriptions from requests must keep its own request-body size limit. The same note is on `GraphProps.description`.
+  - Also state that components validate on every render (CPSE TICKET-003 DEL-001, SEC-005). Show memoizing the element, or calling `createGraph` once, for pages that re-render often with large descriptions.
 
 **Depends On:** TICKET-003
 **Blocks:** None

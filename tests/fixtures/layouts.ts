@@ -34,3 +34,19 @@ export const throwingLayouts: LayoutRegistry = Object.freeze(
     circle: () => fmt(Number.POSITIVE_INFINITY) as unknown as Scene,
   }),
 );
+
+/**
+ * Layouts that return a malformed Scene instead of throwing (security review SEC-002), each paired
+ * with the defect it stands for.
+ */
+const base = (normalized: Circle) => circleLayout(normalized);
+export const malformedLayouts: ReadonlyArray<readonly [string, Layout<Circle>]> = [
+  ["an undefined node", (n) => ({ ...base(n), nodes: [undefined as unknown as Scene["nodes"][number]] })],
+  ["no node list", (n) => ({ ...base(n), nodes: undefined as unknown as Scene["nodes"] })],
+  ["a node of unknown kind", (n) => ({ ...base(n), nodes: [{ kind: "image", attrs: [] } as unknown as Scene["nodes"][number]] })],
+  ["a node with no attrs", (n) => ({ ...base(n), nodes: [{ kind: "rect" } as unknown as Scene["nodes"][number]] })],
+  ["text that is not a string", (n) => ({ ...base(n), nodes: [{ kind: "text", attrs: [], text: { a: 1 } } as unknown as Scene["nodes"][number]] })],
+  ["no Scene at all", () => undefined as unknown as Scene],
+  ["an unrounded number", (n) => ({ ...base(n), height: (1 / 3) as Scene["height"] })],
+  ["a url() reference", (n) => ({ ...base(n), nodes: [{ kind: "rect", attrs: [["fill", "url(#x)"]] }] })],
+];

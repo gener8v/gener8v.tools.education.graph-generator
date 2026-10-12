@@ -279,3 +279,24 @@ The `src/react/**` pure-component lint block sits under the existing `@spec CPSE
   - **QR-007:** `TypedGraph.displayName = componentName(type)`, and `GraphComponent` declares `displayName`.
   - **Files:** `src/layout/registry.ts`, `src/react/createGraphComponent.tsx`, `eslint.config.js`, `tests/fixtures/layouts.ts`, `tests/fixtures/definitions/circle.ts`, `tests/graph.test.ts`, `tests/react/Graph.test.tsx`, `tests/package/boundaries.test.ts`, `tests/package/per-type-bundle.test.ts`, `.gener8v/changes/graph-library/tickets/geometric-shapes-and-solids/TICKET-002.md`.
   - **Re-verification:** all nine Verification Run commands exit 0 (25 files, 649 tests). Mutation checks pass, and a simulation of GSS TICKET-002's files passes.
+- **graph-library/component-packaging-and-source-export-ticket-003-security-review/SEC-001..SEC-006** (resolved 2026-10-12):
+  - **SEC-001:** the `pnpm.overrides` entry for `esbuild` was raised to `^0.28.2` to match the dev dependency added for CR-002, and the lockfile was regenerated. `pnpm install --frozen-lockfile` now passes and joins this ticket's Verification Run.
+  - **SEC-002:** `createGraphWith` runs `checkScene` on the layout's Scene inside its guard, so a malformed Scene becomes `internal_error` instead of a render-time throw. This closes the remaining gap in CPSE-REQ-018 and also enforces the no-`url(`/`fmt()` rules at runtime. Covered by `malformedLayouts` in `tests/fixtures/layouts.ts`.
+  - **SEC-003:** `formatIssue` is exported from `./core`. `Issue.path` and `Fallback` now warn that the path is raw. TICKET-008 gets a Known Hazard.
+  - **SEC-004:** `formatIssue` prints plain pointers as written. It quotes, clips to 64 and escapes any other path, matching how terms are written in messages.
+  - **SEC-005:** accepted risk (Security — Thomas, 2026-10-12). Validation per render stays (DEL-001), with memoization advice on `GraphProps.description` and in TICKET-008's hazard.
+  - **SEC-006:** the request-body-limit note is on `GraphProps.description`, and in TICKET-008's hazard.
+  - **Files:** `package.json`, `pnpm-lock.yaml`, `src/graph.ts`, `src/core/issues.ts`, `src/core/index.ts`, `src/core/result.ts`, `src/react/createGraphComponent.tsx`, `tests/fixtures/layouts.ts`, `tests/graph.test.ts`, `tests/react/Graph.test.tsx`, `tests/core/issues.test.ts`, `.gener8v/changes/graph-library/tickets/component-packaging-and-source-export/TICKET-008.md`.
+  - **Re-verification:** every command below exits 0:
+
+    | Command | Exit | Evidence |
+    |---------|------|----------|
+    | `pnpm install --frozen-lockfile` (repository, and a clean copy with `CI=true --offline`) | 0 | — |
+    | `pnpm lint`, `pnpm typecheck` | 0 | — |
+    | `pnpm test` | 0 | 25 files, 653 tests |
+    | `pnpm build`, `pnpm check:dist`, `pnpm check:deps` | 0 | — |
+    | `pnpm size` | 0 | `.` 9.83 kB of 120 kB; `./core` 9.7 kB of 25 kB |
+    | `pnpm publint`, `pnpm attw` | 0 | — |
+    | `pnpm audit` | 0 | no known vulnerabilities |
+
+    Mutation checks: removing the Scene check fails 2 tests; printing the path unquoted fails 4.

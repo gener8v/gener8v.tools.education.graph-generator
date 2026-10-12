@@ -383,18 +383,22 @@ export function createIssue<C extends IssueCode>(code: C, path: string, params: 
   return issue;
 }
 
-const MAX_PATH_CHARS = 200;
+// A pointer whose every segment looks like a term or a list position is printed as written.
+const PLAIN_POINTER = /^(?:\/[A-Za-z0-9_-]{1,64})+$/;
 
 /**
  * One issue as a line of text: `<path>: <message>`, or the message alone for the whole
- * description. The path is a faithful JSON Pointer and may hold raw control or invisible
- * characters from caller keys, so it is clipped and escaped exactly as caller text in messages is;
- * the message is escaped again, which leaves a package-built message unchanged. Every place the
- * package prints an issue as text uses this (GSV TICKET-002 security review SEC-001).
+ * description. The path is a faithful JSON Pointer and may hold any characters from caller keys,
+ * so it gets the same policy as terms in messages: a plain pointer (`/points/2/x`) as written,
+ * anything else quoted, clipped to 64 characters and escaped. The message is escaped again, which
+ * leaves a package-built message unchanged. Every place the package prints an issue as text uses
+ * this, and consumers should too (GSV TICKET-002 security review SEC-001; CPSE TICKET-003
+ * security review SEC-003, SEC-004).
  */
 // @spec CPSE-REQ-015
 export function formatIssue(issue: Pick<Issue, "path" | "message">): string {
   const message = escapeChars(String(issue.message));
   const path = String(issue.path);
-  return path === "" ? message : `${escapeChars(clip(path, MAX_PATH_CHARS))}: ${message}`;
+  if (path === "") return message;
+  return `${PLAIN_POINTER.test(path) ? path : quote(path, MAX_TERM_CHARS)}: ${message}`;
 }
