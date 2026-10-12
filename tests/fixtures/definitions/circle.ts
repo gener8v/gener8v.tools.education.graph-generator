@@ -1,6 +1,6 @@
 import { defineProperties, type DescriptionBase, type GraphTypeDefinition } from "../../../src/core/definitions/types";
 
-interface Circle extends DescriptionBase {
+export interface Circle extends DescriptionBase {
   type: "circle";
   radius: number;
   diameter: number;

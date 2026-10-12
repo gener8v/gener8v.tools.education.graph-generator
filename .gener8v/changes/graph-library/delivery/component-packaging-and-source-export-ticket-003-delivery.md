@@ -269,3 +269,13 @@ The `src/react/**` pure-component lint block sits under the existing `@spec CPSE
 - **Re-verification (all four):**
   - Exit 0: `pnpm lint`, `pnpm typecheck`, `pnpm test` (25 files, 644 tests), `pnpm build`, `pnpm check:dist`, `pnpm check:deps`, `pnpm size` (`.` 9.1 kB of 120 kB; `./core` 9.63 kB), `pnpm publint`, `pnpm attw`.
   - Mutation checks, each failing as expected: raw input read in `TypedGraph`; definition-type check removed; pure marks removed; a default parameter reaching `layouts`.
+- **graph-library/component-packaging-and-source-export-ticket-003-quality-review/QR-001..QR-007** (resolved 2026-10-11):
+  - **QR-001:** `tests/package/boundaries.test.ts` walks `src/react` recursively. `tests/package/per-type-bundle.test.ts` inserts its other-type marker at the opening of the `layouts` entries, so neither breaks when GSS TICKET-002 adds `src/react/graphs/` and the circle layout.
+  - **QR-002:** `Layout<D extends DescriptionBase = DescriptionBase>` uses method syntax and is bivariant. `GraphTypeParts<D>` and `createGraphComponent<T, D>` are generic, with one widening cast to the table types. The fixture layout is `Layout<Circle>`, and `Circle` is exported from the fixture.
+  - **QR-003:** the documented per-type line is `export const CircleGraph = /* @__PURE__ */ createGraphComponent(...)` (TSDoc and the GSS TICKET-002 hazard). A bundle case proves an unused marked component is dropped.
+  - **QR-004:** the tests that assumed empty tables now use their own empty table, or a type that will never be defined (`hexagon`).
+  - **QR-005:** a 20/21-issue boundary test was added.
+  - **QR-006:** quoted `"onX"` keys in `createElement` props are rejected, the block comment was updated, and the hook patterns are built from one fragment.
+  - **QR-007:** `TypedGraph.displayName = componentName(type)`, and `GraphComponent` declares `displayName`.
+  - **Files:** `src/layout/registry.ts`, `src/react/createGraphComponent.tsx`, `eslint.config.js`, `tests/fixtures/layouts.ts`, `tests/fixtures/definitions/circle.ts`, `tests/graph.test.ts`, `tests/react/Graph.test.tsx`, `tests/package/boundaries.test.ts`, `tests/package/per-type-bundle.test.ts`, `.gener8v/changes/graph-library/tickets/geometric-shapes-and-solids/TICKET-002.md`.
+  - **Re-verification:** all nine Verification Run commands exit 0 (25 files, 649 tests). Mutation checks pass, and a simulation of GSS TICKET-002's files passes.

@@ -1,8 +1,9 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { createGraph, createGraphWith } from "../src/graph";
-import { definitions } from "../src/core/definitions/index";
-import { getLayout, layouts } from "../src/layout/registry";
+import { definitions, registeredTypes } from "../src/core/definitions/index";
+import { GRAPH_TYPES } from "../src/core/definitions/types";
+import { type LayoutRegistry, getLayout, layouts } from "../src/layout/registry";
 import { checkScene } from "../src/layout/kit/check";
 import { fixtureRegistry } from "./fixtures/definitions";
 import { circleLayout, fixtureLayouts, throwingLayouts } from "./fixtures/layouts";
@@ -10,9 +11,10 @@ import { circleLayout, fixtureLayouts, throwingLayouts } from "./fixtures/layout
 const LEAKED_FRAME = /file:|\/node_modules\/| {4}at /;
 
 describe("layout registry (CPSE-REQ-007, CPSE-REQ-008)", () => {
-  it("ships no layouts until the graph-type tickets register theirs", () => {
-    expect(Object.keys(layouts)).toEqual([]);
+  it("keeps the package's layouts in a frozen table on a null prototype", () => {
+    // Which types it holds is checked against the definitions in tests/react/Graph.test.tsx.
     expect(Object.isFrozen(layouts)).toBe(true);
+    expect(Object.getPrototypeOf(layouts)).toBeNull();
   });
 
   it("finds a registered layout by its type, and nothing for anything else", () => {
@@ -47,14 +49,17 @@ describe("createGraph (CPSE-REQ-009)", () => {
   });
 
   it("reports internal_error when no type can be drawn at all", () => {
-    const result = createGraphWith({ type: "circle", radius: 1 }, fixtureRegistry, layouts);
+    // Its own empty table, so the test does not depend on which layouts the package ships (QR-004).
+    const noLayouts: LayoutRegistry = Object.freeze(Object.create(null) as LayoutRegistry);
+    const result = createGraphWith({ type: "circle", radius: 1 }, fixtureRegistry, noLayouts);
     expect(result).toMatchObject({ ok: false, issues: [{ code: "internal_error", path: "" }] });
   });
 
   it("uses the package's definitions and layouts", () => {
-    // Both are empty until the graph-type tickets land, so every type is unknown for now.
-    expect(Object.keys(definitions)).toEqual([]);
-    expect(createGraph({ type: "circle", radius: 1 })).toMatchObject({ ok: false, issues: [{ code: "unknown_graph_type" }] });
+    // A type no definition will ever have, so this holds whichever types the package ships.
+    const unknown = createGraph({ type: "hexagon", radius: 1 });
+    expect(unknown).toMatchObject({ ok: false, issues: [{ code: "unknown_graph_type", path: "/type" }] });
+    expect(unknown.ok ? [] : unknown.issues[0]!.allowed).toEqual(registeredTypes(definitions).length > 0 ? registeredTypes(definitions) : [...GRAPH_TYPES]);
     expect(createGraph(undefined)).toMatchObject({ ok: false, issues: [{ code: "not_an_object" }] });
   });
 });

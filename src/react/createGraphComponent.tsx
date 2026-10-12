@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import type { Registry } from "../core/definitions/index";
-import type { GraphType, GraphTypeDefinition } from "../core/definitions/types";
+import type { DescriptionBase, GraphType, GraphTypeDefinition } from "../core/definitions/types";
 import { describeValue } from "../core/issues";
 import type { Issue, Issues } from "../core/result";
 import type { Layout, LayoutRegistry } from "../layout/registry";
@@ -56,13 +56,22 @@ export function renderGraph(props: GraphProps, registries: Registries): ReactNod
 }
 
 /** What a per-type component draws with: its type's definition and layout, and nothing else. */
-export interface GraphTypeParts {
-  definition: GraphTypeDefinition;
-  layout: Layout;
+export interface GraphTypeParts<D extends DescriptionBase = DescriptionBase> {
+  definition: GraphTypeDefinition<D>;
+  layout: Layout<D>;
 }
 
 /** A per-type component, carrying the graph type it draws. */
-export type GraphComponent<T extends GraphType = GraphType> = ((props: GraphProps) => ReactElement) & { readonly graphType: T };
+export type GraphComponent<T extends GraphType = GraphType> = ((props: GraphProps) => ReactElement) & {
+  readonly graphType: T;
+  displayName?: string;
+};
+
+/** The component name for a graph type: "circle" → "CircleGraph", "bar-graph" → "BarGraph". */
+export function componentName(type: GraphType): string {
+  const pascal = type.replace(/(^|-)([a-z])/g, (_, __, letter: string) => letter.toUpperCase());
+  return pascal.endsWith("Graph") ? pascal : `${pascal}Graph`;
+}
 
 /** A frozen one-entry record on a null prototype, like the package tables. */
 const only = <V,>(type: GraphType, value: V): Readonly<Partial<Record<GraphType, V>>> =>
@@ -75,19 +84,29 @@ const only = <V,>(type: GraphType, value: V): Readonly<Partial<Record<GraphType,
  * `type`, is invalid: the validator, checking against this one type, reports a graph-type mismatch
  * as `unknown_graph_type` at `/type` naming this type as the only one allowed. For a valid
  * description it renders exactly what `Graph` renders (CPSE-REQ-010). Every
- * `src/react/graphs/<Pascal>Graph.tsx` is made with this:
- * `createGraphComponent("circle", { definition: circle, layout: circleLayout })`.
+ * `src/react/graphs/<Pascal>Graph.tsx` is made with this, marked pure so a bundler drops a
+ * component nothing imports (quality review QR-003):
+ * `export const CircleGraph = /* @__PURE__ *\/ createGraphComponent("circle", { definition: circle, layout: circleLayout });`
  */
 // @spec CPSE-REQ-007, CPSE-REQ-010, CPSE-REQ-014, CPSE-REQ-016, CPSE-REQ-017, CPSE-REQ-018
-export function createGraphComponent<T extends GraphType>(type: T, parts: GraphTypeParts): GraphComponent<T> {
+export function createGraphComponent<T extends GraphType, D extends DescriptionBase = DescriptionBase>(
+  type: T,
+  parts: GraphTypeParts<D>,
+): GraphComponent<T> {
   if (parts.definition.type !== type) {
     throw new Error(`createGraphComponent: the definition is for ${describeValue(parts.definition.type)}, not ${describeValue(type)}`);
   }
-  const registries: Registries = { definitions: only(type, parts.definition), layouts: only(type, parts.layout) };
+  // The one place a type's own definition and layout widen to the shared table types.
+  const registries: Registries = {
+    definitions: only(type, parts.definition as unknown as GraphTypeDefinition),
+    layouts: only(type, parts.layout as Layout),
+  };
   function TypedGraph(props: GraphProps): ReactElement {
     // A fragment keeps the return type an element whatever the fallback returns; it adds no markup.
     return <>{renderGraph(props, registries)}</>;
   }
+  // A name per type for React DevTools and error stacks (quality review QR-007).
+  TypedGraph.displayName = componentName(type);
   // The type it draws, so the package test can pair each shipped component with its type's
   // example (code review CR-003).
   return Object.assign(TypedGraph, { graphType: type } as const);

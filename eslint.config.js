@@ -66,8 +66,9 @@ const browserGlobalSyntax = (message) => ({
 // What a Server Component cannot hold (prd/IC-002): hooks, reached by name (`useState`) or through
 // an object (`React.useState`); class components, which carry state; context; event handlers; and
 // the "use client" directive (code review CR-004 on CPSE TICKET-003).
-const HOOK_PATTERN = "^use([A-Z]|$)";
-const STATEFUL_REACT_PATTERN = "^(use([A-Z].*)?|Component|PureComponent|createContext)$";
+const HOOK = "use(?:[A-Z].*)?";
+const HOOK_PATTERN = `^${HOOK}$`;
+const STATEFUL_REACT_PATTERN = `^(${HOOK}|Component|PureComponent|createContext)$`;
 const pureImportOptions = {
   paths: networkImportPaths,
   patterns: [{ group: ["react", "react-dom", "react-dom/*"], importNamePattern: STATEFUL_REACT_PATTERN, message: PURE_MESSAGE }],
@@ -77,7 +78,9 @@ const pureSyntax = [
   { selector: "CallExpression[callee.property.name='createContext']", message: PURE_MESSAGE },
   { selector: ":matches(ClassDeclaration, ClassExpression)[superClass.property.name=/^(Pure)?Component$/]", message: PURE_MESSAGE },
   { selector: "JSXAttribute[name.name=/^on[A-Z]/]", message: PURE_MESSAGE },
+  // Handler keys written as names (`onClick`) or strings (`"onClick"`), as the network rules do.
   { selector: "CallExpression[callee.name='createElement'] > ObjectExpression > Property[key.name=/^on[A-Z]/]", message: PURE_MESSAGE },
+  { selector: "CallExpression[callee.name='createElement'] > ObjectExpression > Property[key.value=/^on[A-Z]/]", message: PURE_MESSAGE },
   { selector: "ExpressionStatement[directive='use client']", message: PURE_MESSAGE },
 ];
 
@@ -124,7 +127,8 @@ export default defineConfig(
   {
     // React is allowed here, browser globals are not: the type checker no longer catches them,
     // because @types/jsdom brings the DOM library into the program (quality review QR-003).
-    // Hooks and "use client" are rejected too (AD-014, prd/IC-002).
+    // Hooks, class components, context, event handlers and "use client" are rejected too, so the
+    // components stay usable as Server Components (AD-014, prd/IC-002).
     // Repeats the network restrictions, which this block's rule options replace.
     // @spec CPSE-REQ-011
     files: [`src/react/**/*.${SCRIPT_EXTENSIONS}`],

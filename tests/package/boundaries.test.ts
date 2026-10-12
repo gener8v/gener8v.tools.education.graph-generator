@@ -90,6 +90,7 @@ describe("components are pure: no hooks, state, effects or client boundary (AD-0
     ["createContext", `import { createContext } from "react";\nexport const Ctx = createContext(0);\n`, "no-restricted-imports"],
     ["React.createContext", `import * as React from "react";\nexport const Ctx = React.createContext(0);\n`, "no-restricted-syntax"],
     ["an onClick attribute", `export const C = () => <svg onClick={() => 1} />;\n`, "no-restricted-syntax"],
+    ["a quoted onClick prop to createElement", `import { createElement } from "react";\nexport const C = () => createElement("svg", { "onClick": () => 1 });\n`, "no-restricted-syntax"],
     ["an onClick prop to createElement", `import { createElement } from "react";\nexport const C = () => createElement("svg", { onClick: () => 1 });\n`, "no-restricted-syntax"],
   ];
   for (const [name, code, rule] of cases) {
@@ -102,10 +103,15 @@ describe("components are pure: no hooks, state, effects or client boundary (AD-0
     expect(await ruleIds(`export const user = { useful: () => 1 };\nexport const u = user.useful();\n`, "src/react/fixture.tsx")).toEqual([]);
   });
 
-  it("passes every shipped component", async () => {
+  it("passes every shipped component, in src/react and every directory under it", async () => {
     const { readdirSync, readFileSync } = await import("node:fs");
-    for (const file of readdirSync("src/react")) {
-      expect([file, await ruleIds(readFileSync(`src/react/${file}`, "utf8"), `src/react/${file}`)]).toEqual([file, []]);
+    // Recursive, so src/react/graphs/ is checked too (quality review QR-001).
+    const files = readdirSync("src/react", { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => `${entry.parentPath}/${entry.name}`);
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      expect([file, await ruleIds(readFileSync(file, "utf8"), file)]).toEqual([file, []]);
     }
   });
 });

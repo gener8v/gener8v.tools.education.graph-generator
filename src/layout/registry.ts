@@ -3,9 +3,12 @@ import type { Scene } from "./scene";
 
 /**
  * A graph type's layout: a pure function from a normalized description of that type to a Scene
- * (AD-002, Layout contract). It is only ever called with `validate(...).description`.
+ * (AD-002, Layout contract). It is only ever called with `validate(...).description`. Typed by the
+ * type's description, like `GraphTypeDefinition<D>`; method syntax keeps the parameter bivariant,
+ * as `GraphTypeDefinition.describe` does, so a layout typed for one graph type still fits the
+ * shared table (quality review QR-002).
  */
-export type Layout = (normalized: DescriptionBase) => Scene;
+export type Layout<D extends DescriptionBase = DescriptionBase> = { draw(normalized: D): Scene }["draw"];
 
 /** A set of layouts, keyed by graph type. */
 export type LayoutRegistry = Readonly<Partial<Record<GraphType, Layout>>>;

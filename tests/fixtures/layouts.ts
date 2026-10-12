@@ -1,15 +1,15 @@
 import { describeNormalized } from "../../src/core/describe";
-import type { DescriptionBase } from "../../src/core/definitions/types";
 import { displayValue, fmt } from "../../src/layout/kit/format";
 import type { Layout, LayoutRegistry } from "../../src/layout/registry";
 import { SCENE_WIDTH, type Scene } from "../../src/layout/scene";
 import { fixtureRegistry } from "./definitions";
+import type { Circle } from "./definitions/circle";
 
 /**
  * A test-only circle layout for the fixture circle definition, standing in for the real one until
  * GSS TICKET-002 lands. The circle fills the drawing whatever the radius; the label shows it.
  */
-export const circleLayout: Layout = (normalized: DescriptionBase): Scene => ({
+export const circleLayout: Layout<Circle> = (normalized): Scene => ({
   width: SCENE_WIDTH,
   height: fmt(300),
   textAlternative: describeNormalized(normalized, fixtureRegistry),
@@ -18,7 +18,7 @@ export const circleLayout: Layout = (normalized: DescriptionBase): Scene => ({
     {
       kind: "text",
       attrs: [["x", fmt(200)], ["y", fmt(290)], ["text-anchor", "middle"]],
-      text: `r = ${displayValue(normalized.radius as number, "derived")}`,
+      text: `r = ${displayValue(normalized.radius, "derived")}`,
     },
   ],
 });

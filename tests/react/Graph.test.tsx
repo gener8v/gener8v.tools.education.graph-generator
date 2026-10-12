@@ -8,21 +8,32 @@ import type { Issue } from "../../src/core/result";
 import { Graph } from "../../src/react/Graph";
 import { PLACEHOLDER_ISSUE_LIMIT } from "../../src/react/Placeholder";
 import { SceneSvg } from "../../src/react/SceneSvg";
-import { type GraphComponent, type GraphProps, type Registries, createGraphComponent, renderGraph } from "../../src/react/createGraphComponent";
+import {
+  type GraphComponent,
+  type GraphProps,
+  type GraphTypeParts,
+  type Registries,
+  componentName,
+  createGraphComponent,
+  renderGraph,
+} from "../../src/react/createGraphComponent";
 import { definitions } from "../../src/core/definitions/index";
 import { layouts } from "../../src/layout/registry";
 import * as entry from "../../src/index";
 import { existsSync, readFileSync } from "node:fs";
 import { registeredTypes } from "../../src/core/definitions/index";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions";
+import { type Circle, circle as circleFixture } from "../fixtures/definitions/circle";
+import type { DescriptionBase, GraphType } from "../../src/core/definitions/types";
+import type { Layout } from "../../src/layout/registry";
 import { circleLayout, fixtureLayouts, throwingLayouts } from "../fixtures/layouts";
 import { HOSTILE_TEXT } from "../fixtures/plain-text";
 
 const fixtures: Registries = { definitions: fixtureRegistry, layouts: fixtureLayouts };
 // `Graph` with the test-only definitions and layouts: the same render routine `Graph` calls.
 const TestGraph = (props: GraphProps) => <>{renderGraph(props, fixtures)}</>;
-const circleDefinition = fixtureRegistry.circle!;
-const CircleGraph = createGraphComponent("circle", { definition: circleDefinition, layout: circleLayout });
+const circleDefinition = circleFixture;
+const CircleGraph = createGraphComponent("circle", { definition: circleFixture, layout: circleLayout });
 
 const circle = fixtureExamples[0];
 const html = (node: ReactNode) => renderToStaticMarkup(<>{node}</>);
@@ -34,8 +45,9 @@ describe("public entry point (CPSE-REQ-008, CPSE-REQ-009)", () => {
     expect(typeof entry.createGraph).toBe("function");
   });
 
-  it("Graph renders with the package registries, which hold no graph types yet", () => {
-    expect(html(<Graph description={circle} />)).toContain("This graph could not be drawn.");
+  it("Graph renders with the package registries", () => {
+    // A type no definition will ever have, so this holds whichever types the package ships.
+    expect(html(<Graph description={{ type: "hexagon" }} />)).toContain("This graph could not be drawn.");
   });
 });
 
@@ -86,6 +98,26 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
         );
       }
     }
+  });
+
+  it("names each per-type component for DevTools and stacks (QR-007)", () => {
+    expect(CircleGraph.displayName).toBe("CircleGraph");
+    expect(["circle", "number-line", "bar-graph", "xy-graph", "pictograph"].map((type) => componentName(type as GraphType))).toEqual([
+      "CircleGraph",
+      "NumberLineGraph",
+      "BarGraph",
+      "XyGraph",
+      "PictographGraph",
+    ]);
+  });
+
+  it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
+    // @ts-expect-error a misspelt field of the circle's description
+    const misspelt: Layout<Circle> = (normalized) => ({ ...circleLayout(normalized), height: normalized.raduis });
+    const other: Layout<DescriptionBase & { type: "square"; side: number }> = () => circleLayout(fixtureExamples[0] as unknown as Circle);
+    // @ts-expect-error a square's layout paired with the circle's definition
+    const mismatched: GraphTypeParts<Circle> = { definition: circleFixture, layout: other };
+    expect([misspelt, mismatched]).toHaveLength(2);
   });
 
   it("tags each per-type component with its type, and refuses another type's definition", () => {
@@ -159,6 +191,20 @@ describe("invalid descriptions (CPSE-REQ-014, CPSE-REQ-015, CPSE-REQ-016, CPSE-R
     // Not an object: the validator's own issue.
     html(<CircleGraph description={[circle]} fallback={record} />);
     expect(received[2]).toEqual([expect.objectContaining({ code: "not_an_object" })]);
+  });
+
+  it("lists exactly 20 issues with no count line, and counts the 21st (QR-005)", () => {
+    const withUnknownKeys = (n: number) => {
+      const description: Record<string, unknown> = { type: "circle", radius: 1 };
+      for (let i = 0; i < n; i++) description[`k${i}`] = i;
+      return description;
+    };
+    const twenty = html(<TestGraph description={withUnknownKeys(PLACEHOLDER_ISSUE_LIMIT)} />);
+    expect(twenty.match(/<li>/g)).toHaveLength(PLACEHOLDER_ISSUE_LIMIT);
+    expect(twenty).not.toContain("more.");
+    const twentyOne = html(<TestGraph description={withUnknownKeys(PLACEHOLDER_ISSUE_LIMIT + 1)} />);
+    expect(twentyOne.match(/<li>/g)).toHaveLength(PLACEHOLDER_ISSUE_LIMIT);
+    expect(twentyOne).toContain("…and 1 more.");
   });
 
   it("lists at most 20 issues, then how many more, so 5,000 unknown keys stay small (GSV TICKET-002 SEC-002)", () => {
