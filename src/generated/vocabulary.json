@@ -2,8 +2,191 @@
   "descriptionVersions": [
     1
   ],
-  "terms": {},
-  "graphTypes": {},
+  "terms": {
+    "circumference": {
+      "definition": "The distance around the circle, 2π times the radius, from 0.006 to 6,283,186.",
+      "kind": "number"
+    },
+    "circumferenceLabelText": {
+      "definition": "Text shown in place of the circumference value, such as \"r\" or \"?\"; it also labels the circumference. An empty text is a blank label, for example a space to fill in; the text alternative still states the value.",
+      "kind": "string"
+    },
+    "diameter": {
+      "definition": "The distance across the circle through its center, twice the radius, from 0.002 to 2,000,000.",
+      "kind": "number"
+    },
+    "diameterLabelText": {
+      "definition": "Text shown in place of the diameter value, such as \"r\" or \"?\"; it also labels the diameter. An empty text is a blank label, for example a space to fill in; the text alternative still states the value.",
+      "kind": "string"
+    },
+    "labelCircumference": {
+      "definition": "Whether the circumference is labeled with its measurement, next to the circle.",
+      "kind": "boolean"
+    },
+    "labelDiameter": {
+      "definition": "Whether the diameter is labeled with its measurement; a labeled diameter is drawn.",
+      "kind": "boolean"
+    },
+    "labelRadius": {
+      "definition": "Whether the radius is labeled with its measurement; a labeled radius is drawn.",
+      "kind": "boolean"
+    },
+    "lineColor": {
+      "definition": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
+      "kind": "color"
+    },
+    "radius": {
+      "definition": "The distance from the center to the circle, from 0.001 to 1,000,000.",
+      "kind": "number"
+    },
+    "radiusLabelText": {
+      "definition": "Text shown in place of the radius value, such as \"r\" or \"?\"; it also labels the radius. An empty text is a blank label, for example a space to fill in; the text alternative still states the value.",
+      "kind": "string"
+    },
+    "showCenter": {
+      "definition": "Whether the center is marked with a point.",
+      "kind": "boolean"
+    },
+    "showDiameter": {
+      "definition": "Whether the diameter is drawn through the center; it never lies on the radius.",
+      "kind": "boolean"
+    },
+    "showRadius": {
+      "definition": "Whether the radius is drawn, from the center horizontally to the right.",
+      "kind": "boolean"
+    },
+    "title": {
+      "definition": "A title shown above the graph, as plain text.",
+      "kind": "string"
+    },
+    "type": {
+      "definition": "The graph type: which kind of graph the description draws.",
+      "kind": "enum"
+    },
+    "unit": {
+      "definition": "The unit of length shown after each measurement, such as cm.",
+      "kind": "string"
+    },
+    "version": {
+      "definition": "The schema version the description is written for. Leave it out for the current version, 1.",
+      "kind": "integer"
+    }
+  },
+  "graphTypes": {
+    "circle": {
+      "title": "Circle",
+      "description": "A circle drawn to scale from its radius, diameter or circumference (give one; any other given must agree within 1%). The radius, the diameter and the center can be drawn, and each measurement labeled with its value and unit or with custom text.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "circle"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false
+        },
+        "lineColor": {
+          "kind": "color",
+          "required": false
+        },
+        "radius": {
+          "kind": "number",
+          "required": false,
+          "range": {
+            "min": 0.001,
+            "max": 1000000
+          }
+        },
+        "diameter": {
+          "kind": "number",
+          "required": false,
+          "range": {
+            "min": 0.002,
+            "max": 2000000
+          }
+        },
+        "circumference": {
+          "kind": "number",
+          "required": false,
+          "range": {
+            "min": 0.006,
+            "max": 6283186
+          }
+        },
+        "showRadius": {
+          "kind": "boolean",
+          "required": false
+        },
+        "showDiameter": {
+          "kind": "boolean",
+          "required": false
+        },
+        "showCenter": {
+          "kind": "boolean",
+          "required": false
+        },
+        "labelRadius": {
+          "kind": "boolean",
+          "required": false
+        },
+        "labelDiameter": {
+          "kind": "boolean",
+          "required": false
+        },
+        "labelCircumference": {
+          "kind": "boolean",
+          "required": false
+        },
+        "radiusLabelText": {
+          "kind": "string",
+          "required": false
+        },
+        "diameterLabelText": {
+          "kind": "string",
+          "required": false
+        },
+        "circumferenceLabelText": {
+          "kind": "string",
+          "required": false
+        },
+        "unit": {
+          "kind": "string",
+          "required": false
+        }
+      },
+      "derivations": [
+        {
+          "members": [
+            "radius",
+            "diameter",
+            "circumference"
+          ],
+          "description": "diameter = 2 × radius; circumference = 2π × radius",
+          "required": true
+        }
+      ],
+      "checks": [
+        "radius label text needs the radius labeled",
+        "diameter label text needs the diameter labeled",
+        "circumference label text needs the circumference labeled",
+        "a labeled radius is drawn",
+        "radius label text draws the radius",
+        "a labeled diameter is drawn",
+        "diameter label text draws the diameter"
+      ]
+    }
+  },
   "colors": {
     "black": "#000000",
     "gray": "#595959",

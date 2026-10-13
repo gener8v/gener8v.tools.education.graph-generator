@@ -183,3 +183,5 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-040 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
 | CPSE-REQ-041 | `scripts/check-changesets.ts`:checkChangesetSummary; `.changeset/changelog.cjs` |
 | CPSE-NFR-007 | `scripts/check-dependencies.ts`:checkDependencies |
+| CPSE-REQ-004 | `src/entries/circle.ts` (the `./circle` entry; graph-library/geometric-shapes-and-solids/TICKET-002) |
+| CPSE-REQ-007 | `src/react/graphs/CircleGraph.tsx`:CircleGraph (graph-library/geometric-shapes-and-solids/TICKET-002) |

@@ -113,8 +113,8 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
     // @ts-expect-error a misspelt field of the circle's description
-    const misspelt: Layout<Circle> = (normalized) => ({ ...circleLayout(normalized), height: normalized.raduis });
-    const other: Layout<DescriptionBase & { type: "square"; side: number }> = () => circleLayout(fixtureExamples[0] as unknown as Circle);
+    const misspelt: Layout<Circle> = (normalized) => ({ ...circleLayout(normalized, {}), height: normalized.raduis });
+    const other: Layout<DescriptionBase & { type: "square"; side: number }> = () => circleLayout(fixtureExamples[0] as unknown as Circle, {});
     // @ts-expect-error a square's layout paired with the circle's definition
     const mismatched: GraphTypeParts<Circle> = { definition: circleFixture, layout: other };
     expect([misspelt, mismatched]).toHaveLength(2);

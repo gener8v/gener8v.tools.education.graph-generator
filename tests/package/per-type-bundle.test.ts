@@ -4,12 +4,13 @@ import { type Plugin, build } from "esbuild";
 import { describe, expect, it } from "vitest";
 
 // Importing one graph type must not bring in the others (AD-001, CPSE-REQ-004, prd/TC-007;
-// code review CR-002 on CPSE TICKET-003). The package's layout table is empty until the type
-// tickets land, so this bundles with a second type's layout put into it, and checks that a
-// per-type component leaves it out while the entry component keeps it.
+// code review CR-002 on CPSE TICKET-003). Until a second type lands, this bundles with a second
+// type's layout and definition put into the package's tables, and checks that a per-type component
+// leaves both out while the entry component keeps them (GSS TICKET-002 DEL-002).
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 const OTHER = "OTHER_TYPE_LAYOUT_MARKER";
+const OTHER_DEFINITION = "OTHER_TYPE_DEFINITION_MARKER";
 const OWN = "OWN_TYPE_LAYOUT_MARKER";
 const UNUSED = "UNUSED_COMPONENT_LAYOUT_MARKER";
 // A graph type that is never given a real layout here, so the marker cannot clash with one.
@@ -26,6 +27,20 @@ const withOtherLayout: Plugin = {
       const opening = /(Object\.create\(null\) as Partial<Record<GraphType, Layout>>,\s*\{)/;
       if (!opening.test(source)) throw new Error("the layout table's shape changed; update this test");
       const filled = source.replace(opening, `$1 "${OTHER_TYPE}": () => { throw new Error("${OTHER}"); },`);
+      return { contents: filled, loader: "ts" };
+    });
+  },
+};
+
+/** Puts a definition for another type, carrying a marker, into `src/core/definitions/index.ts`'s table. */
+const withOtherDefinition: Plugin = {
+  name: "with-other-definition",
+  setup(b) {
+    b.onLoad({ filter: /src[\\/]core[\\/]definitions[\\/]index\.ts$/ }, (args) => {
+      const source = readFileSync(args.path, "utf8");
+      const opening = /(Object\.create\(null\) as Partial<Record<GraphType, GraphTypeDefinition>>,\s*\{)/;
+      if (!opening.test(source)) throw new Error("the definitions table's shape changed; update this test");
+      const filled = source.replace(opening, `$1 "${OTHER_TYPE}": { type: "${OTHER_TYPE}", title: "${OTHER_DEFINITION}" } as never,`);
       return { contents: filled, loader: "ts" };
     });
   },
@@ -51,7 +66,7 @@ async function bundle(entry: string, graphsModule = ""): Promise<string> {
     minify: true,
     jsx: "automatic",
     external: ["react", "react-dom", "react/jsx-runtime"],
-    plugins: [withOtherLayout, virtualGraphs(graphsModule)],
+    plugins: [withOtherLayout, withOtherDefinition, virtualGraphs(graphsModule)],
     logLevel: "silent",
   });
   return result.outputFiles[0]!.text;
@@ -81,8 +96,18 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     expect(code).not.toContain(UNUSED);
   });
 
-  it("keeps every type's layout in the entry component's bundle", async () => {
+  it("leaves every other type out of the circle's own entry and component", async () => {
+    for (const entry of [`export { CircleGraph } from "./src/entries/circle";`, `export { CircleGraph } from "./src/react/graphs/CircleGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A circle");
+      expect(code).not.toContain(OTHER);
+      expect(code).not.toContain(OTHER_DEFINITION);
+    }
+  });
+
+  it("keeps every type's layout and definition in the entry component's bundle", async () => {
     const code = await bundle(`export { Graph } from "./src/react/Graph";`);
     expect(code).toContain(OTHER);
+    expect(code).toContain(OTHER_DEFINITION);
   });
 });

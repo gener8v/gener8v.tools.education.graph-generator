@@ -1,14 +1,18 @@
 import type { DescriptionBase, GraphType } from "../core/definitions/types";
+import type { Provenance } from "../core/result";
+import { circleLayout } from "./circle";
 import type { Scene } from "./scene";
 
 /**
- * A graph type's layout: a pure function from a normalized description of that type to a Scene
- * (AD-002, Layout contract). It is only ever called with `validate(...).description`. Typed by the
+ * A graph type's layout: a pure function from a normalized description of that type, and which of
+ * its values were supplied or derived, to a Scene (AD-002, Layout contract). It is only ever called
+ * with `validate(...).description` and `validate(...).provenance`; the provenance is how a label
+ * shows a supplied value as written and a derived one rounded (GSS-REQ-034; GSS TICKET-002 DEL-001). Typed by the
  * type's description, like `GraphTypeDefinition<D>`; method syntax keeps the parameter bivariant,
  * as `GraphTypeDefinition.describe` does, so a layout typed for one graph type still fits the
  * shared table (quality review QR-002).
  */
-export type Layout<D extends DescriptionBase = DescriptionBase> = { draw(normalized: D): Scene }["draw"];
+export type Layout<D extends DescriptionBase = DescriptionBase> = { draw(normalized: D, provenance: Provenance): Scene }["draw"];
 
 /** A set of layouts, keyed by graph type. */
 export type LayoutRegistry = Readonly<Partial<Record<GraphType, Layout>>>;
@@ -24,7 +28,9 @@ export type LayoutRegistry = Readonly<Partial<Record<GraphType, Layout>>>;
 // per-type components draw with their own layout only (code review CR-002).
 // @spec CPSE-REQ-007, CPSE-REQ-008
 export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
-  /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, Layout>>, {}),
+  /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, Layout>>, {
+    circle: circleLayout as Layout,
+  }),
 );
 
 /**

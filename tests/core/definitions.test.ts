@@ -225,7 +225,7 @@ describe("definitions registry", () => {
   it("accepts a definition written for a type's own description shape", () => {
     // Type-level: this assignment must compile (pnpm typecheck).
     const registry: Partial<Record<GraphType, GraphTypeDefinition>> = { circle: circleFixture };
-    expect(registry.circle?.describe({ type: "circle", radius: 2 })).toBe("A circle of radius 2.");
+    expect(registry.circle?.describe({ type: "circle", radius: 2 }, { "/radius": "supplied" })).toBe("A circle of radius 2.");
   });
 });
 
@@ -465,7 +465,7 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
     expect(Object.keys(circle).sort()).toEqual(["lineColor", "radius", "title"]);
     expect(circle.title).toBe(sharedProperties.title);
     expect(Object.keys(propertiesOf("xy-graph", fixtureRegistry)).sort()).toEqual(["title", "xAxisLabel", "yAxisLabel"]);
-    expect(Object.keys(propertiesOf("bar-graph")).sort()).toEqual(["categoryAxisLabel", "title", "valueAxisLabel"]);
+    expect(Object.keys(propertiesOf("bar-graph", fixtureRegistry)).sort()).toEqual(["categoryAxisLabel", "title", "valueAxisLabel"]);
     expect(lockedDown(circle)).toEqual([]);
   });
 

@@ -1,0 +1,18 @@
+{
+  "type": "circle",
+  "radius": 5,
+  "diameter": 10,
+  "circumference": 31.4,
+  "showRadius": true,
+  "showDiameter": true,
+  "showCenter": true,
+  "labelRadius": true,
+  "labelDiameter": true,
+  "labelCircumference": true,
+  "radiusLabelText": "r",
+  "diameterLabelText": "d",
+  "circumferenceLabelText": "C = ?",
+  "unit": "cm",
+  "title": "Find the circumference",
+  "lineColor": "blue"
+}

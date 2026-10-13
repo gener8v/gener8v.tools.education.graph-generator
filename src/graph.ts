@@ -33,7 +33,7 @@ export function createGraphWith(input: unknown, registry: Registry, layoutRegist
           : createIssue("internal_error", pointer(), {});
       return { ok: false, issues: [issue] };
     }
-    const scene = layout(description);
+    const scene = layout(description, provenance);
     // A layout that returns a malformed Scene, rather than throwing, is the same defect: the
     // components would throw while drawing it. checkScene throws on some shapes; the catch below
     // takes those too (security review SEC-002).

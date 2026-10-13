@@ -48,6 +48,10 @@
       "types": "./dist/export/index.d.ts",
       "default": "./dist/export/index.js"
     },
+    "./circle": {
+      "types": "./dist/circle.d.ts",
+      "default": "./dist/circle.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./vocabulary.json": "./dist/vocabulary.json",
     "./package.json": "./package.json"

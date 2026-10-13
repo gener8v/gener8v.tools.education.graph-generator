@@ -18,7 +18,8 @@ const square: GraphTypeDefinition = {
     `A square titled ${quoteText(String(normalized["title"] ?? ""))} with sides of ${formatMeasurement(normalized["sideLength"] as number, "supplied", normalized["unit"] as string | undefined)}.`,
 };
 const registry: Partial<Record<GraphType, GraphTypeDefinition>> = { square };
-const describeAnything = describeNormalized as (normalized: unknown, registry?: Partial<Record<GraphType, GraphTypeDefinition>>) => string;
+const describeAnything = (normalized: unknown, registry: Partial<Record<GraphType, GraphTypeDefinition>>): string =>
+  describeNormalized(normalized as Parameters<typeof describeNormalized>[0], {}, registry);
 
 describe("describe", () => {
   it("validates, then dispatches to the graph type's own text alternative", () => {
@@ -34,8 +35,15 @@ describe("describe", () => {
   });
 
   it("is the public entry, against the registered types", () => {
-    // No type is registered yet, so every description is invalid.
+    expect(describeGraph({ type: "circle", radius: 5, unit: "cm" })).toBe("A circle with radius 5 cm.");
+    // The square is not registered yet.
     expect(() => describeGraph({ type: "square", sideLength: 1 })).toThrow(/not valid/);
+  });
+
+  it("passes the provenance on, so supplied values read as written and derived ones rounded (GSS TICKET-002 DEL-001)", () => {
+    expect(describeGraph({ type: "circle", circumference: 31.4, labelCircumference: true })).toBe(
+      "A circle with radius 5 and circumference 31.4.",
+    );
   });
 });
 

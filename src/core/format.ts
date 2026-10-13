@@ -182,3 +182,12 @@ export function formatMeasurement(value: number, provenance: "supplied" | "deriv
   const cleanUnit = unit === undefined ? "" : cleanText(unit);
   return cleanUnit === "" ? number : `${number} ${cleanUnit}`;
 }
+
+/**
+ * Whether a top-level value was supplied or derived, from a validation result's provenance
+ * (keyed by JSON Pointer, so `radius` is `/radius`). A value missing from it counts as derived:
+ * it is then rounded, never shown with digits nobody wrote.
+ */
+export function sourceOf(provenance: Readonly<Record<string, "supplied" | "derived">>, term: string): "supplied" | "derived" {
+  return Object.hasOwn(provenance, `/${term}`) && provenance[`/${term}`] === "supplied" ? "supplied" : "derived";
+}

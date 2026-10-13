@@ -2,11 +2,166 @@
   "type": "object",
   "properties": {
     "graph": {
-      "type": "object",
-      "description": "No graph types are registered yet.",
-      "properties": {},
-      "required": [],
-      "additionalProperties": false
+      "description": "One graph, described by its type and the values that type accepts; null means \"not given\". Text is plain text: control, line-break, text-direction and invisible characters are not accepted. A color is a color name (black, gray, red, orange, green, blue, purple, brown) in any case, or a hex code such as #0072b2. The package's validator also checks what this schema cannot: tag characters, rare variation selectors and broken surrogates in text; values that determine one another must agree within 1%; ranges must have their minimum below their maximum; type-specific rules such as points inside the axes; and at most 10000 values in one description. Schema and validator agree on the JSON form of a description.",
+      "anyOf": [
+        {
+          "type": "object",
+          "title": "Circle",
+          "description": "A circle drawn to scale from its radius, diameter or circumference (give one; any other given must agree within 1%). The radius, the diameter and the center can be drawn, and each measurement labeled with its value and unit or with custom text. Give one of radius, diameter or circumference; the others are worked out from it.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "circle"
+              ],
+              "description": "The graph type: which kind of graph the description draws."
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "enum": [
+                1,
+                null
+              ],
+              "description": "The schema version the description is written for. Leave it out for the current version, 1. Null means the current version."
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A title shown above the graph, as plain text."
+            },
+            "lineColor": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
+              "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
+            },
+            "radius": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The distance from the center to the circle, from 0.001 to 1,000,000.",
+              "minimum": 0.001,
+              "maximum": 1000000
+            },
+            "diameter": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The distance across the circle through its center, twice the radius, from 0.002 to 2,000,000.",
+              "minimum": 0.002,
+              "maximum": 2000000
+            },
+            "circumference": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The distance around the circle, 2π times the radius, from 0.006 to 6,283,186.",
+              "minimum": 0.006,
+              "maximum": 6283186
+            },
+            "showRadius": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the radius is drawn, from the center horizontally to the right."
+            },
+            "showDiameter": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the diameter is drawn through the center; it never lies on the radius."
+            },
+            "showCenter": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the center is marked with a point."
+            },
+            "labelRadius": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the radius is labeled with its measurement; a labeled radius is drawn."
+            },
+            "labelDiameter": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the diameter is labeled with its measurement; a labeled diameter is drawn."
+            },
+            "labelCircumference": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the circumference is labeled with its measurement, next to the circle."
+            },
+            "radiusLabelText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Text shown in place of the radius value, such as \"r\" or \"?\"; it also labels the radius. An empty text is a blank label, for example a space to fill in; the text alternative still states the value."
+            },
+            "diameterLabelText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Text shown in place of the diameter value, such as \"r\" or \"?\"; it also labels the diameter. An empty text is a blank label, for example a space to fill in; the text alternative still states the value."
+            },
+            "circumferenceLabelText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Text shown in place of the circumference value, such as \"r\" or \"?\"; it also labels the circumference. An empty text is a blank label, for example a space to fill in; the text alternative still states the value."
+            },
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The unit of length shown after each measurement, such as cm."
+            }
+          },
+          "required": [
+            "type",
+            "version",
+            "title",
+            "lineColor",
+            "radius",
+            "diameter",
+            "circumference",
+            "showRadius",
+            "showDiameter",
+            "showCenter",
+            "labelRadius",
+            "labelDiameter",
+            "labelCircumference",
+            "radiusLabelText",
+            "diameterLabelText",
+            "circumferenceLabelText",
+            "unit"
+          ],
+          "additionalProperties": false
+        }
+      ]
     }
   },
   "required": [

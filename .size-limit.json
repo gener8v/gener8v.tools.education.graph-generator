@@ -22,5 +22,11 @@
     "path": "dist/export/index.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./circle",
+    "path": "dist/circle.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

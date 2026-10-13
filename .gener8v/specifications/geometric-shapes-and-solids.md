@@ -145,3 +145,19 @@ The type-specific vocabulary terms this area adds to the GSV single definition (
 - Assumption: Solids use one oblique-style projection shared by cube and cylinder; the exact projection is chosen in Technical Design
 - Assumption: Triangle angles are in degrees
 - Assumption: Figures are static drawings; no interaction is provided
+
+## @spec Coverage
+
+| Requirement | Code Location(s) |
+|-------------|-----------------|
+| GSS-REQ-001 | `src/core/definitions/circle.ts`:circle; `src/layout/circle.ts`:circleLayout; `src/react/graphs/CircleGraph.tsx`:CircleGraph |
+| GSS-REQ-002 | `src/core/definitions/circle.ts`:circle |
+| GSS-REQ-003 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-004 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-005 | `src/core/definitions/circle.ts`:circle; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-006 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-033 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-034 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-035 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-036 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/circle.ts`:circleLayout |
+| GSS-NFR-001 | `tests/layout/circle.test.ts`:"draws radius : diameter within 1% of 1 : 2" (circle only; TICKET-008 covers every figure) |

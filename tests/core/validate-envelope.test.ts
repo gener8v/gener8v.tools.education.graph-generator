@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GRAPH_TYPES } from "../../src/core/definitions/types";
+import { definitions, registeredTypes } from "../../src/core/definitions/index";
 import { validate } from "../../src/core/index";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
@@ -68,9 +68,13 @@ describe("envelope: the graph type (GSV-REQ-002, GSV-REQ-024)", () => {
     expect(issuesOf(check({ type: "cube", edgeLength: 2 }))[0]).toMatchObject({ code: "unknown_graph_type" });
   });
 
-  it("lists every declared type while no definition is registered yet", () => {
-    // The real registry is empty until the type tickets land (DEL-001).
-    expect(issuesOf(validate({ type: "pie" }))[0]!.allowed).toEqual([...GRAPH_TYPES]);
+  it("lists exactly the registered types (GSV TICKET-003 code review CR-004, quality review QR-006)", () => {
+    expect(issuesOf(validate({ type: "pie" }))[0]!.allowed).toEqual(registeredTypes(definitions));
+    expect(registeredTypes(definitions)).toContain("circle");
+  });
+
+  it("reports a registry with no types as a package defect, not an empty list", () => {
+    expect(issuesOf(validateWith({ type: "circle", radius: 1 }, {}))).toEqual([expect.objectContaining({ code: "internal_error" })]);
   });
 });
 

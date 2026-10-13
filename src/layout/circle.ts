@@ -1,0 +1,204 @@
+import { circle as circleDefinition, circleDisplay, type Circle, type CircleMeasurement } from "../core/definitions/circle";
+import { sourceOf } from "../core/format";
+import type { Provenance } from "../core/result";
+import { defaultStyle } from "../core/style";
+import { fmt } from "./kit/format";
+import { type Box, type Obstacle, type Segment, placeLabel } from "./kit/labels";
+import { measurementLabel } from "./kit/measure";
+import { textWidth, wrap } from "./kit/text";
+import { LINE_HEIGHT, SCENE_MARGIN, textLines, titleBlock } from "./kit/title";
+import type { Layout } from "./registry";
+import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
+
+/** The drawn radius: every circle is scaled to it, so it fits the drawing at any size (GSS-REQ-031). */
+export const DRAWN_RADIUS = 110;
+
+const CENTER_X = SCENE_WIDTH / 2;
+/** Clearance between a label and the line it labels or the outline it sits by. */
+const GAP = 6;
+/** Labels wider than this wrap onto more lines. */
+const LABEL_MAX_WIDTH = 160;
+const CENTER_MARK_RADIUS = 3;
+/** The outline as this many straight pieces, as obstacles for label placement. */
+const OUTLINE_PIECES = 72;
+
+type Point = { readonly x: number; readonly y: number };
+
+/** A label's text broken into lines, with the size of its box. */
+function measure(text: string, fontSize: number): { lines: string[]; width: number; height: number } {
+  const lines = wrap(text, LABEL_MAX_WIDTH, fontSize);
+  const width = Math.max(...lines.map((line) => textWidth(line, fontSize)));
+  return { lines, width, height: lines.length * fontSize * LINE_HEIGHT };
+}
+
+/**
+ * Candidate top-left corners for a label of `size` beside the outline (GSS Behaviors & Rules: a
+ * label for a value with no segment sits next to the outline). Each places the box's corner nearest
+ * the circle just outside it, so the box lies outside the circle: upper right first, then the other
+ * diagonals, then top, bottom, right and left.
+ */
+function besideOutline(center: Point, size: { width: number; height: number }): Point[] {
+  return [45, 135, 315, 225, 90, 270, 0, 180].map((degrees) => {
+    const angle = (degrees * Math.PI) / 180;
+    const cos = Math.round(Math.cos(angle) * 1e9) / 1e9;
+    const sin = Math.round(Math.sin(angle) * 1e9) / 1e9;
+    const px = center.x + (DRAWN_RADIUS + GAP) * cos;
+    const py = center.y - (DRAWN_RADIUS + GAP) * sin;
+    const x = cos > 0 ? px : cos < 0 ? px - size.width : px - size.width / 2;
+    const y = sin > 0 ? py - size.height : sin < 0 ? py : py - size.height / 2;
+    return { x, y };
+  });
+}
+
+/** Candidates above and below a horizontal segment at `y`, centered on each of `xs`. */
+const besideHorizontal = (xs: readonly number[], y: number, size: { width: number; height: number }): Point[] =>
+  xs.flatMap((x) => [
+    { x: x - size.width / 2, y: y - GAP - size.height },
+    { x: x - size.width / 2, y: y + GAP },
+  ]);
+
+/** Candidates left and right of a vertical segment at `x`, centered on each of `ys`. */
+const besideVertical = (x: number, ys: readonly number[], size: { width: number; height: number }): Point[] =>
+  ys.flatMap((y) => [
+    { x: x - GAP - size.width, y: y - size.height / 2 },
+    { x: x + GAP, y: y - size.height / 2 },
+  ]);
+
+const line = (s: Segment, color: string): SceneNode => ({
+  kind: "line",
+  attrs: [
+    ["x1", fmt(s.x1)],
+    ["y1", fmt(s.y1)],
+    ["x2", fmt(s.x2)],
+    ["y2", fmt(s.y2)],
+    ["stroke", color],
+    ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
+    ["stroke-linecap", "round"],
+  ],
+});
+
+/**
+ * The circle's layout (AD-002): the circle at a fixed drawn radius, centered below the title; the
+ * radius from the center horizontally to the right; the diameter through the center, horizontal,
+ * or vertical when the radius is drawn too, so the two never lie on each other; a point at the
+ * center. Each label is placed with `placeLabel` clear of the lines, the outline and the other
+ * labels (AD-010): on its segment for the radius and diameter, beside the outline for the
+ * circumference. A label with no clear candidate goes below the figure, so labels never overlap.
+ * The radius segment is the drawn radius and the diameter twice it, so their ratio is exactly the
+ * measurements' ratio (GSS-REQ-030, GSS-NFR-001).
+ */
+// @spec GSS-REQ-001, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005, GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035, GSS-REQ-036
+export const circleLayout: Layout<Circle> = (normalized: Circle, provenance: Provenance): Scene => {
+  const shown = circleDisplay(normalized);
+  const lineColor = normalized.lineColor ?? defaultStyle.colors.line;
+  const fontSize = defaultStyle.fontSizes.label;
+  const lineHeight = fontSize * LINE_HEIGHT;
+  const title = titleBlock(normalized.title);
+
+  // Room for one line of labels above and below the circle.
+  const center: Point = { x: CENTER_X, y: title.height + SCENE_MARGIN + lineHeight + GAP + DRAWN_RADIUS };
+  const figureBottom = center.y + DRAWN_RADIUS + GAP + lineHeight;
+  const nodes: SceneNode[] = [...title.nodes];
+  // The title is kept clear by the candidates' bounds below, not as an obstacle.
+  const obstacles: Obstacle[] = [];
+
+  nodes.push({
+    kind: "circle",
+    attrs: [
+      ["cx", fmt(center.x)],
+      ["cy", fmt(center.y)],
+      ["r", fmt(DRAWN_RADIUS)],
+      ["fill", "none"],
+      ["stroke", lineColor],
+      ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
+    ],
+  });
+  for (let i = 0; i < OUTLINE_PIECES; i++) {
+    const a = (2 * Math.PI * i) / OUTLINE_PIECES;
+    const b = (2 * Math.PI * (i + 1)) / OUTLINE_PIECES;
+    obstacles.push({
+      x1: center.x + DRAWN_RADIUS * Math.cos(a),
+      y1: center.y + DRAWN_RADIUS * Math.sin(a),
+      x2: center.x + DRAWN_RADIUS * Math.cos(b),
+      y2: center.y + DRAWN_RADIUS * Math.sin(b),
+    });
+  }
+
+  const radius: Segment = { x1: center.x, y1: center.y, x2: center.x + DRAWN_RADIUS, y2: center.y };
+  const diameterVertical = shown.radius.drawn;
+  const diameter: Segment = diameterVertical
+    ? { x1: center.x, y1: center.y - DRAWN_RADIUS, x2: center.x, y2: center.y + DRAWN_RADIUS }
+    : { x1: center.x - DRAWN_RADIUS, y1: center.y, x2: center.x + DRAWN_RADIUS, y2: center.y };
+  if (shown.diameter.drawn) {
+    nodes.push(line(diameter, lineColor));
+    obstacles.push(diameter);
+  }
+  if (shown.radius.drawn) {
+    nodes.push(line(radius, lineColor));
+    obstacles.push(radius);
+  }
+  if (normalized.showCenter === true) {
+    nodes.push({
+      kind: "circle",
+      attrs: [
+        ["cx", fmt(center.x)],
+        ["cy", fmt(center.y)],
+        ["r", fmt(CENTER_MARK_RADIUS)],
+        ["fill", lineColor],
+      ],
+    });
+    const side = 2 * CENTER_MARK_RADIUS;
+    obstacles.push({ x: center.x - CENTER_MARK_RADIUS, y: center.y - CENTER_MARK_RADIUS, width: side, height: side });
+  }
+
+  const candidatesFor = (term: CircleMeasurement, size: { width: number; height: number }): Point[] => {
+    if (term === "radius") {
+      const mid = center.x + DRAWN_RADIUS / 2;
+      return besideHorizontal([mid, mid - DRAWN_RADIUS / 4, mid + DRAWN_RADIUS / 4], center.y, size);
+    }
+    if (term === "diameter") {
+      return diameterVertical
+        ? besideVertical(center.x, [center.y - DRAWN_RADIUS / 2, center.y + DRAWN_RADIUS / 2], size)
+        : besideHorizontal([center.x - DRAWN_RADIUS / 2, center.x, center.x + DRAWN_RADIUS / 2], center.y, size);
+    }
+    return besideOutline(center, size);
+  };
+  // Candidates must keep the label inside the drawing, between the title and the figure's bottom.
+  const inside = (p: Point, size: { width: number; height: number }) =>
+    p.x >= SCENE_MARGIN && p.x + size.width <= SCENE_WIDTH - SCENE_MARGIN && p.y >= title.height && p.y + size.height <= figureBottom;
+
+  let bottom = figureBottom;
+  const unplaced: Array<{ lines: string[]; width: number; height: number }> = [];
+  for (const term of ["radius", "diameter", "circumference"] as const) {
+    const display = shown[term];
+    if (!display.labeled) continue;
+    const text = measurementLabel(normalized[term], sourceOf(provenance, term), normalized.unit, display.customText);
+    // A blank label leaves its place empty; the text alternative still states the value (DEL-003).
+    if (text === "") continue;
+    const size = measure(text, fontSize);
+    const box = placeLabel(
+      size,
+      candidatesFor(term, size).filter((p) => inside(p, size)),
+      obstacles,
+    );
+    if (box === undefined) {
+      unplaced.push(size);
+      continue;
+    }
+    obstacles.push(box);
+    nodes.push(...textLines(size.lines, box.x + box.width / 2, box.y, fontSize, defaultStyle.colors.text));
+  }
+  // Labels with no clear place beside their line, stacked below the figure.
+  for (const size of unplaced) {
+    const box: Box = { x: CENTER_X - size.width / 2, y: bottom + GAP, width: size.width, height: size.height };
+    nodes.push(...textLines(size.lines, CENTER_X, box.y, fontSize, defaultStyle.colors.text));
+    bottom = box.y + box.height;
+  }
+
+  return {
+    width: SCENE_WIDTH,
+    height: fmt(bottom + SCENE_MARGIN),
+    textAlternative: circleDefinition.describe(normalized, provenance),
+    nodes,
+  };
+};

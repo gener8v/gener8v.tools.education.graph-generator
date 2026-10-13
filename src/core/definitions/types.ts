@@ -1,5 +1,5 @@
 import type { Terms } from "../issues";
-import type { Issue } from "../result";
+import type { Issue, Provenance } from "../result";
 
 /**
  * The graph types of this change (GSV-REQ-003), as `type` values in kebab case (AD-005).
@@ -222,6 +222,10 @@ export interface GraphTypeDefinition<D extends DescriptionBase = DescriptionBase
   properties: PropertyMap;
   derivations: readonly Derivation[];
   checks: readonly DomainCheck<D>[];
-  /** The plain-text alternative for a normalized description. */
-  describe(normalized: D): string;
+  /**
+   * The plain-text alternative for a normalized description. `provenance` says which values were
+   * supplied and which derived, so a supplied value is stated as written and a derived one rounded
+   * (GSS-REQ-034): pass both to `formatMeasurement` (GSS TICKET-002 DEL-001).
+   */
+  describe(normalized: D, provenance: Provenance): string;
 }

@@ -1,5 +1,5 @@
 import { type Registry, SUPPORTED_VERSIONS, registeredTypes } from "../definitions/index";
-import { GRAPH_TYPES, type GraphType } from "../definitions/types";
+import type { GraphType } from "../definitions/types";
 import { asTerms, createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
 import { type ObjectContents, isPlainObject, readObject } from "./json";
@@ -38,9 +38,9 @@ export function checkEnvelope(input: unknown, registry: Registry): EnvelopeResul
   if (issues.length > 0) return { ok: false, issues };
 
   const registered = registeredTypes(registry);
-  // While no definition is registered (until the circle slice, GSS TICKET-002, registers the
-  // first), every declared type is listed, so the message never offers nothing.
-  const allowed = asTerms(registered.length > 0 ? registered : GRAPH_TYPES);
+  // The registered types exactly. A registry with none is a package defect: `asTerms` throws and
+  // the validator reports `internal_error` (GSV TICKET-003 code review CR-004, quality review QR-006).
+  const allowed = asTerms(registered);
   const type = contents.values.get("type");
   if (type === undefined) {
     issues.push(createIssue("unknown_graph_type", pointer("type"), { allowed }));

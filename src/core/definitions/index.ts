@@ -1,3 +1,4 @@
+import { circle } from "./circle";
 import { sharedProperties } from "./shared";
 import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
@@ -9,9 +10,14 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
  * adds one import and one entry here; TICKET-006 then requires all eleven graph types
  * (GSV-REQ-003).
  */
+// Marked pure so a bundler drops the table, and every definition in it, wherever nothing reads it:
+// per-type components validate with their own definition only (GSS TICKET-002 DEL-002; CPSE
+// TICKET-003 code review CR-002).
 // @spec GSV-REQ-003, GSV-REQ-012
-export const definitions: Registry = Object.freeze(
-  Object.assign(Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {}),
+export const definitions: Registry = /* @__PURE__ */ Object.freeze(
+  /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {
+    circle: circle as unknown as GraphTypeDefinition,
+  }),
 );
 
 /** Schema versions this package accepts; a description without `version` is the current one. */
@@ -29,10 +35,11 @@ export function registeredTypes(registry: Registry): GraphType[] {
 /**
  * Every top-level term a graph type accepts: its definition's own properties plus each shared
  * option whose `appliesTo` names the type. The one place the validator, the schema generator and
- * the documentation read a type's terms from (code review CR-002).
+ * the documentation read a type's terms from (code review CR-002). The registry is always passed,
+ * never defaulted to `definitions` (GSS TICKET-002 DEL-002).
  */
 // @spec GSV-REQ-012, GSV-REQ-040
-export function propertiesOf(type: GraphType, registry: Registry = definitions): PropertyMap {
+export function propertiesOf(type: GraphType, registry: Registry): PropertyMap {
   const merged: Record<string, PropertySpec> = {};
   for (const spec of Object.values(sharedProperties)) {
     if ((spec.appliesTo as readonly GraphType[]).includes(type)) merged[spec.term] = spec;
