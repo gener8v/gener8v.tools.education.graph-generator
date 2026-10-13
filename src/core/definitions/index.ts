@@ -1,6 +1,7 @@
+import { dataGraphProperties } from "./categories";
 import { circle } from "./circle";
-import { sharedProperties } from "./shared";
-import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
+import { type SharedPropertySpec, sharedProperties } from "./shared";
+import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties, propertySpec } from "./types";
 
 /** A set of graph-type definitions, keyed by `type` value. */
 export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>;
@@ -34,16 +35,34 @@ export function registeredTypes(registry: Registry): GraphType[] {
 }
 
 /**
- * Every top-level term a graph type accepts: its definition's own properties plus each shared
- * option whose `appliesTo` names the type. The one place the validator, the schema generator and
+ * The terms defined once with where they apply, rather than in one type's definition: the shared
+ * presentation options, and the data-graph terms such as `valueScale` (DGP TICKET-001). Each term
+ * is in one map only; the definitions test checks it.
+ */
+export const scopedPropertyMaps: readonly (typeof sharedProperties | typeof dataGraphProperties)[] = [sharedProperties, dataGraphProperties];
+
+/** The scoped spec for a term, with its `appliesTo` and `elementsOf`, or `undefined` for any other key. */
+export function scopedProperty(key: string): SharedPropertySpec | undefined {
+  for (const map of scopedPropertyMaps) {
+    const spec = propertySpec(map, key);
+    if (spec !== undefined) return spec as SharedPropertySpec;
+  }
+  return undefined;
+}
+
+/**
+ * Every top-level term a graph type accepts: its definition's own properties plus each scoped
+ * term whose `appliesTo` names the type. The one place the validator, the schema generator and
  * the documentation read a type's terms from (code review CR-002). The registry is always passed,
  * never defaulted to `definitions` (GSS TICKET-002 DEL-002).
  */
-// @spec GSV-REQ-012, GSV-REQ-040
+// @spec GSV-REQ-012, GSV-REQ-040, DGP-REQ-002, DGP-REQ-005
 export function propertiesOf(type: GraphType, registry: Registry): PropertyMap {
   const merged: Record<string, PropertySpec> = {};
-  for (const spec of Object.values(sharedProperties)) {
-    if ((spec.appliesTo as readonly GraphType[]).includes(type)) merged[spec.term] = spec;
+  for (const map of scopedPropertyMaps) {
+    for (const spec of Object.values(map) as SharedPropertySpec[]) {
+      if (spec.appliesTo.includes(type)) merged[spec.term] = spec;
+    }
   }
   const definition = Object.hasOwn(registry, type) ? registry[type] : undefined;
   if (definition !== undefined) Object.assign(merged, definition.properties);

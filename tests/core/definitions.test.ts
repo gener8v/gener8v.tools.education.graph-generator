@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { definitions, propertiesOf } from "../../src/core/definitions/index";
+import { dataGraphProperties } from "../../src/core/definitions/categories";
+import { definitions, propertiesOf, scopedProperty, scopedPropertyMaps } from "../../src/core/definitions/index";
 import { type SharedPropertySpec, sharedProperties } from "../../src/core/definitions/shared";
 import {
   GRAPH_TYPES,
@@ -17,7 +18,9 @@ import { fixtureRegistry as validatorFixtures } from "../fixtures/definitions/in
 const CAMEL_CASE = /^[a-z][a-zA-Z0-9]*$/;
 const BUILT_IN_NAMES = new Set([...Object.getOwnPropertyNames(Object.prototype), "type", "version"]);
 const shared: readonly SharedPropertySpec[] = Object.values(sharedProperties);
-const sharedTerms = new Set(shared.map((spec) => spec.term));
+/** Every term defined once with where it applies: the shared options and the data-graph terms. */
+const scoped: readonly SharedPropertySpec[] = scopedPropertyMaps.flatMap((map) => Object.values(map) as SharedPropertySpec[]);
+const scopedTerms = new Set(scoped.map((spec) => spec.term));
 
 /** Every vocabulary problem in a property map, nested objects and array items included. */
 function vocabularyProblems(properties: PropertyMap, path = ""): string[] {
@@ -92,14 +95,14 @@ function nestedSpecs(properties: PropertyMap): Array<[string, PropertyMap[string
 function applicabilityProblems(definition: GraphTypeDefinition): string[] {
   const problems: string[] = [];
   for (const term of Object.keys(definition.properties)) {
-    if (sharedTerms.has(term)) problems.push(`${definition.type}: lists shared option ${term}; propertiesOf adds it from appliesTo`);
+    if (scopedTerms.has(term)) problems.push(`${definition.type}: lists shared option ${term}; propertiesOf adds it from appliesTo`);
   }
   const nested = nestedSpecs(definition.properties);
   for (const [key, spec] of nested) {
-    const sharedSpec = propertySpec(sharedProperties, key);
+    const sharedSpec = scopedProperty(key);
     if (sharedSpec !== undefined && spec !== sharedSpec) problems.push(`${definition.type}: redefines shared option ${key}`);
   }
-  for (const option of shared) {
+  for (const option of scoped) {
     const nests = nested.some(([, spec]) => spec === option);
     const listed = option.elementsOf.includes(definition.type);
     if (nests && !listed) problems.push(`${definition.type}: nests ${option.term}, but its elementsOf does not list the type`);
@@ -232,6 +235,7 @@ describe("definitions registry", () => {
 describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
   it("every property name is its declared, camel-cased, documented term", () => {
     expect(vocabularyProblems(sharedProperties)).toEqual([]);
+    expect(vocabularyProblems(dataGraphProperties)).toEqual([]);
     for (const definition of allDefinitions()) {
       expect(vocabularyProblems(definition.properties), definition.type).toEqual([]);
     }
@@ -309,7 +313,7 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
   it("defines each term once: shared terms by the same object, other terms with one kind and description", () => {
     // Each registry is one set of graph types; a term needs one definition within its set.
     for (const registry of [fixtureRegistry, validatorFixtures, definitions]) {
-      const maps = [sharedProperties, ...Object.values(registry).map((d) => d!.properties)];
+      const maps = [...scopedPropertyMaps, ...Object.values(registry).map((d) => d!.properties)];
       expect(consistencyProblems(maps)).toEqual([]);
     }
     const redefined = defineProperties({
@@ -433,7 +437,7 @@ describe("derivation groups and domain checks are well formed (GSV-REQ-035)", ()
 
 describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV-REQ-045)", () => {
   it("each lists real graph types, at the top level or on elements, each type once", () => {
-    for (const spec of shared) {
+    for (const spec of scoped) {
       expect(spec.appliesTo.length + spec.elementsOf.length, spec.term).toBeGreaterThan(0);
       for (const list of [spec.appliesTo, spec.elementsOf]) {
         expect(new Set(list).size, spec.term).toBe(list.length);
@@ -465,8 +469,22 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
     expect(Object.keys(circle).sort()).toEqual(["lineColor", "radius", "title"]);
     expect(circle.title).toBe(sharedProperties.title);
     expect(Object.keys(propertiesOf("xy-graph", fixtureRegistry)).sort()).toEqual(["title", "xAxisLabel", "yAxisLabel"]);
-    expect(Object.keys(propertiesOf("bar-graph", fixtureRegistry)).sort()).toEqual(["categoryAxisLabel", "title", "valueAxisLabel"]);
+    // The data-graph terms are scoped the same way (DGP TICKET-001).
+    expect(Object.keys(propertiesOf("bar-graph", fixtureRegistry)).sort()).toEqual([
+      "categoryAxisLabel",
+      "title",
+      "valueAxisLabel",
+      "valueScale",
+    ]);
+    expect(Object.keys(propertiesOf("pictograph", fixtureRegistry)).sort()).toEqual(["title", "valueUnitLabel"]);
     expect(lockedDown(circle)).toEqual([]);
+  });
+
+  it("are each defined in one scoped map only", () => {
+    expect(scoped.length).toBe(scopedTerms.size);
+    expect(scopedProperty("valueScale")).toBe(dataGraphProperties.valueScale);
+    expect(scopedProperty("title")).toBe(sharedProperties.title);
+    expect(scopedProperty("radius")).toBeUndefined();
   });
 
   it("agree with every definition that uses them", () => {
@@ -531,6 +549,7 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
 describe("definitions cannot be changed or reached through inherited keys (security review SEC-003, quality review QR-004)", () => {
   it("freezes every map, spec and list, with no prototypes", () => {
     expect(lockedDown(sharedProperties, "sharedProperties")).toEqual([]);
+    expect(lockedDown(dataGraphProperties, "dataGraphProperties")).toEqual([]);
     expect(lockedDown(circleFixture.properties, "circle")).toEqual([]);
     expect(lockedDown(numberLineFixture.properties, "number-line")).toEqual([]);
   });
@@ -549,6 +568,7 @@ describe("definitions cannot be changed or reached through inherited keys (secur
     for (const key of [...Object.keys(description), "hasOwnProperty", "valueOf"]) {
       if (key === "type") continue;
       expect(propertySpec(sharedProperties, key), key).toBeUndefined();
+      expect(scopedProperty(key), key).toBeUndefined();
       expect(propertySpec(propertiesOf("circle", fixtureRegistry), key), key).toBeUndefined();
     }
     expect(propertySpec(sharedProperties, "title")).toBe(sharedProperties.title);

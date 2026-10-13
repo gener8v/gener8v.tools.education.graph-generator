@@ -1,5 +1,4 @@
-import { type Registry, propertiesOf } from "../definitions/index";
-import { sharedProperties } from "../definitions/shared";
+import { type Registry, propertiesOf, scopedProperty } from "../definitions/index";
 import { type GraphType, type PropertyMap, type ValueSpec, propertySpec } from "../definitions/types";
 import { findUnsafeTextChar } from "../format";
 import { asTerms, createIssue, pointer } from "../issues";
@@ -112,9 +111,9 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
     case "string": {
       if (typeof value !== "string") return wrongKind("plain text");
       if (findUnsafeTextChar(value) !== -1) return wrongKind(PLAIN_TEXT);
-      // An empty label or title is no label (GSV Edge Cases); this applies to shared
-      // presentation options only (code review CR-007).
-      if (value === "" && presentation) return OMITTED;
+      // An empty label or title is no label (GSV Edge Cases): for shared presentation options,
+      // and for a term that says so (code review CR-007; DGP TICKET-001 DEL-002).
+      if (value === "" && (presentation || spec.emptyIsAbsent === true)) return OMITTED;
       return pass(value);
     }
     case "boolean":
@@ -171,12 +170,14 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
   }
 }
 
-/** Whether a shared option applies anywhere in this graph type: at the top level or on its elements. */
+/**
+ * Whether a scoped term (a shared option, or a data-graph term such as `valueScale`) applies
+ * anywhere in this graph type: at the top level or on its elements. `undefined` for any other key.
+ */
 function appliesToType(key: string, graphType: GraphType): boolean | undefined {
-  const shared = propertySpec(sharedProperties, key);
-  if (shared === undefined) return undefined;
-  const option = shared as (typeof sharedProperties)[keyof typeof sharedProperties];
-  return (option.appliesTo as readonly GraphType[]).includes(graphType) || (option.elementsOf as readonly GraphType[]).includes(graphType);
+  const option = scopedProperty(key);
+  if (option === undefined) return undefined;
+  return option.appliesTo.includes(graphType) || option.elementsOf.includes(graphType);
 }
 
 /**
@@ -206,7 +207,8 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
       // Not recorded in `failed`: an unknown key never reaches the description, so no later
       // check can read it (code review CR-003 on TICKET-004).
       if (appliesToType(key, walk.graphType) === false) {
-        // A presentation option this graph type has nowhere (GSV-REQ-041).
+        // A presentation option, or a data-graph term, this graph type has nowhere (GSV-REQ-041;
+        // DGP TICKET-001).
         walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType }));
       } else {
         // Not a term here; a shared option that applies elsewhere in this type is still unknown

@@ -82,6 +82,7 @@ describe("issue-code set (GSV-REQ-030, GSV-REQ-034)", () => {
         "invalid_json",
         "internal_error",
         "too_large",
+        "duplicate_name",
       ]
     `);
   });
@@ -150,6 +151,7 @@ const SAMPLES: Samples = {
   invalid_json: { detail: "Unexpected token '}' at position 14" },
   internal_error: {},
   too_large: { term: "points", limit: 1000, unit: "items", count: 5000 },
+  duplicate_name: { term: "categories[2].name", got: "Mon", conflicts: ["/categories/0/name"], conflictTerms: ["categories[0].name"] },
 };
 
 const sampleMessage = <C extends IssueCode>(code: C) => issueMessage(code, SAMPLES[code]);
@@ -163,6 +165,7 @@ describe("issue messages (GSV-REQ-031)", () => {
         "ambiguous": "triangle is ambiguous: two triangles have these sides and angle; supply a value that fixes one figure.",
         "contradiction": "diameter (12) disagrees with radius; a value of 10 would agree, or remove one of them.",
         "degenerate_segment": "segments[0] starts and ends at the same point; give it two different points.",
+        "duplicate_name": "categories[2].name ("Mon") repeats categories[0].name; give each one a different name.",
         "inapplicable_property": "xAxisLabel does not apply for a circle; remove it.",
         "insufficient": "triangle cannot be determined: three angles fix its shape but not its size; add the missing value.",
         "internal_error": "The description could not be checked because of a defect in the package; please report it. The description itself may be valid.",

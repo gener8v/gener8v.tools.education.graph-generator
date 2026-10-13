@@ -33,6 +33,7 @@ export const ISSUE_CODES = Object.freeze([
   "invalid_json",
   "internal_error",
   "too_large",
+  "duplicate_name",
 ] as const);
 
 export type IssueCode = (typeof ISSUE_CODES)[number];
@@ -78,6 +79,7 @@ export const issueDocs: Readonly<Record<IssueCode, string>> = Object.freeze(
     internal_error:
       "A defect in the package stopped the check. It is not a problem with the description; report it.",
     too_large: "A list, or the whole description, holds more values than its documented limit.",
+    duplicate_name: "Two entries of a list that must be told apart by name, such as two categories, have the same name.",
   } satisfies Record<IssueCode, string>),
 );
 
@@ -155,6 +157,11 @@ export interface IssueParamsByCode {
    * not counted past its limit). `unit` names what is counted.
    */
   too_large: { term: Term; limit: number; unit: "items" | "values"; count?: number };
+  /**
+   * `got` is the repeated name; `conflicts` holds the JSON Pointer of the earlier entry with that
+   * name, for the issue, and `conflictTerms` names it for the message (DGP TICKET-001 DEL-003).
+   */
+  duplicate_name: { term: Term; got: unknown; conflicts: Terms; conflictTerms: Terms };
 }
 
 const MAX_VALUE_CHARS = 40;
@@ -337,6 +344,8 @@ const templates: Templates = {
     p.count === undefined
       ? `${describeTerm(p.term)} has more than ${p.limit} ${p.unit}; use fewer.`
       : `${describeTerm(p.term)} has ${p.count} ${p.unit}, more than the limit of ${p.limit}; use fewer.`,
+  duplicate_name: (p) =>
+    `${describeTerm(p.term)} (${describeValue(p.got)}) repeats ${list(p.conflictTerms)}; give each one a different name.`,
 };
 
 /**

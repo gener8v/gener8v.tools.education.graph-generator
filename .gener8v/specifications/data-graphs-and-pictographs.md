@@ -144,3 +144,16 @@ Defines the three graph types that present data sets rather than geometry: line 
 - Assumption: A pictograph uses one unit image for all categories
 - Assumption: Values are drawn as supplied; the system does not round or aggregate data
 - Assumption: The published image set ships with the package and needs no network access at runtime
+
+## @spec Coverage
+
+| Requirement | Code Location(s) |
+|-------------|-----------------|
+| DGP-REQ-001 | `src/core/definitions/categories.ts`:categoriesProperty, checkCategories; `src/layout/kit/value-scale.ts`:categorySlots, drawCategoryNames |
+| DGP-REQ-002 | `src/core/definitions/categories.ts`:dataGraphProperties; `src/core/definitions/shared.ts`:sharedProperties (category- and value-axis labels); `src/core/definitions/index.ts`:propertiesOf |
+| DGP-REQ-003 | `src/core/definitions/categories.ts`:categoriesProperty; `src/layout/kit/value-scale.ts`:categorySlots, drawCategoryNames |
+| DGP-REQ-005 | `src/core/definitions/categories.ts`:dataGraphProperties, resolveValueScale; `src/core/definitions/index.ts`:propertiesOf |
+| DGP-REQ-006 | `src/core/definitions/categories.ts`:resolveValueScale; `src/layout/kit/value-scale.ts`:defaultValueScale |
+| DGP-REQ-007 | `src/core/definitions/categories.ts`:checkValueScale |
+| DGP-REQ-008 | `src/core/definitions/categories.ts`:checkValueScale |
+| DGP-REQ-009 | `src/layout/kit/value-scale.ts`:valueTicks, drawValueAxis |
