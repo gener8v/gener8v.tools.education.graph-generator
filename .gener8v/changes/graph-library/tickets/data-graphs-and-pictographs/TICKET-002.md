@@ -78,6 +78,15 @@
   - Wrap every label with `wrap(text, maxWidth, fontSize, maxLines)`, as the circle does with `LABEL_MAX_LINES` (4), and draw titles with `titleBlock`, which caps them at `TITLE_MAX_LINES` (3). The cut line ends in "…" (DEL-008), so the Scene stays small however long the description's text. Say so in the label-text descriptions, and keep the full text in the text alternative.
   - In `describe`, state measurements with `stateMeasurement(value, source, unit)` (`src/core/format.ts`), not `formatMeasurement`. It quotes a unit that is not unit-shaped, so the unit cannot read as the package's own sentence. Drawn labels keep `measurementLabel` / `formatMeasurement`.
   - Add a test that a valid description with half a megabyte of unit or label text renders in `<Graph>` and the type's component without throwing, with a bounded number of text nodes.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-001-security-review/SEC-001, SEC-002 and SEC-003 (value scale and category names):
+  - **Category names (SEC-002, deferred to the Product Owner):** names wrap with no line cap, because the specification says a name is never cut. A caller-sized name therefore grows the Scene: 100 names of 1,000 characters make 100,000 text nodes and 18 MB of SVG, and about 2 MB makes rendering throw after the fallback.
+    - The SEC-001 rule above ("cut at a fixed number of lines") does not apply to category names. They are covered by the pending Product Owner decision on a caller-text length bound (GSS TICKET-002 SEC-002), which would reject, not cut, an over-long name.
+    - Until that decision, include category names in the half-megabyte large-text test, record the node count and markup size it produces, and do not claim a bounded number of text nodes for them.
+  - **Data values (SEC-003):** bound every data value spec to ±`VALUE_LIMIT` (`src/core/value-scale.ts`, 1,000,000,000), so a scale chosen from the values always prints as a plain number.
+  - **Scale checks (SEC-001, SEC-004):** register `tickIntervalCheck` and a `DomainCheck` wrapping `checkValueScale` for the type's values (line and bar graphs).
+    - `checkValueScale` rejects scales too fine to draw: a non-zero given end smaller than 1e-9, or a span narrower than a billionth of its ends. Without it, `valueTicks` throws on a scale the validator passed.
+    - Draw only scales that passed, with `resolveValueScale` and `valueTicks` / `drawValueAxis`.
+    - Add a test that a description with a given end near ±`VALUE_LIMIT` and a tiny span is reported, not drawn.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-006

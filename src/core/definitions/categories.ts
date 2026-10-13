@@ -92,8 +92,11 @@ export const dataGraphProperties = defineProperties({
     description:
       "The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick.",
     properties: {
-      minimum: scaleEnd("minimum", `The lowest value on the value axis, from ${-VALUE_LIMIT} to ${VALUE_LIMIT}.`),
-      maximum: scaleEnd("maximum", `The highest value on the value axis, from ${-VALUE_LIMIT} to ${VALUE_LIMIT}; above the minimum.`),
+      minimum: scaleEnd("minimum", `The lowest value on the value axis, from ${-VALUE_LIMIT} to ${VALUE_LIMIT}: 0, or at least 0.000000001 in size.`),
+      maximum: scaleEnd(
+        "maximum",
+        `The highest value on the value axis, from ${-VALUE_LIMIT} to ${VALUE_LIMIT}: 0, or at least 0.000000001 in size; above the minimum by at least a billionth of the larger end's size.`,
+      ),
       tickInterval: {
         term: "tickInterval",
         kind: "number",
@@ -116,10 +119,25 @@ export const dataGraphProperties = defineProperties({
 type CategoryEntry = { readonly name?: unknown } | null;
 
 /**
+ * A name as it is compared for duplicates: cleaned like drawn text, in Unicode NFC form (a composed
+ * and a decomposed "é" are one letter), with default-ignorable characters (joiners, variation
+ * selectors, Hangul fillers) removed and runs of spaces collapsed, so names that look the same are
+ * the same. Letter case still differs, and lookalike letters from other scripts (Latin "o",
+ * Cyrillic "о") are not caught (security review SEC-005).
+ */
+function nameKey(name: string): string {
+  return cleanText(name)
+    .normalize("NFC")
+    .replace(/\p{Default_Ignorable_Code_Point}/gu, "")
+    .replace(/\s+/gu, " ")
+    .trim();
+}
+
+/**
  * The category checks every data graph shares (DGP-REQ-001, DGP Edge Cases): an empty list is
  * reported as `missing_property`, the required list being absent in effect ("categories is required
  * for a bar-graph; add it."), and each name that repeats
- * an earlier one, compared as drawn (cleaned of hidden characters), as `duplicate_name` at the later
+ * an earlier one, compared as `nameKey` (as the names look), as `duplicate_name` at the later
  * category, naming the first. Work grows with the number of categories only.
  */
 // @spec DGP-REQ-001
@@ -129,10 +147,10 @@ export function checkCategories(list: readonly CategoryEntry[], graphType: Graph
   const firstWithName = new Map<string, number>();
   list.forEach((category, index) => {
     if (category === null || typeof category.name !== "string") return;
-    const drawn = cleanText(category.name);
-    const first = firstWithName.get(drawn);
+    const key = nameKey(category.name);
+    const first = firstWithName.get(key);
     if (first === undefined) {
-      firstWithName.set(drawn, index);
+      firstWithName.set(key, index);
       return;
     }
     issues.push(

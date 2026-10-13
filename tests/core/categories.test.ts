@@ -137,6 +137,17 @@ describe("categories (DGP-REQ-001, DGP-REQ-003)", () => {
     expect(checkCategories([{ name: "Mon" }, { name: "Mo\u00adn" }], "bar-graph").map((i) => i.path)).toEqual(["/categories/1/name"]);
   });
 
+  it.each([
+    ["composed and decomposed é", "Caf\u00e9", "Cafe\u0301"],
+    ["a zero-width joiner", "Mon", "Mo\u200dn"],
+    ["a variation selector", "Mon", "Mon\ufe0f"],
+    ["a combining grapheme joiner", "Mon", "Mo\u034fn"],
+    ["a Hangul filler", "Mon", "Mon\u3164"],
+    ["extra spaces", "Mon day", " Mon   day "],
+  ])("treat names that differ only by %s as the same (security review SEC-005)", (_, first, second) => {
+    expect(checkCategories([{ name: first }, { name: second }], "bar-graph").map((i) => i.code)).toEqual(["duplicate_name"]);
+  });
+
   it("skip a category that failed on its own, rather than report it again", () => {
     expect(checkCategories([null, { name: "A" }, null, { name: "A" }], "bar-graph").map((i) => i.path)).toEqual(["/categories/3/name"]);
   });
@@ -278,6 +289,20 @@ describe("value scale checks (DGP-REQ-007, DGP-REQ-008)", () => {
       tickInterval: 4,
       tickBase: -6,
     });
+  });
+
+  it("reports an interval far too fine as too_many_ticks, with a finite count and suggestion (security review SEC-004)", () => {
+    for (const input of [line({ valueScale: { tickInterval: 5e-324 } }), bar({ valueScale: { tickInterval: 5e-324 } })]) {
+      const issues = issuesOf(check(input));
+      expect(issues.map((issue) => `${issue.code} ${issue.path}`)).toEqual(["too_many_ticks /valueScale/tickInterval"]);
+      expect(issues[0]!.message).not.toMatch(/NaN|Infinity/);
+    }
+  });
+
+  it("reports an interval larger than the whole scale as not dividing it (security review SEC-004)", () => {
+    expect(codesAndPaths(bar({ values: [0.1], valueScale: { maximum: 0.35, tickInterval: 2e9 } }))).toEqual([
+      "tick_interval_not_dividing /valueScale/tickInterval",
+    ]);
   });
 
   it("accepts decimal intervals that divide the scale, despite binary rounding", () => {

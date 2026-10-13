@@ -249,3 +249,12 @@ During the first full run, `tests/layout/circle.test.ts` › "keeps the Scene sm
 - **For TICKET-002, 003 and 005:** draw with `resolveValueScale(...)` and `valueTicks(scale)` (or `drawValueAxis`), never by stepping from the minimum yourself: ticks are no longer `minimum + k × tickInterval` when the interval is chosen.
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `test` (30 files, 836 tests), `bench` (circle p95 0.0196 ms), `build`, `check:dist`, `check:deps`, `size` (`.` 15.3 kB, `./core` 12.36 kB, `./circle` 15.23 kB), `publint`, `attw`, `audit` (no vulnerabilities) and `gener8v-state lint` — all exit 0. Deliberate breaks of QR-001, 002, 003 each fail their tests.
 
+### Security review — `graph-library/data-graphs-and-pictographs-ticket-001-security-review` (2026-10-13, Approved with Notes, 0 accepted risks)
+
+- **SEC-001** — `valueTicks` (`src/core/value-scale.ts`) loops on a bounded counter and throws `RangeError` for grid indices outside the safe-integer range, so a scale far from zero and very narrow can no longer hang a render. `checkValueScale` reports a span narrower than `SCALE_RESOLUTION` (1e-9) of its ends' size as `out_of_range` at the given end. Tests: the 116-byte trigger, a span test, and a 2,000-run property test near ±`VALUE_LIMIT` and 0.
+- **SEC-003** — non-zero given `minimum`, `maximum` or `tickInterval` smaller than 1e-9 is `out_of_range`. Ticks and chosen ends snap a leftover far below the interval to 0 (`onGrid`; found by the property test). Scale-end descriptions updated.
+- **SEC-004** — an interval too fine for the scale is counted before resolution and reported as `too_many_ticks` with finite numbers. `intervalsIn` requires at least one whole interval to divide.
+- **SEC-005** — duplicate category names are compared by `nameKey` (NFC, default-ignorable characters removed, spaces collapsed).
+- **SEC-002** — deferred to the Product Owner's caller-text length decision (GSS TICKET-002 SEC-002). Known Hazards on DGP TICKET-002, 003, 005 now cover category names, data-value bounds (±`VALUE_LIMIT`) and the scale checks to register.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench` (circle p95 0.0234 ms), `build`, `check:dist`, `check:deps`, `size` (`.` 15.34 kB, `./core` 12.41 kB, `./circle` 15.27 kB), `publint`, `attw`, `audit` (no vulnerabilities) and `gener8v-state lint` exit 0. `pnpm test` (30 files, 852 tests) exited 0 on two of three runs; the third failed only the circle's 2,000 ms timing bound (2,033 ms), the load flake noted since delivery.
+

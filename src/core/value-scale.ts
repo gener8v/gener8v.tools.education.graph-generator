@@ -25,6 +25,13 @@ const DEFAULT_INTERVALS = 10;
  */
 const MIN_CHOSEN_INTERVAL = 1e-9;
 
+/**
+ * The finest a scale may be: a non-zero given end at least this large, and a span at least this
+ * fraction of the ends' size (and at least this much). Finer scales print tick labels hundreds of
+ * digits long, or tick positions a double cannot tell apart (security review SEC-001, SEC-003).
+ */
+export const SCALE_RESOLUTION = 1e-9;
+
 /** Relative tolerance for whole-number tests on decimal values, so 0.3 / 0.1 counts as 3. */
 const EPSILON = 1e-9;
 
@@ -61,13 +68,21 @@ const ceilWhole = (x: number) => (isWhole(x) ? Math.round(x) : Math.ceil(x));
 const floorWhole = (x: number) => (isWhole(x) ? Math.round(x) : Math.floor(x));
 
 /**
+ * `x` as a tick value: decimal noise removed, and a leftover far below the interval (1e-25 where 0
+ * was meant) taken as exactly 0, so no tick label prints dozens of digits (security review SEC-003).
+ */
+const onGrid = (x: number, interval: number): number => (Math.abs(x) < interval * EPSILON ? 0 : cleanDecimal(x));
+
+/**
  * How many whole intervals of `interval` fit in `span`, allowing for decimal noise, and whether they
  * fill it exactly. The one count the checks and `valueTicks` share (quality review QR-003): computed
  * arithmetically, so a tiny interval over a huge span is counted, never listed.
  */
 export function intervalsIn(span: number, interval: number): { count: number; exact: boolean } {
   const ratio = span / interval;
-  return { count: floorWhole(ratio), exact: isWhole(ratio) };
+  const count = floorWhole(ratio);
+  // At least one whole interval: 0.35 / 2e9 rounds to 0 but does not divide (security review SEC-004).
+  return { count, exact: isWhole(ratio) && count >= 1 };
 }
 
 /**
@@ -120,8 +135,8 @@ export function resolveValueScale(given: GivenValueScale | undefined, values: re
   if (given?.minimum !== undefined) minimum = given.minimum;
   else if (floor >= 0) minimum = 0;
   else if (given?.maximum !== undefined && givenInterval !== undefined) {
-    minimum = cleanDecimal(given.maximum - ceilWhole((given.maximum - floor) / interval) * interval);
-  } else minimum = cleanDecimal(floorWhole(floor / interval) * interval);
+    minimum = onGrid(given.maximum - ceilWhole((given.maximum - floor) / interval) * interval, interval);
+  } else minimum = onGrid(floorWhole(floor / interval) * interval, interval);
   // The noise tolerance must never leave a value outside a chosen end.
   if (given?.minimum === undefined && minimum > floor) minimum = cleanDecimal(minimum - interval);
 
@@ -133,7 +148,7 @@ export function resolveValueScale(given: GivenValueScale | undefined, values: re
     // A given interval counts from the minimum; a chosen one from zero, so the end is a multiple of it.
     const base = givenInterval === undefined ? 0 : minimum;
     const steps = Math.max(ceilWhole((top - base) / interval), floorWhole((minimum - base) / interval) + 1);
-    maximum = cleanDecimal(base + steps * interval);
+    maximum = onGrid(base + steps * interval, interval);
     if (maximum < high) maximum = cleanDecimal(maximum + interval);
   }
   return { minimum, maximum, tickInterval: interval, tickBase: givenInterval === undefined ? 0 : minimum };
@@ -152,17 +167,32 @@ export function valueTicks(scale: ValueScale): number[] {
   const first = ceilWhole((minimum - tickBase) / tickInterval);
   const last = floorWhole((maximum - tickBase) / tickInterval);
   const gridTicks = last - first + 1;
-  if (!(tickInterval > 0) || !(maximum > minimum) || !Number.isFinite(gridTicks) || gridTicks > MAX_VALUE_TICKS) {
+  // Grid indices past 2^53 cannot be counted (`k++` stops changing k), so such a scale is refused
+  // rather than looped over forever (security review SEC-001).
+  const countable = Number.isSafeInteger(first) && Number.isSafeInteger(last);
+  if (!(tickInterval > 0) || !(maximum > minimum) || !countable || !(gridTicks <= MAX_VALUE_TICKS)) {
     throw new RangeError(`valueTicks(): ${tickInterval} does not give a drawable number of ticks from ${minimum} to ${maximum}`);
   }
   const clearance = tickInterval * (1 - EPSILON);
   const ticks = [minimum];
-  for (let k = first; k <= last; k++) {
-    const tick = cleanDecimal(tickBase + k * tickInterval);
+  // A bounded counter: at most `MAX_VALUE_TICKS` turns, whatever the numbers.
+  for (let j = 0; j < gridTicks; j++) {
+    const tick = onGrid(tickBase + (first + j) * tickInterval, tickInterval);
     if (tick - minimum >= clearance && maximum - tick >= clearance) ticks.push(tick);
   }
   ticks.push(maximum);
   return ticks;
+}
+
+/** `too_many_ticks` for the tick interval, with a finite count and a finite interval that fits. */
+function tooManyTicks(tickCount: number, span: number): Issue {
+  const fitting = niceInterval(span, MAX_VALUE_TICKS - 1);
+  return createIssue("too_many_ticks", scalePath("tickInterval"), {
+    term: scaleTerm("tickInterval"),
+    tickCount: Number.isFinite(tickCount) ? Math.min(Math.floor(tickCount), Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER,
+    maxTicks: MAX_VALUE_TICKS,
+    fittingSpacing: Number.isFinite(fitting) ? fitting : niceInterval(2 * VALUE_LIMIT, MAX_VALUE_TICKS - 1),
+  });
 }
 
 /** A value read by a scale check: where it is, its readable term (`values[3]`), and the number. */
@@ -199,6 +229,8 @@ export const tickIntervalCheck: DomainCheck = {
  * The value-scale checks every line and bar graph shares (DGP-REQ-007, DGP-REQ-008), on a given
  * scale and the graph's values. A tick interval of 0 or less is `checkTickInterval`'s; here it is
  * left out of the scale, so nothing below reports on it:
+ * - a non-zero given part smaller than `SCALE_RESOLUTION`, or a scale narrower than
+ *   `SCALE_RESOLUTION` of its ends' size: `out_of_range`, since neither can be drawn;
  * - a given maximum not above the minimum chosen for it: `out_of_range`;
  * - a given interval that would draw more than `MAX_VALUE_TICKS` ticks: `too_many_ticks`;
  * - a given interval that does not divide the scale into whole intervals: `tick_interval_not_dividing`;
@@ -213,12 +245,36 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
   const issues: Issue[] = [];
   const interval = given.tickInterval;
   const intervalValid = interval === undefined || interval > 0;
+  const numbers = values.map((v) => v.value);
+
+  // A non-zero given part too small to print as a tick label (security review SEC-003). A tick
+  // interval of 0 or less is `checkTickInterval`'s; one too fine for its scale is reported below as
+  // `too_many_ticks`, whose message suggests an interval that fits.
+  const tooSmall = (part: keyof GivenValueScale) => {
+    const end = given[part];
+    if (end === undefined || end === 0 || Math.abs(end) >= SCALE_RESOLUTION) return;
+    const range = end > 0 ? { min: SCALE_RESOLUTION } : { max: -SCALE_RESOLUTION };
+    issues.push(createIssue("out_of_range", scalePath(part), { term: scaleTerm(part), got: end, range }));
+  };
+  tooSmall("minimum");
+  tooSmall("maximum");
+  if (issues.length > 0) return issues;
+
+  // An interval far too fine for the scale is counted before anything divides by it, so the scale
+  // is never resolved to NaN or Infinity (security review SEC-004).
+  if (interval !== undefined && intervalValid) {
+    const [low, high] = extent(numbers);
+    const roughSpan = (given.maximum ?? high) - (given.minimum ?? (options.allowNegative ? low : 0));
+    if (roughSpan / interval >= MAX_VALUE_TICKS) {
+      issues.push(tooManyTicks(roughSpan / interval + 1, roughSpan));
+      return issues;
+    }
+    tooSmall("tickInterval");
+    if (issues.length > 0) return issues;
+  }
+
   const usable: GivenValueScale = intervalValid ? given : { minimum: given.minimum, maximum: given.maximum };
-  const scale = resolveValueScale(
-    usable,
-    values.map((v) => v.value),
-    options,
-  );
+  const scale = resolveValueScale(usable, numbers, options);
   if (!(scale.maximum > scale.minimum)) {
     // Only a given maximum against a chosen minimum: two given ends are ordered in stage 2.
     issues.push(
@@ -230,20 +286,36 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
     );
     return issues;
   }
-  if (interval !== undefined && intervalValid) {
-    const span = scale.maximum - scale.minimum;
-    const { count, exact } = intervalsIn(span, interval);
-    const tickCount = count + 1;
-    if (tickCount > MAX_VALUE_TICKS) {
+
+  // A span too narrow for the size of its ends: ticks a double cannot tell apart (security review
+  // SEC-001). Reported at a given end, the only way such a scale arises.
+  const span = scale.maximum - scale.minimum;
+  const resolution = SCALE_RESOLUTION * Math.max(1, Math.abs(scale.minimum), Math.abs(scale.maximum));
+  if (span < resolution) {
+    if (given.maximum !== undefined) {
       issues.push(
-        createIssue("too_many_ticks", scalePath("tickInterval"), {
-          term: scaleTerm("tickInterval"),
-          tickCount: Number.isFinite(tickCount) ? tickCount : Number.MAX_SAFE_INTEGER,
-          maxTicks: MAX_VALUE_TICKS,
-          fittingSpacing: niceInterval(span, MAX_VALUE_TICKS - 1),
+        createIssue("out_of_range", scalePath("maximum"), {
+          term: scaleTerm("maximum"),
+          got: given.maximum,
+          range: { min: cleanDecimal(scale.minimum + resolution) },
         }),
       );
-    } else if (!exact) {
+    } else {
+      issues.push(
+        createIssue("out_of_range", scalePath("minimum"), {
+          term: scaleTerm("minimum"),
+          got: given.minimum,
+          range: { max: cleanDecimal(scale.maximum - resolution) },
+        }),
+      );
+    }
+    return issues;
+  }
+
+  if (interval !== undefined && intervalValid) {
+    const { count, exact } = intervalsIn(span, interval);
+    if (count + 1 > MAX_VALUE_TICKS) issues.push(tooManyTicks(count + 1, span));
+    else if (!exact) {
       issues.push(createIssue("tick_interval_not_dividing", scalePath("tickInterval"), { term: scaleTerm("tickInterval"), got: interval }));
     }
   }

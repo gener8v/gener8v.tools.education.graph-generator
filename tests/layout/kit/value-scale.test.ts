@@ -143,9 +143,78 @@ describe("a partly given scale ends on a labeled tick, never crowded (quality re
     );
   });
 
-  it("draws a vanishingly small given maximum rather than failing (quality review QR-004)", () => {
-    expect(checkValueScale([{ path: "/values/0", term: "values[0]", value: 0 }], { maximum: 5e-324 }, { allowNegative: false })).toEqual([]);
+  it("never resolves a vanishingly small given maximum to an interval of 0 (quality review QR-004)", () => {
+    // The checks now reject it (security review SEC-003); drawing it anyway still does not fail.
+    expect(checkValueScale([{ path: "/values/0", term: "values[0]", value: 0 }], { maximum: 5e-324 }, { allowNegative: false })).toMatchObject([
+      { code: "out_of_range", path: "/valueScale/maximum" },
+    ]);
     expect(ticksFor({ maximum: 5e-324 }, [0])).toEqual([0, 5e-324]);
+  });
+});
+
+describe("scales too fine to draw (security review SEC-001, SEC-003)", () => {
+  const values = (...list: number[]) => list.map((value, i) => ({ path: `/values/${i}`, term: `values[${i}]`, value }));
+
+  it("refuses, never loops over, grid indices a double cannot count", () => {
+    // The ticks of 999999999.9999999 .. 1e9 by 2e-8 are numbered near 5e16, past 2^53, where k++ stops.
+    const scale = resolveValueScale({ minimum: 999999999.9999999 }, [1e9], { allowNegative: true });
+    expect(() => valueTicks(scale)).toThrow(RangeError);
+    expect(checkValueScale(values(1e9), { minimum: 999999999.9999999 }, { allowNegative: true })).toMatchObject([
+      { code: "out_of_range", path: "/valueScale/minimum", range: { max: 999999999 } },
+    ]);
+  });
+
+  it("reports a span narrower than a billionth of its ends at the given end", () => {
+    expect(checkValueScale(values(5), { minimum: -1e9, maximum: -999999999.5 }, { allowNegative: true })).toMatchObject([
+      { code: "out_of_range", path: "/valueScale/maximum" },
+    ]);
+    expect(checkValueScale(values(1e9 - 1), { minimum: 999999998, maximum: 1e9 }, { allowNegative: false })).toEqual([]);
+  });
+
+  it.each([
+    ["maximum", 5e-324, { min: 1e-9 }],
+    ["minimum", -5e-324, { max: -1e-9 }],
+    ["minimum", 1e-12, { min: 1e-9 }],
+  ] as const)("reports a %s of %s, too small to print", (part, end, range) => {
+    expect(checkValueScale(values(0), { [part]: end }, { allowNegative: true })).toMatchObject([
+      { code: "out_of_range", path: `/valueScale/${part}`, range },
+    ]);
+  });
+
+  it("reports a tick interval too small to print, once it gives few enough ticks", () => {
+    // Found by the property test below: over -5e-324 this interval drew a 36-character label.
+    expect(checkValueScale(values(-5e-324), { tickInterval: 9.278598811535001e-10 }, { allowNegative: true })).toMatchObject([
+      { code: "out_of_range", path: "/valueScale/tickInterval", range: { min: 1e-9 } },
+    ]);
+  });
+
+  it("takes a leftover far below the interval as exactly 0", () => {
+    // -0.3 + 3 × 0.1 is 5.6e-17 in binary arithmetic, which would print as a 29-character label.
+    const ticks = valueTicks({ minimum: -0.3, maximum: 0.3, tickInterval: 0.1, tickBase: -0.3 });
+    expect(ticks).toEqual([-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3]);
+  });
+
+  it("draws every scale the checks accept in bounded work, even at the edge of the value range", () => {
+    const near = fc.oneof(
+      fc.double({ min: 1e9 - 1, max: 1e9, noNaN: true }),
+      fc.double({ min: -1e9, max: -1e9 + 1, noNaN: true }),
+      fc.double({ min: -1e-6, max: 1e-6, noNaN: true }),
+    );
+    const part = fc.option(near, { nil: undefined });
+    const interval = fc.option(fc.oneof(fc.double({ min: 1e-12, max: 1, noNaN: true }), fc.constantFrom(5e-324, 1e-9, 0.5, 2e9)), {
+      nil: undefined,
+    });
+    fc.assert(
+      fc.property(fc.array(near, { maxLength: 5 }), part, part, interval, fc.boolean(), (data, minimum, maximum, tickInterval, allowNegative) => {
+        const given = { minimum, maximum, tickInterval };
+        if (minimum !== undefined && maximum !== undefined && !(minimum < maximum)) return;
+        if (checkTickInterval(given).length + checkValueScale(values(...data), given, { allowNegative }).length > 0) return;
+        const ticks = valueTicks(resolveValueScale(given, data, { allowNegative }));
+        expect(ticks.length).toBeLessThanOrEqual(MAX_VALUE_TICKS + 2);
+        for (const tick of ticks) expect(tickLabel(tick).length).toBeLessThanOrEqual(30);
+      }),
+      { numRuns: 2000 },
+    );
   });
 });
 
