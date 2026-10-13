@@ -106,10 +106,11 @@ export function createGraphComponent<T extends GraphType, D extends DescriptionB
   if (parts.definition.type !== type) {
     throw new Error(`createGraphComponent: the definition is for ${describeValue(parts.definition.type)}, not ${describeValue(type)}`);
   }
-  // The one place a type's own definition and layout widen to the shared table types.
+  // A type's own definition and layout fit the shared table types with no cast: their methods are
+  // bivariant (GSS TICKET-002 quality review QR-005).
   const registries: Registries = {
-    definitions: only(type, parts.definition as unknown as GraphTypeDefinition),
-    layouts: only(type, parts.layout as Layout),
+    definitions: only(type, parts.definition),
+    layouts: only(type, parts.layout),
   };
   function TypedGraph(props: GraphProps): ReactElement {
     // A fragment keeps the return type an element whatever the fallback returns; it adds no markup.

@@ -175,6 +175,12 @@ describe("circle text alternative (GSS-REQ-036, GSS-REQ-033, GSS-REQ-034, GSS-RE
     );
   });
 
+  it.each(["   ", "\u00a0 \u00a0"])("says a label whose text is blank once cleaned is left blank: %j (DEL-003; quality review QR-003)", (text) => {
+    expect(describeGraph({ type: "circle", radius: 5, radiusLabelText: text })).toBe(
+      "A circle with radius 5. Its radius is drawn. The radius label is left blank.",
+    );
+  });
+
   it("quotes and cleans the title and the unit, and never lets caller text close a quotation", () => {
     expect(describeGraph({ type: "circle", radius: 1, title: "Pi “day”", unit: "  cm " })).toBe(
       'A circle titled “Pi "day"” with radius 1 cm.',
@@ -182,13 +188,15 @@ describe("circle text alternative (GSS-REQ-036, GSS-REQ-033, GSS-REQ-034, GSS-RE
   });
 
   it("does not state a title that is blank once cleaned, as none is drawn (code review CR-001)", () => {
-    for (const title of ["   ", "\u200b", " \u00a0 "]) {
+    for (const title of ["   ", " \u00a0 "]) {
       const result = createGraph({ type: "circle", radius: 5, title });
-      if (!result.ok) continue; // text plain text forbids
+      if (!result.ok) throw new Error(`expected ${JSON.stringify(title)} to be a valid title`);
       expect(result.scene.textAlternative, JSON.stringify(title)).toBe("A circle with radius 5.");
       expect(result.scene.nodes.filter((node) => node.kind === "text")).toEqual([]);
     }
     expect(describeGraph({ type: "circle", radius: 5, title: "   " })).toBe("A circle with radius 5.");
+    // A zero-width space is not blank text but a character plain text forbids (quality review QR-008).
+    expect(createGraph({ type: "circle", radius: 5, title: "\u200b" }).ok).toBe(false);
   });
 
   it("matches the documented example", () => {

@@ -295,3 +295,31 @@ Mutation checks (each broken on purpose, then restored): disabling the domain ch
 | `pnpm size` | `.` 14.32 kB, `./core` 11.59 kB, `./circle` 14.27 kB |
 | `pnpm publint`, `pnpm attw`, `pnpm audit` | pass |
 | `pnpm generate` | re-run, regenerated files committed |
+
+### Quality review (graph-library/geometric-shapes-and-solids-ticket-002-quality-review), resolved with Thomas, 2026-10-13
+
+- **QR-001** (Concern, fixed): the GSS-NFR-003 overlap property now generates full-length strings (`size: "max"`; the default capped them at 10 characters), so labels and titles wrap and labels are stacked. Its oracle shrinks each box rebuilt from rounded coordinates by 0.01, so touching lines no longer read as overlapping. File: `tests/layout/circle.test.ts`.
+- **QR-002** (Concern, fixed): `src/layout/kit/title.ts` has its own tests in the new `tests/layout/kit/title.test.ts`, and `sourceOf` has cases in `tests/core/format.test.ts`.
+- **QR-003** (Concern, fixed): whitespace-only custom label text (DEL-003, blank after cleaning) is pinned in both `describe` and the layout. Files: `tests/core/circle.test.ts`, `tests/layout/circle.test.ts`.
+- **QR-004** (Concern, deferred → GSS TICKET-003): the figure-agnostic label code in `src/layout/circle.ts` stays where it is. A Known Hazard on GSS TICKET-003 asks the square to extract it into the layout kit, shaped by both figures, rather than copy it.
+- **QR-005** (Suggestion, fixed): both registry tables use `satisfies Partial<Record<GraphType, …>>` with no cast, which rejects an incomplete entry (TS2740). The factory's casts are removed too, and the comments are updated. Files: `src/core/definitions/index.ts`, `src/layout/registry.ts`, `src/react/createGraphComponent.tsx`.
+- **QR-006** (Suggestion, fixed): the circle's layout tests call `circleLayout` directly after `validate`, so a layout exception shows its stack. One test still goes through `createGraph`. File: `tests/layout/circle.test.ts`.
+- **QR-007** (Suggestion, fixed): `besideOutline` reads exact unit directions (`OUTLINE_DIRECTIONS`), not rounded `cos`/`sin`, and is exported for a direct test of its candidates. Files: `src/layout/circle.ts`, `tests/layout/circle.test.ts`.
+- **QR-008** (Suggestion, fixed): the blank-title test asserts every case it lists; the zero-width title is asserted rejected. File: `tests/core/circle.test.ts`.
+- **QR-009** (Suggestion, fixed): the GSV-NFR-001 bench covers every registered type's `examples/<type>.json` as well as the fixtures. Circle: p95 0.024 ms. The stale "until TICKET-002 lands" comments are updated. Files: `tests/core/validate.bench.ts`, `tests/react/Graph.test.tsx`, `tests/fixtures/layouts.ts`, `tests/fixtures/definitions/index.ts`.
+
+**Mutation checks:** each new test was checked by breaking its code on purpose, then restoring it. All eight breaks are caught: title weight, title width, title height, line spacing, `sourceOf`'s default for a missing value, `describe`'s blank-label rule, an inexact outline direction, and label candidates in the title band.
+
+**Re-verification:** all exit 0.
+
+| Command | Result |
+|---|---|
+| `pnpm install --frozen-lockfile` | lockfile unchanged |
+| `pnpm generate` | no changes to `src/generated` |
+| `pnpm lint`, `pnpm typecheck` | pass |
+| `pnpm test` | 28 files, 733 tests |
+| `pnpm bench` | every case under 5 ms at p95 |
+| `pnpm build`, `pnpm check:dist`, `pnpm check:deps` | pass |
+| `pnpm size` | `.` 14.31 kB, `./core` 11.59 kB, `./circle` 14.26 kB |
+| `pnpm publint`, `pnpm attw`, `pnpm audit` | pass |
+| `python3 …/gener8v-state.py lint` | 0 errors, 0 warnings |

@@ -6,8 +6,10 @@ import { fixtureRegistry } from "./definitions";
 import type { Circle } from "./definitions/circle";
 
 /**
- * A test-only circle layout for the fixture circle definition, standing in for the real one until
- * GSS TICKET-002 lands. The circle fills the drawing whatever the radius; the label shows it.
+ * A test-only circle layout for the fixture circle definition. The real circle shipped in GSS
+ * TICKET-002; the fixtures stay as stand-ins for the validator and renderer tests, which must not
+ * change with any real type's rules. The circle fills the drawing whatever the radius; the label
+ * shows it.
  */
 export const circleLayout: Layout<Circle> = (normalized, provenance): Scene => ({
   width: SCENE_WIDTH,

@@ -1,23 +1,30 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { validate } from "../../src/core/index";
+import type { Circle } from "../../src/core/definitions/circle";
 import { createGraph } from "../../src/graph";
 import { checkScene } from "../../src/layout/kit/check";
 import { type Box, type Obstacle, placeLabel } from "../../src/layout/kit/labels";
 import { measurementLabel } from "../../src/layout/kit/measure";
 import { textWidth } from "../../src/layout/kit/text";
 import { LINE_HEIGHT } from "../../src/layout/kit/title";
-import { DRAWN_RADIUS } from "../../src/layout/circle";
+import { DRAWN_RADIUS, besideOutline, circleLayout } from "../../src/layout/circle";
 import type { Scene, SceneNode } from "../../src/layout/scene";
 
 const LABEL_SIZE = 14;
 
-/** The Scene for a valid description; every Scene must pass checkScene (AD-007, AD-008). */
+/**
+ * The Scene for a valid description; every Scene must pass checkScene (AD-007, AD-008). Calls the
+ * layout directly, not through `createGraph`, so a layout exception fails the test with its own
+ * message and stack instead of an `internal_error` (quality review QR-006).
+ */
 function sceneOf(description: unknown): Scene {
-  const result = createGraph(description);
-  if (!result.ok) throw new Error(`expected a valid circle, got ${JSON.stringify(result.issues)}`);
-  expect(checkScene(result.scene)).toEqual([]);
-  return result.scene;
+  const result = validate(description);
+  if (!result.valid) throw new Error(`expected a valid circle, got ${JSON.stringify(result.issues)}`);
+  const scene = circleLayout(result.description as Circle, result.provenance);
+  expect(checkScene(scene)).toEqual([]);
+  return scene;
 }
 
 const attr = (node: SceneNode, name: string) => Number(node.attrs.find(([key]) => key === name)?.[1]);
@@ -32,6 +39,16 @@ function boxOf(node: SceneNode & { text: string }): Box {
   const lineHeight = size * LINE_HEIGHT;
   const width = textWidth(node.text, size);
   return { x: attr(node, "x") - width / 2, y: attr(node, "y") - size * 0.8 - (lineHeight - size) / 2, width, height: lineHeight };
+}
+
+/**
+ * `boxOf` shrunk by `fmt()`'s rounding step on every side: the box is rebuilt from rounded
+ * coordinates, so two lines that only touch (consecutive lines of one text) would otherwise read
+ * as overlapping (quality review QR-001).
+ */
+function reservedBoxOf(node: SceneNode & { text: string }): Box {
+  const box = boxOf(node);
+  return { x: box.x + 0.01, y: box.y + 0.01, width: box.width - 0.02, height: box.height - 0.02 };
 }
 
 const segmentOf = (node: SceneNode) => ({ x1: attr(node, "x1"), y1: attr(node, "y1"), x2: attr(node, "x2"), y2: attr(node, "y2") });
@@ -51,7 +68,7 @@ function outlineSegments(scene: Scene, pieces = 360): Obstacle[] {
 /** Every text line (labels and title) that overlaps another, a drawn segment or the outline (GSS-NFR-003). */
 function overlaps(scene: Scene): string[] {
   const found: string[] = [];
-  const boxes = texts(scene).map(boxOf);
+  const boxes = texts(scene).map(reservedBoxOf);
   const figure: Obstacle[] = [...lines(scene).map(segmentOf), ...outlineSegments(scene)];
   boxes.forEach((box, i) => {
     const others = [...boxes.slice(0, i), ...boxes.slice(i + 1), ...figure];
@@ -65,6 +82,11 @@ describe("circle segments (GSS-REQ-001, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005)",
     const scene = sceneOf({ type: "circle", radius: 5 });
     expect(scene.nodes.map((node) => node.kind)).toEqual(["circle"]);
     expect(attr(outline(scene), "cx")).toBe(200);
+  });
+
+  it("is the Scene createGraph returns, through the registered layout", () => {
+    const result = createGraph({ type: "circle", radius: 5, showRadius: true, labelRadius: true });
+    expect(result.ok && result.scene).toEqual(sceneOf({ type: "circle", radius: 5, showRadius: true, labelRadius: true }));
   });
 
   it("draws the radius from the center horizontally to the right, to the circumference", () => {
@@ -163,8 +185,8 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
     expect(labelTexts(scene).map((node) => node.text)).toEqual(["5 cm", "?"]);
   });
 
-  it("leaves a blank label's place empty (DEL-003)", () => {
-    const scene = sceneOf({ type: "circle", radius: 5, radiusLabelText: "" });
+  it.each(["", "   ", "\u00a0 \u00a0"])("leaves a blank label's place empty, including text blank once cleaned: %j (DEL-003)", (radiusLabelText) => {
+    const scene = sceneOf({ type: "circle", radius: 5, radiusLabelText });
     expect(labelTexts(scene)).toEqual([]);
     expect(lines(scene)).toHaveLength(1);
   });
@@ -185,6 +207,25 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
     expect(distance).toBeLessThan(DRAWN_RADIUS + LABEL_SIZE);
   });
 
+  it("puts each beside-the-outline candidate outside the circle, centered on its axis (quality review QR-007)", () => {
+    const center = { x: 200, y: 200 };
+    const size = { width: 40, height: 16 };
+    const candidates = besideOutline(center, size);
+    expect(candidates).toHaveLength(8);
+    for (const { x, y } of candidates) {
+      // The box's nearest point to the center is outside the circle.
+      const nearX = Math.max(x, Math.min(center.x, x + size.width));
+      const nearY = Math.max(y, Math.min(center.y, y + size.height));
+      expect(Math.hypot(nearX - center.x, nearY - center.y)).toBeGreaterThan(DRAWN_RADIUS);
+    }
+    // Top, bottom, right and left: centered on the vertical or horizontal axis.
+    const [top, bottom, right, left] = candidates.slice(4);
+    expect(top!.x + size.width / 2).toBe(center.x);
+    expect(bottom!.x + size.width / 2).toBe(center.x);
+    expect(right!.y + size.height / 2).toBe(center.y);
+    expect(left!.y + size.height / 2).toBe(center.y);
+  });
+
   it("wraps a long label, and stacks a label with no clear place below the figure", () => {
     const text = "the distance all the way around the circle, which this question asks you to find";
     const scene = sceneOf({ type: "circle", radius: 5, circumferenceLabelText: text });
@@ -199,7 +240,9 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
   });
 
   it("never overlaps a label with another label, a segment or the outline (GSS-NFR-003, this figure)", () => {
-    const label = fc.oneof(fc.constant(undefined), fc.string({ maxLength: 120 }), fc.constantFrom("r", "?", "C = ?", "x cm"));
+    // Strings up to their full length (fast-check's default size caps them at 10 characters), so
+    // labels and titles wrap and labels are stacked below the figure (quality review QR-001).
+    const label = fc.oneof(fc.constant(undefined), fc.string({ maxLength: 120, size: "max" }), fc.constantFrom("r", "?", "C = ?", "x cm"));
     fc.assert(
       fc.property(
         fc.record({
@@ -209,7 +252,7 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
           labelRadius: fc.boolean(),
           labelDiameter: fc.boolean(),
           labelCircumference: fc.boolean(),
-          title: fc.oneof(fc.constant(undefined), fc.string({ maxLength: 80 })),
+          title: fc.oneof(fc.constant(undefined), fc.string({ maxLength: 80, size: "max" })),
           unit: fc.oneof(fc.constant(undefined), fc.constantFrom("cm", "millimetres", "km")),
         }),
         label,
@@ -227,7 +270,7 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
             ...(options.labelRadius ? { showRadius: true } : {}),
             ...(options.labelDiameter ? { showDiameter: true } : {}),
           };
-          if (!createGraph(description).ok) return; // caller text with characters plain text forbids
+          if (!validate(description).valid) return; // caller text with characters plain text forbids
           const scene = sceneOf(description);
           expect(overlaps(scene)).toEqual([]);
           for (const node of texts(scene)) {

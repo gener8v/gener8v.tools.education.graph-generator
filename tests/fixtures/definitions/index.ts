@@ -4,7 +4,10 @@ import { circle } from "./circle";
 import { numberLine } from "./number-line";
 import { xyGraph } from "./xy-graph";
 
-/** Test-only definitions, standing in for the real types until the type tickets land. */
+/**
+ * Test-only definitions, standing in for real types in the validator and renderer tests, so those
+ * tests do not change with any real type's rules (GSS TICKET-002 quality review QR-009).
+ */
 export const fixtureRegistry: Readonly<Partial<Record<GraphType, GraphTypeDefinition>>> = Object.freeze(
   Object.assign(Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {
     circle: circle as GraphTypeDefinition,

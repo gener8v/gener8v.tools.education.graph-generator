@@ -32,20 +32,34 @@ function measure(text: string, fontSize: number): { lines: string[]; width: numb
 }
 
 /**
- * Candidate top-left corners for a label of `size` beside the outline (GSS Behaviors & Rules: a
- * label for a value with no segment sits next to the outline). Each places the box's corner nearest
- * the circle just outside it, so the box lies outside the circle: upper right first, then the other
- * diagonals, then top, bottom, right and left.
+ * The directions from the center to try a label beside the outline, as exact unit vectors (x right,
+ * y up): upper right first, then the other diagonals, then top, bottom, right and left. Exact zeros
+ * matter: `besideOutline` centers a box on any axis where the direction is 0, and `Math.cos(π / 2)`
+ * is 6e-17, not 0 (quality review QR-007).
  */
-function besideOutline(center: Point, size: { width: number; height: number }): Point[] {
-  return [45, 135, 315, 225, 90, 270, 0, 180].map((degrees) => {
-    const angle = (degrees * Math.PI) / 180;
-    const cos = Math.round(Math.cos(angle) * 1e9) / 1e9;
-    const sin = Math.round(Math.sin(angle) * 1e9) / 1e9;
-    const px = center.x + (DRAWN_RADIUS + GAP) * cos;
-    const py = center.y - (DRAWN_RADIUS + GAP) * sin;
-    const x = cos > 0 ? px : cos < 0 ? px - size.width : px - size.width / 2;
-    const y = sin > 0 ? py - size.height : sin < 0 ? py : py - size.height / 2;
+const OUTLINE_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
+  [Math.SQRT1_2, Math.SQRT1_2],
+  [-Math.SQRT1_2, Math.SQRT1_2],
+  [Math.SQRT1_2, -Math.SQRT1_2],
+  [-Math.SQRT1_2, -Math.SQRT1_2],
+  [0, 1],
+  [0, -1],
+  [1, 0],
+  [-1, 0],
+];
+
+/**
+ * Candidate top-left corners for a label of `size` beside the outline (GSS Behaviors & Rules: a
+ * label for a value with no segment sits next to the outline), one per `OUTLINE_DIRECTIONS`. Each
+ * places the box's corner nearest the circle just outside it, so the box lies outside the circle;
+ * along an axis, the box is centered on that axis.
+ */
+export function besideOutline(center: Point, size: { width: number; height: number }): Point[] {
+  return OUTLINE_DIRECTIONS.map(([dx, dy]) => {
+    const px = center.x + (DRAWN_RADIUS + GAP) * dx;
+    const py = center.y - (DRAWN_RADIUS + GAP) * dy;
+    const x = dx > 0 ? px : dx < 0 ? px - size.width : px - size.width / 2;
+    const y = dy > 0 ? py - size.height : dy < 0 ? py : py - size.height / 2;
     return { x, y };
   });
 }

@@ -9,6 +9,7 @@ import {
   formatMeasurement,
   formatSupplied,
   quoteText,
+  sourceOf,
 } from "../../src/core/format";
 import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
 
@@ -69,6 +70,25 @@ describe("formatMeasurement", () => {
     expect(formatMeasurement(10, "supplied")).toBe("10");
     expect(formatMeasurement(10, "supplied", "")).toBe("10");
     expect(formatMeasurement(10, "supplied", `c${UNSAFE_CHARS.rightToLeftOverride}m\n`)).toBe("10 cm");
+  });
+});
+
+describe("sourceOf: whether a value was supplied or derived (GSS TICKET-002; quality review QR-002)", () => {
+  it("reads the value's JSON Pointer in the provenance", () => {
+    const provenance = { "/radius": "supplied", "/diameter": "derived" } as const;
+    expect(sourceOf(provenance, "radius")).toBe("supplied");
+    expect(sourceOf(provenance, "diameter")).toBe("derived");
+  });
+
+  it("counts a value missing from the provenance as derived, so it is rounded, never shown with digits nobody wrote", () => {
+    expect(sourceOf({ "/radius": "supplied" }, "circumference")).toBe("derived");
+    expect(sourceOf({}, "radius")).toBe("derived");
+  });
+
+  it("reads own entries only, so an inherited name is derived", () => {
+    const inherited = Object.create({ "/toString": "supplied" }) as Record<string, "supplied" | "derived">;
+    expect(sourceOf(inherited, "toString")).toBe("derived");
+    expect(sourceOf({}, "toString")).toBe("derived");
   });
 });
 

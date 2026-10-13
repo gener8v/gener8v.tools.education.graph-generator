@@ -57,6 +57,11 @@
   - Build label text with `measurementLabel(value, source, unit?, custom?)` (`src/layout/kit/measure.ts`), not `displayValue` plus your own unit. It uses the same formatters as `formatMeasurement`, and derived values below 0.005 keep two significant figures.
   - Custom text replaces the whole label, unit included (DEL-007), and `""` is a blank label (DEL-003).
   - A label with no clear spot beside its line is stacked below the figure (DEL-006); say so in the label-text property descriptions, as the circle does.
+- Carried from graph-library/geometric-shapes-and-solids-ticket-002-quality-review/QR-004 (deferred here), with QR-005 and QR-006 as the patterns to follow:
+  - **Extract, do not copy, the circle's figure-agnostic label code.** About 60 lines of `src/layout/circle.ts` are not about circles: `GAP`, `LABEL_MAX_WIDTH`, `measure` (label size), `besideHorizontal` / `besideVertical` (candidates beside a segment), `line` (a stroked segment node), the keep-inside-the-drawing filter, and the loop that places each label with `placeLabel`, adds it as an obstacle (AD-010) and stacks the ones it cannot place below the figure (DEL-006).
+  - Move them into the layout kit when the square needs them, shaped by both figures: for example `labelSize`, the candidate generators next to `placeLabel` in `src/layout/kit/labels.ts`, a `segmentNode`, and a `placeLabels(requests, obstacles, bounds, stackTop)` returning the nodes and the new bottom. Give the new kit code its own tests in `tests/layout/kit/`, then switch the circle to it with its tests unchanged.
+  - Register the definition and the layout with no cast: the tables use `satisfies`, which rejects an incomplete entry (QR-005).
+  - In the layout tests, call the layout directly after `validate`, as the circle's `sceneOf` does, so an exception shows its stack; keep one test through `createGraph` (QR-006). In the overlap property, generate strings with `size: "max"` so labels wrap and stack, and shrink each rebuilt box by 0.01 (QR-001).
 
 **Depends On:** TICKET-002
 **Blocks:** TICKET-008

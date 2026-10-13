@@ -52,7 +52,7 @@ describe("public entry point (CPSE-REQ-008, CPSE-REQ-009)", () => {
 });
 
 describe("the package's graph types fit together (code review CR-003; CPSE-REQ-008, CPSE-REQ-010)", () => {
-  // Empty until the first graph-type ticket lands; each type then joins every check below.
+  // Every registered type, from the circle on (GSS TICKET-002); each type ticket joins every check below.
   const registered = registeredTypes(definitions);
   const shipped = Object.values(entry).filter(
     (value): value is GraphComponent => typeof value === "function" && "graphType" in value,

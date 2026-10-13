@@ -7,8 +7,9 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
 
 /**
  * Every graph type's definition, keyed by its `type` value, on a null prototype. Each type ticket
- * adds one import and one entry here; TICKET-006 then requires all eleven graph types
- * (GSV-REQ-003).
+ * adds one import and one entry here, with no cast: `satisfies` checks that each entry is a whole
+ * definition (GSS TICKET-002 quality review QR-005). TICKET-006 then requires all eleven graph
+ * types (GSV-REQ-003).
  */
 // Marked pure so a bundler drops the table, and every definition in it, wherever nothing reads it:
 // per-type components validate with their own definition only (GSS TICKET-002 DEL-002; CPSE
@@ -16,8 +17,8 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
 // @spec GSV-REQ-003, GSV-REQ-012
 export const definitions: Registry = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {
-    circle: circle as unknown as GraphTypeDefinition,
-  }),
+    circle,
+  } satisfies Partial<Record<GraphType, GraphTypeDefinition>>),
 );
 
 /** Schema versions this package accepts; a description without `version` is the current one. */
