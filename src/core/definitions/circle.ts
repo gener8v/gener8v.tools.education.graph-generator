@@ -69,7 +69,7 @@ const labelText = (term: string, measured: string) =>
     term,
     kind: "string",
     required: false,
-    description: `Text shown in place of the ${measured} value, such as "r" or "?"; it also labels the ${measured}. An empty text is a blank label, for example a space to fill in; the text alternative still states the value.`,
+    description: `Text shown in place of the ${measured} label, such as "r" or "?"; it also labels the ${measured}. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.`,
   }) as const;
 
 /** A switch that custom text, or a label, turns on: giving both with the switch `false` disagrees. */
@@ -162,7 +162,10 @@ export const circle: GraphTypeDefinition<Circle> = {
     const measures = [measured("radius")];
     if (shown.diameter.drawn) measures.push(measured("diameter"));
     if (shown.circumference.labeled) measures.push(measured("circumference"));
-    const titled = circle.title === undefined ? "" : ` titled ${quoteText(circle.title)}`;
+    // A title that is blank once cleaned is not drawn (`titleBlock`), so it is not stated either
+    // (code review CR-001).
+    const title = circle.title === undefined ? "" : cleanText(circle.title);
+    const titled = title === "" ? "" : ` titled ${quoteText(title)}`;
     const sentences = [`A circle${titled} with ${formatList(measures)}.`];
 
     const marks: string[] = [];

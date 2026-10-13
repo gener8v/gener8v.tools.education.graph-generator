@@ -116,21 +116,21 @@
                 "string",
                 "null"
               ],
-              "description": "Text shown in place of the radius value, such as \"r\" or \"?\"; it also labels the radius. An empty text is a blank label, for example a space to fill in; the text alternative still states the value."
+              "description": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value."
             },
             "diameterLabelText": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "Text shown in place of the diameter value, such as \"r\" or \"?\"; it also labels the diameter. An empty text is a blank label, for example a space to fill in; the text alternative still states the value."
+              "description": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value."
             },
             "circumferenceLabelText": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "Text shown in place of the circumference value, such as \"r\" or \"?\"; it also labels the circumference. An empty text is a blank label, for example a space to fill in; the text alternative still states the value."
+              "description": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value."
             },
             "unit": {
               "type": [

@@ -261,4 +261,37 @@ Mutation checks (each broken on purpose, then restored): disabling the domain ch
 
 ## Post-Review Amendments
 
-None
+### Code review (graph-library/geometric-shapes-and-solids-ticket-002-code-review), resolved with Thomas, 2026-10-12
+
+- **CR-001** (Issue, approved): `circle.describe` now treats a title that is blank after `cleanText` as absent, matching `titleBlock`. A whitespace-only title is no longer stated as "titled “”". Test added to `tests/core/circle.test.ts`; removing the fix fails it. Files: `src/core/definitions/circle.ts`, `tests/core/circle.test.ts`.
+- **CR-002** (Observation, approved): **deviation recorded.** Labels take their precision through `measurementLabel` → `formatMeasurement`, not `displayValue` as acceptance criterion 7, AD-007 and the carried CR-005 hazard name. It is the same `formatSupplied` / `formatDerived`, so there is no second rounding rule. Derived values below 0.005 keep two significant figures (radius 0.001 → diameter "0.002"), as the hazard allows.
+  - `measurementLabel`'s doc now names it as the one entry point for label text. `displayValue`'s doc points to it.
+  - Known Hazard appended to GSS TICKET-003, TICKET-005, TICKET-006 and TICKET-007.
+  - The wording of AD-007 and the GSS OQ-005 assumption should gain the small-value exception at the next Technical Design / Specification amendment; this review does not edit them.
+  - Files: `src/layout/kit/measure.ts`, `src/layout/kit/format.ts`, the four ticket files.
+- **CR-003** (Observation, approved): Known Hazard pointing at DEL-001 appended to every undelivered graph-type ticket (DGP TICKET-002, 003, 005; GSS TICKET-003..007; NLC TICKET-002..004):
+  - write `describe` and the layout with the provenance;
+  - TypeScript does not catch a dropped provenance argument;
+  - call your own `describe` from the layout;
+  - draw titles with `titleBlock`.
+  `system-design.md` (AD-002; the Text alternatives and Layouts interfaces) still shows one argument. It should be updated at the next Technical Design amendment.
+- **CR-004** (Observation, approved): **DEL-006 — labels with no clear spot are stacked below the figure.**
+  - **Context:** a label with no clear candidate beside its line (very long custom text or unit) is wrapped and stacked below the figure, outside `placeLabel`, so acceptance criterion 8 does not hold in that case.
+  - **Decision:** accepted and documented. Each `…LabelText` description now says "Text too long to fit beside the figure is placed below it"; the layout comment cites DEL-006. The text alternative still names each measurement.
+  - **Ticket Impact:** later figures follow the same fallback (Known Hazard on GSS TICKET-003, 005..007).
+  - Files: `src/core/definitions/circle.ts`, `src/layout/circle.ts`, `src/generated/*` (regenerated).
+- **CR-005** (Observation, approved): **DEL-007 — custom label text replaces the whole label, unit included.**
+  - **Context:** GSS-REQ-033 puts the unit after the value, and GSS-REQ-035 puts custom text in place of the value. The vocabulary did not say which wins.
+  - **Decision:** custom text replaces the whole label, so "r" never reads "r cm". The `…LabelText` descriptions say so, and to add the unit to the text if wanted. `measurementLabel`'s doc says so too, and a layout test pins it.
+  - Files: `src/core/definitions/circle.ts`, `src/layout/kit/measure.ts`, `tests/layout/circle.test.ts`, `src/generated/*` (regenerated).
+
+**Re-verification:** all exit 0, with a clean `pnpm install --frozen-lockfile`.
+
+| Command | Result |
+|---|---|
+| `pnpm lint`, `pnpm typecheck` | pass |
+| `pnpm test` | 27 files, 715 tests |
+| `pnpm build`, `pnpm check:dist`, `pnpm check:deps` | pass |
+| `pnpm size` | `.` 14.32 kB, `./core` 11.59 kB, `./circle` 14.27 kB |
+| `pnpm publint`, `pnpm attw`, `pnpm audit` | pass |
+| `pnpm generate` | re-run, regenerated files committed |

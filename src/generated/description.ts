@@ -28,11 +28,11 @@ export interface CircleDescription {
   labelDiameter?: boolean;
   /** Whether the circumference is labeled with its measurement, next to the circle. */
   labelCircumference?: boolean;
-  /** Text shown in place of the radius value, such as "r" or "?"; it also labels the radius. An empty text is a blank label, for example a space to fill in; the text alternative still states the value. */
+  /** Text shown in place of the radius label, such as "r" or "?"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value. */
   radiusLabelText?: string;
-  /** Text shown in place of the diameter value, such as "r" or "?"; it also labels the diameter. An empty text is a blank label, for example a space to fill in; the text alternative still states the value. */
+  /** Text shown in place of the diameter label, such as "r" or "?"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value. */
   diameterLabelText?: string;
-  /** Text shown in place of the circumference value, such as "r" or "?"; it also labels the circumference. An empty text is a blank label, for example a space to fill in; the text alternative still states the value. */
+  /** Text shown in place of the circumference label, such as "r" or "?"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value. */
   circumferenceLabelText?: string;
   /** The unit of length shown after each measurement, such as cm. */
   unit?: string;

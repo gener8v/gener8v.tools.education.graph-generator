@@ -181,6 +181,16 @@ describe("circle text alternative (GSS-REQ-036, GSS-REQ-033, GSS-REQ-034, GSS-RE
     );
   });
 
+  it("does not state a title that is blank once cleaned, as none is drawn (code review CR-001)", () => {
+    for (const title of ["   ", "\u200b", " \u00a0 "]) {
+      const result = createGraph({ type: "circle", radius: 5, title });
+      if (!result.ok) continue; // text plain text forbids
+      expect(result.scene.textAlternative, JSON.stringify(title)).toBe("A circle with radius 5.");
+      expect(result.scene.nodes.filter((node) => node.kind === "text")).toEqual([]);
+    }
+    expect(describeGraph({ type: "circle", radius: 5, title: "   " })).toBe("A circle with radius 5.");
+  });
+
   it("matches the documented example", () => {
     const example: unknown = JSON.parse(readFileSync("examples/circle.json", "utf8"));
     expect(describeGraph(example)).toBe(

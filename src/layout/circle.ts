@@ -188,7 +188,9 @@ export const circleLayout: Layout<Circle> = (normalized: Circle, provenance: Pro
     obstacles.push(box);
     nodes.push(...textLines(size.lines, box.x + box.width / 2, box.y, fontSize, defaultStyle.colors.text));
   }
-  // Labels with no clear place beside their line, stacked below the figure.
+  // Labels with no clear place beside their line, stacked below the figure, outside `placeLabel`:
+  // nothing is above them to avoid. The text alternative still says which measurement each states
+  // (GSS TICKET-002 DEL-006).
   for (const size of unplaced) {
     const box: Box = { x: CENTER_X - size.width / 2, y: bottom + GAP, width: size.width, height: size.height };
     nodes.push(...textLines(size.lines, CENTER_X, box.y, fontSize, defaultStyle.colors.text));

@@ -45,7 +45,8 @@ export function translate(x: number, y: number): string {
  * A measurement value as displayed in a label: a supplied value exactly as given, a derived value
  * at the documented display precision (GSS-REQ-034). Built on the same formatters as the text
  * alternatives, so labels and text alternatives state the same numbers (GSV TICKET-001 code
- * review CR-007).
+ * review CR-007). Measurement labels use `measurementLabel` (src/layout/kit/measure.ts), which
+ * adds the unit or custom text over the same formatters (GSS TICKET-002 code review CR-002).
  */
 export function displayValue(n: number, provenance: "supplied" | "derived"): string {
   return provenance === "supplied" ? formatSupplied(n) : formatDerived(n);

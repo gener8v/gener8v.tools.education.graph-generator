@@ -158,6 +158,11 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
     expect(scene.textAlternative).toContain("circumference 31.42 cm");
   });
 
+  it("replaces the whole label with custom text, unit included (DEL-007)", () => {
+    const scene = sceneOf({ type: "circle", radius: 5, unit: "cm", circumferenceLabelText: "?", labelRadius: true });
+    expect(labelTexts(scene).map((node) => node.text)).toEqual(["5 cm", "?"]);
+  });
+
   it("leaves a blank label's place empty (DEL-003)", () => {
     const scene = sceneOf({ type: "circle", radius: 5, radiusLabelText: "" });
     expect(labelTexts(scene)).toEqual([]);
