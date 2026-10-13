@@ -1,17 +1,22 @@
 import { GRAPH_TYPES, defineProperties, type GraphType, type PropertySpec } from "./types";
 
 /**
- * A presentation option defined once (GSV-REQ-040), with where it applies:
+ * A scoped term: defined once, rather than in one type's definition, with where it applies. The
+ * shared presentation options (GSV-REQ-040) are scoped terms, as are the data-graph terms such as
+ * `valueScale` (`categories.ts`, DGP TICKET-001):
  * - `appliesTo`: the graph types whose description carries it at the top level. These are merged
  *   into the type's properties by `propertiesOf`; a definition never lists them itself.
  * - `elementsOf`: the graph types whose elements (points, segments, series, categories) carry it.
  *   The type's definition nests this same spec object in its element spec, so the option applies
  *   to that element only (GSV-REQ-045).
  */
-export type SharedPropertySpec = PropertySpec & {
+export type ScopedPropertySpec = PropertySpec & {
   readonly appliesTo: readonly GraphType[];
   readonly elementsOf: readonly GraphType[];
 };
+
+/** The earlier name of `ScopedPropertySpec`, from when only presentation options were scoped. */
+export type SharedPropertySpec = ScopedPropertySpec;
 
 const FIGURES = ["circle", "square", "triangle", "cube", "cylinder"] as const;
 
@@ -115,6 +120,6 @@ export const sharedProperties = defineProperties({
     appliesTo: [],
     elementsOf: ["number-line", "xy-graph", "xyz-graph", "bar-graph"],
   },
-} as const satisfies Readonly<Record<string, SharedPropertySpec>>);
+} as const satisfies Readonly<Record<string, ScopedPropertySpec>>);
 
 export type SharedTerm = keyof typeof sharedProperties;

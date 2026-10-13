@@ -69,7 +69,9 @@ export interface StringValue extends ValueBase {
    * Whether an empty text means no text: the value is dropped, as if it were not given. Shared
    * presentation options always behave this way; another term opts in here, for example the
    * pictograph's value-unit label, whose key then says "units" (GSV TICKET-003 code review CR-007,
-   * DGP TICKET-001 DEL-002). Without it, an empty text is kept, for example a blank label.
+   * DGP TICKET-001 DEL-002). Without it, an empty text is kept, for example a blank label. Only for
+   * an optional property: on a required one an empty text would satisfy the requirement, and on a
+   * list item it would leave a hole; the definitions test rejects both (quality review QR-006).
    */
   emptyIsAbsent?: boolean;
 }

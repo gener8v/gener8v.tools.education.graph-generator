@@ -1,32 +1,29 @@
 import { cleanText } from "../format";
 import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
-import type { SharedPropertySpec } from "./shared";
+import { MAX_VALUE_TICKS, VALUE_LIMIT } from "../value-scale";
+import type { ScopedPropertySpec } from "./shared";
 import { type DescriptionBase, type DomainCheck, type GraphType, type PropertyMap, type PropertySpec, defineProperties } from "./types";
+
+// The value scale's arithmetic and checks live in `src/core/value-scale.ts` (quality review QR-005);
+// they are re-exported here, where DGP TICKET-002, TICKET-003 and TICKET-005 expect them.
+export {
+  type GivenValueScale,
+  MAX_VALUE_TICKS,
+  type ScaleOptions,
+  type ScaledValue,
+  VALUE_LIMIT,
+  type ValueScale,
+  checkTickInterval,
+  checkValueScale,
+  niceInterval,
+  resolveValueScale,
+  tickIntervalCheck,
+  valueTicks,
+} from "../value-scale";
 
 /** The most categories a data graph may have: curriculum graphs use a handful, 50 at most (DGP Edge Cases). */
 export const CATEGORY_LIMIT = 100;
-
-/**
- * The largest magnitude of a value-scale end, and the bound each data graph puts on its values, so
- * every scale computed from them prints as a plain number in the drawing.
- */
-export const VALUE_LIMIT = 1_000_000_000;
-
-/** The most ticks a value axis may draw, the same limit as a number line's axis (NLC TICKET-001). */
-export const MAX_VALUE_TICKS = 100;
-
-/** A default scale has at most this many intervals between ticks, so tick labels stay readable. */
-const DEFAULT_INTERVALS = 10;
-
-/**
- * The finest tick interval a default scale uses. Data spanning less than this (say, every value
- * 1e-300) is drawn on a scale of this resolution, rather than one whose interval underflows to 0.
- */
-const MIN_DEFAULT_INTERVAL = 1e-9;
-
-/** Relative tolerance for whole-number tests on decimal values, so 0.3 / 0.1 counts as 3. */
-const EPSILON = 1e-9;
 
 /**
  * The `categories` list (DGP-REQ-001, DGP-REQ-003): at least one and at most `CATEGORY_LIMIT`
@@ -37,37 +34,41 @@ const EPSILON = 1e-9;
  */
 // @spec DGP-REQ-001, DGP-REQ-003
 export function categoriesProperty(elementProperties: PropertyMap = {}): PropertySpec {
-  return {
-    term: "categories",
-    kind: "array",
-    required: true,
-    maxItems: CATEGORY_LIMIT,
-    description: `The categories, drawn in the order given: at least 1 and at most ${CATEGORY_LIMIT}, each with a different name.`,
-    items: {
-      kind: "object",
-      description: "One category.",
-      properties: {
-        name: {
-          term: "name",
-          kind: "string",
-          required: true,
-          description: "The category's name, as plain text. A long name wraps onto more lines; it is never cut short.",
+  // Returned defined (frozen, no prototypes), so a definition can list it as it is and an unused
+  // call can be dropped by a bundler (quality review QR-008).
+  return defineProperties({
+    categories: {
+      term: "categories",
+      kind: "array",
+      required: true,
+      maxItems: CATEGORY_LIMIT,
+      description: `The categories, drawn in the order given: at least 1 and at most ${CATEGORY_LIMIT}, each with a different name.`,
+      items: {
+        kind: "object",
+        description: "One category.",
+        properties: {
+          name: {
+            term: "name",
+            kind: "string",
+            required: true,
+            description: "The category's name, as plain text. A long name wraps onto more lines; it is never cut short.",
+          },
+          ...elementProperties,
         },
-        ...elementProperties,
       },
     },
-  };
+  }).categories;
 }
 
 /** The `categories` list with names only, as the line graph and the pictograph use it. */
-export const categories: PropertySpec = defineProperties({ categories: categoriesProperty() }).categories;
+export const categories: PropertySpec = /* @__PURE__ */ categoriesProperty();
 
 const scaleEnd = (term: "minimum" | "maximum", description: string) =>
   ({ term, kind: "number", required: false, min: -VALUE_LIMIT, max: VALUE_LIMIT, description }) as const;
 
 /**
  * The data-graph terms that apply to some graph types and not others, with where each applies, as
- * for the shared presentation options: `propertiesOf` merges each into the types its `appliesTo`
+ * for the shared presentation options (both are scoped terms, `ScopedPropertySpec`): `propertiesOf` merges each into the types its `appliesTo`
  * names, and the validator reports it as not applying anywhere else (DGP-REQ-002, DGP-REQ-005).
  * The category-axis and value-axis labels are shared presentation options (`shared.ts`).
  */
@@ -105,223 +106,7 @@ export const dataGraphProperties = defineProperties({
     appliesTo: ["line-graph", "bar-graph"],
     elementsOf: [],
   },
-} as const satisfies Readonly<Record<string, SharedPropertySpec>>);
-
-/** A value scale as a description gives it: any part may be left out. */
-export interface GivenValueScale {
-  readonly minimum?: number;
-  readonly maximum?: number;
-  readonly tickInterval?: number;
-}
-
-/** A complete value scale: ticks at `minimum + k × tickInterval` up to `maximum`. */
-export interface ValueScale {
-  readonly minimum: number;
-  readonly maximum: number;
-  readonly tickInterval: number;
-}
-
-export interface ScaleOptions {
-  /** Whether a default scale may start below zero for negative values: line graphs only (DGP-REQ-015). */
-  readonly allowNegative: boolean;
-}
-
-/** `x` with the binary noise of decimal arithmetic removed (0.1 × 3 → 0.3). */
-const clean = (x: number) => (x === 0 ? 0 : Number(x.toPrecision(12)));
-
-/** Whether `x` is a whole number, allowing for decimal noise. */
-const isWhole = (x: number) => Math.abs(x - Math.round(x)) <= EPSILON * Math.max(1, Math.abs(x));
-
-/** The smallest whole number at or above `x`, allowing for decimal noise (`ceilWhole(3.0000000001)` → 3). */
-const ceilWhole = (x: number) => (isWhole(x) ? Math.round(x) : Math.ceil(x));
-const floorWhole = (x: number) => (isWhole(x) ? Math.round(x) : Math.floor(x));
-
-/**
- * The smallest tick interval of the form 1, 2 or 5 × 10ⁿ that covers `span` in at most `intervals`
- * intervals. Kept here until the number line's `ticks.ts` exists to share it (DGP TICKET-001 Notes).
- */
-export function niceInterval(span: number, intervals: number = DEFAULT_INTERVALS): number {
-  const target = Math.max((span > 0 ? span : 1) / intervals, MIN_DEFAULT_INTERVAL);
-  const magnitude = 10 ** Math.floor(Math.log10(target));
-  for (const multiple of [1, 2, 5, 10]) {
-    const interval = clean(multiple * magnitude);
-    if (interval * (1 + EPSILON) >= target) return interval;
-  }
-  return clean(10 * magnitude);
-}
-
-/** The next coarser (`direction` 1) or finer (-1) step of the 1, 2, 5 × 10ⁿ sequence from `step`. */
-function stepBeside(step: number, direction: 1 | -1): number {
-  const magnitude = 10 ** Math.floor(Math.log10(step) + EPSILON);
-  const mantissa = Math.round(step / magnitude);
-  const next = direction === 1 ? { 1: 2, 2: 5, 5: 10 } : { 1: 0.5, 2: 1, 5: 2 };
-  return clean((next[mantissa as 1 | 2 | 5] ?? mantissa) * magnitude);
-}
-
-/**
- * A chosen tick interval that divides `span` exactly, so the axis ends on a tick (code review
- * CR-001): the finest 1, 2 or 5 × 10ⁿ with at most ten intervals that divides it (15 → 5);
- * otherwise the coarsest finer one that divides it within `MAX_VALUE_TICKS` ticks (17 → 1);
- * otherwise a tenth of the span. Every search is a handful of steps, whatever the span.
- */
-function dividingInterval(span: number): number {
-  const first = niceInterval(span);
-  if (!(span > 0)) return first;
-  for (let step = first; step <= span * (1 + EPSILON); step = stepBeside(step, 1)) {
-    if (isWhole(span / step)) return step;
-  }
-  for (let step = stepBeside(first, -1); step >= MIN_DEFAULT_INTERVAL && span / step < MAX_VALUE_TICKS; step = stepBeside(step, -1)) {
-    if (isWhole(span / step)) return step;
-  }
-  return clean(span / DEFAULT_INTERVALS);
-}
-
-/** The lowest and highest of `values` and zero, by a loop: never spread a caller-sized list into arguments. */
-function extent(values: readonly number[]): [number, number] {
-  let low = 0;
-  let high = 0;
-  for (const value of values) {
-    if (value < low) low = value;
-    if (value > high) high = value;
-  }
-  return [low, high];
-}
-
-/**
- * The scale a data graph draws (DGP-REQ-005, DGP-REQ-006): each part the description gives, used
- * exactly; each part left out, chosen to fit `values`.
- * - A chosen minimum is zero; with `allowNegative` and a negative value, it is a tick at or below
- *   the lowest value: counted down from a given maximum by a given interval, so that interval
- *   divides the scale (code review CR-004), and otherwise a multiple of the interval.
- * - A chosen maximum is the first tick at or above the highest value, at least one interval above
- *   the minimum.
- * - A chosen interval is 1, 2 or 5 × 10ⁿ, at most ten intervals over the data's span, and when an
- *   end is given it divides the scale, so the axis ends on a tick (code review CR-001).
- * All-zero data gives 0 to 1. With nothing given this is the default scale, which always includes
- * every value.
- */
-// @spec DGP-REQ-005, DGP-REQ-006
-export function resolveValueScale(given: GivenValueScale | undefined, values: readonly number[], options: ScaleOptions): ValueScale {
-  const [low, high] = extent(values);
-  const floor = options.allowNegative ? low : 0;
-  const from = given?.minimum ?? floor;
-  const to = given?.maximum ?? high;
-  const step = given?.tickInterval ?? niceInterval(to - from);
-
-  let minimum: number;
-  if (given?.minimum !== undefined) minimum = given.minimum;
-  else if (floor >= 0) minimum = 0;
-  else if (given?.maximum !== undefined && given.tickInterval !== undefined) {
-    minimum = clean(given.maximum - ceilWhole((given.maximum - floor) / step) * step);
-  } else minimum = clean(floorWhole(floor / step) * step);
-  // The noise tolerance must never leave a value outside a chosen end.
-  if (given?.minimum === undefined && minimum > floor) minimum = clean(minimum - step);
-
-  let maximum: number;
-  if (given?.maximum !== undefined) maximum = given.maximum;
-  else {
-    // With nothing above the minimum (all-zero data), the scale spans one unit, or one given interval.
-    const top = high > minimum ? high : minimum + (given?.tickInterval ?? step * DEFAULT_INTERVALS);
-    maximum = clean(minimum + Math.max(1, ceilWhole((top - minimum) / step)) * step);
-    if (maximum < high) maximum = clean(maximum + step);
-  }
-
-  if (given?.tickInterval !== undefined) return { minimum, maximum, tickInterval: given.tickInterval };
-  const anyEndGiven = given?.minimum !== undefined || given?.maximum !== undefined;
-  return { minimum, maximum, tickInterval: anyEndGiven ? dividingInterval(maximum - minimum) : step };
-}
-
-/** A value read by a scale check: where it is, its readable term (`values[3]`), and the number. */
-export interface ScaledValue {
-  readonly path: string;
-  readonly term: string;
-  readonly value: number;
-}
-
-const SCALE = "valueScale";
-const scalePath = (part: keyof GivenValueScale) => pointer(SCALE, part);
-const scaleTerm = (part: keyof GivenValueScale) => `${SCALE}.${part}`;
-
-/**
- * A given tick interval of 0 or less, reported as `tick_spacing_invalid` (DGP-REQ-008). Separate
- * from `checkValueScale`, which reads every scale part and value, so a failure there never hides
- * it: register `tickIntervalCheck` alongside the scale check (code review CR-006).
- */
-// @spec DGP-REQ-008
-export function checkTickInterval(given: GivenValueScale | undefined): Issue[] {
-  const interval = given?.tickInterval;
-  if (interval === undefined || interval > 0) return [];
-  return [createIssue("tick_spacing_invalid", scalePath("tickInterval"), { term: scaleTerm("tickInterval"), got: interval })];
-}
-
-/** `checkTickInterval` as a domain check, reading the tick interval only. */
-export const tickIntervalCheck: DomainCheck = {
-  name: "the value-scale tick interval is greater than 0",
-  inputs: ["valueScale/tickInterval"],
-  check: (description: DescriptionBase) => checkTickInterval(description["valueScale"] as GivenValueScale | undefined),
-};
-
-/**
- * The value-scale checks every line and bar graph shares (DGP-REQ-007, DGP-REQ-008), on a given
- * scale and the graph's values. A tick interval of 0 or less is `checkTickInterval`'s; here it is
- * left out of the scale, so nothing below reports on it:
- * - a given maximum not above the minimum chosen for it: `out_of_range`;
- * - a tick interval that would draw more than `MAX_VALUE_TICKS` ticks: `too_many_ticks`, counted
- *   arithmetically, never by listing the ticks;
- * - a tick interval that does not divide the scale into whole intervals: `tick_interval_not_dividing`;
- * - each value beyond a given end: `scale_excludes_value` at the value's own path.
- * A scale part left out never excludes a value, and a given scale is never extended. Work grows
- * with the number of values only. Whether a bar graph's minimum may be above zero is the bar
- * graph's own check (DGP TICKET-003).
- */
-// @spec DGP-REQ-007, DGP-REQ-008
-export function checkValueScale(values: readonly ScaledValue[], given: GivenValueScale | undefined, options: ScaleOptions): Issue[] {
-  if (given === undefined) return [];
-  const issues: Issue[] = [];
-  const interval = given.tickInterval;
-  const intervalValid = interval === undefined || interval > 0;
-  const usable: GivenValueScale = intervalValid ? given : { minimum: given.minimum, maximum: given.maximum };
-  const scale = resolveValueScale(
-    usable,
-    values.map((v) => v.value),
-    options,
-  );
-  if (!(scale.maximum > scale.minimum)) {
-    // Only a given maximum against a chosen minimum: two given ends are ordered in stage 2.
-    issues.push(
-      createIssue("out_of_range", scalePath("maximum"), {
-        term: scaleTerm("maximum"),
-        got: scale.maximum,
-        range: { min: scale.minimum, exclusiveMin: true },
-      }),
-    );
-    return issues;
-  }
-  if (interval !== undefined && intervalValid) {
-    const intervals = (scale.maximum - scale.minimum) / interval;
-    const tickCount = floorWhole(intervals) + 1;
-    if (tickCount > MAX_VALUE_TICKS) {
-      issues.push(
-        createIssue("too_many_ticks", scalePath("tickInterval"), {
-          term: scaleTerm("tickInterval"),
-          tickCount: Number.isFinite(tickCount) ? tickCount : Number.MAX_SAFE_INTEGER,
-          maxTicks: MAX_VALUE_TICKS,
-          fittingSpacing: niceInterval(scale.maximum - scale.minimum, MAX_VALUE_TICKS - 1),
-        }),
-      );
-    } else if (!isWhole(intervals)) {
-      issues.push(createIssue("tick_interval_not_dividing", scalePath("tickInterval"), { term: scaleTerm("tickInterval"), got: interval }));
-    }
-  }
-  for (const { path, term, value } of values) {
-    const below = given.minimum !== undefined && value < given.minimum;
-    const above = given.maximum !== undefined && value > given.maximum;
-    if (below || above) {
-      issues.push(createIssue("scale_excludes_value", path, { term, got: value, range: { min: scale.minimum, max: scale.maximum } }));
-    }
-  }
-  return issues;
-}
+} as const satisfies Readonly<Record<string, ScopedPropertySpec>>);
 
 /**
  * A category as a validated description holds it; a category that failed stage 2 is `null`. Through

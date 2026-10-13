@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { MAX_VALUE_TICKS, VALUE_LIMIT, checkValueScale, resolveValueScale } from "../../../src/core/definitions/categories";
+import {
+  MAX_VALUE_TICKS,
+  VALUE_LIMIT,
+  checkTickInterval,
+  checkValueScale,
+  intervalsIn,
+  resolveValueScale,
+} from "../../../src/core/value-scale";
 import { defaultStyle } from "../../../src/core/style";
 import type { SceneNode } from "../../../src/layout/scene";
 import { textWidth } from "../../../src/layout/kit/text";
@@ -38,7 +45,7 @@ describe("defaultValueScale (DGP-REQ-006)", () => {
     [[-12, 4], true, { minimum: -12, maximum: 4, tickInterval: 2 }],
     [[3, 5], true, { minimum: 0, maximum: 5, tickInterval: 0.5 }],
   ])("chooses a scale for %j (negative allowed: %s)", (values, allowNegative, expected) => {
-    expect(defaultValueScale(values, { allowNegative })).toEqual(expected);
+    expect(defaultValueScale(values, { allowNegative })).toEqual({ ...expected, tickBase: 0 });
   });
 
   it("uses 0 to 1 for all-zero data", () => {
@@ -52,8 +59,8 @@ describe("defaultValueScale (DGP-REQ-006)", () => {
   });
 
   it("never lets the interval underflow to zero for vanishingly small values", () => {
-    expect(defaultValueScale([5e-324], { allowNegative: false })).toEqual({ minimum: 0, maximum: 1e-9, tickInterval: 1e-9 });
-    expect(defaultValueScale([-5e-324], { allowNegative: true })).toEqual({ minimum: -1e-9, maximum: 0, tickInterval: 1e-9 });
+    expect(defaultValueScale([5e-324], { allowNegative: false })).toEqual({ minimum: 0, maximum: 1e-9, tickInterval: 1e-9, tickBase: 0 });
+    expect(defaultValueScale([-5e-324], { allowNegative: true })).toEqual({ minimum: -1e-9, maximum: 0, tickInterval: 1e-9, tickBase: 0 });
   });
 
   it("starts at zero, includes every value, and gives a drawable number of ticks, for any data", () => {
@@ -78,67 +85,107 @@ describe("defaultValueScale (DGP-REQ-006)", () => {
 
 describe("resolveValueScale (DGP-REQ-005)", () => {
   it("fills only the parts left out", () => {
-    expect(resolveValueScale({ tickInterval: 2 }, [7], { allowNegative: false })).toEqual({ minimum: 0, maximum: 8, tickInterval: 2 });
-    expect(resolveValueScale({ tickInterval: 2 }, [0], { allowNegative: false })).toEqual({ minimum: 0, maximum: 2, tickInterval: 2 });
-    expect(resolveValueScale({ maximum: 50 }, [7], { allowNegative: false })).toEqual({ minimum: 0, maximum: 50, tickInterval: 5 });
-    expect(resolveValueScale({ minimum: 10 }, [15, 37], { allowNegative: false })).toEqual({ minimum: 10, maximum: 40, tickInterval: 5 });
-    expect(resolveValueScale({ tickInterval: 4 }, [-7, 3], { allowNegative: true })).toEqual({ minimum: -8, maximum: 4, tickInterval: 4 });
+    const resolve = (given: Parameters<typeof resolveValueScale>[0], values: number[], allowNegative = false) =>
+      resolveValueScale(given, values, { allowNegative });
+    // A given interval counts its ticks from the minimum.
+    expect(resolve({ tickInterval: 2 }, [7])).toEqual({ minimum: 0, maximum: 8, tickInterval: 2, tickBase: 0 });
+    expect(resolve({ tickInterval: 2 }, [0])).toEqual({ minimum: 0, maximum: 2, tickInterval: 2, tickBase: 0 });
+    expect(resolve({ tickInterval: 4 }, [-7, 3], true)).toEqual({ minimum: -8, maximum: 4, tickInterval: 4, tickBase: -8 });
+    expect(resolve({ minimum: 1, tickInterval: 3 }, [8])).toEqual({ minimum: 1, maximum: 10, tickInterval: 3, tickBase: 1 });
+    // A chosen interval is chosen first, and a chosen end is a multiple of it.
+    expect(resolve({ maximum: 50 }, [7])).toEqual({ minimum: 0, maximum: 50, tickInterval: 5, tickBase: 0 });
+    expect(resolve({ minimum: 10 }, [15, 37])).toEqual({ minimum: 10, maximum: 40, tickInterval: 5, tickBase: 0 });
   });
 });
 
-describe("a partly given scale ends on a tick (code review CR-001)", () => {
+describe("a partly given scale ends on a labeled tick, never crowded (quality review QR-002)", () => {
+  const ticksFor = (given: Parameters<typeof resolveValueScale>[0], values: number[], allowNegative = false) =>
+    valueTicks(resolveValueScale(given, values, { allowNegative }));
+
   it.each([
-    [{ maximum: 15 }, [7], { minimum: 0, maximum: 15, tickInterval: 5 }],
-    [{ maximum: 17 }, [7], { minimum: 0, maximum: 17, tickInterval: 1 }],
-    [{ maximum: 0.37 }, [0.1], { minimum: 0, maximum: 0.37, tickInterval: 0.01 }],
-    [{ minimum: 3 }, [10], { minimum: 3, maximum: 10, tickInterval: 1 }],
-    [{ minimum: 0, maximum: 7 }, [7], { minimum: 0, maximum: 7, tickInterval: 1 }],
-    [{ minimum: 0, maximum: 1 / 3 }, [0.1], { minimum: 0, maximum: 1 / 3, tickInterval: 0.0333333333333 }],
-  ])("%j over %j", (given, values, expected) => {
-    expect(resolveValueScale(given, values, { allowNegative: false })).toEqual(expected);
+    [{ maximum: 97 }, [7], false, [0, 10, 20, 30, 40, 50, 60, 70, 80, 97]],
+    [{ maximum: 15 }, [7], false, [0, 2, 4, 6, 8, 10, 12, 15]],
+    [{ maximum: 17 }, [7], false, [0, 2, 4, 6, 8, 10, 12, 14, 17]],
+    [{ maximum: 15 }, [-3, 5], true, [-4, -2, 0, 2, 4, 6, 8, 10, 12, 15]],
+    [{ minimum: 3 }, [10], false, [3, 4, 5, 6, 7, 8, 9, 10]],
+    // A chosen maximum is a multiple of the chosen interval (40), not a count of intervals from a given minimum (38).
+    [{ minimum: 3 }, [37], false, [3, 10, 15, 20, 25, 30, 35, 40]],
+    [{ minimum: 0, maximum: 1 / 3 }, [0.1], false, [0, 0.05, 0.1, 0.15, 0.2, 0.25, 1 / 3]],
+  ])("%j over %j (negative allowed: %s)", (given, values, allowNegative, expected) => {
+    expect(ticksFor(given, values, allowNegative)).toEqual(expected);
   });
 
-  it("for every partly given scale the checks accept, starts at the minimum and ends at the maximum", () => {
+  it("for every scale the checks accept: ends on both ends, ticks at least one interval apart, few ticks when the interval is chosen", () => {
     const end = fc.option(fc.integer({ min: -1000, max: 1000 }).map((n) => n / 10), { nil: undefined });
     const interval = fc.option(fc.constantFrom(0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 25), { nil: undefined });
     fc.assert(
-      fc.property(fc.array(value.map((v) => Math.round(v) / 1e7), { maxLength: 20 }), end, end, interval, fc.boolean(), (values, minimum, maximum, tickInterval, allowNegative) => {
-        const given = { minimum, maximum, tickInterval };
-        const scaled = values.map((v, i) => ({ path: `/values/${i}`, term: `values[${i}]`, value: v }));
-        if (minimum !== undefined && maximum !== undefined && !(minimum < maximum)) return; // stage 2 rejects it
-        if (checkValueScale(scaled, given, { allowNegative }).length > 0) return;
-        const scale = resolveValueScale(given, values, { allowNegative });
-        const ticks = valueTicks(scale);
-        expect(ticks[0]).toBe(scale.minimum);
-        expect(ticks.at(-1)).toBeCloseTo(scale.maximum, 9);
-      }),
+      fc.property(
+        fc.array(value.map((v) => Math.round(v) / 1e7), { maxLength: 20 }),
+        end,
+        end,
+        interval,
+        fc.boolean(),
+        (values, minimum, maximum, tickInterval, allowNegative) => {
+          const given = { minimum, maximum, tickInterval };
+          const scaled = values.map((v, i) => ({ path: `/values/${i}`, term: `values[${i}]`, value: v }));
+          if (minimum !== undefined && maximum !== undefined && !(minimum < maximum)) return; // stage 2 rejects it
+          if (checkTickInterval(given).length + checkValueScale(scaled, given, { allowNegative }).length > 0) return;
+          const scale = resolveValueScale(given, values, { allowNegative });
+          const ticks = valueTicks(scale);
+          expect(ticks[0]).toBe(scale.minimum);
+          expect(ticks.at(-1)).toBe(scale.maximum);
+          for (let i = 1; i < ticks.length; i++) expect(ticks[i]! - ticks[i - 1]!).toBeGreaterThanOrEqual(scale.tickInterval * (1 - 1e-9));
+          if (tickInterval === undefined) expect(ticks.length).toBeLessThanOrEqual(12);
+          else expect(ticks.length).toBeLessThanOrEqual(MAX_VALUE_TICKS);
+        },
+      ),
       { numRuns: 1000 },
     );
+  });
+
+  it("draws a vanishingly small given maximum rather than failing (quality review QR-004)", () => {
+    expect(checkValueScale([{ path: "/values/0", term: "values[0]", value: 0 }], { maximum: 5e-324 }, { allowNegative: false })).toEqual([]);
+    expect(ticksFor({ maximum: 5e-324 }, [0])).toEqual([0, 5e-324]);
   });
 });
 
 describe("valueTicks", () => {
-  it("lists every tick from the minimum, without decimal noise", () => {
-    expect(valueTicks({ minimum: 0, maximum: 1, tickInterval: 0.1 })).toEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]);
-    expect(valueTicks({ minimum: -6, maximum: 6, tickInterval: 3 })).toEqual([-6, -3, 0, 3, 6]);
-    expect(valueTicks({ minimum: 0.1, maximum: 0.7, tickInterval: 0.2 })).toEqual([0.1, 0.3, 0.5, 0.7]);
+  it("lists both ends and every interval between, without decimal noise", () => {
+    expect(valueTicks({ minimum: 0, maximum: 1, tickInterval: 0.1, tickBase: 0 })).toEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]);
+    expect(valueTicks({ minimum: -6, maximum: 6, tickInterval: 3, tickBase: -6 })).toEqual([-6, -3, 0, 3, 6]);
+    expect(valueTicks({ minimum: 0.1, maximum: 0.7, tickInterval: 0.2, tickBase: 0.1 })).toEqual([0.1, 0.3, 0.5, 0.7]);
   });
 
-  it("stops at the last tick inside a scale its interval does not divide (a defensive case: the checks reject such a scale)", () => {
-    expect(valueTicks({ minimum: 0, maximum: 7, tickInterval: 2 })).toEqual([0, 2, 4, 6]);
+  it("drops a grid tick less than one interval from an end, which takes its place", () => {
+    expect(valueTicks({ minimum: 0, maximum: 7, tickInterval: 2, tickBase: 0 })).toEqual([0, 2, 4, 7]);
+    expect(valueTicks({ minimum: 1, maximum: 10, tickInterval: 2, tickBase: 0 })).toEqual([1, 4, 6, 8, 10]);
   });
 
-  it(`throws rather than list more than ${MAX_VALUE_TICKS} ticks, or ticks for a bad interval`, () => {
-    expect(valueTicks({ minimum: 0, maximum: 99, tickInterval: 1 })).toHaveLength(MAX_VALUE_TICKS);
-    expect(() => valueTicks({ minimum: 0, maximum: 100, tickInterval: 1 })).toThrow(RangeError);
-    expect(() => valueTicks({ minimum: 0, maximum: 1e9, tickInterval: 1e-300 })).toThrow(RangeError);
-    expect(() => valueTicks({ minimum: 0, maximum: 10, tickInterval: 0 })).toThrow(RangeError);
-    expect(() => valueTicks({ minimum: 0, maximum: 10, tickInterval: -1 })).toThrow(RangeError);
+  it(`throws rather than list more than ${MAX_VALUE_TICKS} ticks, or ticks for a bad scale`, () => {
+    expect(valueTicks({ minimum: 0, maximum: 99, tickInterval: 1, tickBase: 0 })).toHaveLength(MAX_VALUE_TICKS);
+    expect(() => valueTicks({ minimum: 0, maximum: 100, tickInterval: 1, tickBase: 0 })).toThrow(RangeError);
+    expect(() => valueTicks({ minimum: 0, maximum: 1e9, tickInterval: 1e-300, tickBase: 0 })).toThrow(RangeError);
+    expect(() => valueTicks({ minimum: 0, maximum: 10, tickInterval: 0, tickBase: 0 })).toThrow(RangeError);
+    expect(() => valueTicks({ minimum: 0, maximum: 10, tickInterval: -1, tickBase: 0 })).toThrow(RangeError);
+    expect(() => valueTicks({ minimum: 10, maximum: 10, tickInterval: 1, tickBase: 0 })).toThrow(RangeError);
+  });
+
+  it("counts intervals as the validator does, at the tick limit (quality review QR-003)", () => {
+    const valid = (given: { maximum: number; tickInterval: number }) =>
+      checkValueScale([{ path: "/values/0", term: "values[0]", value: 0.5 }], given, { allowNegative: false });
+    // 0.7 / 0.007 is 99.99999999999999 in binary: 100 intervals, 101 ticks, both sides agree.
+    expect(valid({ maximum: 0.7, tickInterval: 0.007 }).map((issue) => issue.code)).toEqual(["too_many_ticks"]);
+    expect(intervalsIn(0.7, 0.007)).toEqual({ count: 100, exact: true });
+    // 0.693 / 0.007 is 99 intervals: accepted, and drawn with exactly 100 ticks.
+    expect(valid({ maximum: 0.693, tickInterval: 0.007 })).toEqual([]);
+    expect(valueTicks(resolveValueScale({ maximum: 0.693, tickInterval: 0.007 }, [0.5], { allowNegative: false }))).toHaveLength(100);
   });
 });
 
 describe("drawValueAxis (DGP-REQ-009, AD-007)", () => {
-  const scale = { minimum: 0, maximum: 50, tickInterval: 10 };
+  const scale = { minimum: 0, maximum: 50, tickInterval: 10, tickBase: 0 };
+  const fontSize = defaultStyle.fontSizes.tickLabel;
+  const tickLength = defaultStyle.tickLength;
 
   it.each(["vertical", "horizontal"] as const)("labels every tick with its value (%s)", (orientation) => {
     const nodes = drawValueAxis(scale, orientation, BOX);
@@ -150,11 +197,39 @@ describe("drawValueAxis (DGP-REQ-009, AD-007)", () => {
   it("runs a vertical axis up the left edge and a horizontal one along the bottom", () => {
     const up = drawValueAxis(scale, "vertical", BOX);
     expect([attr(up[0]!, "x1"), attr(up[0]!, "y1"), attr(up[0]!, "x2"), attr(up[0]!, "y2")]).toEqual([60, 40, 60, 240]);
-    const ys = up.filter((node) => node.kind === "text").map((node) => attr(node, "y") as number);
-    expect(ys).toEqual([...ys].sort((a, b) => b - a)); // larger values higher up
-
     const across = drawValueAxis(scale, "horizontal", BOX);
     expect([attr(across[0]!, "x1"), attr(across[0]!, "y1"), attr(across[0]!, "x2"), attr(across[0]!, "y2")]).toEqual([60, 240, 360, 240]);
+  });
+
+  it("draws each vertical tick out to the left at its value, its label right-aligned beside it (quality review QR-001)", () => {
+    const nodes = drawValueAxis(scale, "vertical", BOX);
+    const ticks = nodes.slice(1).filter((node) => node.kind === "line");
+    const labels = nodes.filter((node) => node.kind === "text");
+    // Ticks 0, 10, … 50 sit at y = 240, 200, … 40.
+    ticks.forEach((tick, i) => {
+      const y = 240 - i * 40;
+      expect([attr(tick, "x1"), attr(tick, "y1"), attr(tick, "x2"), attr(tick, "y2")]).toEqual([60 - tickLength, y, 60, y]);
+      expect([attr(labels[i]!, "x"), attr(labels[i]!, "y"), attr(labels[i]!, "text-anchor")]).toEqual([
+        60 - tickLength - 4,
+        Math.round((y + fontSize * 0.35) * 100) / 100,
+        "end",
+      ]);
+    });
+  });
+
+  it("draws each horizontal tick down at its value, its label centered below it (quality review QR-001)", () => {
+    const nodes = drawValueAxis(scale, "horizontal", BOX);
+    const ticks = nodes.slice(1).filter((node) => node.kind === "line");
+    const labels = nodes.filter((node) => node.kind === "text");
+    ticks.forEach((tick, i) => {
+      const x = 60 + i * 60;
+      expect([attr(tick, "x1"), attr(tick, "y1"), attr(tick, "x2"), attr(tick, "y2")]).toEqual([x, 240, x, 240 + tickLength]);
+      expect([attr(labels[i]!, "x"), attr(labels[i]!, "y"), attr(labels[i]!, "text-anchor")]).toEqual([
+        x,
+        Math.round((240 + tickLength + 4 + fontSize * 0.8) * 100) / 100,
+        "middle",
+      ]);
+    });
   });
 
   it("places the minimum and maximum ticks at the ends of the box, exactly in proportion between", () => {
@@ -182,9 +257,8 @@ describe("drawValueAxis (DGP-REQ-009, AD-007)", () => {
   });
 
   it("says how far the ticks and labels reach outside the box", () => {
-    const fontSize = defaultStyle.fontSizes.tickLabel;
-    expect(valueAxisExtent(scale, "vertical")).toBeCloseTo(defaultStyle.tickLength + 4 + textWidth("50", fontSize));
-    expect(valueAxisExtent(scale, "horizontal")).toBeCloseTo(defaultStyle.tickLength + 4 + fontSize * 1.2);
+    expect(valueAxisExtent(scale, "vertical")).toBeCloseTo(tickLength + 4 + textWidth("50", fontSize));
+    expect(valueAxisExtent(scale, "horizontal")).toBeCloseTo(tickLength + 4 + fontSize * 1.2);
   });
 });
 
@@ -226,6 +300,35 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
     const [slot] = categorySlots(names("A rather long category name"), BOX, "horizontal", 60);
     expect(slot!.labelWidth).toBe(60);
     expect(slot!.lines.join(" ")).toBe("A rather long category name");
+  });
+
+  it("never wraps names narrower than the minimum width, so 100 categories still lay out (quality review QR-001)", () => {
+    const many = Array.from({ length: 100 }, (_, i) => ({ name: `Category ${i}` }));
+    const slots = categorySlots(many, BOX, "vertical");
+    expect(slots).toHaveLength(100);
+    expect(slots[0]!.labelWidth).toBe(24);
+    expect(slots.map((slot) => slot.name)).toEqual(many.map((c) => c.name));
+  });
+
+  it("centers each name under its slot below a vertical plot (quality review QR-001)", () => {
+    const slots = categorySlots(names("Wed", "Mon", "Tue"), BOX, "vertical");
+    const nodes = drawCategoryNames(slots, "vertical", BOX);
+    // First line's top is 4 below the plot; its baseline 1.2 + 9.6 further down (`textLines`).
+    expect(nodes.map((node) => [attr(node, "x"), attr(node, "y"), attr(node, "text-anchor")])).toEqual([
+      [110, 254.8, "middle"],
+      [210, 254.8, "middle"],
+      [310, 254.8, "middle"],
+    ]);
+  });
+
+  it("centers each name in a column left of a horizontal plot, level with its slot (quality review QR-001)", () => {
+    const slots = categorySlots(names("Wed", "Mon"), BOX, "horizontal");
+    const nodes = drawCategoryNames(slots, "horizontal", BOX);
+    // Column 96 wide ending 4 left of the plot: center x = 60 - 4 - 48. One line, 14.4 tall, centered on the slot.
+    expect(nodes.map((node) => [attr(node, "x"), attr(node, "y"), attr(node, "text-anchor")])).toEqual([
+      [8, 93.6, "middle"],
+      [8, 193.6, "middle"],
+    ]);
   });
 
   it("draws every line of every name, in order, through fmt()", () => {

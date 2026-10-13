@@ -132,8 +132,9 @@ describe("categories (DGP-REQ-001, DGP-REQ-003)", () => {
 
   it("compare names as drawn: letter case differs, so it is a different name", () => {
     expect(check(bar({ categories: named("Mon", "mon", "MON") })).valid).toBe(true);
-    // Names that differ only by characters cleaning removes draw the same.
-    expect(checkCategories([{ name: "Mon" }, { name: "Mo­n" }], "bar-graph").map((i) => i.path)).toEqual(["/categories/1/name"]);
+    // Names that differ only by characters cleaning removes draw the same: "Mo\u00adn" holds a soft
+    // hyphen (U+00AD), which `cleanText` drops (quality review QR-009).
+    expect(checkCategories([{ name: "Mon" }, { name: "Mo\u00adn" }], "bar-graph").map((i) => i.path)).toEqual(["/categories/1/name"]);
   });
 
   it("skip a category that failed on its own, rather than report it again", () => {
@@ -275,6 +276,7 @@ describe("value scale checks (DGP-REQ-007, DGP-REQ-008)", () => {
       minimum: -6,
       maximum: 10,
       tickInterval: 4,
+      tickBase: -6,
     });
   });
 
@@ -335,6 +337,7 @@ describe("value scale checks (DGP-REQ-007, DGP-REQ-008)", () => {
       minimum: 2,
       maximum: 7,
       tickInterval: 5,
+      tickBase: 2,
     });
     expect(resolveValueScale({ maximum: 10 }, [30], { allowNegative: false }).maximum).toBe(10);
     expect(resolveValueScale({ minimum: 5 }, [-30], { allowNegative: true }).minimum).toBe(5);

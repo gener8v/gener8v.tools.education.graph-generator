@@ -1,4 +1,4 @@
-import { MAX_VALUE_TICKS, type ScaleOptions, type ValueScale, resolveValueScale } from "../../core/definitions/categories";
+import { type ScaleOptions, type ValueScale, resolveValueScale, valueTicks } from "../../core/value-scale";
 import { cleanText, formatSupplied } from "../../core/format";
 import { defaultStyle } from "../../core/style";
 import type { SceneNode } from "../scene";
@@ -8,7 +8,8 @@ import { linearScale } from "./scale";
 import { DEFAULT_FONT_STACK, textWidth, wrap } from "./text";
 import { LINE_HEIGHT, textLines } from "./title";
 
-export { resolveValueScale, type ScaleOptions, type ValueScale } from "../../core/definitions/categories";
+// The scale arithmetic is core's, shared with the validator (quality reviews QR-003, QR-005).
+export { resolveValueScale, type ScaleOptions, type ValueScale, valueTicks } from "../../core/value-scale";
 
 /**
  * Which way values run: `"vertical"` draws the value axis up the left side of the plot and the
@@ -32,28 +33,6 @@ export const CATEGORY_NAME_WIDTH = 96;
 // @spec DGP-REQ-006
 export function defaultValueScale(values: readonly number[], options: ScaleOptions): ValueScale {
   return resolveValueScale(undefined, values, options);
-}
-
-/**
- * Every tick of a scale, from the minimum by the tick interval to the maximum, with decimal noise
- * removed (0.1 × 3 → 0.3). A validated scale has at most `MAX_VALUE_TICKS` ticks; a scale with more
- * is a layout bug and throws rather than listing millions.
- */
-// @spec DGP-REQ-009
-export function valueTicks(scale: ValueScale): number[] {
-  const { minimum, maximum, tickInterval } = scale;
-  const intervals = (maximum - minimum) / tickInterval;
-  const whole = Math.round(intervals);
-  const count = (Math.abs(intervals - whole) <= 1e-9 * Math.max(1, intervals) ? whole : Math.floor(intervals)) + 1;
-  if (!(tickInterval > 0) || !Number.isFinite(count) || count > MAX_VALUE_TICKS) {
-    throw new RangeError(`valueTicks(): ${tickInterval} does not give a drawable number of ticks from ${minimum} to ${maximum}`);
-  }
-  const ticks: number[] = [];
-  for (let i = 0; i < count; i++) {
-    const tick = minimum + i * tickInterval;
-    ticks.push(tick === 0 ? 0 : Number(tick.toPrecision(12)));
-  }
-  return ticks;
 }
 
 /** The text of a tick label: the value as a plain number, never in exponent form. */
@@ -183,8 +162,9 @@ export function categorySlots(
 }
 
 /**
- * The category names for `slots`: centered under each slot below a vertical plot, or right of
- * center beside a horizontal one, every line of every name drawn.
+ * The category names for `slots`, every line of every name drawn: below a vertical plot, centered
+ * under each slot; beside a horizontal plot, centered in a column `labelWidth` wide that ends
+ * `LABEL_GAP` left of the plot, and centered on the slot vertically.
  */
 // @spec DGP-REQ-001, DGP-REQ-003
 export function drawCategoryNames(slots: readonly CategorySlot[], orientation: Orientation, box: Box): SceneNode[] {

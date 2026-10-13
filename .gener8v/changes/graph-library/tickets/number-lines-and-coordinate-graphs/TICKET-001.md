@@ -66,6 +66,10 @@
   - The description a check receives is frozen; never change it.
   - Build every issue with `createIssue`. A hand-built issue, or one with a message over 2,000 characters, is treated as a package defect.
   - A check's work must grow with the description's size, never with a value's magnitude. For example, count ticks arithmetically (`floor(range / spacing)`) and compare with the limit before enumerating anything.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-001-quality-review/QR-005: the data graphs' value-scale arithmetic now lives in `src/core/value-scale.ts`, a core module. It holds `niceInterval` (1, 2 or 5 × 10ⁿ), `intervalsIn` (the noise-tolerant interval count both the checks and the tick list use), `cleanDecimal`, `valueTicks`, and `MAX_VALUE_TICKS` (100, the same limit as this ticket's).
+  - Validation needs the tick rule too, and core cannot import the layout kit. So put the number line's tick arithmetic (the default spacing, the tick count, multiples anchored at zero) in core, and share or extend `src/core/value-scale.ts`, rather than building a second rule in `src/layout/kit/ticks.ts`.
+  - Keep only drawing helpers in the kit, and reuse `tickLabel` from `src/layout/kit/value-scale.ts` (which prints with `formatSupplied`) unless NLC's label-decimals rule differs. If it does, record why.
+  - NLC aims at 5–20 ticks; the data graphs aim at no more than 10 intervals. Give both rules one home, parameterised.
 
 **Depends On:** None
 **Blocks:** TICKET-002, TICKET-003, TICKET-004

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dataGraphProperties } from "../../src/core/definitions/categories";
 import { definitions, propertiesOf, scopedProperty, scopedPropertyMaps } from "../../src/core/definitions/index";
-import { type SharedPropertySpec, sharedProperties } from "../../src/core/definitions/shared";
+import { type ScopedPropertySpec, sharedProperties } from "../../src/core/definitions/shared";
 import {
   GRAPH_TYPES,
   PROPERTY_KINDS,
@@ -17,9 +17,9 @@ import { fixtureRegistry as validatorFixtures } from "../fixtures/definitions/in
 
 const CAMEL_CASE = /^[a-z][a-zA-Z0-9]*$/;
 const BUILT_IN_NAMES = new Set([...Object.getOwnPropertyNames(Object.prototype), "type", "version"]);
-const shared: readonly SharedPropertySpec[] = Object.values(sharedProperties);
+const shared: readonly ScopedPropertySpec[] = Object.values(sharedProperties);
 /** Every term defined once with where it applies: the shared options and the data-graph terms. */
-const scoped: readonly SharedPropertySpec[] = scopedPropertyMaps.flatMap((map) => Object.values(map) as SharedPropertySpec[]);
+const scoped: readonly ScopedPropertySpec[] = scopedPropertyMaps.flatMap((map) => Object.values(map));
 const scopedTerms = new Set(scoped.map((spec) => spec.term));
 
 /** Every vocabulary problem in a property map, nested objects and array items included. */
@@ -31,6 +31,8 @@ function vocabularyProblems(properties: PropertyMap, path = ""): string[] {
     if (!CAMEL_CASE.test(key)) problems.push(`${at}: not a camel-cased term`);
     // A built-in object name would shadow or vanish in ordinary objects (security review SEC-002 on TICKET-005).
     if (BUILT_IN_NAMES.has(key)) problems.push(`${at}: a built-in object name cannot be a term`);
+    // Dropping an empty text must never satisfy a required term (quality review QR-006).
+    if (spec.kind === "string" && spec.emptyIsAbsent === true && spec.required) problems.push(`${at}: emptyIsAbsent on a required term`);
     problems.push(...valueProblems(spec, at));
   }
   return problems;
@@ -60,6 +62,8 @@ function valueProblems(spec: ValueSpec, at: string): string[] {
   }
   if (spec.kind === "array") {
     if (!Number.isInteger(spec.maxItems) || spec.maxItems < 1) problems.push(`${at}: maxItems must be a positive whole number`);
+    // A dropped list item would leave a hole that is not marked failed (quality review QR-006).
+    if (spec.items.kind === "string" && spec.items.emptyIsAbsent === true) problems.push(`${at}/items: emptyIsAbsent on a list item`);
     problems.push(...valueProblems(spec.items, `${at}/items`));
   }
   if (spec.kind === "enum" && spec.values.length === 0) problems.push(`${at}: enum with no values`);
@@ -89,18 +93,19 @@ function nestedSpecs(properties: PropertyMap): Array<[string, PropertyMap[string
 }
 
 /**
- * Where a definition uses shared options, against their `appliesTo` and `elementsOf` lists
+ * Where a definition uses scoped terms (shared options and data-graph terms), against their
+ * `appliesTo` and `elementsOf` lists
  * (code review CR-001, CR-002; quality review QR-002).
  */
 function applicabilityProblems(definition: GraphTypeDefinition): string[] {
   const problems: string[] = [];
   for (const term of Object.keys(definition.properties)) {
-    if (scopedTerms.has(term)) problems.push(`${definition.type}: lists shared option ${term}; propertiesOf adds it from appliesTo`);
+    if (scopedTerms.has(term)) problems.push(`${definition.type}: lists scoped term ${term}; propertiesOf adds it from appliesTo`);
   }
   const nested = nestedSpecs(definition.properties);
   for (const [key, spec] of nested) {
     const sharedSpec = scopedProperty(key);
-    if (sharedSpec !== undefined && spec !== sharedSpec) problems.push(`${definition.type}: redefines shared option ${key}`);
+    if (sharedSpec !== undefined && spec !== sharedSpec) problems.push(`${definition.type}: redefines scoped term ${key}`);
   }
   for (const option of scoped) {
     const nests = nested.some(([, spec]) => spec === option);
@@ -239,6 +244,22 @@ describe("vocabulary terms (GSV-REQ-012, AD-005)", () => {
     for (const definition of allDefinitions()) {
       expect(vocabularyProblems(definition.properties), definition.type).toEqual([]);
     }
+  });
+
+  it("allows emptyIsAbsent on optional terms only (quality review QR-006)", () => {
+    const misuse = defineProperties({
+      caption: { term: "caption", kind: "string", required: true, emptyIsAbsent: true, description: "A required caption." },
+      notes: {
+        term: "notes",
+        kind: "array",
+        required: false,
+        maxItems: 5,
+        description: "Notes.",
+        items: { kind: "string", emptyIsAbsent: true, description: "One note." },
+      },
+      unit: { term: "unit", kind: "string", required: false, emptyIsAbsent: true, description: "An optional unit." },
+    });
+    expect(vocabularyProblems(misuse)).toEqual(["/caption: emptyIsAbsent on a required term", "/notes/items: emptyIsAbsent on a list item"]);
   });
 
   it("catches a name that is not its declared term, at any depth", () => {
@@ -493,9 +514,9 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
     }
   });
 
-  it("catch a definition that lists, redefines or misplaces a shared option", () => {
+  it("catch a definition that lists, redefines or misplaces a scoped term", () => {
     const lists: GraphTypeDefinition = { ...circleFixture, properties: defineProperties({ title: sharedProperties.title }) } as GraphTypeDefinition;
-    expect(applicabilityProblems(lists)).toEqual(["circle: lists shared option title; propertiesOf adds it from appliesTo"]);
+    expect(applicabilityProblems(lists)).toEqual(["circle: lists scoped term title; propertiesOf adds it from appliesTo"]);
 
     const misplaced = { ...numberLineFixture, type: "circle" } as GraphTypeDefinition;
     expect(applicabilityProblems(misplaced)).toEqual([
@@ -524,7 +545,7 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
       }),
     } as GraphTypeDefinition;
     expect(applicabilityProblems(redefined)).toEqual([
-      "number-line: redefines shared option label",
+      "number-line: redefines scoped term label",
       "number-line: elementsOf lists the type, but no element carries label",
     ]);
   });

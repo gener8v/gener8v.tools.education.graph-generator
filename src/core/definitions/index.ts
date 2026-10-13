@@ -1,7 +1,7 @@
 import { dataGraphProperties } from "./categories";
 import { circle } from "./circle";
-import { type SharedPropertySpec, sharedProperties } from "./shared";
-import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties, propertySpec } from "./types";
+import { type ScopedPropertySpec, sharedProperties } from "./shared";
+import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 /** A set of graph-type definitions, keyed by `type` value. */
 export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>;
@@ -39,13 +39,13 @@ export function registeredTypes(registry: Registry): GraphType[] {
  * presentation options, and the data-graph terms such as `valueScale` (DGP TICKET-001). Each term
  * is in one map only; the definitions test checks it.
  */
-export const scopedPropertyMaps: readonly (typeof sharedProperties | typeof dataGraphProperties)[] = [sharedProperties, dataGraphProperties];
+export const scopedPropertyMaps: ReadonlyArray<Readonly<Record<string, ScopedPropertySpec>>> = [sharedProperties, dataGraphProperties];
 
 /** The scoped spec for a term, with its `appliesTo` and `elementsOf`, or `undefined` for any other key. */
-export function scopedProperty(key: string): SharedPropertySpec | undefined {
+export function scopedProperty(key: string): ScopedPropertySpec | undefined {
   for (const map of scopedPropertyMaps) {
-    const spec = propertySpec(map, key);
-    if (spec !== undefined) return spec as SharedPropertySpec;
+    // An own key only, as `propertySpec` looks it up, keeping the scoped type.
+    if (Object.hasOwn(map, key)) return map[key];
   }
   return undefined;
 }
@@ -60,7 +60,7 @@ export function scopedProperty(key: string): SharedPropertySpec | undefined {
 export function propertiesOf(type: GraphType, registry: Registry): PropertyMap {
   const merged: Record<string, PropertySpec> = {};
   for (const map of scopedPropertyMaps) {
-    for (const spec of Object.values(map) as SharedPropertySpec[]) {
+    for (const spec of Object.values(map)) {
       if (spec.appliesTo.includes(type)) merged[spec.term] = spec;
     }
   }
