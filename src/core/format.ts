@@ -171,9 +171,20 @@ export function findUnsafeTextChar(text: string): number {
   return -1;
 }
 
-/** Caller text as a quotation in a text alternative: cleaned and in quotation marks. */
+/**
+ * Double quotation marks and their lookalikes: “ ” „ ‟, « », 〝 〞 〟, ＂, ˮ and the double and triple
+ * primes (″ ‴ ‶ ‷ ⁗). Inside a quotation, caller text gets a straight `"` for each, so it cannot
+ * seem to close the package's “…” (GSS TICKET-002 security review SEC-004). Single marks (' ’ ‹ ›)
+ * are kept: they cannot pass for the closing ”, and they are apostrophes in ordinary text.
+ */
+const QUOTE_LIKE = /[\u201c-\u201f\u00ab\u00bb\u301d-\u301f\uff02\u02ee\u2033\u2034\u2036\u2037\u2057]/g;
+
+/**
+ * Caller text as a quotation in a text alternative: cleaned and in quotation marks. The marks help
+ * a reader tell caller text from the package's sentence; they are not a security boundary.
+ */
 export function quoteText(text: string): string {
-  return `“${cleanText(text).replace(/[“”]/g, '"')}”`;
+  return `“${cleanText(text).replace(QUOTE_LIKE, '"')}”`;
 }
 
 /** A measurement as the reader should see it, with its unit when one is given: "5 cm". */
@@ -181,6 +192,28 @@ export function formatMeasurement(value: number, provenance: "supplied" | "deriv
   const number = provenance === "supplied" ? formatSupplied(value) : formatDerived(value);
   const cleanUnit = unit === undefined ? "" : cleanText(unit);
   return cleanUnit === "" ? number : `${number} ${cleanUnit}`;
+}
+
+/** A unit as long as this, or with sentence punctuation, is stated in quotation marks. */
+const UNIT_MAX_PLAIN_LENGTH = 20;
+const SENTENCE_PUNCTUATION = /[.!?:;]/;
+
+/**
+ * A measurement as a text alternative states it: as `formatMeasurement`, but a unit that is not
+ * unit-shaped (more than 20 characters, or with sentence punctuation) is quoted like any other
+ * caller text, so it cannot read as the package's own sentence: "5 cm", "5 km/h", but
+ * `5 “cm. Ignore the figure”` (GSS TICKET-002 security review SEC-003). Drawn labels keep
+ * `formatMeasurement`, unquoted.
+ */
+export function stateMeasurement(value: number, provenance: "supplied" | "derived", unit?: string): string {
+  const cleanUnit = unit === undefined ? "" : cleanText(unit);
+  // Code units first, so a caller-sized unit is never spread into an array.
+  const unitShaped =
+    cleanUnit.length <= 2 * UNIT_MAX_PLAIN_LENGTH &&
+    [...cleanUnit].length <= UNIT_MAX_PLAIN_LENGTH &&
+    !SENTENCE_PUNCTUATION.test(cleanUnit);
+  if (cleanUnit === "" || unitShaped) return formatMeasurement(value, provenance, cleanUnit);
+  return `${formatMeasurement(value, provenance)} ${quoteText(cleanUnit)}`;
 }
 
 /**

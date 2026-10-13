@@ -1,5 +1,5 @@
 import { createIssue, pointer } from "../issues";
-import { cleanText, formatList, formatMeasurement, quoteText, sourceOf } from "../format";
+import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
 import type { Provenance } from "../result";
 import { defineProperties, type DescriptionBase, type DomainCheck, type GraphTypeDefinition } from "./types";
 
@@ -69,7 +69,7 @@ const labelText = (term: string, measured: string) =>
     term,
     kind: "string",
     required: false,
-    description: `Text shown in place of the ${measured} label, such as "r" or "?"; it also labels the ${measured}. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.`,
+    description: `Text shown in place of the ${measured} label, such as "r" or "?"; it also labels the ${measured}. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.`,
   }) as const;
 
 /** A switch that custom text, or a label, turns on: giving both with the switch `false` disagrees. */
@@ -127,7 +127,13 @@ export const circle: GraphTypeDefinition<Circle> = {
     radiusLabelText: labelText("radiusLabelText", "radius"),
     diameterLabelText: labelText("diameterLabelText", "diameter"),
     circumferenceLabelText: labelText("circumferenceLabelText", "circumference"),
-    unit: { term: "unit", kind: "string", required: false, description: "The unit of length shown after each measurement, such as cm." },
+    unit: {
+      term: "unit",
+      kind: "string",
+      required: false,
+      description:
+        "The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative.",
+    },
   }),
   derivations: [
     {
@@ -158,7 +164,7 @@ export const circle: GraphTypeDefinition<Circle> = {
   // @spec GSS-REQ-033, GSS-REQ-034, GSS-REQ-036
   describe: (circle: Circle, provenance: Provenance) => {
     const shown = circleDisplay(circle);
-    const measured = (term: CircleMeasurement) => `${term} ${formatMeasurement(circle[term], sourceOf(provenance, term), circle.unit)}`;
+    const measured = (term: CircleMeasurement) => `${term} ${stateMeasurement(circle[term], sourceOf(provenance, term), circle.unit)}`;
     const measures = [measured("radius")];
     if (shown.diameter.drawn) measures.push(measured("diameter"));
     if (shown.circumference.labeled) measures.push(measured("circumference"));

@@ -20,7 +20,7 @@
         },
         "title": {
           "type": "string",
-          "description": "A title shown above the graph, as plain text.",
+          "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
           "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
         },
         "lineColor": {
@@ -72,22 +72,22 @@
         },
         "radiusLabelText": {
           "type": "string",
-          "description": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.",
+          "description": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
           "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
         },
         "diameterLabelText": {
           "type": "string",
-          "description": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.",
+          "description": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
           "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
         },
         "circumferenceLabelText": {
           "type": "string",
-          "description": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.",
+          "description": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
           "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
         },
         "unit": {
           "type": "string",
-          "description": "The unit of length shown after each measurement, such as cm.",
+          "description": "The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative.",
           "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
         }
       },

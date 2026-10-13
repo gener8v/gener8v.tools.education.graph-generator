@@ -111,6 +111,20 @@ describe("SceneSvg markup (AD-002, AD-008, CPSE-REQ-013)", () => {
   });
 });
 
+describe("Scenes of any size (GSS TICKET-002 security review SEC-001)", () => {
+  it("prints a Scene of 200,000 nodes, at top level and in a group, without overflowing the stack", () => {
+    const many = Array.from({ length: 200_000 }, (_, i): SceneNode => ({ kind: "rect", attrs: [["x", fmt(i % 400)], ["width", fmt(1)]] }));
+    for (const nodes of [many, [{ kind: "group", attrs: [], children: many } satisfies SceneNode]]) {
+      const markup = renderToStaticMarkup(<SceneSvg scene={{ ...sample, nodes }} />);
+      expect(markup.match(/<rect /g)).toHaveLength(200_000);
+    }
+  });
+
+  it("prints the same markup as before keys were added: keys are not printed", () => {
+    expect(renderToStaticMarkup(<SceneSvg scene={sample} />)).not.toMatch(/key=/);
+  });
+});
+
 describe("text alternative (CPSE-REQ-012, prd/CC-002)", () => {
   const nameOf = (markup: string) => {
     const svg = parse(markup).querySelector("svg")!;

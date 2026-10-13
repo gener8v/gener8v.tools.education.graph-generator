@@ -62,6 +62,11 @@
   - Move them into the layout kit when the square needs them, shaped by both figures: for example `labelSize`, the candidate generators next to `placeLabel` in `src/layout/kit/labels.ts`, a `segmentNode`, and a `placeLabels(requests, obstacles, bounds, stackTop)` returning the nodes and the new bottom. Give the new kit code its own tests in `tests/layout/kit/`, then switch the circle to it with its tests unchanged.
   - Register the definition and the layout with no cast: the tables use `satisfies`, which rejects an incomplete entry (QR-005).
   - In the layout tests, call the layout directly after `validate`, as the circle's `sceneOf` does, so an exception shows its stack; keep one test through `createGraph` (QR-006). In the overlap property, generate strings with `size: "max"` so labels wrap and stack, and shrink each rebuilt box by 0.01 (QR-001).
+- Carried from graph-library/geometric-shapes-and-solids-ticket-002-security-review/SEC-001, SEC-002 and SEC-003 (caller-sized text):
+  - Never spread a caller-sized array into function arguments (`f(...nodes)`, `Math.max(...widths)`, `push(...lines)`). Above about 65,000 arguments in Safari, and about 120,000 in V8, the call throws. Use a loop, or pass one array (`SceneSvg` already does).
+  - Wrap every label with `wrap(text, maxWidth, fontSize, maxLines)`, as the circle does with `LABEL_MAX_LINES` (4), and draw titles with `titleBlock`, which caps them at `TITLE_MAX_LINES` (3). The cut line ends in "…" (DEL-008), so the Scene stays small however long the description's text. Say so in the label-text descriptions, and keep the full text in the text alternative.
+  - In `describe`, state measurements with `stateMeasurement(value, source, unit)` (`src/core/format.ts`), not `formatMeasurement`. It quotes a unit that is not unit-shaped, so the unit cannot read as the package's own sentence. Drawn labels keep `measurementLabel` / `formatMeasurement`.
+  - Add a test that a valid description with half a megabyte of unit or label text renders in `<Graph>` and the type's component without throwing, with a bounded number of text nodes.
 
 **Depends On:** TICKET-002
 **Blocks:** TICKET-008

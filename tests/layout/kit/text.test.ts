@@ -113,3 +113,42 @@ describe("wrap (prd/TC-011)", () => {
     expect(lines.length).toBeGreaterThan(1000);
   });
 });
+
+describe("wrap with maxLines (GSS TICKET-002 security review SEC-001)", () => {
+  const text = "the distance all the way around the circle, which this question asks you to find, in centimetres";
+
+  it("returns the lines unchanged when they fit within maxLines", () => {
+    expect(wrap(text, 160, 14, 10)).toEqual(wrap(text, 160, 14));
+    expect(wrap("short", 160, 14, 1)).toEqual(["short"]);
+  });
+
+  it("cuts text that needs more lines, ending the last line in an ellipsis that fits", () => {
+    const all = wrap(text, 160, 14);
+    expect(all.length).toBeGreaterThan(2);
+    const cut = wrap(text, 160, 14, 2);
+    expect(cut).toHaveLength(2);
+    expect(cut[0]).toBe(all[0]);
+    expect(cut[1]!.endsWith("…")).toBe(true);
+    expect(all[1]!.startsWith(cut[1]!.slice(0, -1).trimEnd())).toBe(true);
+    for (const line of cut) expect(textWidth(line, 14)).toBeLessThanOrEqual(160);
+  });
+
+  it("cuts a single unbroken word too, between clusters", () => {
+    const cut = wrap("@".repeat(1_000), 160, 14, 3);
+    expect(cut).toHaveLength(3);
+    expect(cut[2]!.endsWith("…")).toBe(true);
+    for (const line of cut) expect(textWidth(line, 14)).toBeLessThanOrEqual(160);
+  });
+
+  it("stops early, so caller-sized text costs little", () => {
+    for (const huge of ["word ".repeat(400_000), "@".repeat(2_000_000)]) {
+      const start = performance.now();
+      expect(wrap(huge, 160, 14, 4)).toHaveLength(4);
+      expect(performance.now() - start).toBeLessThan(1_000);
+    }
+  });
+
+  it.each([0, -1, 1.5, Number.NaN])("rejects maxLines %d", (bad) => {
+    expect(() => wrap("a b", 100, 14, bad)).toThrow(RangeError);
+  });
+});

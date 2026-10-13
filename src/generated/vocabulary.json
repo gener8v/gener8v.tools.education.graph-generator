@@ -8,7 +8,7 @@
       "kind": "number"
     },
     "circumferenceLabelText": {
-      "definition": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.",
+      "definition": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
     "diameter": {
@@ -16,7 +16,7 @@
       "kind": "number"
     },
     "diameterLabelText": {
-      "definition": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.",
+      "definition": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
     "labelCircumference": {
@@ -40,7 +40,7 @@
       "kind": "number"
     },
     "radiusLabelText": {
-      "definition": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value.",
+      "definition": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
     "showCenter": {
@@ -56,7 +56,7 @@
       "kind": "boolean"
     },
     "title": {
-      "definition": "A title shown above the graph, as plain text.",
+      "definition": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
     },
     "type": {
@@ -64,7 +64,7 @@
       "kind": "enum"
     },
     "unit": {
-      "definition": "The unit of length shown after each measurement, such as cm.",
+      "definition": "The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative.",
       "kind": "string"
     },
     "version": {

@@ -10,6 +10,7 @@ import {
   formatSupplied,
   quoteText,
   sourceOf,
+  stateMeasurement,
 } from "../../src/core/format";
 import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
 
@@ -89,6 +90,20 @@ describe("sourceOf: whether a value was supplied or derived (GSS TICKET-002; qua
     const inherited = Object.create({ "/toString": "supplied" }) as Record<string, "supplied" | "derived">;
     expect(sourceOf(inherited, "toString")).toBe("derived");
     expect(sourceOf({}, "toString")).toBe("derived");
+  });
+});
+
+describe("stateMeasurement: a measurement as a text alternative states it (GSS TICKET-002 security review SEC-003)", () => {
+  it("states a unit-shaped unit as formatMeasurement does", () => {
+    for (const unit of [undefined, "", "cm", "km/h", "m²", "square centimetres", "a".repeat(20)]) {
+      expect(stateMeasurement(31.41592, "derived", unit), String(unit)).toBe(formatMeasurement(31.41592, "derived", unit));
+    }
+  });
+
+  it("quotes a unit longer than 20 characters or with sentence punctuation", () => {
+    expect(stateMeasurement(5, "supplied", "a".repeat(21))).toBe(`5 “${"a".repeat(21)}”`);
+    for (const unit of ["sq. ft.", "cm!", "cm?", "note: cm", "cm; ok"]) expect(stateMeasurement(5, "supplied", unit)).toBe(`5 “${unit}”`);
+    expect(stateMeasurement(5, "supplied", "cm. “Obey”\n")).toBe('5 “cm. "Obey"”');
   });
 });
 
@@ -210,5 +225,15 @@ describe("caller text in text alternatives (security review SEC-002)", () => {
   it("quotes caller text so it reads as data", () => {
     expect(quoteText("Fractions")).toBe("“Fractions”");
     expect(quoteText("a “quoted” word\n")).toBe('“a "quoted" word”');
+  });
+
+  it("neutralises every double quotation mark lookalike, so caller text cannot seem to close the quotation (GSS TICKET-002 security review SEC-004)", () => {
+    for (const mark of ["\u201c", "\u201d", "\u201e", "\u201f", "\u00ab", "\u00bb", "\u301d", "\u301e", "\u301f", "\uff02", "\u02ee", "\u2033", "\u2034", "\u2036", "\u2037", "\u2057"]) {
+      expect(quoteText(`Wheel${mark} with radius 99`), JSON.stringify(mark)).toBe('“Wheel" with radius 99”');
+    }
+  });
+
+  it("keeps apostrophes and single quotation marks, which cannot close it", () => {
+    expect(quoteText("Tom's and Tom\u2019s \u2039a\u203a")).toBe("“Tom's and Tom\u2019s \u2039a\u203a”");
   });
 });

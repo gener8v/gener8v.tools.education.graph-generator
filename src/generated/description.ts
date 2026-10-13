@@ -6,7 +6,7 @@ export interface CircleDescription {
   type: "circle";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. */
+  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;
@@ -28,13 +28,13 @@ export interface CircleDescription {
   labelDiameter?: boolean;
   /** Whether the circumference is labeled with its measurement, next to the circle. */
   labelCircumference?: boolean;
-  /** Text shown in place of the radius label, such as "r" or "?"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value. */
+  /** Text shown in place of the radius label, such as "r" or "?"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   radiusLabelText?: string;
-  /** Text shown in place of the diameter label, such as "r" or "?"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value. */
+  /** Text shown in place of the diameter label, such as "r" or "?"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   diameterLabelText?: string;
-  /** Text shown in place of the circumference label, such as "r" or "?"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it. The text alternative still states the value. */
+  /** Text shown in place of the circumference label, such as "r" or "?"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   circumferenceLabelText?: string;
-  /** The unit of length shown after each measurement, such as cm. */
+  /** The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative. */
   unit?: string;
 }
 

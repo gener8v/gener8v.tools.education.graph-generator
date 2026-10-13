@@ -8,6 +8,7 @@ import type { Issue } from "../../src/core/result";
 import { Graph } from "../../src/react/Graph";
 import { PLACEHOLDER_ISSUE_LIMIT } from "../../src/react/Placeholder";
 import { SceneSvg } from "../../src/react/SceneSvg";
+import { CircleGraph as PackageCircleGraph } from "../../src/react/graphs/CircleGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -309,6 +310,17 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
         const markup = html(<Component description={circle} />);
         expect([defect, markup.includes("defect in the package")]).toEqual([defect, true]);
       }
+    }
+  });
+
+  it("draws a valid circle with half a megabyte of unit text in <Graph> and <CircleGraph>, never throwing (GSS TICKET-002 security review SEC-001)", () => {
+    const description = { type: "circle", radius: 5, unit: "@".repeat(500_000), labelRadius: true, labelDiameter: true, labelCircumference: true };
+    for (const Component of [Graph, PackageCircleGraph]) {
+      const received: Issue[][] = [];
+      const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toEqual([]);
+      expect(markup).toContain("<circle");
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(12);
     }
   });
 

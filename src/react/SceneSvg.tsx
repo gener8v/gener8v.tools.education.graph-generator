@@ -14,15 +14,19 @@ export interface SceneSvgProps {
   readonly textAlternative?: string;
 }
 
-/** A node as a React element: one SVG element, props in Scene order, text as a text child. */
-function toElement(node: SceneNode): ReactElement {
-  const props: Record<string, string | number> = {};
+/**
+ * A node as a React element: one SVG element, props in Scene order, text as a text child. Children
+ * are passed as one array keyed by position, never spread into arguments: a Scene can hold more
+ * nodes than an engine accepts as arguments (GSS TICKET-002 security review SEC-001). Keys are
+ * not printed, so the markup is unchanged.
+ */
+function toElement(node: SceneNode, index: number): ReactElement {
+  const props: Record<string, string | number> = { key: index };
   for (const [name, value] of node.attrs) props[REACT_PROP[name]] = value;
-  let children: ReactNode[] = [];
-  if (node.kind === "text") children = [node.text];
+  let children: ReactNode = null;
+  if (node.kind === "text") children = node.text;
   else if (node.kind === "group" || node.kind === "svg") children = node.children.map(toElement);
-  // Children are passed as arguments, not an array, so React needs no keys.
-  return createElement(ELEMENT_FOR_KIND[node.kind], props, ...children);
+  return createElement(ELEMENT_FOR_KIND[node.kind], props, children);
 }
 
 /**
@@ -38,10 +42,7 @@ function toElement(node: SceneNode): ReactElement {
 // @spec CPSE-REQ-011, CPSE-REQ-012, CPSE-REQ-013
 export function SceneSvg({ scene, textAlternative }: SceneSvgProps): ReactElement {
   const name = textAlternativeFor(scene, textAlternative);
-  return createElement(
-    "svg",
-    Object.fromEntries(rootAttrs(scene, name)),
-    createElement("title", null, name),
-    ...scene.nodes.map(toElement),
-  );
+  const children = scene.nodes.map(toElement);
+  children.unshift(createElement("title", { key: "title" }, name));
+  return createElement("svg", Object.fromEntries(rootAttrs(scene, name)), children);
 }

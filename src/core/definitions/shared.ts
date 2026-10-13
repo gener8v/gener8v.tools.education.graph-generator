@@ -28,7 +28,8 @@ export const sharedProperties = defineProperties({
     kind: "string",
     required: false,
     presentation: "title",
-    description: "A title shown above the graph, as plain text.",
+    description:
+      "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
     appliesTo: GRAPH_TYPES,
     elementsOf: [],
   },

@@ -148,17 +148,26 @@ function requirePositive(name: string, value: number): void {
  * single word wider than `maxWidth` is split between clusters (never inside a character with its
  * marks, a joiner sequence or a flag), so every line fits unless one cluster alone is wider. Runs
  * in time linear in the length of the text, however long it is.
+ *
+ * With `maxLines`, at most that many lines are returned: when the text needs more, the rest is cut
+ * and the last line ends in "…", shortened to fit. Wrapping stops once the lines are full, so a
+ * caller-sized text yields a bounded number of lines (GSS TICKET-002 security review SEC-001).
  */
 // @spec CPSE-REQ-011
-export function wrap(text: string, maxWidth: number, fontSize: number): string[] {
+export function wrap(text: string, maxWidth: number, fontSize: number, maxLines = Infinity): string[] {
   requirePositive("maxWidth", maxWidth);
   requirePositive("fontSize", fontSize);
+  if (maxLines !== Infinity && (!Number.isInteger(maxLines) || maxLines < 1)) {
+    throw new RangeError(`wrap(): maxLines must be a positive integer, got ${maxLines}`);
+  }
   const words = text.split(BREAKING_SPACE).filter((word) => word !== "");
   const scale = (fontSize * TEXT_WIDTH_SAFETY) / 1000;
   const spaceWidth = advance(0x20) * scale;
   const lines: string[] = [];
   let line = "";
   let lineWidth = 0;
+  /** Set once a line beyond `maxLines` has started: the text is cut there. */
+  let cut = false;
 
   const push = (word: string, width: number) => {
     if (line !== "" && lineWidth + spaceWidth + width <= maxWidth) {
@@ -167,11 +176,16 @@ export function wrap(text: string, maxWidth: number, fontSize: number): string[]
       return;
     }
     if (line !== "") lines.push(line);
+    if (lines.length === maxLines) {
+      cut = true;
+      return;
+    }
     line = word;
     lineWidth = width;
   };
 
   for (const word of words) {
+    if (cut) break;
     const width = rawWidth(word) * scale;
     if (width <= maxWidth) {
       push(word, width);
@@ -184,14 +198,30 @@ export function wrap(text: string, maxWidth: number, fontSize: number): string[]
       const w = rawWidth(cluster) * scale;
       if (piece !== "" && pieceWidth + w > maxWidth) {
         push(piece, pieceWidth);
+        if (cut) break;
         piece = "";
         pieceWidth = 0;
       }
       piece += cluster;
       pieceWidth += w;
     }
-    if (piece !== "") push(piece, pieceWidth);
+    if (!cut && piece !== "") push(piece, pieceWidth);
   }
-  if (line !== "") lines.push(line);
+  if (!cut) {
+    if (line !== "") lines.push(line);
+    return lines;
+  }
+  lines[lines.length - 1] = withEllipsis(lines[lines.length - 1]!, maxWidth, scale);
   return lines;
+}
+
+const ELLIPSIS = "\u2026";
+
+/** `line` shortened by whole clusters until it and a trailing "…" fit `maxWidth`. */
+function withEllipsis(line: string, maxWidth: number, scale: number): string {
+  const kept = clusters(line);
+  const ellipsisWidth = rawWidth(ELLIPSIS) * scale;
+  let width = rawWidth(line) * scale;
+  while (kept.length > 0 && width + ellipsisWidth > maxWidth) width -= rawWidth(kept.pop()!) * scale;
+  return `${kept.join("").trimEnd()}${ELLIPSIS}`;
 }

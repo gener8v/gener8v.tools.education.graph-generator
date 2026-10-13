@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultStyle } from "../../../src/core/style";
-import { LINE_HEIGHT, SCENE_MARGIN, textLines, titleBlock } from "../../../src/layout/kit/title";
+import { LINE_HEIGHT, SCENE_MARGIN, TITLE_MAX_LINES, textLines, titleBlock } from "../../../src/layout/kit/title";
 import { DEFAULT_FONT_STACK, textWidth } from "../../../src/layout/kit/text";
 import { SCENE_WIDTH, type SceneNode } from "../../../src/layout/scene";
 
@@ -65,5 +65,13 @@ describe("titleBlock: the shared title above a graph (GSV-REQ-040; quality revie
       expect(textWidth(textOf(node), fontSize)).toBeLessThanOrEqual(SCENE_WIDTH - 2 * SCENE_MARGIN);
     }
     expect(height).toBeCloseTo(SCENE_MARGIN + nodes.length * fontSize * LINE_HEIGHT, 6);
+  });
+
+  it("draws at most TITLE_MAX_LINES lines, the last ending in an ellipsis (security review SEC-001)", () => {
+    const { nodes, height } = titleBlock("A very long title about circles ".repeat(5_000));
+    const fontSize = defaultStyle.fontSizes.title;
+    expect(nodes).toHaveLength(TITLE_MAX_LINES);
+    expect(textOf(nodes[TITLE_MAX_LINES - 1]!).endsWith("…")).toBe(true);
+    expect(height).toBeCloseTo(SCENE_MARGIN + TITLE_MAX_LINES * fontSize * LINE_HEIGHT, 6);
   });
 });

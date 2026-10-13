@@ -40,15 +40,21 @@ export function textLines(
 }
 
 /**
- * The shared title above a graph (GSV-REQ-040): the title wrapped to the drawing's width and
- * centered, with the height it takes, margin included. No title, or one that is blank once
- * cleaned, takes no height.
+ * A title longer than this many lines is cut, ending in "…", so caller-sized text yields a bounded
+ * Scene; the text alternative still states it whole (GSS TICKET-002 security review SEC-001, DEL-008).
+ */
+export const TITLE_MAX_LINES = 3;
+
+/**
+ * The shared title above a graph (GSV-REQ-040): the title wrapped to the drawing's width, at most
+ * `TITLE_MAX_LINES` lines, and centered, with the height it takes, margin included. No title, or
+ * one that is blank once cleaned, takes no height.
  */
 export function titleBlock(title: string | undefined): { nodes: SceneNode[]; height: number } {
   const text = title === undefined ? "" : cleanText(title);
   if (text === "") return { nodes: [], height: 0 };
   const fontSize = defaultStyle.fontSizes.title;
-  const lines = wrap(text, SCENE_WIDTH - 2 * SCENE_MARGIN, fontSize);
+  const lines = wrap(text, SCENE_WIDTH - 2 * SCENE_MARGIN, fontSize, TITLE_MAX_LINES);
   return {
     nodes: textLines(lines, SCENE_WIDTH / 2, SCENE_MARGIN, fontSize, defaultStyle.colors.text, "bold"),
     height: SCENE_MARGIN + lines.length * fontSize * LINE_HEIGHT,

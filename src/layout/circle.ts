@@ -18,16 +18,23 @@ const CENTER_X = SCENE_WIDTH / 2;
 const GAP = 6;
 /** Labels wider than this wrap onto more lines. */
 const LABEL_MAX_WIDTH = 160;
+/**
+ * A label longer than this many lines is cut, ending in "…", so caller-sized text yields a bounded
+ * Scene; the text alternative still states it whole (GSS TICKET-002 security review SEC-001, DEL-008).
+ */
+export const LABEL_MAX_LINES = 4;
 const CENTER_MARK_RADIUS = 3;
 /** The outline as this many straight pieces, as obstacles for label placement. */
 const OUTLINE_PIECES = 72;
 
 type Point = { readonly x: number; readonly y: number };
 
-/** A label's text broken into lines, with the size of its box. */
+/** A label's text broken into at most `LABEL_MAX_LINES` lines, with the size of its box. */
 function measure(text: string, fontSize: number): { lines: string[]; width: number; height: number } {
-  const lines = wrap(text, LABEL_MAX_WIDTH, fontSize);
-  const width = Math.max(...lines.map((line) => textWidth(line, fontSize)));
+  const lines = wrap(text, LABEL_MAX_WIDTH, fontSize, LABEL_MAX_LINES);
+  // A loop, not `Math.max(...)`: never spread a caller-sized array into arguments (security review SEC-001).
+  let width = 0;
+  for (const line of lines) width = Math.max(width, textWidth(line, fontSize));
   return { lines, width, height: lines.length * fontSize * LINE_HEIGHT };
 }
 
@@ -200,14 +207,14 @@ export const circleLayout: Layout<Circle> = (normalized: Circle, provenance: Pro
       continue;
     }
     obstacles.push(box);
-    nodes.push(...textLines(size.lines, box.x + box.width / 2, box.y, fontSize, defaultStyle.colors.text));
+    for (const node of textLines(size.lines, box.x + box.width / 2, box.y, fontSize, defaultStyle.colors.text)) nodes.push(node);
   }
   // Labels with no clear place beside their line, stacked below the figure, outside `placeLabel`:
   // nothing is above them to avoid. The text alternative still says which measurement each states
   // (GSS TICKET-002 DEL-006).
   for (const size of unplaced) {
     const box: Box = { x: CENTER_X - size.width / 2, y: bottom + GAP, width: size.width, height: size.height };
-    nodes.push(...textLines(size.lines, CENTER_X, box.y, fontSize, defaultStyle.colors.text));
+    for (const node of textLines(size.lines, CENTER_X, box.y, fontSize, defaultStyle.colors.text)) nodes.push(node);
     bottom = box.y + box.height;
   }
 

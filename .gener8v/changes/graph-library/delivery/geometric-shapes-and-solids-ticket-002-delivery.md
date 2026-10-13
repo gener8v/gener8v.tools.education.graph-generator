@@ -323,3 +323,43 @@ Mutation checks (each broken on purpose, then restored): disabling the domain ch
 | `pnpm size` | `.` 14.31 kB, `./core` 11.59 kB, `./circle` 14.26 kB |
 | `pnpm publint`, `pnpm attw`, `pnpm audit` | pass |
 | `python3 …/gener8v-state.py lint` | 0 errors, 0 warnings |
+
+### Security review (graph-library/geometric-shapes-and-solids-ticket-002-security-review), resolved with Thomas, 2026-10-13
+
+- **SEC-001** (Medium, fixed): a valid circle of about 401 KB made `<Graph>` and `<CircleGraph>` throw during render, past the fallback.
+  - The cause: a Scene of about 120,000 nodes spread into `createElement`'s arguments, and the layout's own argument spreads.
+  - `SceneSvg` now passes children as one keyed array; keys are not printed, so the markup is unchanged. The layout uses loops instead of spreads.
+  - **DEL-008 — labels and titles are cut at a fixed number of lines.**
+    - **Context:** nothing bounded the Scene's size, because a caller string can be any length (GSV Edge Cases accept long labels).
+    - **Decision:** `wrap(text, maxWidth, fontSize, maxLines)` stops once the lines are full and ends the last line in "…". Circle labels are capped at `LABEL_MAX_LINES` (4), and `titleBlock` caps every title at `TITLE_MAX_LINES` (3). The text alternative still states the full text. The label-text and shared `title` descriptions say so.
+    - **Ticket Impact:** every later graph type wraps with `maxLines` and draws titles with `titleBlock`. A Known Hazard is on DGP TICKET-002, 003, 005; GSS TICKET-003..007; NLC TICKET-002..004.
+  - Files: `src/react/SceneSvg.tsx`, `src/layout/circle.ts`, `src/layout/kit/text.ts`, `src/layout/kit/title.ts`, `src/core/definitions/circle.ts`, `src/core/definitions/shared.ts`, `src/generated/*` and `tests/fixtures/generated/description.ts` (regenerated); tests in `tests/react/SceneSvg.test.tsx`, `tests/react/Graph.test.tsx`, `tests/layout/circle.test.ts`, `tests/layout/kit/text.test.ts`, `tests/layout/kit/title.test.ts`, `tests/core/circle.test.ts`.
+- **SEC-002** (Low, partly fixed, rest deferred): DEL-008 bounds the drawing's nodes and markup. The text alternative stays linear in the caller's text.
+  - A validator length bound would change the GSV specification, so it is deferred to the Product Owner.
+  - A Known Hazard on CPSE TICKET-007 asks it to cap the text alternative inside the tool `summary`.
+- **SEC-003** (Low, fixed): new `stateMeasurement` in `src/core/format.ts` quotes a unit longer than 20 characters or with sentence punctuation, and `circle.describe` uses it.
+  - **Deviation from the approved option's wording:** drawn labels keep `formatMeasurement`, so the drawing never shows quotation marks.
+  - The plain-text fixtures run through every circle string in `tests/core/circle.test.ts`.
+  - Files: `src/core/format.ts`, `src/core/definitions/circle.ts`, `tests/core/format.test.ts`, `tests/core/circle.test.ts`.
+- **SEC-004** (Informational, fixed): `quoteText` neutralises every double-quote lookalike. Single marks and apostrophes are kept: replacing all of `\p{Quotation_Mark}` would corrupt "Tom's". A Known Hazard on CPSE TICKET-007 says quotation is not a boundary. Files: `src/core/format.ts`, `tests/core/format.test.ts`.
+
+**Mutation checks:** each fix was broken on purpose, then restored, and every break fails its tests:
+- either spread restored in `SceneSvg`;
+- either line cap dropped;
+- `wrap`'s early stop removed;
+- `describe` using `formatMeasurement`;
+- the old two-character `quoteText`.
+
+**Re-verification:** all exit 0.
+
+| Command | Result |
+|---|---|
+| `pnpm install --frozen-lockfile` | lockfile unchanged |
+| `pnpm generate` | `src/generated/*` and `tests/fixtures/generated/description.ts` regenerated (descriptions) and committed |
+| `pnpm lint`, `pnpm typecheck` | pass |
+| `pnpm test` | 28 files, 754 tests |
+| `pnpm bench` | circle p95 0.021 ms; every case under 5 ms |
+| `pnpm build`, `pnpm check:dist`, `pnpm check:deps` | pass |
+| `pnpm size` | `.` 14.73 kB, `./core` 11.83 kB, `./circle` 14.68 kB |
+| `pnpm publint`, `pnpm attw`, `pnpm audit` | pass; no known vulnerabilities |
+| `python3 …/gener8v-state.py lint` | 0 errors, 0 warnings |

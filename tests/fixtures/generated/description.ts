@@ -6,7 +6,7 @@ export interface NumberLineDescription {
   type: "number-line";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. */
+  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;
@@ -44,7 +44,7 @@ export interface XyGraphDescription {
   type: "xy-graph";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. */
+  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** A label for the x-axis, as plain text. */
   xAxisLabel?: string;
@@ -114,7 +114,7 @@ export interface CircleDescription {
   type: "circle";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. */
+  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;
