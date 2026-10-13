@@ -89,7 +89,7 @@ export const dataGraphProperties = defineProperties({
     kind: "object",
     required: false,
     description:
-      "The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data, starting at zero.",
+      "The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick.",
     properties: {
       minimum: scaleEnd("minimum", `The lowest value on the value axis, from ${-VALUE_LIMIT} to ${VALUE_LIMIT}.`),
       maximum: scaleEnd("maximum", `The highest value on the value axis, from ${-VALUE_LIMIT} to ${VALUE_LIMIT}; above the minimum.`),
@@ -150,6 +150,32 @@ export function niceInterval(span: number, intervals: number = DEFAULT_INTERVALS
   return clean(10 * magnitude);
 }
 
+/** The next coarser (`direction` 1) or finer (-1) step of the 1, 2, 5 × 10ⁿ sequence from `step`. */
+function stepBeside(step: number, direction: 1 | -1): number {
+  const magnitude = 10 ** Math.floor(Math.log10(step) + EPSILON);
+  const mantissa = Math.round(step / magnitude);
+  const next = direction === 1 ? { 1: 2, 2: 5, 5: 10 } : { 1: 0.5, 2: 1, 5: 2 };
+  return clean((next[mantissa as 1 | 2 | 5] ?? mantissa) * magnitude);
+}
+
+/**
+ * A chosen tick interval that divides `span` exactly, so the axis ends on a tick (code review
+ * CR-001): the finest 1, 2 or 5 × 10ⁿ with at most ten intervals that divides it (15 → 5);
+ * otherwise the coarsest finer one that divides it within `MAX_VALUE_TICKS` ticks (17 → 1);
+ * otherwise a tenth of the span. Every search is a handful of steps, whatever the span.
+ */
+function dividingInterval(span: number): number {
+  const first = niceInterval(span);
+  if (!(span > 0)) return first;
+  for (let step = first; step <= span * (1 + EPSILON); step = stepBeside(step, 1)) {
+    if (isWhole(span / step)) return step;
+  }
+  for (let step = stepBeside(first, -1); step >= MIN_DEFAULT_INTERVAL && span / step < MAX_VALUE_TICKS; step = stepBeside(step, -1)) {
+    if (isWhole(span / step)) return step;
+  }
+  return clean(span / DEFAULT_INTERVALS);
+}
+
 /** The lowest and highest of `values` and zero, by a loop: never spread a caller-sized list into arguments. */
 function extent(values: readonly number[]): [number, number] {
   let low = 0;
@@ -163,11 +189,16 @@ function extent(values: readonly number[]): [number, number] {
 
 /**
  * The scale a data graph draws (DGP-REQ-005, DGP-REQ-006): each part the description gives, used
- * exactly; each part left out, chosen to fit `values`. A chosen minimum is zero, or with
- * `allowNegative` and a negative value, the first tick at or below the lowest value. A chosen
- * maximum is the first tick at or above the highest value, at least one interval above the minimum.
- * A chosen interval is 1, 2 or 5 × 10ⁿ, at most ten intervals over the data's span; all-zero data
- * gives 0 to 1. With nothing given this is the default scale, which always includes every value.
+ * exactly; each part left out, chosen to fit `values`.
+ * - A chosen minimum is zero; with `allowNegative` and a negative value, it is a tick at or below
+ *   the lowest value: counted down from a given maximum by a given interval, so that interval
+ *   divides the scale (code review CR-004), and otherwise a multiple of the interval.
+ * - A chosen maximum is the first tick at or above the highest value, at least one interval above
+ *   the minimum.
+ * - A chosen interval is 1, 2 or 5 × 10ⁿ, at most ten intervals over the data's span, and when an
+ *   end is given it divides the scale, so the axis ends on a tick (code review CR-001).
+ * All-zero data gives 0 to 1. With nothing given this is the default scale, which always includes
+ * every value.
  */
 // @spec DGP-REQ-005, DGP-REQ-006
 export function resolveValueScale(given: GivenValueScale | undefined, values: readonly number[], options: ScaleOptions): ValueScale {
@@ -175,15 +206,29 @@ export function resolveValueScale(given: GivenValueScale | undefined, values: re
   const floor = options.allowNegative ? low : 0;
   const from = given?.minimum ?? floor;
   const to = given?.maximum ?? high;
-  const tickInterval = given?.tickInterval ?? niceInterval(to - from);
-  let minimum = given?.minimum ?? (floor < 0 ? clean(floorWhole(floor / tickInterval) * tickInterval) : 0);
+  const step = given?.tickInterval ?? niceInterval(to - from);
+
+  let minimum: number;
+  if (given?.minimum !== undefined) minimum = given.minimum;
+  else if (floor >= 0) minimum = 0;
+  else if (given?.maximum !== undefined && given.tickInterval !== undefined) {
+    minimum = clean(given.maximum - ceilWhole((given.maximum - floor) / step) * step);
+  } else minimum = clean(floorWhole(floor / step) * step);
   // The noise tolerance must never leave a value outside a chosen end.
-  if (given?.minimum === undefined && minimum > floor) minimum = clean(minimum - tickInterval);
-  // With nothing above the minimum (all-zero data), the scale spans one unit, or one given interval.
-  const top = high > minimum ? high : minimum + (given?.tickInterval ?? tickInterval * DEFAULT_INTERVALS);
-  let maximum = given?.maximum ?? clean(minimum + Math.max(1, ceilWhole((top - minimum) / tickInterval)) * tickInterval);
-  if (given?.maximum === undefined && maximum < high) maximum = clean(maximum + tickInterval);
-  return { minimum, maximum, tickInterval };
+  if (given?.minimum === undefined && minimum > floor) minimum = clean(minimum - step);
+
+  let maximum: number;
+  if (given?.maximum !== undefined) maximum = given.maximum;
+  else {
+    // With nothing above the minimum (all-zero data), the scale spans one unit, or one given interval.
+    const top = high > minimum ? high : minimum + (given?.tickInterval ?? step * DEFAULT_INTERVALS);
+    maximum = clean(minimum + Math.max(1, ceilWhole((top - minimum) / step)) * step);
+    if (maximum < high) maximum = clean(maximum + step);
+  }
+
+  if (given?.tickInterval !== undefined) return { minimum, maximum, tickInterval: given.tickInterval };
+  const anyEndGiven = given?.minimum !== undefined || given?.maximum !== undefined;
+  return { minimum, maximum, tickInterval: anyEndGiven ? dividingInterval(maximum - minimum) : step };
 }
 
 /** A value read by a scale check: where it is, its readable term (`values[3]`), and the number. */
@@ -198,9 +243,28 @@ const scalePath = (part: keyof GivenValueScale) => pointer(SCALE, part);
 const scaleTerm = (part: keyof GivenValueScale) => `${SCALE}.${part}`;
 
 /**
+ * A given tick interval of 0 or less, reported as `tick_spacing_invalid` (DGP-REQ-008). Separate
+ * from `checkValueScale`, which reads every scale part and value, so a failure there never hides
+ * it: register `tickIntervalCheck` alongside the scale check (code review CR-006).
+ */
+// @spec DGP-REQ-008
+export function checkTickInterval(given: GivenValueScale | undefined): Issue[] {
+  const interval = given?.tickInterval;
+  if (interval === undefined || interval > 0) return [];
+  return [createIssue("tick_spacing_invalid", scalePath("tickInterval"), { term: scaleTerm("tickInterval"), got: interval })];
+}
+
+/** `checkTickInterval` as a domain check, reading the tick interval only. */
+export const tickIntervalCheck: DomainCheck = {
+  name: "the value-scale tick interval is greater than 0",
+  inputs: ["valueScale/tickInterval"],
+  check: (description: DescriptionBase) => checkTickInterval(description["valueScale"] as GivenValueScale | undefined),
+};
+
+/**
  * The value-scale checks every line and bar graph shares (DGP-REQ-007, DGP-REQ-008), on a given
- * scale and the graph's values:
- * - a tick interval of 0 or less: `tick_spacing_invalid`;
+ * scale and the graph's values. A tick interval of 0 or less is `checkTickInterval`'s; here it is
+ * left out of the scale, so nothing below reports on it:
  * - a given maximum not above the minimum chosen for it: `out_of_range`;
  * - a tick interval that would draw more than `MAX_VALUE_TICKS` ticks: `too_many_ticks`, counted
  *   arithmetically, never by listing the ticks;
@@ -216,9 +280,6 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
   const issues: Issue[] = [];
   const interval = given.tickInterval;
   const intervalValid = interval === undefined || interval > 0;
-  if (!intervalValid) {
-    issues.push(createIssue("tick_spacing_invalid", scalePath("tickInterval"), { term: scaleTerm("tickInterval"), got: interval }));
-  }
   const usable: GivenValueScale = intervalValid ? given : { minimum: given.minimum, maximum: given.maximum };
   const scale = resolveValueScale(
     usable,
@@ -262,12 +323,17 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
   return issues;
 }
 
-/** A category as a validated description holds it; a category that failed stage 2 is `null`. */
+/**
+ * A category as a validated description holds it; a category that failed stage 2 is `null`. Through
+ * the validator a failed category skips the check (it touches `categories/*\/name`), so `null`
+ * reaches here only from a direct call.
+ */
 type CategoryEntry = { readonly name?: unknown } | null;
 
 /**
  * The category checks every data graph shares (DGP-REQ-001, DGP Edge Cases): an empty list is
- * reported as `missing_property` ("at least one category is required"), and each name that repeats
+ * reported as `missing_property`, the required list being absent in effect ("categories is required
+ * for a bar-graph; add it."), and each name that repeats
  * an earlier one, compared as drawn (cleaned of hidden characters), as `duplicate_name` at the later
  * category, naming the first. Work grows with the number of categories only.
  */
@@ -299,6 +365,8 @@ export function checkCategories(list: readonly CategoryEntry[], graphType: Graph
 /** The category checks as a domain check, for a data graph's `checks` list. */
 export const categoriesCheck: DomainCheck = {
   name: "categories are given, each with a different name",
-  inputs: ["categories", "categories/*/name"],
+  // Names only: a failure elsewhere in a category, such as an unknown bar color, never hides a
+  // duplicate name (code review CR-002). With no list at all the check does not run.
+  inputs: ["categories/*/name"],
   check: (description: DescriptionBase) => checkCategories(description["categories"] as readonly CategoryEntry[], description.type),
 };

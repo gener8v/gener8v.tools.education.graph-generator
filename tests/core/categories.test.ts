@@ -10,6 +10,7 @@ import {
   checkValueScale,
   dataGraphProperties,
   resolveValueScale,
+  tickIntervalCheck,
 } from "../../src/core/definitions/categories";
 import type { Registry } from "../../src/core/definitions/index";
 import { sharedProperties } from "../../src/core/definitions/shared";
@@ -51,7 +52,7 @@ const dataGraph = (type: "line-graph" | "bar-graph" | "pictograph", categories =
   description: `A test-only ${type}.`,
   properties: defineProperties({ categories, values }),
   derivations: [],
-  checks: [categoriesCheck, scaleCheck(type === "line-graph")],
+  checks: [categoriesCheck, tickIntervalCheck, scaleCheck(type === "line-graph")],
   describe: () => `A ${type}.`,
 });
 
@@ -140,7 +141,13 @@ describe("categories (DGP-REQ-001, DGP-REQ-003)", () => {
   });
 
   it("declare what the check reads", () => {
-    expect(categoriesCheck.inputs).toEqual(["categories", "categories/*/name"]);
+    expect(categoriesCheck.inputs).toEqual(["categories/*/name"]);
+    expect(tickIntervalCheck.inputs).toEqual(["valueScale/tickInterval"]);
+  });
+
+  it("reports a duplicate name in the same pass as a failure elsewhere in a category (code review CR-002)", () => {
+    const categories = [{ name: "Mon", color: "blurple" }, { name: "Tue" }, { name: "Mon" }];
+    expect(codesAndPaths(bar({ categories }))).toEqual(["unknown_color /categories/0/color", "duplicate_name /categories/2/name"]);
   });
 });
 
@@ -249,6 +256,26 @@ describe("value scale checks (DGP-REQ-007, DGP-REQ-008)", () => {
     expect(codesAndPaths(line({ valueScale: { minimum: -5, maximum: 5, tickInterval: 4 } }))).toEqual([
       "tick_interval_not_dividing /valueScale/tickInterval",
     ]);
+  });
+
+  it("reports a bad tick interval even when another scale part or a value fails (code review CR-006)", () => {
+    expect(codesAndPaths(bar({ valueScale: { minimum: "x", tickInterval: 0 } }))).toEqual([
+      "wrong_kind /valueScale/minimum",
+      "tick_spacing_invalid /valueScale/tickInterval",
+    ]);
+    expect(codesAndPaths(bar({ values: [1, "2", 3], valueScale: { tickInterval: -1 } }))).toEqual([
+      "wrong_kind /values/1",
+      "tick_spacing_invalid /valueScale/tickInterval",
+    ]);
+  });
+
+  it("counts a chosen minimum down from a given maximum by the given interval, for negative values (code review CR-004)", () => {
+    expect(check(line({ values: [3, -5, 2], valueScale: { maximum: 10, tickInterval: 4 } })).valid).toBe(true);
+    expect(resolveValueScale({ maximum: 10, tickInterval: 4 }, [3, -5, 2], { allowNegative: true })).toEqual({
+      minimum: -6,
+      maximum: 10,
+      tickInterval: 4,
+    });
   });
 
   it("accepts decimal intervals that divide the scale, despite binary rounding", () => {

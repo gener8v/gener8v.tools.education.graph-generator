@@ -21,7 +21,7 @@ const FIGURES = ["circle", "square", "triangle", "cube", "cylinder"] as const;
  * of the NLC, DGP and GSS specifications (DEL-002); the number line's `title` and `lineColor`
  * extend NLC's list by Product Owner decision (code review CR-003).
  */
-// @spec GSV-REQ-040, GSV-REQ-043, GSV-REQ-045
+// @spec GSV-REQ-040, GSV-REQ-043, GSV-REQ-045, DGP-REQ-002
 export const sharedProperties = defineProperties({
   title: {
     term: "title",

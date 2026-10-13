@@ -223,4 +223,13 @@ During the first full run, `tests/layout/circle.test.ts` › "keeps the Scene sm
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/data-graphs-and-pictographs-ticket-001-code-review` (2026-10-13, Approved)
+
+- **CR-001** — `resolveValueScale`: when an end is given and the interval is chosen, the interval divides the scale (`dividingInterval`, with `stepBeside` over the 1-2-5 sequence), so the axis ends on a tick (`{ maximum: 15 }` → interval 5). Files: `src/core/definitions/categories.ts`, `tests/layout/kit/value-scale.test.ts` (examples; 1,000-run property test).
+- **CR-002** — `categoriesCheck.inputs` → `["categories/*/name"]`, so a failure elsewhere in a category no longer hides a duplicate name. Files: `src/core/definitions/categories.ts`, `tests/core/categories.test.ts`.
+- **CR-003** — `@spec DGP-REQ-002` added to `sharedProperties`. File: `src/core/definitions/shared.ts`. `@spec` table correction: DGP-REQ-002 | `src/core/definitions/shared.ts`:sharedProperties (category- and value-axis labels) | `@spec GSV-REQ-040, GSV-REQ-043, GSV-REQ-045, DGP-REQ-002`.
+- **CR-004** — with a given maximum and interval and a negative value, the chosen minimum is counted down from the maximum by the interval (−6 for `{ maximum: 10, tickInterval: 4 }` over −5); `valueScale` description updated. Files: `src/core/definitions/categories.ts`, `tests/core/categories.test.ts`.
+- **CR-005** — `checkCategories` doc comment corrected to the message the package produces; the GSV `missing_property` message is unchanged. File: `src/core/definitions/categories.ts`.
+- **CR-006** — new `checkTickInterval` and `tickIntervalCheck` (inputs `["valueScale/tickInterval"]`) report `tick_spacing_invalid`; `checkValueScale` no longer does. **For TICKET-002 and TICKET-003:** register `tickIntervalCheck` beside the scale check. `@spec` table addition: DGP-REQ-008 | `src/core/definitions/categories.ts`:checkTickInterval | `@spec DGP-REQ-008`. Files: `src/core/definitions/categories.ts`, `tests/core/categories.test.ts`; spec `@spec Coverage` row updated.
+- **CR-007** — AC 9 evidence correction: `pnpm check:deps` checks that runtime dependencies are justified; "no React in non-rendering code" is proven by `pnpm lint` (boundary rule) and `tests/layout/kit/value-scale.test.ts` › "imports nothing from React".
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `test` (30 files, 827 tests), `bench` (circle p95 0.0222 ms), `build`, `check:dist`, `check:deps`, `size` (`.` 15.46 kB, `./core` 12.53 kB, `./circle` 15.4 kB), `publint`, `attw`, `audit` (no vulnerabilities) and `gener8v-state lint` — all exit 0. Deliberate breaks of CR-001, 002, 004 and 006 each fail their new tests.

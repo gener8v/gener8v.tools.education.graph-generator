@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { MAX_VALUE_TICKS, VALUE_LIMIT, resolveValueScale } from "../../../src/core/definitions/categories";
+import { MAX_VALUE_TICKS, VALUE_LIMIT, checkValueScale, resolveValueScale } from "../../../src/core/definitions/categories";
 import { defaultStyle } from "../../../src/core/style";
 import type { SceneNode } from "../../../src/layout/scene";
 import { textWidth } from "../../../src/layout/kit/text";
@@ -86,6 +86,37 @@ describe("resolveValueScale (DGP-REQ-005)", () => {
   });
 });
 
+describe("a partly given scale ends on a tick (code review CR-001)", () => {
+  it.each([
+    [{ maximum: 15 }, [7], { minimum: 0, maximum: 15, tickInterval: 5 }],
+    [{ maximum: 17 }, [7], { minimum: 0, maximum: 17, tickInterval: 1 }],
+    [{ maximum: 0.37 }, [0.1], { minimum: 0, maximum: 0.37, tickInterval: 0.01 }],
+    [{ minimum: 3 }, [10], { minimum: 3, maximum: 10, tickInterval: 1 }],
+    [{ minimum: 0, maximum: 7 }, [7], { minimum: 0, maximum: 7, tickInterval: 1 }],
+    [{ minimum: 0, maximum: 1 / 3 }, [0.1], { minimum: 0, maximum: 1 / 3, tickInterval: 0.0333333333333 }],
+  ])("%j over %j", (given, values, expected) => {
+    expect(resolveValueScale(given, values, { allowNegative: false })).toEqual(expected);
+  });
+
+  it("for every partly given scale the checks accept, starts at the minimum and ends at the maximum", () => {
+    const end = fc.option(fc.integer({ min: -1000, max: 1000 }).map((n) => n / 10), { nil: undefined });
+    const interval = fc.option(fc.constantFrom(0.1, 0.25, 0.5, 1, 2, 3, 5, 10, 25), { nil: undefined });
+    fc.assert(
+      fc.property(fc.array(value.map((v) => Math.round(v) / 1e7), { maxLength: 20 }), end, end, interval, fc.boolean(), (values, minimum, maximum, tickInterval, allowNegative) => {
+        const given = { minimum, maximum, tickInterval };
+        const scaled = values.map((v, i) => ({ path: `/values/${i}`, term: `values[${i}]`, value: v }));
+        if (minimum !== undefined && maximum !== undefined && !(minimum < maximum)) return; // stage 2 rejects it
+        if (checkValueScale(scaled, given, { allowNegative }).length > 0) return;
+        const scale = resolveValueScale(given, values, { allowNegative });
+        const ticks = valueTicks(scale);
+        expect(ticks[0]).toBe(scale.minimum);
+        expect(ticks.at(-1)).toBeCloseTo(scale.maximum, 9);
+      }),
+      { numRuns: 1000 },
+    );
+  });
+});
+
 describe("valueTicks", () => {
   it("lists every tick from the minimum, without decimal noise", () => {
     expect(valueTicks({ minimum: 0, maximum: 1, tickInterval: 0.1 })).toEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]);
@@ -93,7 +124,7 @@ describe("valueTicks", () => {
     expect(valueTicks({ minimum: 0.1, maximum: 0.7, tickInterval: 0.2 })).toEqual([0.1, 0.3, 0.5, 0.7]);
   });
 
-  it("stops at the last tick inside a scale its interval does not divide", () => {
+  it("stops at the last tick inside a scale its interval does not divide (a defensive case: the checks reject such a scale)", () => {
     expect(valueTicks({ minimum: 0, maximum: 7, tickInterval: 2 })).toEqual([0, 2, 4, 6]);
   });
 
