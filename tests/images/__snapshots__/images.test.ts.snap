@@ -1,0 +1,51 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`what each image draws (quality review QR-001) > draws exactly what was reviewed: any change to a drawing changes this snapshot 1`] = `
+{
+  "apple": [
+    "path d=M 50 30 C 30 18 8 30 12 58 C 15 82 35 96 50 88 C 65 96 85 82 88 58 C 92 30 70 18 50 30 Z fill=#c62828",
+    "path d=M 50 30 C 50 22 52 14 56 8 fill=none stroke=#5d4037 stroke-width=4 stroke-linecap=round",
+    "path d=M 54 18 C 62 6 78 6 84 11 C 76 20 62 23 54 18 Z fill=#2e7d32",
+  ],
+  "ball": [
+    "circle cx=50 cy=50 r=42 fill=#1565c0",
+    "path d=M 9 42 Q 50 62 91 42 fill=none stroke=#ffffff stroke-width=5",
+    "path d=M 42 9 Q 62 50 42 91 fill=none stroke=#ffffff stroke-width=5",
+  ],
+  "book": [
+    "rect x=24 y=14 width=62 height=76 rx=3 fill=#e0e0e0",
+    "rect x=14 y=10 width=64 height=76 rx=3 fill=#6a1b9a",
+    "rect x=14 y=10 width=10 height=76 rx=3 fill=#4a148c",
+    "rect x=34 y=26 width=34 height=10 fill=#e1bee7",
+  ],
+  "fish": [
+    "polygon points=70,50 94,30 94,70 fill=#e65100",
+    "path d=M 38 33 L 50 20 L 58 33 Z fill=#e65100",
+    "ellipse cx=44 cy=50 rx=34 ry=20 fill=#ef6c00",
+    "circle cx=26 cy=45 r=4 fill=#212121",
+  ],
+  "flower": [
+    "rect x=48 y=48 width=4 height=46 fill=#2e7d32",
+    "path d=M 52 76 C 60 64 74 62 80 66 C 74 76 62 80 52 76 Z fill=#2e7d32",
+    "circle cx=50 cy=19 r=12 fill=#d81b60",
+    "circle cx=64.27 cy=29.36 r=12 fill=#d81b60",
+    "circle cx=58.82 cy=46.14 r=12 fill=#d81b60",
+    "circle cx=41.18 cy=46.14 r=12 fill=#d81b60",
+    "circle cx=35.73 cy=29.36 r=12 fill=#d81b60",
+    "circle cx=50 cy=34 r=9 fill=#f9a825",
+  ],
+  "person": [
+    "circle cx=50 cy=22 r=14 fill=#37474f",
+    "path d=M 26 94 L 26 56 Q 26 40 42 40 L 58 40 Q 74 40 74 56 L 74 94 Z fill=#37474f",
+  ],
+  "star": [
+    "polygon points=50,8 61.17,38.63 93.75,39.79 68.07,59.87 77.04,91.21 50,73 22.96,91.21 31.93,59.87 6.25,39.79 38.83,38.63 fill=#c77800 stroke=#8d5300 stroke-width=2 stroke-linejoin=round",
+  ],
+  "tree": [
+    "rect x=44 y=60 width=12 height=34 fill=#6d4c41",
+    "circle cx=32 cy=52 r=18 fill=#2e7d32",
+    "circle cx=68 cy=52 r=18 fill=#2e7d32",
+    "circle cx=50 cy=36 r=26 fill=#2e7d32",
+  ],
+}
+`;

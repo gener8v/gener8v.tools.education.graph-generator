@@ -16,10 +16,18 @@ import type { ImageAsset, ImageManifestEntry } from "./types";
  * most 20 (AD-012), so the pictograph, which carries them all, stays within its budget.
  */
 // @spec DGP-REQ-033, DGP-REQ-034
-export const imageAssets = [apple, ball, book, fish, flower, person, star, tree] as const satisfies readonly ImageAsset[];
+export const imageAssets = /* @__PURE__ */ Object.freeze([apple, ball, book, fish, flower, person, star, tree] as const satisfies readonly ImageAsset[]);
 
 /** The license register: each image's name, description, license, author and provenance, read from the image itself. */
 // @spec DGP-REQ-034, DGP-NFR-005
-export const imageManifest: readonly ImageManifestEntry[] = imageAssets.map(({ name, description, license, author, provenance }) =>
-  Object.freeze({ name, description, license, author, provenance }),
-);
+export const imageManifest: readonly ImageManifestEntry[] = /* @__PURE__ */ registerOf(imageAssets);
+
+/**
+ * The register entries for a list of images, frozen. Marked free of side effects, like every
+ * helper the image tables are built with, so a bundle that imports only a type or a constant from
+ * the images drops every drawing (quality review QR-006).
+ */
+/* @__NO_SIDE_EFFECTS__ */
+function registerOf(assets: readonly ImageAsset[]): readonly ImageManifestEntry[] {
+  return Object.freeze(assets.map(({ name, description, license, author, provenance }) => Object.freeze({ name, description, license, author, provenance })));
+}

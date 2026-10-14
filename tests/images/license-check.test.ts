@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, describe, expect, it } from "vitest";
-import { type ImageFile, checkImageLicenses, readImageFiles, runImageCheck } from "../../scripts/check-image-licenses";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { type ImageFile, checkImageLicenses, main, readImageFiles, runImageCheck } from "../../scripts/check-image-licenses";
 import { imageManifest } from "../../src/images/index";
 
 const IMAGES_DIR = fileURLToPath(new URL("../../src/images", import.meta.url));
@@ -51,16 +51,20 @@ describe("the image license check (DGP-NFR-005, DGP-REQ-034)", () => {
   });
 
   describe("anything in the directory that is not a listed image module (code review CR-001)", () => {
-    const dir = mkdtempSync(join(tmpdir(), "image-check-"));
+    // Made in `beforeAll`, so a run that filters this test out leaves nothing behind (QR-009).
+    let dir = "";
+    beforeAll(() => {
+      dir = mkdtempSync(join(tmpdir(), "image-check-"));
+      const unlisted = 'export const cat = { name: "cat", license: "CC-BY-NC-4.0", nodes: [] };\n';
+      writeFileSync(join(dir, "cat.tsx"), unlisted);
+      writeFileSync(join(dir, "cat.mts"), unlisted);
+      writeFileSync(join(dir, "cat.svg"), "<svg/>");
+      writeFileSync(join(dir, "Cat.ts"), unlisted);
+      mkdirSync(join(dir, "animals"));
+      writeFileSync(join(dir, "animals", "cat.ts"), unlisted);
+      writeFileSync(join(dir, "manifest.ts"), "export const imageManifest = [];\n");
+    });
     afterAll(() => rmSync(dir, { recursive: true, force: true }));
-    const unlisted = 'export const cat = { name: "cat", license: "CC-BY-NC-4.0", nodes: [] };\n';
-    writeFileSync(join(dir, "cat.tsx"), unlisted);
-    writeFileSync(join(dir, "cat.mts"), unlisted);
-    writeFileSync(join(dir, "cat.svg"), "<svg/>");
-    writeFileSync(join(dir, "Cat.ts"), unlisted);
-    mkdirSync(join(dir, "animals"));
-    writeFileSync(join(dir, "animals", "cat.ts"), unlisted);
-    writeFileSync(join(dir, "manifest.ts"), "export const imageManifest = [];\n");
 
     it("is reported, whatever its extension, case or folder, without being loaded", async () => {
       const { files, others } = await readImageFiles(dir);
@@ -72,11 +76,47 @@ describe("the image license check (DGP-NFR-005, DGP-REQ-034)", () => {
     });
   });
 
-  it("fails as a whole, naming the unlisted image, and passes on the published set", async () => {
-    // What `pnpm check:images` runs, in-process: spawning it here loaded the machine enough to slow
-    // other timing-bound tests. The command line exits 1 exactly when `problems` is not empty.
-    const failed = await runImageCheck(FIXTURE_DIR);
-    expect(failed.problems).toEqual(['src/images/stray.ts: the image "stray" has no entry in src/images/manifest.ts.']);
-    expect(await runImageCheck(IMAGES_DIR)).toEqual({ problems: [], imageCount: imageManifest.length });
+  describe("the whole check, as `pnpm check:images` runs it", () => {
+    it("names the directory it checked, and the unlisted image in it (QR-008)", async () => {
+      const failed = await runImageCheck(FIXTURE_DIR);
+      expect(failed.problems).toEqual(['tests/fixtures/images/stray.ts: the image "stray" has no entry in tests/fixtures/images/manifest.ts.']);
+      expect(await runImageCheck(IMAGES_DIR)).toEqual({ problems: [], names: imageManifest.map((entry) => entry.name) });
+    });
+
+    describe("a missing or malformed register (QR-008)", () => {
+      let dir = "";
+      beforeAll(() => {
+        dir = mkdtempSync(join(tmpdir(), "image-register-"));
+        mkdirSync(join(dir, "none"));
+        mkdirSync(join(dir, "wrong"));
+        writeFileSync(join(dir, "wrong", "manifest.ts"), 'export const imageManifest = { apple: "MIT" };\n');
+      });
+      afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+      it("is reported as a problem, not a crash", async () => {
+        expect((await runImageCheck(join(dir, "none"), "none")).problems).toEqual([expect.stringMatching(/^none\/manifest\.ts: cannot be loaded \(/)]);
+        expect((await runImageCheck(join(dir, "wrong"), "wrong")).problems).toEqual([
+          "wrong/manifest.ts: must export imageManifest, a list of entries each with a name and a license.",
+        ]);
+      });
+    });
+
+    it("returns exit code 1 with each problem on stderr, and 0 with the register on stdout (QR-007)", async () => {
+      // In-process: spawning the command here loaded the machine enough to slow other tests.
+      const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const logs = vi.spyOn(console, "log").mockImplementation(() => undefined);
+      try {
+        expect(await main([FIXTURE_DIR])).toBe(1);
+        expect(errors.mock.calls).toEqual([['tests/fixtures/images/stray.ts: the image "stray" has no entry in tests/fixtures/images/manifest.ts.']]);
+        // With no argument it checks src/images, relative to the working directory (the repository root).
+        expect(await main([])).toBe(0);
+        expect(logs.mock.calls).toEqual([
+          ["Images: 8 (apple, ball, book, fish, flower, person, star, tree), every license recorded and allowed (MIT, CC0-1.0)."],
+        ]);
+      } finally {
+        errors.mockRestore();
+        logs.mockRestore();
+      }
+    });
   });
 });

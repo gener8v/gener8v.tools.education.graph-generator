@@ -1,7 +1,7 @@
-import { IN_HOUSE, shape } from "./draw";
-import { IMAGE_VIEW_BOX, type ImageAsset } from "./types";
+import { shape } from "./draw";
+import { IMAGE_VIEW_BOX, defineImage } from "./types";
 
-const leaves = (cx: number, cy: number, r: number) =>
+const leaves = /* @__NO_SIDE_EFFECTS__ */ (cx: number, cy: number, r: number) =>
   shape("circle", [
     ["cx", cx],
     ["cy", cy],
@@ -10,10 +10,12 @@ const leaves = (cx: number, cy: number, r: number) =>
   ]);
 
 // @spec DGP-REQ-033
-export const tree: ImageAsset<"tree"> = {
+export const tree = /* @__PURE__ */ defineImage({
   name: "tree",
   description: "A tree with a brown trunk and a round green crown.",
-  ...IN_HOUSE,
+  license: "MIT",
+  author: "gener8v",
+  provenance: "Drawn in-house for this package from basic shapes, 2026-10-14.",
   viewBox: IMAGE_VIEW_BOX,
   nodes: [
     shape("rect", [
@@ -27,4 +29,4 @@ export const tree: ImageAsset<"tree"> = {
     leaves(68, 52, 18),
     leaves(50, 36, 26),
   ],
-};
+});

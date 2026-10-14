@@ -1,11 +1,13 @@
-import { IN_HOUSE, shape } from "./draw";
-import { IMAGE_VIEW_BOX, type ImageAsset } from "./types";
+import { shape } from "./draw";
+import { IMAGE_VIEW_BOX, defineImage } from "./types";
 
 // @spec DGP-REQ-033
-export const apple: ImageAsset<"apple"> = {
+export const apple = /* @__PURE__ */ defineImage({
   name: "apple",
   description: "A red apple with a short brown stem and a green leaf.",
-  ...IN_HOUSE,
+  license: "MIT",
+  author: "gener8v",
+  provenance: "Drawn in-house for this package from basic shapes, 2026-10-14.",
   viewBox: IMAGE_VIEW_BOX,
   nodes: [
     shape("path", [
@@ -24,4 +26,4 @@ export const apple: ImageAsset<"apple"> = {
       ["fill", "#2e7d32"],
     ]),
   ],
-};
+});

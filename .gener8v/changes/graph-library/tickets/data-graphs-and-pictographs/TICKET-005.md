@@ -98,6 +98,7 @@
   - **Bundle and layering (CR-004).** Importing anything from `src/images/index.ts` brings in all eight drawings (about 1.7 kB gzip). Once the pictograph is registered, that reaches `./core`, `./tool` and `.`. It also makes the first import from core into the layout kit: the images use `fmt` from `src/layout/kit/format.ts`.
     - Measure `./core`, `./tool`, `.` and the pictograph entry with `pnpm size` before and after.
     - Decide, and record as a DEL, whether core may import the layout kit's `fmt`. If not, move `fmt` (and `Rounded`) to core and have the kit re-export them.
+- Correction from graph-library/data-graphs-and-pictographs-ticket-004-quality-review/QR-006: the image tables are now marked pure, so importing only a type or a constant from `src/images/index.ts` does not bundle the drawings. Using `images`, `imageManifest`, `getImageNames()` or `imageDescriptions()` still brings in all eight. `getImageNames()` returns a non-empty tuple, so `values: getImageNames()` compiles as an enum's `Terms` without a cast (QR-004).
 
 **Depends On:** TICKET-001, TICKET-004
 **Blocks:** TICKET-006

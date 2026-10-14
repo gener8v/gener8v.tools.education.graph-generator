@@ -186,3 +186,25 @@ Decisions taken with the plan: the first set is eight images — apple, ball, bo
   - `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` all exit 0.
   - `pnpm test` (32 files, 872 tests) exits 0 on three consecutive runs.
   - Reverting the CR-001 entry filter fails its test.
+
+### Quality review — `graph-library/data-graphs-and-pictographs-ticket-004-quality-review` (2026-10-14, Approved)
+
+- **QR-005, QR-002** — each image module now states `license: "MIT"`, `author` and its own `provenance`; `IN_HOUSE` is gone. Images are built with `defineImage()` (`src/images/types.ts`), which deep-freezes them; `imageAssets` and `imageManifest` are frozen.
+- **QR-006** — every drawing helper and table builder is marked `@__NO_SIDE_EFFECTS__`:
+  - drawing helpers: `shape`, `ring`, and new `points` and `circlesAround` (`src/images/draw.ts`); `defineImage`; `tree.ts`'s `leaves`;
+  - table builders: `registerOf` in `manifest.ts` and `byName` in `index.ts`.
+
+  Importing only a constant bundles 71 B instead of 4.8 kB. `tests/images/bundle.test.ts` pins it.
+- **QR-004** — `getImageNames()` returns `readonly [ImageName, ...ImageName[]]`.
+- **QR-001** — tests for bounds, for `ring()`, and a drawing snapshot (`tests/images/__snapshots__/images.test.ts.snap`).
+- **QR-007, QR-008, QR-009** — `scripts/check-image-licenses.ts`:
+  - `main(args)` runs in-process, and the command line sets `process.exitCode` from it;
+  - messages name the directory that was checked;
+  - a missing or malformed register is reported as a problem instead of crashing;
+  - success prints the register.
+
+  The tests now create their temporary directories in `beforeAll`.
+- **QR-003** — `CONTRIBUTING.md`: `check:images`, the lint boundary, and "Adding a pictograph image".
+- **DGP TICKET-005** — Known Hazard correction appended: what bundles the drawings, and that `getImageNames()` needs no cast.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (881 tests) exits 0 on three runs. The drawing snapshot is unchanged by the refactor.
+

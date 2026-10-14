@@ -39,15 +39,35 @@ pnpm publint          # package metadata
 pnpm attw             # type resolution of the packed package
 pnpm size             # bundle size budgets
 pnpm check:deps       # runtime dependencies are justified (below)
+pnpm check:images     # every pictograph image has an allowed, recorded license (below)
 pnpm check:changesets # changesets carry a changelog category
 ```
 
 ## Code rules the linter enforces
 
-- Code under `src/core`, `src/tool`, `src/export` and `src/layout` must not import React or
+- Code under `src/core`, `src/tool`, `src/export`, `src/layout` and `src/images` must not import React or
   React DOM, or use browser globals. These parts run in Node.js without a browser.
 - Nothing under `src/` may make network requests (`fetch`, `XMLHttpRequest`, `WebSocket`,
   `navigator.sendBeacon`). The package sends no data anywhere.
+
+## Adding a pictograph image
+
+The pictograph's images are drawn for this package, never taken from icon packs or the web, and
+must not show a trademarked character, logo or brand.
+
+1. Draw it in its own file, `src/images/<name>.ts`, where `<name>` is lower-case kebab case
+   (`paper-plane`). The name becomes part of the public description format once released, so
+   choose a plain, lasting one.
+2. Export it with `defineImage({ name, description, license, author, provenance, viewBox:
+   IMAGE_VIEW_BOX, nodes })`:
+   - draw in the 100 × 100 space, with a handful of shapes (at most 8) built with `shape()`;
+   - use presentation attributes only, with no text;
+   - the license is `MIT` for your own work, or `CC0-1.0` for public-domain material;
+   - the provenance says where the drawing came from.
+3. Import it in `src/images/manifest.ts` and add it to `imageAssets`. The set holds at most 20
+   images.
+4. Run `pnpm test -u` once to record the new drawing in the snapshot, review the diff, then
+   `pnpm check:images`.
 
 ## Runtime dependency notes
 

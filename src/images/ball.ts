@@ -1,11 +1,13 @@
-import { IN_HOUSE, shape } from "./draw";
-import { IMAGE_VIEW_BOX, type ImageAsset } from "./types";
+import { shape } from "./draw";
+import { IMAGE_VIEW_BOX, defineImage } from "./types";
 
 // @spec DGP-REQ-033
-export const ball: ImageAsset<"ball"> = {
+export const ball = /* @__PURE__ */ defineImage({
   name: "ball",
   description: "A round blue ball with two curved white stripes.",
-  ...IN_HOUSE,
+  license: "MIT",
+  author: "gener8v",
+  provenance: "Drawn in-house for this package from basic shapes, 2026-10-14.",
   viewBox: IMAGE_VIEW_BOX,
   nodes: [
     shape("circle", [
@@ -27,4 +29,4 @@ export const ball: ImageAsset<"ball"> = {
       ["stroke-width", 5],
     ]),
   ],
-};
+});

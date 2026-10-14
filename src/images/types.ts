@@ -35,3 +35,22 @@ export interface ImageAsset<Name extends string = string> {
 
 /** An image's entry in the license register (`manifest.ts`). */
 export type ImageManifestEntry = Pick<ImageAsset, "name" | "description" | "license" | "author" | "provenance">;
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const inner of Object.values(value)) deepFreeze(inner);
+  }
+  return value;
+}
+
+/**
+ * An image as the set publishes it: frozen all the way down (its nodes, their attributes, each
+ * attribute pair), so no module can change a drawing or its license at runtime, as
+ * `defineProperties` does for definitions (quality review QR-002).
+ */
+/* @__NO_SIDE_EFFECTS__ */
+export function defineImage<Name extends string>(image: ImageAsset<Name>): ImageAsset<Name> {
+  return deepFreeze(image);
+}
+
