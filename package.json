@@ -76,7 +76,8 @@
     "check:deps": "tsx scripts/check-dependencies.ts",
     "check:changesets": "tsx scripts/check-changesets.ts",
     "changeset": "changeset",
-    "check:dist": "tsx scripts/check-dist.ts"
+    "check:dist": "tsx scripts/check-dist.ts",
+    "check:images": "tsx scripts/check-image-licenses.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

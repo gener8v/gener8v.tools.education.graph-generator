@@ -92,5 +92,8 @@ jobs:
       - name: Runtime dependencies are justified
         run: pnpm check:deps
 
+      - name: Image licenses are recorded
+        run: pnpm check:images
+
       - name: Changesets carry a changelog category
         run: pnpm check:changesets
