@@ -90,6 +90,14 @@
     - Until that decision, include category names in the half-megabyte large-text test, record the node count and markup size it produces, and do not claim a bounded number of text nodes for them.
   - **Data values (SEC-003):** bound every data value spec to ±`VALUE_LIMIT` (`src/core/value-scale.ts`, 1,000,000,000), so a scale chosen from the values always prints as a plain number.
   - **Scale checks (SEC-001, SEC-004):** a pictograph has no value scale (`valueScale` is reported as not applying), so the scale checks do not apply here.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-004-code-review/CR-002 and CR-004 (the image set):
+  - **DGP-REQ-035 is published here.** DGP TICKET-004 exposes `getImageNames()` and `imageDescriptions()` (`src/images/index.ts`), but no generated file lists an image yet.
+    - Build `unitImage` as `{ kind: "enum", values: getImageNames(), valueDescriptions: imageDescriptions() }`.
+    - Put `@spec DGP-REQ-035` on it, and add a `## @spec Coverage` row for `src/core/definitions/pictograph.ts`.
+    - Test that `src/generated/schema.json`, `src/generated/tool-schema.json` and `src/generated/vocabulary.json` list every image name, and the vocabulary every description.
+  - **Bundle and layering (CR-004).** Importing anything from `src/images/index.ts` brings in all eight drawings (about 1.7 kB gzip). Once the pictograph is registered, that reaches `./core`, `./tool` and `.`. It also makes the first import from core into the layout kit: the images use `fmt` from `src/layout/kit/format.ts`.
+    - Measure `./core`, `./tool`, `.` and the pictograph entry with `pnpm size` before and after.
+    - Decide, and record as a DEL, whether core may import the layout kit's `fmt`. If not, move `fmt` (and `Rounded`) to core and have the kit re-export them.
 
 **Depends On:** TICKET-001, TICKET-004
 **Blocks:** TICKET-006

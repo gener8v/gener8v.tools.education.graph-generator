@@ -17,7 +17,7 @@ const PURE_MESSAGE =
   "Components are pure: no hooks, state, context, event handlers or client boundary, so they work as React Server Components (AD-014, prd/IC-002).";
 
 const SCRIPT_EXTENSIONS = "{ts,tsx,mts,cts,js,jsx,mjs,cjs}";
-const NON_RENDERING_DIRS = ["core", "tool", "export", "layout"];
+const NON_RENDERING_DIRS = ["core", "tool", "export", "layout", "images"];
 
 // Network APIs, reached directly or through any object (`self.fetch`, `globalThis["WebSocket"]`).
 const NETWORK_NAMES =

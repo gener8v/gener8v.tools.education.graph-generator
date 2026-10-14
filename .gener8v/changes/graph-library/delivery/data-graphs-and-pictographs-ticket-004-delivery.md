@@ -170,4 +170,19 @@ Decisions taken with the plan: the first set is eight images — apple, ball, bo
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/data-graphs-and-pictographs-ticket-004-code-review` (2026-10-14, Approved with Notes)
+
+- **CR-001** — `scripts/check-image-licenses.ts`:
+  - `readImageFiles` returns `{ files, others }`. `others` is every directory entry that is neither one of `NON_IMAGE_FILES` nor a `<kebab-name>.ts` file (`IMAGE_FILE`), plus every subfolder.
+  - `checkImageLicenses(files, register, others)` reports each one. Entries are sorted in code-unit order.
+  - New `runImageCheck(dir)`, which the command line wraps.
+  - Tests in `tests/images/license-check.test.ts` use a temporary directory holding `.tsx`, `.mts`, `.svg`, `Cat.ts` and `animals/` (all reported). The fixture run names `stray.ts`.
+  - The command-line spawn test is replaced by the in-process `runImageCheck` test. By hand, the command line exits 1 on `tests/fixtures/images` and 0 on `src/images`.
+- **CR-003** — `eslint.config.js` `NON_RENDERING_DIRS` and `tests/package/boundaries.test.ts` now include `images`.
+- **CR-005** — the DGP-REQ-033 coverage row lists one `path`:symbol per image module. Correction to Files Produced: each image has **1 to 8 shapes** (the flower has 8), not 1 to 7.
+- **CR-002, CR-004** — deferred to DGP TICKET-005 (Known Hazards appended). DGP-REQ-035 is exposed here and published in the schema and vocabulary by DGP TICKET-005's pictograph definition. The spec's coverage row says so.
+- **Trivial test fix alongside (user-approved):** `tests/layout/circle.test.ts`'s flaky 2,000 ms assertion is removed (commit `b48d1a4`, recorded under GSS TICKET-002's amendments). This delivery's earlier `pnpm test` exits of 1 were that test alone.
+- **Re-verification:**
+  - `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` all exit 0.
+  - `pnpm test` (32 files, 872 tests) exits 0 on three consecutive runs.
+  - Reverting the CR-001 entry filter fails its test.

@@ -157,7 +157,7 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-007 | `src/core/value-scale.ts`:checkValueScale |
 | DGP-REQ-008 | `src/core/value-scale.ts`:checkValueScale, checkTickInterval |
 | DGP-REQ-009 | `src/core/value-scale.ts`:valueTicks; `src/layout/kit/value-scale.ts`:drawValueAxis |
-| DGP-REQ-033 | `src/images/types.ts`:ImageAsset; `src/images/{apple,ball,book,fish,flower,person,star,tree}.ts`; `src/images/manifest.ts`:imageAssets; `src/images/index.ts`:images, imageDescriptions |
+| DGP-REQ-033 | `src/images/types.ts`:ImageAsset; `src/images/apple.ts`:apple; `src/images/ball.ts`:ball; `src/images/book.ts`:book; `src/images/fish.ts`:fish; `src/images/flower.ts`:flower; `src/images/person.ts`:person; `src/images/star.ts`:star; `src/images/tree.ts`:tree; `src/images/manifest.ts`:imageAssets; `src/images/index.ts`:images, imageDescriptions |
 | DGP-REQ-034 | `src/images/types.ts`:ALLOWED_IMAGE_LICENSES, ImageAsset; `src/images/manifest.ts`:imageAssets, imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |
-| DGP-REQ-035 | `src/images/index.ts`:getImageNames, imageDescriptions |
+| DGP-REQ-035 | `src/images/index.ts`:getImageNames, imageDescriptions (exposed here; published in the schema and vocabulary by DGP TICKET-005's pictograph definition) |
 | DGP-NFR-005 | `src/images/manifest.ts`:imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |

@@ -9,7 +9,7 @@ async function ruleIds(code: string, filePath: string): Promise<string[]> {
 }
 
 describe("import boundaries for non-rendering code (CPSE-REQ-006, prd/TC-005)", () => {
-  for (const dir of ["core", "tool", "export", "layout"]) {
+  for (const dir of ["core", "tool", "export", "layout", "images"]) {
     it(`rejects importing react in src/${dir}`, async () => {
       const ids = await ruleIds(`import { useState } from "react";\nexport const x = useState;\n`, `src/${dir}/fixture.ts`);
       expect(ids).toContain("no-restricted-imports");

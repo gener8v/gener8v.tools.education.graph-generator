@@ -1,7 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-import { type ImageFile, checkImageLicenses, readImageFiles } from "../../scripts/check-image-licenses";
+import { afterAll, describe, expect, it } from "vitest";
+import { type ImageFile, checkImageLicenses, readImageFiles, runImageCheck } from "../../scripts/check-image-licenses";
 import { imageManifest } from "../../src/images/index";
 
 const IMAGES_DIR = fileURLToPath(new URL("../../src/images", import.meta.url));
@@ -14,13 +16,14 @@ const file = (name: string, license: unknown = "MIT", imageName: unknown = name)
 
 describe("the image license check (DGP-NFR-005, DGP-REQ-034)", () => {
   it("passes on the published set", async () => {
-    const files = await readImageFiles(IMAGES_DIR);
+    const { files, others } = await readImageFiles(IMAGES_DIR);
     expect(files.map((f) => f.file)).toHaveLength(imageManifest.length);
-    expect(checkImageLicenses(files, imageManifest)).toEqual([]);
+    expect(others).toEqual([]);
+    expect(checkImageLicenses(files, imageManifest, others)).toEqual([]);
   });
 
   it("fails on an image without a register entry, and on an entry without an image", async () => {
-    const files = await readImageFiles(FIXTURE_DIR);
+    const { files } = await readImageFiles(FIXTURE_DIR);
     expect(checkImageLicenses(files, [{ name: "listed", license: "MIT" }, { name: "gone", license: "MIT" }])).toEqual([
       'src/images/stray.ts: the image "stray" has no entry in src/images/manifest.ts.',
       'src/images/manifest.ts: "gone" has no image file in src/images/.',
@@ -47,16 +50,33 @@ describe("the image license check (DGP-NFR-005, DGP-REQ-034)", () => {
     ]);
   });
 
-  it("exits 1 from the command line on an unlisted image, and 0 on the published set", () => {
-    const run = (dir?: string) => {
-      try {
-        execFileSync("pnpm", ["exec", "tsx", "scripts/check-image-licenses.ts", ...(dir === undefined ? [] : [dir])], { stdio: "pipe" });
-        return 0;
-      } catch (error) {
-        return (error as { status: number }).status;
-      }
-    };
-    expect(run(FIXTURE_DIR)).toBe(1);
-    expect(run()).toBe(0);
-  }, 30_000);
+  describe("anything in the directory that is not a listed image module (code review CR-001)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "image-check-"));
+    afterAll(() => rmSync(dir, { recursive: true, force: true }));
+    const unlisted = 'export const cat = { name: "cat", license: "CC-BY-NC-4.0", nodes: [] };\n';
+    writeFileSync(join(dir, "cat.tsx"), unlisted);
+    writeFileSync(join(dir, "cat.mts"), unlisted);
+    writeFileSync(join(dir, "cat.svg"), "<svg/>");
+    writeFileSync(join(dir, "Cat.ts"), unlisted);
+    mkdirSync(join(dir, "animals"));
+    writeFileSync(join(dir, "animals", "cat.ts"), unlisted);
+    writeFileSync(join(dir, "manifest.ts"), "export const imageManifest = [];\n");
+
+    it("is reported, whatever its extension, case or folder, without being loaded", async () => {
+      const { files, others } = await readImageFiles(dir);
+      expect(files).toEqual([]);
+      expect(others).toEqual(["Cat.ts", "animals/", "cat.mts", "cat.svg", "cat.tsx"]);
+      expect(checkImageLicenses(files, [], others)).toEqual(
+        others.map((other) => `src/images/${other}: not an image module; an image is a <kebab-name>.ts file in src/images/ itself, listed in the manifest.`),
+      );
+    });
+  });
+
+  it("fails as a whole, naming the unlisted image, and passes on the published set", async () => {
+    // What `pnpm check:images` runs, in-process: spawning it here loaded the machine enough to slow
+    // other timing-bound tests. The command line exits 1 exactly when `problems` is not empty.
+    const failed = await runImageCheck(FIXTURE_DIR);
+    expect(failed.problems).toEqual(['src/images/stray.ts: the image "stray" has no entry in src/images/manifest.ts.']);
+    expect(await runImageCheck(IMAGES_DIR)).toEqual({ problems: [], imageCount: imageManifest.length });
+  });
 });
