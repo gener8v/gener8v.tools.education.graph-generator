@@ -216,9 +216,12 @@ export interface DomainCheck<D extends DescriptionBase = DescriptionBase> {
   /**
    * The paths the check reads, as JSON Pointers without the leading slash; `*` stands for any
    * list position: `["xAxis/min", "xAxis/max", "points/*\/x"]`. A failure elsewhere, such as a
-   * bad tick spacing or a typo in another key, does not stop the check.
+   * bad tick spacing or a typo in another key, does not stop the check. An empty list means the
+   * check always runs and guards itself against a missing or failed value, as a check that reads
+   * only list lengths does: a failed element stays as `null` and does not change a length (DGP
+   * TICKET-005 code review CR-002).
    */
-  inputs: Terms;
+  inputs: readonly string[];
   // Method syntax keeps the parameter bivariant, so a check written for one graph type's
   // description can sit in the registry typed by `DescriptionBase`.
   check(description: D): readonly Issue[];

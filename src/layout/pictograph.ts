@@ -1,5 +1,5 @@
-import { imageCount, pictograph as pictographDefinition, type Pictograph } from "../core/definitions/pictograph";
-import { cleanText, formatSupplied } from "../core/format";
+import { imageCount, pictograph as pictographDefinition, type Pictograph, unitLabelOf } from "../core/definitions/pictograph";
+import { formatSupplied } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { IMAGE_VIEW_BOX, images, type ImageAsset } from "../images/index";
@@ -24,13 +24,11 @@ const GAP = 8;
 /** The key's picture size and its text's line cap (caller-sized text stays bounded; GSS TICKET-002 SEC-001). */
 const KEY_IMAGE = 18;
 export const KEY_MAX_LINES = 2;
-const UNITS = "units";
 
 /** The key's text (DGP-REQ-027): "each apple = 2 students", or "units" when no label is given. */
 // @spec DGP-REQ-027
 export function keyText(p: Pictograph): string {
-  const label = p.valueUnitLabel === undefined ? "" : cleanText(p.valueUnitLabel);
-  return `each ${p.unitImage} = ${formatSupplied(p.unitValue)} ${label === "" ? UNITS : label}`;
+  return `each ${p.unitImage} = ${formatSupplied(p.unitValue)} ${unitLabelOf(p)}`;
 }
 
 /** A whole picture: the image's drawing in a nested viewport of `size` at (`x`, `y`). */
@@ -56,9 +54,10 @@ function picture(image: ImageAsset, x: number, y: number, size: number): SceneNo
  */
 // @spec DGP-REQ-028, DGP-NFR-002
 function partialPicture(image: ImageAsset, x: number, y: number, size: number, fraction: number, upright: boolean): SceneNode {
-  const shown = Math.max(fraction, MIN_PARTIAL);
-  const extent = fmt(size * shown);
-  const share = fmt(100 * shown);
+  // Never rounded down to nothing, and the viewBox shows exactly the share the viewport is drawn
+  // at, so the visible part is the drawn width (code review CR-001).
+  const extent = fmt(Math.max(size * Math.max(fraction, MIN_PARTIAL), 0.01));
+  const share = fmt((100 * extent) / size);
   const attrs: Attrs = upright
     ? [
         ["x", fmt(x)],

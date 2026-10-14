@@ -81,7 +81,7 @@ export const dataGraphProperties = defineProperties({
     // DGP TICKET-001 DEL-002: an empty label is no label, so the key says "units".
     emptyIsAbsent: true,
     description:
-      'What one unit of value counts, as plain text, such as "students"; the key reads "each ★ = 2 students". Left out or empty, the key says "units".',
+      'What one unit of value counts, as plain text, such as "students"; the key names the picture, as in "each apple = 2 students". Left out, empty or blank, it says "units". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole.',
     appliesTo: ["pictograph"],
     elementsOf: [],
   },

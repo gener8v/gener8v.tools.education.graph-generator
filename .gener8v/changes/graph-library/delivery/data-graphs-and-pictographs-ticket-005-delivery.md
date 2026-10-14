@@ -271,4 +271,22 @@ Decisions taken with the plan: a provisional cap of 1,000 images in total, pendi
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/data-graphs-and-pictographs-ticket-005-code-review` (2026-10-14, Approved)
+
+- **CR-001** — DEL-001 amended: the provisional cap is **400** pictures, not 1,000.
+  - At 400, one category's row or column keeps pictures at least 0.5 drawing units wide, where 0.01-unit rounding stays within DGP-NFR-002's 2%. Beyond about 455 pictures in a row (407 in a column) the partial vanished or exceeded 2%.
+  - `partialPicture` never draws under 0.01 units, and takes the `viewBox` share from the drawn width.
+  - The property test now runs up to the cap.
+  - Still for the Product Owner under DGP OQ-004.
+- **CR-002** — the one-value-per-category check has no inputs and reads only the lists' lengths, so a failed value or name no longer hides a mismatch.
+  - `DomainCheck.inputs` is now `readonly string[]`; an empty list means "always runs, guards itself" (documented in `src/core/definitions/types.ts`).
+- **CR-003** — `unitLabelOf()` is shared by the key and the text alternative; a blank label reads "units" in both.
+- **CR-004** — the `valueUnitLabel` description now says the key names the picture and caps at two lines; regenerated.
+- **CR-005** — the category-name test uses a half-megabyte name. **Measured:** 499,999 characters → 33,335 text nodes and 7,547,299 bytes of markup, rendered in about 0.9 s. (Reviewer: a single unbroken 500,000-character word → 50,001 text nodes, 10.6 MB.) For the Product Owner's caller-text length decision.
+- **CR-006** — threshold recorded for DEL-005: a remainder smaller than about a billionth of the picture count (`intervalsIn`'s relative tolerance, 1e-9 × the count) is treated as decimal noise and draws no partial picture. For example, 2.000000001 ÷ 2 draws one picture.
+- **CR-007** — CPSE coverage rows added for `src/entries/pictograph.ts` (CPSE-REQ-004) and `Pictograph` (CPSE-REQ-007); the DGP-REQ-035 rows merged.
+- **CR-008** — design departures named:
+  - **DEL-004 departs from AD-004:** an unpublished image is reported in stage 2 (structure), with the enum, not in stage 4 (domain).
+  - **DEL-005 departs from AD-008's wording:** a column's partial picture is cropped by height.
+  - Both join the queued `system-design.md` amendments, alongside those from GSS TICKET-002 and DGP TICKET-004.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (945 tests) exits 0 on three runs. Deliberate breaks of the CR-001, CR-002 and CR-003 fixes each fail their tests.

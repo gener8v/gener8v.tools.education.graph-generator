@@ -109,6 +109,14 @@ describe("pictograph issues (DGP-REQ-029..031)", () => {
     ]);
   });
 
+  it("reports a length mismatch even when a value or a name also fails (code review CR-002)", () => {
+    expect(codesAndPaths(with_({ values: [7, -1, 3] }))).toEqual(["out_of_range /values/1", "series_length_mismatch /values"]);
+    expect(codesAndPaths(with_({ categories: [{ name: 3 }, { name: "Dogs" }], values: [1] }))).toEqual([
+      "wrong_kind /categories/0/name",
+      "series_length_mismatch /values",
+    ]);
+  });
+
   it("reports the shipped invalid examples", () => {
     expect(codesAndPaths(JSON.parse(readFileSync("examples/invalid/pictograph-unknown-image.json", "utf8")))).toEqual(["unknown_image /unitImage"]);
     expect(codesAndPaths(JSON.parse(readFileSync("examples/invalid/pictograph-zero-unit.json", "utf8")))).toEqual(["out_of_range /unitValue"]);
@@ -131,16 +139,16 @@ describe("options that do not apply to a pictograph (DGP Edge Cases)", () => {
 
 describe("the picture limit (DGP TICKET-004 security review SEC-003; provisional, DGP OQ-004)", () => {
   it(`allows up to ${PICTOGRAPH_IMAGE_LIMIT} pictures, counting a remainder as one`, () => {
-    expect(validate(with_({ values: [1000, 1000], unitValue: 2 })).valid).toBe(true); // 500 + 500
-    expect(validate(with_({ values: [999, 1000], unitValue: 2 })).valid).toBe(true); // 500 (499.5) + 500
+    expect(validate(with_({ values: [400, 400], unitValue: 2 })).valid).toBe(true); // 200 + 200
+    expect(validate(with_({ values: [399, 400], unitValue: 2 })).valid).toBe(true); // 200 (199.5) + 200
   });
 
   it("reports more, counted arithmetically, so even a huge request is reported at once", () => {
-    expect(issuesOf(validate(with_({ values: [1001, 1000], unitValue: 2 })))).toEqual([
+    expect(issuesOf(validate(with_({ values: [401, 400], unitValue: 2 })))).toEqual([
       {
         code: "too_large",
         path: "/values",
-        message: "values would draw 1001 pictures, more than the limit of 1000; use a larger unitValue or smaller values.",
+        message: "values would draw 401 pictures, more than the limit of 400; use a larger unitValue or smaller values.",
       },
     ]);
     const started = performance.now();
@@ -171,6 +179,10 @@ describe("the text alternative (DGP-REQ-004)", () => {
     expect(pictograph.describe(description as Pictograph, provenance)).toBe(
       "A pictograph titled “Pets”. Each apple stands for 2 students. “Cats”: 7 students and “Dogs”: 4.5 students.",
     );
+  });
+
+  it('says "units" for a blank label, as the key does (code review CR-003)', () => {
+    expect(describeGraph(with_({ valueUnitLabel: "   " }))).toBe("A pictograph. Each apple stands for 2 units. “Cats”: 7 units and “Dogs”: 4 units.");
   });
 
   it('says "units" when there is no label, and leaves out a blank title', () => {

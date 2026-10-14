@@ -22,8 +22,10 @@ export interface Pictograph extends DescriptionBase {
  * The most images a pictograph may draw in total, whole and partial. Provisional, pending the
  * Product Owner's limit under DGP OQ-004: one image costs up to 9 Scene nodes, so an unbounded count
  * would let a short description exhaust a server (DGP TICKET-004 security review SEC-003; DEL-001).
+ * 400, so even one category's row or column keeps its pictures at least half a drawing unit wide,
+ * the size at which a 0.01-unit rounding stays within DGP-NFR-002's 2% (code review CR-001).
  */
-export const PICTOGRAPH_IMAGE_LIMIT = 1_000;
+export const PICTOGRAPH_IMAGE_LIMIT = 400;
 
 /** What each category's value draws: whole images, then the remaining fraction of one (0 when none). */
 export interface ImageCount {
@@ -49,6 +51,17 @@ export function imageCount(value: number, unitValue: number): ImageCount {
 const imagesDrawn = ({ whole, fraction }: ImageCount) => whole + (fraction > 0 ? 1 : 0);
 
 const UNITS = "units";
+
+/**
+ * What one unit is called, in the key and the text alternative alike: the value-unit label cleaned
+ * of hidden characters, or "units" when it is missing or blank (DGP Pictograph Units; code review
+ * CR-003).
+ */
+// @spec DGP-REQ-027
+export function unitLabelOf(p: Pick<Pictograph, "valueUnitLabel">): string {
+  const label = p.valueUnitLabel === undefined ? "" : cleanText(p.valueUnitLabel);
+  return label === "" ? UNITS : label;
+}
 
 /**
  * The pictograph (DGP-REQ-023..032, DGP-REQ-037): one row (or column) per category built from
@@ -116,12 +129,17 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
       categoriesCheck,
       {
         name: "one value per category",
-        inputs: ["categories", "values"],
+        // No inputs: the check reads only the two lists' lengths, which a failed element does not
+        // change (it stays as null), so a bad value or name never hides a mismatch (code review
+        // CR-002). A list that failed whole, or is missing, is absent, and the check stays silent.
+        inputs: [],
         // @spec DGP-REQ-026
-        check: (p) =>
-          p.values.length === p.categories.length
-            ? []
-            : [createIssue("series_length_mismatch", pointer("values"), { term: "values", valueCount: p.values.length, categoryCount: p.categories.length })],
+        check: (p) => {
+          const values: unknown = p.values;
+          const names: unknown = p.categories;
+          if (!Array.isArray(values) || !Array.isArray(names) || values.length === names.length) return [];
+          return [createIssue("series_length_mismatch", pointer("values"), { term: "values", valueCount: values.length, categoryCount: names.length })];
+        },
       },
       {
         name: "the pictures drawn stay within the limit",
@@ -145,7 +163,7 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
     describe: (p: Pictograph, provenance: Provenance) => {
       const title = p.title === undefined ? "" : cleanText(p.title);
       const titled = title === "" ? "" : ` titled ${quoteText(title)}`;
-      const unit = p.valueUnitLabel ?? UNITS;
+      const unit = unitLabelOf(p);
       const sentences = [
         `A pictograph${titled}.`,
         `Each ${p.unitImage} stands for ${stateMeasurement(p.unitValue, sourceOf(provenance, "unitValue"), unit)}.`,

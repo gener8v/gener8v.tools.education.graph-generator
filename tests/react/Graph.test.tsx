@@ -345,15 +345,16 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
   });
 
   it("draws category names whole however long, so their markup grows with them (DGP TICKET-001 SEC-002, pending the Product Owner's length bound)", () => {
-    // Recorded, not bounded: a name is never cut (DGP Scale and Layout).
-    const name = "word ".repeat(10_000).trim();
+    // Recorded, not bounded: a name is never cut (DGP Scale and Layout). Half a megabyte, as the
+    // carried hazard asks (code review CR-005): about 33,000 text nodes and 7.5 MB of markup.
+    const name = "word ".repeat(100_000).trim();
     const markup = html(
       <PackagePictograph description={{ type: "pictograph", categories: [{ name }], values: [3], unitImage: "star", unitValue: 1 }} />,
     );
     const lines = markup.match(/<text /g)!.length;
     expect(markup).toContain("<svg");
-    expect(lines).toBeGreaterThan(1_000);
-    expect(markup.length).toBeLessThan(2_000_000);
+    expect(lines).toBeGreaterThan(30_000);
+    expect(markup.length).toBeLessThan(10_000_000);
   });
 
   it("renders <Graph> and a per-type component for any JSON value", () => {

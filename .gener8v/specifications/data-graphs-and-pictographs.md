@@ -159,7 +159,7 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-009 | `src/core/value-scale.ts`:valueTicks; `src/layout/kit/value-scale.ts`:drawValueAxis |
 | DGP-REQ-033 | `src/images/types.ts`:ImageAsset; `src/images/apple.ts`:apple; `src/images/ball.ts`:ball; `src/images/book.ts`:book; `src/images/fish.ts`:fish; `src/images/flower.ts`:flower; `src/images/person.ts`:person; `src/images/star.ts`:star; `src/images/tree.ts`:tree; `src/images/manifest.ts`:imageAssets; `src/images/index.ts`:images, imageDescriptions |
 | DGP-REQ-034 | `src/images/types.ts`:ALLOWED_IMAGE_LICENSES, ImageAsset; `src/images/manifest.ts`:imageAssets, imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |
-| DGP-REQ-035 | `src/images/index.ts`:getImageNames, imageDescriptions (exposed here; published in the schema and vocabulary by DGP TICKET-005's pictograph definition) |
+| DGP-REQ-035 | `src/images/index.ts`:getImageNames, imageDescriptions (the names and descriptions); `src/core/definitions/pictograph.ts`:unitImage (published from them in the schema, the tool schema and the vocabulary) |
 | DGP-NFR-005 | `src/images/manifest.ts`:imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |
 | DGP-REQ-004 | `src/core/definitions/pictograph.ts`:pictograph, describe (pictograph) |
 | DGP-REQ-023 | `src/core/definitions/pictograph.ts`:pictograph; `src/layout/pictograph.ts`:pictographLayout; `src/react/graphs/PictographGraph.tsx`:Pictograph |
@@ -172,7 +172,6 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-030 | `src/core/definitions/pictograph.ts`:pictograph |
 | DGP-REQ-031 | `src/core/definitions/pictograph.ts`:unitImage; `src/core/validate/structure.ts`:checkValue |
 | DGP-REQ-032 | `src/core/definitions/pictograph.ts`:pictograph; `src/layout/pictograph.ts`:pictographLayout |
-| DGP-REQ-035 | `src/core/definitions/pictograph.ts`:unitImage (published in the schema and vocabulary) |
 | DGP-REQ-037 | `src/layout/pictograph.ts`:pictographLayout |
 | DGP-NFR-002 | `src/layout/pictograph.ts`:partialPicture; `tests/layout/pictograph.test.ts` (property test) |
 

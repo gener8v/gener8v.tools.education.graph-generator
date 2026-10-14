@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { Pictograph } from "../../src/core/definitions/pictograph";
+import { PICTOGRAPH_IMAGE_LIMIT, type Pictograph } from "../../src/core/definitions/pictograph";
 import { validate } from "../../src/core/index";
 import { createGraph } from "../../src/graph";
 import { IMAGE_VIEW_BOX, images } from "../../src/images/index";
@@ -105,7 +105,7 @@ describe("equal size and spacing (DGP-REQ-037)", () => {
   });
 
   it("shrinks every picture together so the longest row stays inside the drawing", () => {
-    const scene = sceneOf({ categories: [{ name: "A" }, { name: "B" }], values: [500, 3], unitValue: 1 });
+    const scene = sceneOf({ categories: [{ name: "A" }, { name: "B" }], values: [396, 3], unitValue: 1 });
     const all = pictures(scene);
     for (const node of all) expect(num(node, "x") + num(node, "width")).toBeLessThanOrEqual(400);
     expect(new Set(all.filter(isWhole).map((node) => num(node, "width"))).size).toBe(1);
@@ -142,6 +142,7 @@ describe("the key (DGP-REQ-027)", () => {
   it('reads "each <image name> = <unitValue> <valueUnitLabel>", with "units" when no label is given', () => {
     expect(texts(sceneOf({ valueUnitLabel: "students" }))).toContain("each apple = 2 students");
     expect(texts(sceneOf({}))).toContain("each apple = 2 units");
+    expect(texts(sceneOf({ valueUnitLabel: " \u00a0 " }))).toContain("each apple = 2 units");
     expect(texts(sceneOf({ unitImage: "star", unitValue: 0.5, valueUnitLabel: "points" }))).toContain("each star = 0.5 points");
   });
 
@@ -162,10 +163,11 @@ describe("the key (DGP-REQ-027)", () => {
 });
 
 describe("DGP-NFR-002: a partial picture's visible share is within 2% of the exact remainder", () => {
-  it("holds for generated non-whole multiples, in rows and in columns", () => {
+  it("holds for generated non-whole multiples, in rows and in columns, up to the picture limit (code review CR-001)", () => {
     fc.assert(
       fc.property(
-        fc.integer({ min: 0, max: 40 }),
+        // Up to the limit in one row or column, where pictures are smallest.
+        fc.oneof(fc.integer({ min: 0, max: 40 }), fc.integer({ min: PICTOGRAPH_IMAGE_LIMIT - 40, max: PICTOGRAPH_IMAGE_LIMIT - 1 })),
         fc.double({ min: 0.001, max: 0.999, noNaN: true }),
         fc.constantFrom(1, 2, 2.5, 5, 0.25),
         fc.constantFrom("horizontal", "vertical"),
@@ -174,17 +176,21 @@ describe("DGP-NFR-002: a partial picture's visible share is within 2% of the exa
           const exact = value / unitValue - Math.floor(value / unitValue);
           fc.pre(exact > 1e-6 && exact < 1 - 1e-6);
           const scene = sceneOf({ values: [value], unitValue, orientation });
+          // The partial picture is drawn last, after the whole ones. Close to a whole picture it may be
+          // drawn at full width, so it is found by position, not by its viewBox.
           const all = pictures(scene);
-          const part = all.find((node) => !isWhole(node));
-          expect(part).toBeDefined();
+          expect(all).toHaveLength(Math.floor(value / unitValue + 1e-9) + 1);
+          const part = all.at(-1);
           const size = orientation === "horizontal" ? num(part!, "height") : num(part!, "width");
           const shown = (orientation === "horizontal" ? num(part!, "width") : num(part!, "height")) / size;
           expect(Math.abs(shown - Math.max(exact, MIN_PARTIAL))).toBeLessThanOrEqual(0.02);
           expect(Math.abs(shown - exact)).toBeLessThanOrEqual(0.02);
-          expect(all.filter(isWhole)).toHaveLength(Math.floor(value / unitValue + 1e-9));
+          // The viewBox shows exactly the share the viewport is drawn at.
+          const box = String(attr(part!, "viewBox")).split(" ").map(Number);
+          expect(Math.abs((orientation === "horizontal" ? box[2]! : box[3]!) / 100 - shown)).toBeLessThanOrEqual(0.0002);
         },
       ),
-      { numRuns: 400 },
+      { numRuns: 600 },
     );
   });
 });
