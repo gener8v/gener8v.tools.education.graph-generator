@@ -11,6 +11,7 @@ export default defineConfig({
     "tool/index": "src/tool/index.ts",
     "export/index": "src/export/index.ts",
     circle: "src/entries/circle.ts",
+    pictograph: "src/entries/pictograph.ts",
   },
   format: ["esm"],
   // tsup sets the `baseUrl` option for declaration builds, which TypeScript 6 reports as deprecated.

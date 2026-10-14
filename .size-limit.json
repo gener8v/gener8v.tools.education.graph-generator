@@ -28,5 +28,11 @@
     "path": "dist/circle.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./pictograph",
+    "path": "dist/pictograph.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

@@ -52,6 +52,10 @@
       "types": "./dist/circle.d.ts",
       "default": "./dist/circle.js"
     },
+    "./pictograph": {
+      "types": "./dist/pictograph.d.ts",
+      "default": "./dist/pictograph.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./vocabulary.json": "./dist/vocabulary.json",
     "./package.json": "./package.json"

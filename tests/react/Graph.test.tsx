@@ -9,6 +9,7 @@ import { Graph } from "../../src/react/Graph";
 import { PLACEHOLDER_ISSUE_LIMIT } from "../../src/react/Placeholder";
 import { SceneSvg } from "../../src/react/SceneSvg";
 import { CircleGraph as PackageCircleGraph } from "../../src/react/graphs/CircleGraph";
+import { Pictograph as PackagePictograph } from "../../src/react/graphs/PictographGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -322,6 +323,37 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       expect(markup).toContain("<circle");
       expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(12);
     }
+  });
+
+  it("draws a valid pictograph with half a megabyte of label and title text in <Graph> and <Pictograph>, never throwing (GSS TICKET-002 security review SEC-001)", () => {
+    const description = {
+      type: "pictograph",
+      title: "word ".repeat(200_000),
+      valueUnitLabel: "@".repeat(500_000),
+      categories: [{ name: "Cats" }, { name: "Dogs" }],
+      values: [7, 4],
+      unitImage: "apple",
+      unitValue: 2,
+    };
+    for (const Component of [Graph, PackagePictograph]) {
+      const received: Issue[][] = [];
+      const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toEqual([]);
+      // Title at most 3 lines, key at most 2, two category names.
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 2 + 2);
+    }
+  });
+
+  it("draws category names whole however long, so their markup grows with them (DGP TICKET-001 SEC-002, pending the Product Owner's length bound)", () => {
+    // Recorded, not bounded: a name is never cut (DGP Scale and Layout).
+    const name = "word ".repeat(10_000).trim();
+    const markup = html(
+      <PackagePictograph description={{ type: "pictograph", categories: [{ name }], values: [3], unitImage: "star", unitValue: 1 }} />,
+    );
+    const lines = markup.match(/<text /g)!.length;
+    expect(markup).toContain("<svg");
+    expect(lines).toBeGreaterThan(1_000);
+    expect(markup.length).toBeLessThan(2_000_000);
   });
 
   it("renders <Graph> and a per-type component for any JSON value", () => {

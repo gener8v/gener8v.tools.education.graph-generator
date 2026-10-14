@@ -1,0 +1,7 @@
+{
+  "type": "pictograph",
+  "categories": [{ "name": "Cats" }, { "name": "Dogs" }],
+  "values": [6, 4],
+  "unitImage": "star",
+  "unitValue": 0
+}

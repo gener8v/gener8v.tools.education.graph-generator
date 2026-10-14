@@ -1,0 +1,10 @@
+{
+  "type": "pictograph",
+  "title": "Favourite fruit in our class",
+  "categories": [{ "name": "Apples" }, { "name": "Bananas" }, { "name": "Cherries" }, { "name": "Grapes" }],
+  "values": [8, 5, 0, 3],
+  "unitImage": "apple",
+  "unitValue": 2,
+  "valueUnitLabel": "students",
+  "orientation": "horizontal"
+}

@@ -84,7 +84,7 @@ function count(walk: Walk, values: number): void {
 }
 
 /** Check one value against its spec. */
-// @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043
+// @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043, DGP-REQ-031
 function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, presentation: boolean): Outcome {
   const path = pointer(...place.segments);
   const fail = (issue: Issue): Outcome => {
@@ -124,10 +124,22 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
       if (hex === undefined) return fail(createIssue("unknown_color", path, { term: place.term, got: value, allowed: COLOR_NAMES }));
       return pass(hex);
     }
-    case "enum":
-      return typeof value === "string" && (spec.values as readonly string[]).includes(value)
-        ? pass(value)
-        : wrongKind(`one of: ${spec.values.join(", ")}`);
+    case "enum": {
+      if (typeof value === "string" && (spec.values as readonly string[]).includes(value)) return pass(value);
+      if (typeof value === "string" && spec.unknownCode === "unknown_image") {
+        // A published set: name every value, and the closest one for a near miss (DGP-REQ-031).
+        const suggestion = closestTerm(value, spec.values);
+        return fail(
+          createIssue("unknown_image", path, {
+            term: place.term,
+            got: value,
+            allowed: spec.values,
+            ...(suggestion === undefined ? {} : { suggestion }),
+          }),
+        );
+      }
+      return wrongKind(`one of: ${spec.values.join(", ")}`);
+    }
     case "object": {
       const contents = isPlainObject(value) ? readObject(value) : undefined;
       if (contents === undefined) return wrongKind("an object");

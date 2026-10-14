@@ -3,6 +3,10 @@
     1
   ],
   "terms": {
+    "categories": {
+      "definition": "The categories, drawn in the order given: at least 1 and at most 100, each with a different name.",
+      "kind": "array"
+    },
     "circumference": {
       "definition": "The distance around the circle, 2π times the radius, from 0.006 to 6,283,186.",
       "kind": "number"
@@ -34,6 +38,14 @@
     "lineColor": {
       "definition": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
       "kind": "color"
+    },
+    "name": {
+      "definition": "The category's name, as plain text. A long name wraps onto more lines; it is never cut short.",
+      "kind": "string"
+    },
+    "orientation": {
+      "definition": "Whether the pictures run in rows (horizontal, the default) or columns (vertical).",
+      "kind": "enum"
     },
     "radius": {
       "definition": "The distance from the center to the circle, from 0.001 to 1,000,000.",
@@ -67,12 +79,134 @@
       "definition": "The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative.",
       "kind": "string"
     },
+    "unitImage": {
+      "definition": "The picture every unit is drawn with, by name from the published image set.",
+      "kind": "enum"
+    },
+    "unitValue": {
+      "definition": "How many units one picture stands for: greater than 0, at most 1000000000.",
+      "kind": "number"
+    },
+    "valueUnitLabel": {
+      "definition": "What one unit of value counts, as plain text, such as \"students\"; the key reads \"each ★ = 2 students\". Left out or empty, the key says \"units\".",
+      "kind": "string"
+    },
+    "values": {
+      "definition": "One value per category, in the same order: how many units the category has.",
+      "kind": "array"
+    },
     "version": {
       "definition": "The schema version the description is written for. Leave it out for the current version, 1.",
       "kind": "integer"
     }
   },
   "graphTypes": {
+    "pictograph": {
+      "title": "Pictograph",
+      "description": "A pictograph: one row of pictures per category (or one column, upright), each picture standing for a number of units, with a key such as \"each apple = 2 students\". A value that is not a whole number of pictures ends in one cropped picture. At most 100 categories and 1000 pictures in all.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "pictograph"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false
+        },
+        "valueUnitLabel": {
+          "kind": "string",
+          "required": false
+        },
+        "categories": {
+          "kind": "array",
+          "required": true,
+          "maxItems": 100,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "name": {
+                "kind": "string",
+                "required": true
+              }
+            }
+          }
+        },
+        "values": {
+          "kind": "array",
+          "required": true,
+          "maxItems": 100,
+          "items": {
+            "kind": "number",
+            "range": {
+              "min": 0,
+              "max": 1000000000
+            }
+          }
+        },
+        "unitImage": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "apple",
+            "ball",
+            "book",
+            "fish",
+            "flower",
+            "person",
+            "star",
+            "tree"
+          ],
+          "valueDescriptions": {
+            "apple": "A red apple with a short brown stem and a green leaf.",
+            "ball": "A round blue ball with two curved white stripes.",
+            "book": "A closed purple book seen from the front, with its pages showing at the side.",
+            "fish": "An orange fish facing left, with a tail, a top fin and one dark eye.",
+            "flower": "A flower with five pink petals, a yellow center and a green stem with one leaf.",
+            "person": "A simple figure of a person: a round head above a rounded body, in dark grey.",
+            "star": "A five-pointed golden star.",
+            "tree": "A tree with a brown trunk and a round green crown."
+          }
+        },
+        "unitValue": {
+          "kind": "number",
+          "required": true,
+          "range": {
+            "min": 0,
+            "max": 1000000000,
+            "exclusiveMin": true
+          }
+        },
+        "orientation": {
+          "kind": "enum",
+          "required": false,
+          "values": [
+            "horizontal",
+            "vertical"
+          ],
+          "valueDescriptions": {
+            "horizontal": "One row of pictures per category, names on the left (the default).",
+            "vertical": "One upright column of pictures per category, names below."
+          }
+        }
+      },
+      "derivations": [],
+      "checks": [
+        "categories are given, each with a different name",
+        "one value per category",
+        "the pictures drawn stay within the limit"
+      ]
+    },
     "circle": {
       "title": "Circle",
       "description": "A circle drawn to scale from its radius, diameter or circumference (give one; any other given must agree within 1%). The radius, the diameter and the center can be drawn, and each measurement labeled with its value and unit or with custom text.",

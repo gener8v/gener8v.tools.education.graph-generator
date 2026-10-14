@@ -90,6 +90,12 @@ export interface EnumValue extends ValueBase {
   values: Terms;
   /** A plain-English description of some or all values, published in the vocabulary (such as each pictograph image). */
   valueDescriptions?: Readonly<Record<string, string>>;
+  /**
+   * The issue code for a text value outside `values`, when the list is a published set with its own
+   * code: `unknown_image` lists every allowed value and suggests the closest for a near miss, such
+   * as "Apple" (DGP-REQ-031). Without it, a value outside the list is `wrong_kind`.
+   */
+  unknownCode?: "unknown_image";
 }
 
 export interface ObjectValue extends ValueBase {

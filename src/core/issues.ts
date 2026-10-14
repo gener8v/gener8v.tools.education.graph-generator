@@ -140,7 +140,8 @@ export interface IssueParamsByCode {
   scale_excludes_value: { term: Term; got: unknown; range: Range };
   tick_interval_not_dividing: { term: Term; got: unknown };
   series_length_mismatch: { term: Term; valueCount: number; categoryCount: number };
-  unknown_image: { term: Term; got: unknown; allowed: Terms };
+  /** `suggestion` is the published name closest to `got`, for a near miss such as "Apple". */
+  unknown_image: { term: Term; got: unknown; allowed: Terms; suggestion?: string };
   unknown_color: { term: Term; got: unknown; allowed: Terms };
   /**
    * `detail` is the JSON parser's message, at most a short excerpt of the input. Never a stack
@@ -156,7 +157,7 @@ export interface IssueParamsByCode {
    * `limit` is the documented maximum; `count` the number found, when known (a description is
    * not counted past its limit). `unit` names what is counted.
    */
-  too_large: { term: Term; limit: number; unit: "items" | "values"; count?: number };
+  too_large: { term: Term; limit: number; unit: "items" | "values" | "images"; count?: number };
   /**
    * `got` is the repeated name; `conflicts` holds the JSON Pointer of the earlier entry with that
    * name, for the issue, and `conflictTerms` names it for the message (DGP TICKET-001 DEL-003).
@@ -333,17 +334,25 @@ const templates: Templates = {
   series_length_mismatch: (p) =>
     `${describeTerm(p.term)} has ${count(p.valueCount, "value", "values")} but there ${p.categoryCount === 1 ? "is" : "are"} ${count(p.categoryCount, "category", "categories")}; give one value per category.`,
   unknown_image: (p) =>
-    `${describeTerm(p.term)} must be one of the published images: ${list(p.allowed)}; got ${describeValue(p.got)}.`,
+    p.suggestion === undefined
+      ? `${describeTerm(p.term)} must be one of the published images: ${list(p.allowed)}; got ${describeValue(p.got)}.`
+      : `${describeTerm(p.term)} must be one of the published images: ${list(p.allowed)}; got ${describeValue(p.got)}. Did you mean ${describeTerm(p.suggestion)}?`,
   unknown_color: (p) =>
     `${describeTerm(p.term)} must be a color name (${list(p.allowed)}) or a hex code such as #0072b2; got ${describeValue(p.got)}.`,
   invalid_json: (p) =>
     `The tool input is not valid JSON${p.detail === undefined ? "" : ` (${describeDetail(p.detail)})`}; send a JSON object.`,
   internal_error: () =>
     "The description could not be checked because of a defect in the package; please report it. The description itself may be valid.",
-  too_large: (p) =>
-    p.count === undefined
+  too_large: (p) => {
+    // Pictures are drawn from values, not listed: the fix is a larger unit value or smaller values.
+    if (p.unit === "images") {
+      const drawn = p.count === undefined ? `more than ${p.limit}` : `${p.count}`;
+      return `${describeTerm(p.term)} would draw ${drawn} pictures, more than the limit of ${p.limit}; use a larger unitValue or smaller values.`;
+    }
+    return p.count === undefined
       ? `${describeTerm(p.term)} has more than ${p.limit} ${p.unit}; use fewer.`
-      : `${describeTerm(p.term)} has ${p.count} ${p.unit}, more than the limit of ${p.limit}; use fewer.`,
+      : `${describeTerm(p.term)} has ${p.count} ${p.unit}, more than the limit of ${p.limit}; use fewer.`;
+  },
   duplicate_name: (p) =>
     `${describeTerm(p.term)} (${describeValue(p.got)}) repeats ${list(p.conflictTerms)}; give each one a different name.`,
 };

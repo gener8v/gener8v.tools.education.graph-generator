@@ -161,3 +161,18 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-034 | `src/images/types.ts`:ALLOWED_IMAGE_LICENSES, ImageAsset; `src/images/manifest.ts`:imageAssets, imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |
 | DGP-REQ-035 | `src/images/index.ts`:getImageNames, imageDescriptions (exposed here; published in the schema and vocabulary by DGP TICKET-005's pictograph definition) |
 | DGP-NFR-005 | `src/images/manifest.ts`:imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |
+| DGP-REQ-004 | `src/core/definitions/pictograph.ts`:pictograph, describe (pictograph) |
+| DGP-REQ-023 | `src/core/definitions/pictograph.ts`:pictograph; `src/layout/pictograph.ts`:pictographLayout; `src/react/graphs/PictographGraph.tsx`:Pictograph |
+| DGP-REQ-024 | `src/core/definitions/pictograph.ts`:pictograph, unitImage |
+| DGP-REQ-025 | `src/core/definitions/pictograph.ts`:pictograph |
+| DGP-REQ-026 | `src/core/definitions/pictograph.ts`:imageCount, pictograph; `src/layout/pictograph.ts`:pictographLayout |
+| DGP-REQ-027 | `src/core/definitions/pictograph.ts`:describe; `src/layout/pictograph.ts`:keyText, pictographLayout |
+| DGP-REQ-028 | `src/core/definitions/pictograph.ts`:imageCount; `src/layout/pictograph.ts`:partialPicture, pictographLayout |
+| DGP-REQ-029 | `src/core/definitions/pictograph.ts`:pictograph |
+| DGP-REQ-030 | `src/core/definitions/pictograph.ts`:pictograph |
+| DGP-REQ-031 | `src/core/definitions/pictograph.ts`:unitImage; `src/core/validate/structure.ts`:checkValue |
+| DGP-REQ-032 | `src/core/definitions/pictograph.ts`:pictograph; `src/layout/pictograph.ts`:pictographLayout |
+| DGP-REQ-035 | `src/core/definitions/pictograph.ts`:unitImage (published in the schema and vocabulary) |
+| DGP-REQ-037 | `src/layout/pictograph.ts`:pictographLayout |
+| DGP-NFR-002 | `src/layout/pictograph.ts`:partialPicture; `tests/layout/pictograph.test.ts` (property test) |
+

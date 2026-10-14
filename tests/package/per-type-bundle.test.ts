@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { type Plugin, build } from "esbuild";
 import { describe, expect, it } from "vitest";
+import { images } from "../../src/images/index";
 
 // Importing one graph type must not bring in the others (AD-001, CPSE-REQ-004, prd/TC-007;
 // code review CR-002 on CPSE TICKET-003). Until a second type lands, this bundles with a second
@@ -102,6 +103,47 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       expect(code).toContain("A circle");
       expect(code).not.toContain(OTHER);
       expect(code).not.toContain(OTHER_DEFINITION);
+    }
+  });
+
+  it("leaves the image drawings out of a consumer's bundle of the built ./circle entry (DGP TICKET-004 code review CR-004)", async () => {
+    // The built package splits shared code into chunks, and the circle's shared chunk holds the
+    // drawings too; a consumer's bundler then drops what the circle never reads. This bundles the
+    // built entry as a consumer would (the global setup builds it), as \`pnpm size\` measures it.
+    const result = await build({
+      stdin: { contents: `export { CircleGraph } from "./dist/circle.js";`, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "neutral",
+      treeShaking: true,
+      minify: true,
+      external: ["react", "react-dom", "react/jsx-runtime"],
+      logLevel: "silent",
+    });
+    const code = result.outputFiles[0]!.text;
+    expect(code).toContain("A circle");
+    expect(code).not.toContain("A red apple");
+    expect(code).not.toContain("A pictograph");
+  });
+
+  it("leaves the pictograph and its image drawings out of the circle's bundle (DGP TICKET-004 code review CR-004)", async () => {
+    // The pictograph definition is built by a side-effect-free factory, so reaching the
+    // definitions module does not keep it or the drawings it names.
+    const code = await bundle(`export { CircleGraph } from "./src/entries/circle";`);
+    expect(code).not.toContain("A pictograph");
+    // The apple's description and path data: text only the drawing carries.
+    expect(code).not.toContain("A red apple");
+    expect(code).not.toContain("M 50 30 C 30 18");
+  });
+
+  it("leaves the circle out of the pictograph's entry and component, and keeps every image", async () => {
+    for (const entry of [`export { Pictograph } from "./src/entries/pictograph";`, `export { Pictograph } from "./src/react/graphs/PictographGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A pictograph");
+      expect(code).not.toContain("A circle");
+      expect(code).not.toContain(OTHER);
+      for (const image of Object.values(images)) expect(code, image.name).toContain(image.description);
     }
   });
 
