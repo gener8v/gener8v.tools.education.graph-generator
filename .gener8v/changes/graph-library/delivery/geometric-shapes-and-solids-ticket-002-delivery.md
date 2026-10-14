@@ -363,3 +363,9 @@ Mutation checks (each broken on purpose, then restored): disabling the domain ch
 | `pnpm size` | `.` 14.73 kB, `./core` 11.83 kB, `./circle` 14.68 kB |
 | `pnpm publint`, `pnpm attw`, `pnpm audit` | pass; no known vulnerabilities |
 | `python3 …/gener8v-state.py lint` | 0 errors, 0 warnings |
+
+### Trivial test fix — flaky timing bound (2026-10-14, approved by the user during the DGP TICKET-004 code review)
+
+- `tests/layout/circle.test.ts` › "keeps the Scene small…for caller-sized text (security review SEC-001, SEC-002)": the 2,000 ms wall-clock assertion is removed. Under machine load (load average about 8) it failed most full-suite runs at 2.0–4.0 s while passing alone. The test keeps its bounds on text-node and total-node counts, which are what prove the SEC-001/002 fix: a 1 MB title and a 500 KB unit yield at most 15 text nodes.
+- **Re-verification:** `pnpm test` — see the DGP TICKET-004 code review amendment for the full run.
+

@@ -247,8 +247,9 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
     expect(scene.textAlternative).toContain("around the circle ".repeat(50).trim());
   });
 
-  it("keeps the Scene small and the run short for caller-sized text (security review SEC-001, SEC-002)", () => {
-    const start = performance.now();
+  // The bound is on the work (node counts), not on wall-clock time, which machine load made flaky
+  // (DGP TICKET-004 code review resolution, 2026-10-14).
+  it("keeps the Scene small for caller-sized text (security review SEC-001, SEC-002)", () => {
     const scene = sceneOf({
       type: "circle",
       radius: 5,
@@ -261,7 +262,6 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
     // At most the title's and each label's capped lines, plus the outline and two segments.
     expect(texts(scene).length).toBeLessThanOrEqual(3 + 3 * LABEL_MAX_LINES);
     expect(scene.nodes.length).toBeLessThanOrEqual(3 + 3 * LABEL_MAX_LINES + 3);
-    expect(performance.now() - start).toBeLessThan(2_000);
   });
 
   it("never overlaps a label with another label, a segment or the outline (GSS-NFR-003, this figure)", () => {
