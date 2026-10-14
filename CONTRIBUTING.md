@@ -52,8 +52,10 @@ pnpm check:changesets # changesets carry a changelog category
 
 ## Adding a pictograph image
 
-The pictograph's images are drawn for this package, never taken from icon packs or the web, and
-must not show a trademarked character, logo or brand.
+Each pictograph image is either drawn for this package or is public-domain (CC0) material whose
+source you can name. Never take one from an icon pack or the web without a license that allows it.
+Whatever its license, no image may show a trademarked character, logo or brand: a public-domain
+dedication does not clear a trademark.
 
 1. Draw it in its own file, `src/images/<name>.ts`, where `<name>` is lower-case kebab case
    (`paper-plane`). The name becomes part of the public description format once released, so
@@ -63,7 +65,10 @@ must not show a trademarked character, logo or brand.
    - draw in the 100 × 100 space, with a handful of shapes (at most 8) built with `shape()`;
    - use presentation attributes only, with no text;
    - the license is `MIT` for your own work, or `CC0-1.0` for public-domain material;
-   - the provenance says where the drawing came from.
+   - the provenance says where the drawing came from: "drawn in-house…", or for CC0 material, its
+     source and author;
+   - import only `./draw` and `./types`, so the whole drawing is in the file (the linter enforces
+     this).
 3. Import it in `src/images/manifest.ts` and add it to `imageAssets`. The set holds at most 20
    images.
 4. Run `pnpm test -u` once to record the new drawing in the snapshot, review the diff, then

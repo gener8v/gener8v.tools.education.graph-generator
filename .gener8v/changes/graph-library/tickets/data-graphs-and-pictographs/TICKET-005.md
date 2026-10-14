@@ -99,6 +99,10 @@
     - Measure `./core`, `./tool`, `.` and the pictograph entry with `pnpm size` before and after.
     - Decide, and record as a DEL, whether core may import the layout kit's `fmt`. If not, move `fmt` (and `Rounded`) to core and have the kit re-export them.
 - Correction from graph-library/data-graphs-and-pictographs-ticket-004-quality-review/QR-006: the image tables are now marked pure, so importing only a type or a constant from `src/images/index.ts` does not bundle the drawings. Using `images`, `imageManifest`, `getImageNames()` or `imageDescriptions()` still brings in all eight. `getImageNames()` returns a non-empty tuple, so `values: getImageNames()` compiles as an enum's `Terms` without a cast (QR-004).
+- Carried from graph-library/data-graphs-and-pictographs-ticket-004-security-review/SEC-003 (unbounded units; this replaces the "do not invent a cap" guidance above): one unit costs up to 9 Scene nodes and about 570 bytes of markup, so a valid 106-byte description asking for 10^9 units would exhaust a server's memory.
+  - Count the units arithmetically in a domain check: Σ ⌈value ÷ unitValue⌉, compared before anything is enumerated. Report `too_large` above a limit.
+  - The limit is the Product Owner's decision under DGP OQ-004. Until it is made, use a provisional curriculum-sized limit, record it as a DEL and in the definition's description text, and flag it for sign-off.
+  - Add a test that a description over the limit is reported, not drawn.
 
 **Depends On:** TICKET-001, TICKET-004
 **Blocks:** TICKET-006

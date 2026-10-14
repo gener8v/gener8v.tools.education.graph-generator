@@ -24,6 +24,9 @@ const isRounded = (n: number) => Number.isFinite(n) && Math.round(n * 100) / 100
 function stringProblems(value: string): string[] {
   const problems: string[] = [];
   if (REFERENCE.test(value)) problems.push(`references another resource (${JSON.stringify(value)}); AD-008`);
+  // A CSS escape (`\75 rl(#g)`) spells `url(` in a way the pattern above cannot see, and no Scene
+  // value needs one (DGP TICKET-004 security review SEC-001).
+  if (value.includes("\\")) problems.push(`has a backslash (${JSON.stringify(value)}), which could hide a reference; AD-008`);
   for (const token of value.match(NUMBER_TOKEN) ?? []) {
     if (/e/i.test(token)) problems.push(`has a number in exponent form (${token})`);
     else if ((token.split(".")[1] ?? "").length > 2) problems.push(`has a number with more than 2 decimals (${token}); use fmt()`);
@@ -55,7 +58,7 @@ function checkNode(node: SceneNode, path: string, problems: string[]): void {
     } else if (typeof value !== "string") {
       problems.push(`${where}: value is neither a string nor a number`);
     } else {
-      if (REFERENCE.test(value) || !NON_NUMERIC_STRINGS.has(name)) {
+      if (REFERENCE.test(value) || value.includes("\\") || !NON_NUMERIC_STRINGS.has(name)) {
         for (const problem of stringProblems(value)) problems.push(`${where}: ${problem}`);
       }
     }

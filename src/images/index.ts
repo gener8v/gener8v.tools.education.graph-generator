@@ -1,7 +1,7 @@
 import { imageAssets } from "./manifest";
 import type { ImageAsset } from "./types";
 
-export { ALLOWED_IMAGE_LICENSES, IMAGE_VIEW_BOX, type ImageAsset, type ImageLicense, type ImageManifestEntry } from "./types";
+export { ALLOWED_IMAGE_LICENSES, IMAGE_LICENSE_NOTICES, IMAGE_VIEW_BOX, type ImageAsset, type ImageLicense, type ImageManifestEntry } from "./types";
 export { imageManifest } from "./manifest";
 
 /** The name of an image in the published set, as a description gives it in `unitImage`. */

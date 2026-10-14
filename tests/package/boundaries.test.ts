@@ -163,3 +163,21 @@ describe("graph-type definitions import helpers without a cycle (GSV TICKET-001 
     );
   });
 });
+
+describe("image modules import only their drawing helpers (DGP TICKET-004 security review SEC-002)", () => {
+  it("allows ./draw and ./types", async () => {
+    const source = `import { shape } from "./draw";\nimport { defineImage } from "./types";\nexport const x = [shape, defineImage];\n`;
+    expect(await ruleIds(source, "src/images/kite.ts")).toEqual([]);
+  });
+
+  it.each(["../layout/kit/format", "./apple", "some-icon-pack", "../../tests/fixtures/images/stray"])("rejects importing %s into an image", async (from) => {
+    const ids = await ruleIds(`import * as other from "${from}";\nexport const x = other;\n`, "src/images/kite.ts");
+    expect(ids).toContain("no-restricted-imports");
+  });
+
+  it("still lets the helpers, the register and the index import what they need", async () => {
+    expect(await ruleIds(`import { fmt } from "../layout/kit/format";\nexport const x = fmt;\n`, "src/images/draw.ts")).toEqual([]);
+    expect(await ruleIds(`import { apple } from "./apple";\nexport const x = apple;\n`, "src/images/manifest.ts")).toEqual([]);
+  });
+});
+

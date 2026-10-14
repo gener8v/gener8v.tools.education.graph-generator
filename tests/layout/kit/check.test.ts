@@ -25,6 +25,18 @@ describe("checkScene (AD-007, AD-008; code review CR-001, CR-002, CR-003; qualit
     ).toEqual([]);
   });
 
+  it("reports a backslash in any string value, which could spell an escaped reference (DGP TICKET-004 security review SEC-001)", () => {
+    const problems = checkScene(
+      scene(
+        { kind: "path", attrs: [["fill", "\\75 rl(#g)"]] },
+        { kind: "rect", attrs: [["stroke", "#000\\"]] },
+        { kind: "text", attrs: [["font-family", "Arial\\"]], text: "a\\b" },
+      ),
+    );
+    expect(problems).toHaveLength(3);
+    for (const problem of problems) expect(problem).toMatch(/has a backslash/);
+  });
+
   it("reports numbers written into strings without fmt()", () => {
     const n = 1 / 3;
     const problems = checkScene(

@@ -50,6 +50,10 @@
   - Print every Scene string, both text content and attribute values, as a JavaScript string literal inside an expression container (`<title>{"…"}</title>`, `aria-label={"…"}`). Build the literal with `JSON.stringify`, then escape U+2028, U+2029 and the invisible characters as `\u` escapes. Never interpolate caller text into JSX text or a quoted JSX attribute.
   - In the header's description JSON, write `*/` as `*\/` and apply the same `\u` escaping, or hold the description in a string constant instead of a comment.
   - Test with every string in `tests/fixtures/plain-text.ts`: the exported module compiles, runs nothing at load or render, and renders each string literally.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-004-security-review/SEC-004 (license notices for embedded images): the pictograph's drawings are MIT-licensed, and MIT requires its copyright and permission notice in every copy.
+  - An exported file that inlines a drawing must print, in its header comment, the notice for that image's license: `IMAGE_LICENSE_NOTICES[image.license]` (`src/images/types.ts`). For MIT that is the package's `LICENSE` text; a test keeps the two identical. Name each embedded image and its author too.
+  - Naming the license alone does not satisfy MIT (prd/CC-001).
+  - Add a test that an exported pictograph contains the full notice.
 
 **Depends On:** TICKET-002, TICKET-003
 **Blocks:** TICKET-006

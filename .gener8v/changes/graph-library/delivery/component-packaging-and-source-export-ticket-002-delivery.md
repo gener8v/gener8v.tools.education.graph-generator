@@ -246,3 +246,9 @@ Re-verification after the amendments (Node.js v24.1.0, React 19.3.0, pnpm 10.28.
 | Mutation: root `width` depends on `typeof window` → `pnpm vitest run tests/react` | 1 (expected) | parity test failed cleanly; source restored |
 | React 18.3.1 (scratch copy, CI's swap command) → `pnpm typecheck`; `pnpm vitest run tests/react tests/layout` | 0; 0 | 88 passed |
 | `gener8v-state.py lint` | 0 | 0 errors, 0 warnings |
+
+### Hardening from graph-library/data-graphs-and-pictographs-ticket-004-security-review/SEC-001 (2026-10-14, approved by the user)
+
+- `src/layout/kit/check.ts` — `checkScene` reports a backslash in any string attribute value. A CSS escape such as `\75 rl(#g)` spells `url(` in a form the `REFERENCE` pattern cannot see, and no Scene value needs one. Test: `tests/layout/kit/check.test.ts` › "reports a backslash in any string value…".
+- **Re-verification:** `pnpm test` (890 tests) exits 0 on three runs; `lint` and `typecheck` exit 0.
+

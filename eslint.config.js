@@ -10,6 +10,9 @@ const BOUNDARY_MESSAGE =
 const CYCLE_MESSAGE =
   "Graph-type definitions import helpers from src/core/format.ts, never src/core/describe.ts, which imports the registry (import cycle; GSV TICKET-001 quality review QR-001).";
 
+const IMAGE_MESSAGE =
+  "An image module draws with ./draw and ./types only, so every shape in it is visible in the file and covered by its stated license (DGP TICKET-004 security review SEC-002).";
+
 const RENDER_MESSAGE =
   "Rendering code must give the same output on the server and in the browser, so it may not read browser globals (CPSE-REQ-011, prd/TC-001).";
 
@@ -150,6 +153,23 @@ export default defineConfig(
             ...boundaryImportOptions.patterns,
             { group: ["**/describe", "**/describe.*"], message: CYCLE_MESSAGE },
           ],
+        },
+      ],
+    },
+  },
+  {
+    // Each image module may import only its drawing helpers and types: a drawing pulled in from
+    // another file or a package would ship under a license the module never stated. Repeats the
+    // boundary import options, which this block's rule options replace.
+    // @spec DGP-REQ-034
+    files: [`src/images/**/*.${SCRIPT_EXTENSIONS}`],
+    ignores: ["src/images/draw.ts", "src/images/types.ts", "src/images/manifest.ts", "src/images/index.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          ...boundaryImportOptions,
+          patterns: [...boundaryImportOptions.patterns, { regex: "^(?!\\./(?:draw|types)$)", message: IMAGE_MESSAGE }],
         },
       ],
     },

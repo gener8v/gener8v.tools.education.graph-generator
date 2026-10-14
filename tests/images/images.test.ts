@@ -1,9 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import type { Registry } from "../../src/core/definitions/index";
 import { type GraphTypeDefinition, defineProperties } from "../../src/core/definitions/types";
 import { buildSchema, buildVocabulary } from "../../src/core/schema";
 import {
   ALLOWED_IMAGE_LICENSES,
+  IMAGE_LICENSE_NOTICES,
   IMAGE_VIEW_BOX,
   type ImageName,
   getImageNames,
@@ -68,6 +70,12 @@ describe("the published image set (DGP-REQ-033)", () => {
 });
 
 describe("image licenses and provenance (DGP-REQ-034, prd/CC-001, prd/CC-004)", () => {
+  it("carry the notice a copy of each license needs, the MIT one identical to the package LICENSE (security review SEC-004)", () => {
+    const license = readFileSync(new URL("../../LICENSE", import.meta.url), "utf8").trim();
+    expect(IMAGE_LICENSE_NOTICES.MIT).toBe(license);
+    expect(Object.keys(IMAGE_LICENSE_NOTICES).sort()).toEqual([...ALLOWED_IMAGE_LICENSES].sort());
+  });
+
   it("are drawn in-house and released under the package license", () => {
     for (const image of all) {
       expect(ALLOWED_IMAGE_LICENSES, image.name).toContain(image.license);
@@ -94,6 +102,28 @@ describe("image drawings (AD-008, AD-011, AD-012, prd/CC-003)", () => {
         for (const [name, value] of node.attrs) {
           expect(name, image.name).not.toMatch(/^(id|href|xlink:href|class|style)$/);
           expect(String(value), image.name).not.toMatch(/url\(|data:|https?:|\/\//i);
+        }
+      }
+    }
+  });
+
+  it("write every attribute value in an allowed form only (security review SEC-001)", () => {
+    // An allowlist, not a blocklist: an escaped reference such as "\\75 rl(#g)" spells url( in a
+    // form a pattern for "url(" cannot see.
+    const allowed: Record<string, (value: unknown) => boolean> = {
+      fill: (v) => typeof v === "string" && /^(#[0-9a-f]{6}|none)$/.test(v),
+      stroke: (v) => typeof v === "string" && /^#[0-9a-f]{6}$/.test(v),
+      "stroke-linecap": (v) => v === "round" || v === "butt" || v === "square",
+      "stroke-linejoin": (v) => v === "round" || v === "miter" || v === "bevel",
+      d: (v) => typeof v === "string" && /^[MLHVCSQTZ0-9. -]+$/.test(v),
+      points: (v) => typeof v === "string" && /^[0-9.,\s-]+$/.test(v),
+    };
+    const numeric = new Set(["cx", "cy", "r", "rx", "ry", "x", "y", "width", "height", "stroke-width"]);
+    for (const image of all) {
+      for (const node of nodesOf(image.nodes)) {
+        for (const [name, value] of node.attrs) {
+          const ok = numeric.has(name) ? typeof value === "number" : (allowed[name]?.(value) ?? false);
+          expect(ok, `${image.name} ${node.kind} ${name}=${String(value)}`).toBe(true);
         }
       }
     }

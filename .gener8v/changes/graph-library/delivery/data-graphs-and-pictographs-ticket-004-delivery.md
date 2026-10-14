@@ -208,3 +208,11 @@ Decisions taken with the plan: the first set is eight images — apple, ball, bo
 - **DGP TICKET-005** — Known Hazard correction appended: what bundles the drawings, and that `getImageNames()` needs no cast.
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (881 tests) exits 0 on three runs. The drawing snapshot is unchanged by the refactor.
 
+### Security review — `graph-library/data-graphs-and-pictographs-ticket-004-security-review` (2026-10-14, Approved, 0 accepted risks)
+
+- **SEC-001** — `tests/images/images.test.ts` checks every image attribute value against an allowlist. `src/layout/kit/check.ts` (`checkScene`) rejects a backslash in any string value, with a test in `tests/layout/kit/check.test.ts`; also recorded under CPSE TICKET-002's amendments.
+- **SEC-002** — a new `eslint.config.js` block lets an image module import only `./draw` and `./types`, with tests in `tests/package/boundaries.test.ts`. `CONTRIBUTING.md` now gives one consistent licensing rule.
+- **SEC-004** — `IMAGE_LICENSE_NOTICES` is in `src/images/types.ts` and re-exported from the index. The MIT notice is a folded string literal kept identical to `LICENSE` by a test, so it is dropped from bundles that don't use it. Known Hazard added to CPSE TICKET-005.
+- **SEC-003** — deferred to DGP TICKET-005 (Known Hazard).
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (890 tests) exits 0 on three runs, and the drawing snapshot is unchanged.
+
