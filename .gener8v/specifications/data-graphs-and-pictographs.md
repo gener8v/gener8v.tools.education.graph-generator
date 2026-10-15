@@ -175,9 +175,9 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-037 | `src/layout/pictograph.ts`:pictographLayout |
 | DGP-NFR-002 | `src/layout/pictograph.ts`:partialPicture; `tests/layout/pictograph.test.ts` (property test) |
 | DGP-REQ-010 | `src/core/definitions/line-graph.ts`:lineGraph, series; `src/core/definitions/categories.ts`:seriesValuesPerCategoryCheck; `src/layout/line-graph.ts`:lineGraphLayout; `src/react/graphs/LineGraphGraph.tsx`:LineGraph |
-| DGP-REQ-011 | `src/core/definitions/line-graph.ts`:lineGraph, series; `src/layout/line-graph.ts`:seriesStyleOf, drawLegend |
+| DGP-REQ-011 | `src/core/definitions/line-graph.ts`:lineGraph, series, seriesLabelsCheck; `src/layout/line-graph.ts`:seriesStyleOf, drawLegend |
 | DGP-REQ-012 | `src/layout/line-graph.ts`:seriesLine, lineGraphLayout; `src/layout/kit/markers.ts`:drawMarker |
-| DGP-REQ-013 | `src/layout/line-graph.ts`:drawLegend |
+| DGP-REQ-013 | `src/layout/line-graph.ts`:drawLegend; `src/core/definitions/line-graph.ts`:seriesLabelsCheck |
 | DGP-REQ-014 | `src/layout/line-graph.ts`:seriesStyleOf, drawLegend, lineGraphLayout; `src/layout/kit/markers.ts`:drawMarker |
 | DGP-REQ-015 | `src/core/definitions/line-graph.ts`:lineGraph, series, valueScaleCheck; `src/layout/line-graph.ts`:lineGraphLayout |
 | DGP-REQ-016 | `src/core/definitions/line-graph.ts`:lineGraph; `src/core/definitions/categories.ts`:seriesValuesPerCategoryCheck |

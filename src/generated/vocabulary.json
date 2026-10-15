@@ -249,6 +249,7 @@
       "checks": [
         "categories are given, each with a different name",
         "one value per category in every series",
+        "every series has a different name",
         "the value-scale tick interval is greater than 0",
         "every series value fits the value scale"
       ]

@@ -63,6 +63,7 @@
 - Carried from graph-library/geometric-shapes-and-solids-ticket-002-security-review/SEC-002 and SEC-004 (the text alternative in the success `summary`):
   - The text alternative states caller text in full: the drawing cuts long labels and titles, but the text alternative does not, and a long unit appears once per stated measurement. Cap the text alternative inside `summary` at a fixed length, ending in "…", as the issue list is capped, and test it with half a megabyte of unit text.
   - Quotation marks in a text alternative help a reader tell caller text from the package's sentence, but they are not a boundary: `quoteText` neutralises double-quote lookalikes, and caller text can still say anything inside them. Return the text alternative in its own field of the tool result, not only inside the summary prose.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-002-security-review/SEC-001 (the line graph's text alternative): a line graph states every category name once per series and every value written in full, so its text alternative is the largest of the types so far. At the provisional limits, a 26 KB description gives a 321,158-character text alternative. Apply the `summary` cap to it as well, and include a line graph in the cap's test.
 
 **Depends On:** TICKET-001
 **Blocks:** None

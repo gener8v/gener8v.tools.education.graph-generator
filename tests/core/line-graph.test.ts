@@ -124,6 +124,23 @@ describe("series issues (DGP-REQ-016, DGP Edge Cases)", () => {
     ]);
   });
 
+  it("reports a series label that repeats another series' name, so the legend never shows one name twice (security review SEC-003)", () => {
+    expect(issuesOf(validate(with_({ series: [{ values: [1, 2, 3], lineLabel: "Week 1" }, { values: [1, 2, 3], lineLabel: "Week\u00a0 1" }] })))).toEqual([
+      {
+        code: "duplicate_name",
+        path: "/series/1/lineLabel",
+        message: 'series[1].lineLabel ("Week\u00a0 1") repeats series[0].lineLabel; give each one a different name.',
+        conflicts: ["/series/0/lineLabel"],
+      },
+    ]);
+    // A label that is another, unlabeled series' default name.
+    expect(codesAndPaths(with_({ series: [{ values: [1, 2, 3], lineLabel: "Series 2" }, { values: [1, 2, 3] }] }))).toEqual(["duplicate_name /series/0/lineLabel"]);
+    expect(codesAndPaths(with_({ series: [{ values: [1, 2, 3] }, { values: [1, 2, 3], lineLabel: "Series 1" }] }))).toEqual(["duplicate_name /series/1/lineLabel"]);
+    // A default name no series goes by, or one that differs in case, is fine.
+    expect(validate(with_({ series: [{ values: [1, 2, 3], lineLabel: "Series 2" }, { values: [1, 2, 3], lineLabel: "Other" }] })).valid).toBe(true);
+    expect(validate(with_({ series: [{ values: [1, 2, 3], lineLabel: "series 1" }, { values: [1, 2, 3] }] })).valid).toBe(true);
+  });
+
   it(`allows at most ${SERIES_LIMIT} series, the number of default series styles`, () => {
     const many = (n: number) => Array.from({ length: n }, () => ({ values: [1, 2, 3] }));
     expect(validate(with_({ series: many(SERIES_LIMIT) })).valid).toBe(true);

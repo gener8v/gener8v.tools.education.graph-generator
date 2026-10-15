@@ -298,3 +298,13 @@ Coverage rows were added to `.gener8v/specifications/data-graphs-and-pictographs
   - The luminance helpers moved to `tests/fixtures/luminance.ts`.
 - **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./line-graph` 18.45 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,040 tests) exits 0 on three runs. Nine deliberate breaks of the fixes each fail a test.
 
+### Security review — `graph-library/data-graphs-and-pictographs-ticket-002-security-review` (2026-10-15, Approved)
+
+- **SEC-001:** the text alternative's worst case is measured and pinned, with no change to what is accepted.
+  - **Measured** (for the Product Owner, beside the 6-series and 200-character-name limits it rests on): 6 series, 100 categories, 200-character names and every value -5e-324 give, from a 26 KB description, a 321,158-character text alternative and 760,583 characters of markup (108 text nodes, 26 ms). Each category name is stated once per series, and each value in full.
+  - `tests/react/Graph.test.tsx` pins it.
+  - The shape is added to CPSE TICKET-007's text-alternative cap hazard.
+- **SEC-002:** `checkStructure` reads `elementsHint` only as the definition's own string, so a polluted prototype cannot supply one. A pollution test covers it.
+- **SEC-003:** `seriesLabelsCheck` (`src/core/definitions/line-graph.ts`) reports a series label that repeats an earlier one, compared with `nameKey` (now exported from `categories.ts`), or that is an unlabeled series' default name. It is reported as `duplicate_name` at `/series/<i>/lineLabel`. The vocabulary lists the new check (regenerated). Tests that gave several series one label now give distinct labels.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./line-graph` 18.62 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,043 tests) exits 0 on three runs. Four deliberate breaks of the fixes each fail a test.
+

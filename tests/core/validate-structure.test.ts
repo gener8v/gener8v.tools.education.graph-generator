@@ -106,6 +106,18 @@ describe("unknown and inapplicable properties (GSV-REQ-019, GSV-REQ-020, GSV-REQ
     expect(issuesOf(validateWith({ ...NUMBER_LINE, axis: { min: 0, max: 10, title: "t" } }, hinted))[0]).toMatchObject({ code: "unknown_property", path: "/axis/title" });
   });
 
+  it("ignores an elementsHint inherited through a polluted prototype (DGP TICKET-002 security review SEC-002)", () => {
+    const proto = Object.prototype as Record<string, unknown>;
+    proto["elementsHint"] = "<attacker text>";
+    try {
+      const [issue] = issuesOf(check({ ...NUMBER_LINE, label: "Temperature" }));
+      expect(issue).toMatchObject({ code: "unknown_property", path: "/label" });
+      expect(issue!.message).not.toContain("attacker");
+    } finally {
+      delete proto["elementsHint"];
+    }
+  });
+
   it("reports an option that applies elsewhere in the type as unknown inside an element or nested object, with the terms valid there", () => {
     // title applies to a number line, but not inside its axis (quality review QR-009).
     const [axisTitle] = issuesOf(check({ ...NUMBER_LINE, axis: { min: 0, max: 10, title: "t" } }));

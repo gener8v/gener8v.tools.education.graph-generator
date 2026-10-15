@@ -141,7 +141,7 @@ type CategoryEntry = { readonly name?: unknown } | null;
  * the same. Letter case still differs, and lookalike letters from other scripts (Latin "o",
  * Cyrillic "о") are not caught (security review SEC-005).
  */
-function nameKey(name: string): string {
+export function nameKey(name: string): string {
   return cleanText(name)
     .normalize("NFC")
     .replace(/\p{Default_Ignorable_Code_Point}/gu, "")

@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom";
 import { act, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { createGraphWith } from "../../src/graph";
+import { createGraph, createGraphWith } from "../../src/graph";
 import type { Issue } from "../../src/core/result";
 import { Graph } from "../../src/react/Graph";
 import { PLACEHOLDER_ISSUE_LIMIT } from "../../src/react/Placeholder";
@@ -355,7 +355,8 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       categoryAxisLabel: long,
       valueAxisLabel: "@".repeat(500_000),
       categories: [{ name: "Mon" }, { name: "Tue" }],
-      series: Array.from({ length: 6 }, () => ({ values: [7, -4], lineLabel: long })),
+      // Labels differ at the start, so none repeats another (DGP TICKET-002 SEC-003).
+      series: Array.from({ length: 6 }, (_, s) => ({ values: [7, -4], lineLabel: `${s} ${long}` })),
     };
     for (const Component of [Graph, PackageLineGraph]) {
       const received: Issue[][] = [];
@@ -364,6 +365,23 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       // Title 3 lines, two axis labels of 2, six legend labels of 2, two names, at most 12 tick labels.
       expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 4 + 12 + 2 + 12);
     }
+  });
+
+  it("keeps the line graph's text alternative and markup bounded at its limits: 6 series × 100 categories, 200-character names, values written in full (DGP TICKET-002 SEC-001)", () => {
+    // The worst case the provisional limits allow: every category name repeated once per series and
+    // every value at its longest written form (-5e-324 is 327 characters). Measured 2026-10-15:
+    // a 26 KB description gives a 321,158-character text alternative and 760,583 characters of
+    // markup, 84% of it the aria-label and <title>; 108 text nodes.
+    const categories = Array.from({ length: 100 }, (_, i) => ({ name: `${String(i).padStart(3, "0")}${"x".repeat(197)}` }));
+    const series = Array.from({ length: 6 }, (_, s) => ({ values: categories.map(() => -5e-324), lineLabel: `Series label ${s}` }));
+    const description = { type: "line-graph", categories, series };
+    const result = createGraph(description);
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.scene.textAlternative.length).toBeGreaterThan(300_000);
+    expect(result.scene.textAlternative.length).toBeLessThan(330_000);
+    const markup = html(<PackageLineGraph description={description} />);
+    expect(markup.length).toBeLessThan(800_000);
+    expect(markup.match(/<text /g)!.length).toBeLessThan(150);
   });
 
   it("reports a category name over the limit rather than drawing it, so a megabyte of names never reaches the renderer (DGP TICKET-005 SEC-001)", () => {

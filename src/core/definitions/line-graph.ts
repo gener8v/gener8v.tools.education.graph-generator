@@ -1,8 +1,8 @@
 import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
-import { pointer } from "../issues";
-import type { Provenance } from "../result";
+import { createIssue, pointer } from "../issues";
+import type { Issue, Provenance } from "../result";
 import { type GivenValueScale, checkValueScale, tickIntervalCheck } from "../value-scale";
-import { CATEGORY_LIMIT, VALUES_DESCRIPTION, VALUE_LIMIT, categories, categoriesCheck, seriesValuesPerCategoryCheck } from "./categories";
+import { CATEGORY_LIMIT, VALUES_DESCRIPTION, VALUE_LIMIT, categories, categoriesCheck, nameKey, seriesValuesPerCategoryCheck } from "./categories";
 import { sharedProperties } from "./shared";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "./types";
 
@@ -59,6 +59,48 @@ const valueScaleCheck: DomainCheck<LineGraph> = {
 };
 
 /**
+ * The check that every series is named differently in the legend and the text alternative
+ * (security review SEC-003; DGP TICKET-001 DEL-003): a label that repeats an earlier series' label,
+ * compared as category names are (`nameKey`), or that is an unlabeled series' default name ("Series
+ * 2"), is reported as `duplicate_name` at its own `lineLabel`.
+ */
+// @spec DGP-REQ-011, DGP-REQ-013
+const seriesLabelsCheck: DomainCheck<LineGraph> = {
+  name: "every series has a different name",
+  inputs: ["series/*/lineLabel"],
+  check: (g) => {
+    const issues: Issue[] = [];
+    const firstWithName = new Map<string, number>();
+    // An unlabeled series is known by its default name.
+    g.series.forEach((series, s) => {
+      if (seriesLabelOf(series) === undefined) firstWithName.set(nameKey(seriesName(s)), s);
+    });
+    g.series.forEach((series, s) => {
+      const label = seriesLabelOf(series);
+      if (label === undefined) return;
+      const key = nameKey(label);
+      const first = firstWithName.get(key);
+      if (first === undefined) {
+        firstWithName.set(key, s);
+        return;
+      }
+      const other = g.series[first]!;
+      const conflictTerm = seriesLabelOf(other) === undefined ? `series[${first}]` : `series[${first}].lineLabel`;
+      const conflict = seriesLabelOf(other) === undefined ? pointer("series", first) : pointer("series", first, "lineLabel");
+      issues.push(
+        createIssue("duplicate_name", pointer("series", s, "lineLabel"), {
+          term: `series[${s}].lineLabel`,
+          got: series.lineLabel,
+          conflicts: [conflict],
+          conflictTerms: [conflictTerm],
+        }),
+      );
+    });
+    return issues;
+  },
+};
+
+/**
  * The line graph (DGP-REQ-010..016): one or more series over the categories, each drawn as points
  * joined by straight segments, with a legend when there is more than one series.
  */
@@ -104,7 +146,7 @@ function defineLineGraph(): GraphTypeDefinition<LineGraph> {
       },
     }),
     derivations: [],
-    checks: [categoriesCheck, seriesValuesPerCategoryCheck(), tickIntervalCheck, valueScaleCheck],
+    checks: [categoriesCheck, seriesValuesPerCategoryCheck(), seriesLabelsCheck, tickIntervalCheck, valueScaleCheck],
     // A top-level lineLabel or lineColor belongs on a series (DEL-002; code review CR-003).
     elementsHint: "each series",
     /**

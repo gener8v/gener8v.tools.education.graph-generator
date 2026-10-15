@@ -296,7 +296,11 @@ export function checkStructure(
   version: number | undefined,
   registry: Registry,
 ): StructureResult {
-  const elementsHint = Object.hasOwn(registry, type) ? registry[type]?.elementsHint : undefined;
+  // The definition's own string only: a hint inherited through a polluted prototype is ignored
+  // (security review SEC-002 on DGP TICKET-002).
+  const definition = Object.hasOwn(registry, type) ? registry[type] : undefined;
+  const elementsHint =
+    definition !== undefined && Object.hasOwn(definition, "elementsHint") && typeof definition.elementsHint === "string" ? definition.elementsHint : undefined;
   const walk: Walk = { graphType: type, elementsHint, issues: [], provenance: emptyRecord() as Provenance, failed: new Set(), count: 0 };
   let normalized: Record<string, unknown>;
   try {

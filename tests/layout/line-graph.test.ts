@@ -294,7 +294,8 @@ describe("the drawing's geometry", () => {
     }).map(({ names, series, ...rest }) => ({
       // Names are made distinct, as validation requires.
       categories: names.map((words, i) => ({ name: `${words.join(" ")} ${i + 1}` })),
-      series: series.map(({ values, lineLabel, lineColor }) => ({ values, ...(lineLabel === null ? {} : { lineLabel }), ...(lineColor === null ? {} : { lineColor }) })),
+      // Labels are made distinct, as validation requires (security review SEC-003).
+      series: series.map(({ values, lineLabel, lineColor }, s) => ({ values, ...(lineLabel === null ? {} : { lineLabel: `${lineLabel} ${s + 1}` }), ...(lineColor === null ? {} : { lineColor }) })),
       ...Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== null)),
     })),
   );
@@ -376,7 +377,7 @@ describe("the whole line graph through createGraph", () => {
       title: long,
       categoryAxisLabel: long,
       valueAxisLabel: long,
-      series: Array.from({ length: SERIES_LIMIT }, () => ({ values: [3, 5, 2], lineLabel: long })),
+      series: Array.from({ length: SERIES_LIMIT }, (_, s) => ({ values: [3, 5, 2], lineLabel: `${s} ${long}` })),
     });
     // Title 3 lines, two axis labels of 2, six legend labels of 2, three names, tick labels.
     expect(texts(scene).length).toBeLessThan(3 + 4 + 12 + 3 + 20);
