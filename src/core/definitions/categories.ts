@@ -34,6 +34,13 @@ export const CATEGORY_LIMIT = 100;
 export const CATEGORY_NAME_LIMIT = 200;
 
 /**
+ * The one definition of the `values` term, which the pictograph, each line-graph series and the bar
+ * graph share: a term has one definition in the vocabulary (GSV-REQ-012). What a value means for the
+ * type goes in its item's description.
+ */
+export const VALUES_DESCRIPTION = "One value per category, in the same order as the categories.";
+
+/**
  * The `categories` list (DGP-REQ-001, DGP-REQ-003): at least one and at most `CATEGORY_LIMIT`
  * categories, drawn in the order given, each an object with a plain-text `name`. A graph type adds
  * what its categories carry beyond the name: the bar graph nests the shared `color` spec, so a
@@ -201,6 +208,45 @@ export function valuesPerCategoryCheck(term = "values"): DomainCheck {
       const names: unknown = description["categories"];
       if (!Array.isArray(list) || !Array.isArray(names) || list.length === names.length) return [];
       return [createIssue("series_length_mismatch", pointer(term), { term, valueCount: list.length, categoryCount: names.length })];
+    },
+  };
+}
+
+/**
+ * The check that a line graph's series each hold one value per category (DGP-REQ-016): a series
+ * whose `values` length differs, an empty list included, is reported as `series_length_mismatch`
+ * at `/series/<i>/values`, and an empty `series` list as `missing_property` at `/series`, as an
+ * absent one already is (DGP Edge Cases: "at least one series is required"). Like `valuesPerCategoryCheck`, it
+ * reads only lengths, so it always runs: a failed series reaches it as `null` and is skipped, and a
+ * failed value inside a series keeps its list's length.
+ */
+// @spec DGP-REQ-010, DGP-REQ-016
+/* @__NO_SIDE_EFFECTS__ */
+export function seriesValuesPerCategoryCheck(): DomainCheck {
+  return {
+    name: "one value per category in every series",
+    inputs: ALWAYS_RUNS,
+    check: (description: DescriptionBase) => {
+      const series: unknown = description["series"];
+      const names: unknown = description["categories"];
+      if (series === undefined) return [];
+      if (Array.isArray(series) && series.length === 0) {
+        return [createIssue("missing_property", pointer("series"), { term: "series", graphType: description.type })];
+      }
+      if (!Array.isArray(series) || !Array.isArray(names)) return [];
+      const issues: Issue[] = [];
+      series.forEach((entry: unknown, index) => {
+        const values: unknown = entry !== null && typeof entry === "object" ? (entry as { values?: unknown }).values : undefined;
+        if (!Array.isArray(values) || values.length === names.length) return;
+        issues.push(
+          createIssue("series_length_mismatch", pointer("series", index, "values"), {
+            term: `series[${index}].values`,
+            valueCount: values.length,
+            categoryCount: names.length,
+          }),
+        );
+      });
+      return issues;
     },
   };
 }

@@ -10,6 +10,7 @@ import { PLACEHOLDER_ISSUE_LIMIT } from "../../src/react/Placeholder";
 import { SceneSvg } from "../../src/react/SceneSvg";
 import { CircleGraph as PackageCircleGraph } from "../../src/react/graphs/CircleGraph";
 import { Pictograph as PackagePictograph } from "../../src/react/graphs/PictographGraph";
+import { LineGraph as PackageLineGraph } from "../../src/react/graphs/LineGraphGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -104,13 +105,15 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
 
   it("names each per-type component for DevTools and stacks (QR-007)", () => {
     expect(CircleGraph.displayName).toBe("CircleGraph");
-    expect(["circle", "number-line", "bar-graph", "xy-graph", "pictograph"].map((type) => componentName(type as GraphType))).toEqual([
+    expect(["circle", "number-line", "bar-graph", "xy-graph", "pictograph", "line-graph"].map((type) => componentName(type as GraphType))).toEqual([
       "CircleGraph",
       "NumberLineGraph",
       "BarGraph",
       "XyGraph",
       "PictographGraph",
+      "LineGraph",
     ]);
+    expect(PackageLineGraph.displayName).toBe("LineGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -341,6 +344,25 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       expect(received).toEqual([]);
       // Title at most 3 lines, key at most 2, two category names.
       expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 2 + 2);
+    }
+  });
+
+  it("draws a valid line graph with half a megabyte of title, axis-label and series-label text in <Graph> and <LineGraph>, never throwing (GSS TICKET-002 SEC-001)", () => {
+    const long = "word ".repeat(100_000).trim();
+    const description = {
+      type: "line-graph",
+      title: long,
+      categoryAxisLabel: long,
+      valueAxisLabel: "@".repeat(500_000),
+      categories: [{ name: "Mon" }, { name: "Tue" }],
+      series: Array.from({ length: 6 }, () => ({ values: [7, -4], lineLabel: long })),
+    };
+    for (const Component of [Graph, PackageLineGraph]) {
+      const received: Issue[][] = [];
+      const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toEqual([]);
+      // Title 3 lines, two axis labels of 2, six legend labels of 2, two names, at most 12 tick labels.
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 4 + 12 + 2 + 12);
     }
   });
 

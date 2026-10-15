@@ -3,7 +3,7 @@ import { cleanText, formatList, isUnitShaped, quoteText, sourceOf, stateMeasurem
 import { createIssue, pointer } from "../issues";
 import type { Provenance } from "../result";
 import { intervalsIn } from "../value-scale";
-import { CATEGORY_LIMIT, VALUE_LIMIT, categories, categoriesCheck, valuesPerCategoryCheck } from "./categories";
+import { CATEGORY_LIMIT, VALUES_DESCRIPTION, VALUE_LIMIT, categories, categoriesCheck, valuesPerCategoryCheck } from "./categories";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "./types";
 
 /** A normalized pictograph description. */
@@ -92,8 +92,8 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
         kind: "array",
         required: true,
         maxItems: CATEGORY_LIMIT,
-        description: "One value per category, in the same order: how many units the category has.",
-        items: { kind: "number", min: 0, max: VALUE_LIMIT, description: `A category's value, from 0 to ${VALUE_LIMIT}.` },
+        description: VALUES_DESCRIPTION,
+        items: { kind: "number", min: 0, max: VALUE_LIMIT, description: `A category's value, how many units it has: from 0 to ${VALUE_LIMIT}.` },
       },
       // @spec DGP-REQ-024, DGP-REQ-031, DGP-REQ-035
       unitImage: {

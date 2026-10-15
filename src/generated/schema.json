@@ -5,6 +5,126 @@
   "anyOf": [
     {
       "type": "object",
+      "title": "Line graph",
+      "description": "A line graph: one or more series of values over the categories, each value a point and each series a line joining its points, with a legend when there is more than one series. Each series has its own color, point shape and dash pattern. Values may be negative. At most 100 categories and 6 series.",
+      "properties": {
+        "type": {
+          "const": "line-graph",
+          "description": "The graph type: which kind of graph the description draws."
+        },
+        "version": {
+          "enum": [
+            1
+          ],
+          "description": "The schema version the description is written for. Leave it out for the current version, 1."
+        },
+        "title": {
+          "type": "string",
+          "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
+        },
+        "categoryAxisLabel": {
+          "type": "string",
+          "description": "A label for the axis that lists the categories, as plain text.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
+        },
+        "valueAxisLabel": {
+          "type": "string",
+          "description": "A label for the axis that shows the values, as plain text.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
+        },
+        "valueScale": {
+          "type": "object",
+          "description": "The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick. maximum must be greater than minimum.",
+          "properties": {
+            "minimum": {
+              "type": "number",
+              "description": "The lowest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size.",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            },
+            "maximum": {
+              "type": "number",
+              "description": "The highest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size; above the minimum by at least a billionth of the larger end's size.",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            },
+            "tickInterval": {
+              "type": "number",
+              "description": "The distance between neighbouring ticks on the value axis: greater than 0, dividing the scale into whole intervals, with at most 100 ticks.",
+              "maximum": 2000000000
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "categories": {
+          "type": "array",
+          "description": "The categories, drawn in the order given: at least 1 and at most 100, each with a different name.",
+          "items": {
+            "type": "object",
+            "description": "One category.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        },
+        "series": {
+          "type": "array",
+          "description": "The series, at least 1 and at most 6, each drawn as a line through one point per category. Without a lineColor, each takes the next default color; every series also has its own point shape and dash pattern, so series differ without color.",
+          "items": {
+            "type": "object",
+            "description": "One series: its values, and optionally its label and line color.",
+            "properties": {
+              "values": {
+                "type": "array",
+                "description": "One value per category, in the same order as the categories.",
+                "items": {
+                  "type": "number",
+                  "description": "A category's value in this series, from -1000000000 to 1000000000.",
+                  "minimum": -1000000000,
+                  "maximum": 1000000000
+                },
+                "maxItems": 100
+              },
+              "lineLabel": {
+                "type": "string",
+                "description": "A label for a line: the number line itself, or one series of a line graph, as plain text.",
+                "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
+              },
+              "lineColor": {
+                "type": "string",
+                "description": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
+                "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
+              }
+            },
+            "required": [
+              "values"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 6
+        }
+      },
+      "required": [
+        "type",
+        "categories",
+        "series"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
       "title": "Pictograph",
       "description": "A pictograph: one row of pictures per category (or one column, upright), each picture standing for a number of units, with a key such as \"each apple = 2 students\". A value that is not a whole number of pictures ends in one cropped picture. At most 100 categories and 400 pictures in all.",
       "properties": {
@@ -51,10 +171,10 @@
         },
         "values": {
           "type": "array",
-          "description": "One value per category, in the same order: how many units the category has.",
+          "description": "One value per category, in the same order as the categories.",
           "items": {
             "type": "number",
-            "description": "A category's value, from 0 to 1000000000.",
+            "description": "A category's value, how many units it has: from 0 to 1000000000.",
             "minimum": 0,
             "maximum": 1000000000
           },

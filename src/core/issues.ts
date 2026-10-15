@@ -113,7 +113,8 @@ export interface IssueParamsByCode {
   missing_property: { term: Term; graphType: string };
   /** `suggestion` is the closest applicable term, when one is close enough. */
   unknown_property: { term: Term; graphType: string; allowed: Terms; suggestion?: string };
-  inapplicable_property: { term: Term; graphType: string };
+  /** `elements`, when given, names where the option goes instead, such as "each series". */
+  inapplicable_property: { term: Term; graphType: string; elements?: string };
   /** `expected` is the kind of value accepted, e.g. "a number". */
   wrong_kind: { term: Term; got: unknown; expected: string };
   /** `range` is the allowed range of the value at the issue's path. */
@@ -304,7 +305,10 @@ const templates: Templates = {
     p.suggestion === undefined
       ? `${describeTerm(p.term)} is not a property ${forGraph(p.graphType)}; use one of: ${list(p.allowed)}.`
       : `${describeTerm(p.term)} is not a property ${forGraph(p.graphType)}; did you mean ${describeTerm(p.suggestion)}?`,
-  inapplicable_property: (p) => `${describeTerm(p.term)} does not apply ${forGraph(p.graphType)}; remove it.`,
+  inapplicable_property: (p) =>
+    p.elements === undefined
+      ? `${describeTerm(p.term)} does not apply ${forGraph(p.graphType)}; remove it.`
+      : `${describeTerm(p.term)} does not apply ${forGraph(p.graphType)} as a whole; give it on ${p.elements} instead.`,
   wrong_kind: (p) => `${describeTerm(p.term)} must be ${describeDetail(p.expected)}; got ${describeValue(p.got)}.`,
   out_of_range: (p) => `${describeTerm(p.term)} must be ${describeRange(p.range)}; got ${describeValue(p.got)}.`,
   contradiction: (p) => {

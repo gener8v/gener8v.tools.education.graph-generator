@@ -1,5 +1,6 @@
 import { dataGraphProperties } from "./categories";
 import { circle } from "./circle";
+import { lineGraph } from "./line-graph";
 import { pictograph } from "./pictograph";
 import { type ScopedPropertySpec, sharedProperties } from "./shared";
 import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
@@ -19,6 +20,7 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
 // @spec GSV-REQ-003, GSV-REQ-012
 export const definitions: Registry = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {
+    "line-graph": lineGraph,
     pictograph,
     circle,
   } satisfies Partial<Record<GraphType, GraphTypeDefinition>>),

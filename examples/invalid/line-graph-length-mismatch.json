@@ -1,0 +1,5 @@
+{
+  "type": "line-graph",
+  "categories": [{ "name": "Mon" }, { "name": "Tue" }, { "name": "Wed" }],
+  "series": [{ "values": [3, 5, 2], "lineLabel": "Week 1" }, { "values": [4, 1], "lineLabel": "Week 2" }]
+}

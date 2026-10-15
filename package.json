@@ -56,6 +56,10 @@
       "types": "./dist/pictograph.d.ts",
       "default": "./dist/pictograph.js"
     },
+    "./line-graph": {
+      "types": "./dist/line-graph.d.ts",
+      "default": "./dist/line-graph.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./vocabulary.json": "./dist/vocabulary.json",
     "./package.json": "./package.json"

@@ -7,6 +7,10 @@
       "definition": "The categories, drawn in the order given: at least 1 and at most 100, each with a different name.",
       "kind": "array"
     },
+    "categoryAxisLabel": {
+      "definition": "A label for the axis that lists the categories, as plain text.",
+      "kind": "string"
+    },
     "circumference": {
       "definition": "The distance around the circle, 2π times the radius, from 0.006 to 6,283,186.",
       "kind": "number"
@@ -39,6 +43,18 @@
       "definition": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
       "kind": "color"
     },
+    "lineLabel": {
+      "definition": "A label for a line: the number line itself, or one series of a line graph, as plain text.",
+      "kind": "string"
+    },
+    "maximum": {
+      "definition": "The highest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size; above the minimum by at least a billionth of the larger end's size.",
+      "kind": "number"
+    },
+    "minimum": {
+      "definition": "The lowest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size.",
+      "kind": "number"
+    },
     "name": {
       "definition": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
       "kind": "string"
@@ -55,6 +71,10 @@
       "definition": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
+    "series": {
+      "definition": "The series, at least 1 and at most 6, each drawn as a line through one point per category. Without a lineColor, each takes the next default color; every series also has its own point shape and dash pattern, so series differ without color.",
+      "kind": "array"
+    },
     "showCenter": {
       "definition": "Whether the center is marked with a point.",
       "kind": "boolean"
@@ -66,6 +86,10 @@
     "showRadius": {
       "definition": "Whether the radius is drawn, from the center horizontally to the right.",
       "kind": "boolean"
+    },
+    "tickInterval": {
+      "definition": "The distance between neighbouring ticks on the value axis: greater than 0, dividing the scale into whole intervals, with at most 100 ticks.",
+      "kind": "number"
     },
     "title": {
       "definition": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
@@ -87,12 +111,20 @@
       "definition": "How many units one picture stands for: greater than 0, at most 1000000000.",
       "kind": "number"
     },
+    "valueAxisLabel": {
+      "definition": "A label for the axis that shows the values, as plain text.",
+      "kind": "string"
+    },
+    "valueScale": {
+      "definition": "The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick.",
+      "kind": "object"
+    },
     "valueUnitLabel": {
       "definition": "What one unit of value counts, as plain text, such as \"students\"; the key names the picture, as in \"each apple = 2 students\". Left out, empty or blank, it says \"units\". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole.",
       "kind": "string"
     },
     "values": {
-      "definition": "One value per category, in the same order: how many units the category has.",
+      "definition": "One value per category, in the same order as the categories.",
       "kind": "array"
     },
     "version": {
@@ -101,6 +133,126 @@
     }
   },
   "graphTypes": {
+    "line-graph": {
+      "title": "Line graph",
+      "description": "A line graph: one or more series of values over the categories, each value a point and each series a line joining its points, with a legend when there is more than one series. Each series has its own color, point shape and dash pattern. Values may be negative. At most 100 categories and 6 series.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "line-graph"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false
+        },
+        "categoryAxisLabel": {
+          "kind": "string",
+          "required": false
+        },
+        "valueAxisLabel": {
+          "kind": "string",
+          "required": false
+        },
+        "valueScale": {
+          "kind": "object",
+          "required": false,
+          "properties": {
+            "minimum": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "maximum": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickInterval": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            }
+          },
+          "ordered": [
+            [
+              "minimum",
+              "maximum"
+            ]
+          ]
+        },
+        "categories": {
+          "kind": "array",
+          "required": true,
+          "maxItems": 100,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "name": {
+                "kind": "string",
+                "required": true,
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "series": {
+          "kind": "array",
+          "required": true,
+          "maxItems": 6,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "values": {
+                "kind": "array",
+                "required": true,
+                "maxItems": 100,
+                "items": {
+                  "kind": "number",
+                  "range": {
+                    "min": -1000000000,
+                    "max": 1000000000
+                  }
+                }
+              },
+              "lineLabel": {
+                "kind": "string",
+                "required": false
+              },
+              "lineColor": {
+                "kind": "color",
+                "required": false
+              }
+            }
+          }
+        }
+      },
+      "derivations": [],
+      "checks": [
+        "categories are given, each with a different name",
+        "one value per category in every series",
+        "the value-scale tick interval is greater than 0",
+        "every series value fits the value scale"
+      ]
+    },
     "pictograph": {
       "title": "Pictograph",
       "description": "A pictograph: one row of pictures per category (or one column, upright), each picture standing for a number of units, with a key such as \"each apple = 2 students\". A value that is not a whole number of pictures ends in one cropped picture. At most 100 categories and 400 pictures in all.",

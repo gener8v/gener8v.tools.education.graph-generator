@@ -266,3 +266,52 @@ export function drawCategoryNames(slots: readonly CategorySlot[], orientation: O
   }
   return nodes;
 }
+
+/** An axis label longer than this many lines is cut, ending in "…"; the text alternative states it whole. */
+export const AXIS_LABEL_MAX_LINES = 2;
+
+/**
+ * An axis label's lines (DGP-REQ-002): the caller's text, cleaned, wrapped to `length` and capped
+ * at `AXIS_LABEL_MAX_LINES`, so caller-sized text yields a bounded Scene (GSS TICKET-002 SEC-001).
+ * No lines for a label that is absent or blank.
+ */
+export function axisLabelLines(text: string | undefined, length: number): string[] {
+  const cleaned = text === undefined ? "" : cleanText(text);
+  return cleaned === "" ? [] : wrap(cleaned, length, defaultStyle.fontSizes.label, AXIS_LABEL_MAX_LINES);
+}
+
+/** How far an axis label's lines reach across the axis: their count times the line height. */
+export const axisLabelDepth = (lines: readonly string[]): number => lines.length * defaultStyle.fontSizes.label * LINE_HEIGHT;
+
+/**
+ * The value-axis label of a vertical plot `box`, read upward and centered on the plot's height, its
+ * lines side by side from `left` toward the axis, in the order `textLines` stacks them.
+ */
+// @spec DGP-REQ-002
+export function drawValueAxisLabel(lines: readonly string[], left: number, box: Box): SceneNode[] {
+  const fontSize = defaultStyle.fontSizes.label;
+  const lineHeight = fontSize * LINE_HEIGHT;
+  const centerY = box.y + box.height / 2;
+  return lines.map((text, i) => {
+    const x = left + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * 0.8;
+    return {
+      kind: "text",
+      attrs: [
+        ["x", fmt(x)],
+        ["y", fmt(centerY)],
+        ["fill", defaultStyle.colors.text],
+        ["font-family", DEFAULT_FONT_STACK],
+        ["font-size", fmt(fontSize)],
+        ["text-anchor", "middle"],
+        ["transform", rotate(-90, x, centerY)],
+      ],
+      text,
+    };
+  });
+}
+
+/** The category-axis label of a vertical plot `box`: its lines centered under the plot from `top`. */
+// @spec DGP-REQ-002
+export function drawCategoryAxisLabel(lines: readonly string[], box: Box, top: number): SceneNode[] {
+  return textLines(lines, box.x + box.width / 2, top, defaultStyle.fontSizes.label, defaultStyle.colors.text);
+}

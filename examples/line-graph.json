@@ -1,0 +1,13 @@
+{
+  "type": "line-graph",
+  "title": "Morning temperatures over one week",
+  "categories": [{ "name": "Mon" }, { "name": "Tue" }, { "name": "Wed" }, { "name": "Thu" }, { "name": "Fri" }],
+  "series": [
+    { "values": [3, 5, -2, 4, 8], "lineLabel": "Week 1", "lineColor": "blue" },
+    { "values": [-4, 0, 2, 6, 7], "lineLabel": "Week 2" },
+    { "values": [10, 12, 9, 11, 13] }
+  ],
+  "valueScale": { "minimum": -5, "maximum": 15, "tickInterval": 5 },
+  "categoryAxisLabel": "Day",
+  "valueAxisLabel": "Temperature (°C)"
+}

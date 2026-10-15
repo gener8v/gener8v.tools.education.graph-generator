@@ -6,10 +6,10 @@ import { validate } from "../../src/core/index";
 import { createGraph } from "../../src/graph";
 import { IMAGE_VIEW_BOX, images } from "../../src/images/index";
 import { checkScene } from "../../src/layout/kit/check";
-import { textWidth } from "../../src/layout/kit/text";
 import { LINE_HEIGHT, SCENE_MARGIN } from "../../src/layout/kit/title";
 import { KEY_MAX_LINES, MIN_PARTIAL, keyText, pictographLayout } from "../../src/layout/pictograph";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
+import { type Bounds, boundsOf, overlap } from "../fixtures/scene-geometry";
 
 /** The Scene the pictograph layout draws for a valid description; it must pass `checkScene`. */
 function sceneOf(input: Record<string, unknown>): Scene {
@@ -211,35 +211,6 @@ describe("DGP-NFR-002: a partial picture's visible share is within 2% of the exa
     );
   });
 });
-
-/** A drawn node's bounding box: a picture's viewport, or a text line's glyphs (rotated ones too). */
-interface Bounds {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-  node: SceneNode;
-}
-
-function boundsOf(node: SceneNode): Bounds {
-  const [x, y] = [num(node, "x"), num(node, "y")];
-  if (node.kind === "svg") return { x0: x, y0: y, x1: x + num(node, "width"), y1: y + num(node, "height"), node };
-  if (node.kind !== "text") throw new Error(`unexpected ${node.kind}`);
-  const size = num(node, "font-size");
-  const width = textWidth(node.text, size);
-  // `textLines` puts the baseline 0.8 of the font size below a glyph's top.
-  if (attr(node, "transform") !== undefined) {
-    // Read upward, ending at (x, y): rotate(-90) turns the line's run down the page from y.
-    expect(attr(node, "transform")).toBe(`rotate(-90 ${x} ${y})`);
-    expect(attr(node, "text-anchor")).toBe("end");
-    return { x0: x - 0.8 * size, y0: y, x1: x + 0.2 * size, y1: y + width, node };
-  }
-  expect(attr(node, "text-anchor")).toBe("middle");
-  return { x0: x - width / 2, y0: y - 0.8 * size, x1: x + width / 2, y1: y + 0.2 * size, node };
-}
-
-/** Two boxes overlapping by more than rounding to the 0.01 grid. */
-const overlap = (a: Bounds, b: Bounds) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 0.02 && Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > 0.02;
 
 /** The Scene split into its parts: the title's lines, the plot (pictures and names) and the key. */
 function partsOf(scene: Scene) {

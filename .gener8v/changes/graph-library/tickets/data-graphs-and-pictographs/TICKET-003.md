@@ -90,6 +90,11 @@
 - Carried from graph-library/data-graphs-and-pictographs-ticket-005-security-review/SEC-001, SEC-002 (supersedes the "tallest name" wording above):
   - Category names are at most `CATEGORY_NAME_LIMIT` (200) characters, a provisional limit pending the Product Owner. The shared `categories` spec enforces it, so the bar graph inherits it; do not draw from an unvalidated name.
   - `categorySlots`' `slotSize` sizes each row from its own name's height, not the tallest. Use it for horizontal bars so one long name makes one tall row.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-002-delivery (DEL-003, DEL-004, DEL-005):
+  - A value axis on the left narrows the plot, so rotated names crowd sooner than in the pictograph. In the line graph, one rotated line stops fitting its column from about 17 categories, with wide tick labels and a value-axis label. The crowded-columns fix must cover such plots. Extend the line graph's geometry property test (`tests/layout/line-graph.test.ts`) past 16 categories as well.
+  - Use `VALUES_DESCRIPTION` (`categories.ts`) for the `values` term: a term has one description in the vocabulary.
+  - Draw axis labels with the kit's `axisLabelLines`, `drawValueAxisLabel` and `drawCategoryAxisLabel`.
+  - A top-level `color` on a bar graph is now reported as "give it on each category instead" (DEL-002 of TICKET-002).
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-006

@@ -34,5 +34,11 @@
     "path": "dist/pictograph.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./line-graph",
+    "path": "dist/line-graph.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

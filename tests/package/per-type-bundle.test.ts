@@ -147,6 +147,38 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     }
   });
 
+  it("leaves every other type, and the image drawings, out of the line graph's entry and component (DGP TICKET-002)", async () => {
+    for (const entry of [`export { LineGraph } from "./src/entries/line-graph";`, `export { LineGraph } from "./src/react/graphs/LineGraphGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A line graph");
+      expect(code).not.toContain("A circle");
+      expect(code).not.toContain("A pictograph");
+      expect(code).not.toContain("A red apple");
+      expect(code).not.toContain(OTHER);
+      expect(code).not.toContain(OTHER_DEFINITION);
+    }
+  });
+
+  it("leaves the line graph out of the circle's and the pictograph's bundles, and out of a consumer's bundle of either built entry", async () => {
+    for (const entry of [`export { CircleGraph } from "./src/entries/circle";`, `export { Pictograph } from "./src/entries/pictograph";`]) {
+      expect(await bundle(entry)).not.toContain("A line graph");
+    }
+    for (const built of ["circle", "pictograph"]) {
+      const result = await build({
+        stdin: { contents: `export * from "./dist/${built}.js";`, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
+        bundle: true,
+        write: false,
+        format: "esm",
+        platform: "neutral",
+        treeShaking: true,
+        minify: true,
+        external: ["react", "react-dom", "react/jsx-runtime"],
+        logLevel: "silent",
+      });
+      expect(result.outputFiles[0]!.text, built).not.toContain("A line graph");
+    }
+  });
+
   it("keeps every type's layout and definition in the entry component's bundle", async () => {
     const code = await bundle(`export { Graph } from "./src/react/Graph";`);
     expect(code).toContain(OTHER);

@@ -199,13 +199,30 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
 
 /**
  * Whether a scoped term (a shared option, or a data-graph term such as `valueScale`) applies
- * anywhere in this graph type: at the top level or on its elements. `undefined` for any other key.
+ * anywhere in this graph type: at the top level or on its elements. `"elements"` for one that
+ * applies only to the type's elements and is given at the top level, such as a line graph's
+ * `lineLabel` (DGP TICKET-002 DEL-002); `undefined` for any other key.
  */
-function appliesToType(key: string, graphType: GraphType): boolean | undefined {
+function appliesToType(key: string, graphType: GraphType, atTop: boolean): boolean | "elements" | undefined {
   const option = scopedProperty(key);
   if (option === undefined) return undefined;
-  return option.appliesTo.includes(graphType) || option.elementsOf.includes(graphType);
+  if (option.appliesTo.includes(graphType)) return true;
+  if (option.elementsOf.includes(graphType)) return atTop ? "elements" : true;
+  return false;
 }
+
+/**
+ * Where a graph type's element options go, for the hint on an element option given at the top
+ * level: "lineLabel does not apply to a line-graph as a whole; give it on each series instead"
+ * (DGP TICKET-002 DEL-002).
+ */
+const ELEMENTS_OF: Readonly<Partial<Record<GraphType, string>>> = Object.freeze({
+  "number-line": "each point or segment",
+  "xy-graph": "each point or segment",
+  "xyz-graph": "each point or segment",
+  "line-graph": "each series",
+  "bar-graph": "each category",
+});
 
 /**
  * Check every key of an object against its property map: unknown and inapplicable keys, each
@@ -233,10 +250,16 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
     if (spec === undefined) {
       // Not recorded in `failed`: an unknown key never reaches the description, so no later
       // check can read it (code review CR-003 on TICKET-004).
-      if (appliesToType(key, walk.graphType) === false) {
+      const applies = appliesToType(key, walk.graphType, atTop);
+      if (applies === false) {
         // A presentation option, or a data-graph term, this graph type has nowhere (GSV-REQ-041;
         // DGP TICKET-001).
         walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType }));
+      } else if (applies === "elements") {
+        // An element option given for the whole graph, such as a line graph's `lineLabel`, which
+        // belongs on each series: not applying here, with where it goes (DGP TICKET-002 DEL-002).
+        const elements = ELEMENTS_OF[walk.graphType];
+        walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, ...(elements === undefined ? {} : { elements }) }));
       } else {
         // Not a term here; a shared option that applies elsewhere in this type is still unknown
         // at this position, with the terms that are valid here (quality review QR-009).
