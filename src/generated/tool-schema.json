@@ -50,7 +50,8 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "The category's name, as plain text. A long name wraps onto more lines; it is never cut short."
+                    "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                    "maxLength": 200
                   }
                 },
                 "required": [

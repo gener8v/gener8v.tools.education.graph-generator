@@ -372,6 +372,25 @@ describe("the drawing's geometry (quality review QR-001)", () => {
   });
 });
 
+describe("the drawing's height with one long name (security review SEC-002)", () => {
+  const longOne = Array.from({ length: 100 }, (_, i) => ({ name: i === 0 ? "@".repeat(200) : `C${i}` }));
+
+  it("gives one long name one tall row, not a hundred", () => {
+    const scene = sceneOf({ categories: longOne, values: longOne.map(() => 1), unitValue: 1 });
+    // Before: every row took the tallest name's height, and a 10,000-character name drew 2,058,210 units.
+    expect(scene.height).toBeLessThan(4_000);
+    const tall = sceneOf({ categories: [longOne[0]!], values: [1], unitValue: 1 }).height;
+    const short = sceneOf({ categories: longOne.slice(1, 2), values: [1], unitValue: 1 }).height;
+    expect(scene.height).toBeLessThan(tall + 99 * short);
+    expect(geometryProblems(scene)).toEqual([]);
+  });
+
+  it("bounds a rotated name's drop below the columns", () => {
+    const scene = sceneOf({ orientation: "vertical", categories: longOne, values: longOne.map(() => 1), unitValue: 1 });
+    expect(scene.height).toBeLessThan(3_000);
+  });
+});
+
 describe("the whole pictograph through createGraph", () => {
   it("is the Scene createGraph returns for the example, with the text alternative", () => {
     const result = createGraph(example);

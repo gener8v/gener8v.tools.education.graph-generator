@@ -446,18 +446,25 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
     });
   });
 
-  it("sizes slots beside a horizontal plot from the tallest wrapped name, wrapping once (DGP TICKET-005 quality review QR-006)", () => {
+  it("sizes each slot beside a horizontal plot from its own wrapped name, wrapping once (DGP TICKET-005 QR-006, SEC-002)", () => {
     const seen: number[] = [];
-    const slots = categorySlots(names("A rather long category name", "B"), { x: 100, y: 10, width: 200, height: 0 }, "horizontal", 60, (tallest) => {
-      seen.push(tallest);
-      return tallest + 4;
+    const slots = categorySlots(names("A rather long category name", "B", "C"), { x: 100, y: 10, width: 200, height: 0 }, "horizontal", 60, (height) => {
+      seen.push(height);
+      return height + 4;
     });
-    const tallest = slots[0]!.labelHeight;
-    expect(seen).toEqual([tallest]);
-    expect(slots.map((slot) => [slot.start, slot.end])).toEqual([
-      [10, 10 + tallest + 4],
-      [10 + tallest + 4, 10 + 2 * (tallest + 4)],
-    ]);
+    const [tall, short] = [slots[0]!.labelHeight, slots[1]!.labelHeight];
+    expect(tall).toBeGreaterThan(short);
+    expect(seen).toEqual([tall, short, short]);
+    // One long name makes one tall slot; the others keep their own height.
+    const expected = [
+      [10, 10 + tall + 4],
+      [10 + tall + 4, 10 + tall + short + 8],
+      [10 + tall + short + 8, 10 + tall + 2 * short + 12],
+    ];
+    slots.forEach((slot, i) => {
+      expect(slot.start).toBeCloseTo(expected[i]![0]!, 9);
+      expect(slot.end).toBeCloseTo(expected[i]![1]!, 9);
+    });
   });
 
   it("centers each name under its slot below a vertical plot (quality review QR-001)", () => {

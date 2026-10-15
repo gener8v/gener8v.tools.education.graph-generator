@@ -66,6 +66,9 @@ function valueProblems(spec: ValueSpec, at: string): string[] {
     if (spec.items.kind === "string" && spec.items.emptyIsAbsent === true) problems.push(`${at}/items: emptyIsAbsent on a list item`);
     problems.push(...valueProblems(spec.items, `${at}/items`));
   }
+  if (spec.kind === "string" && spec.maxLength !== undefined && (!Number.isInteger(spec.maxLength) || spec.maxLength < 1)) {
+    problems.push(`${at}: maxLength must be a positive whole number`);
+  }
   if (spec.kind === "enum" && spec.values.length === 0) problems.push(`${at}: enum with no values`);
   if (spec.kind === "enum") {
     for (const [described, text] of Object.entries(spec.valueDescriptions ?? {})) {

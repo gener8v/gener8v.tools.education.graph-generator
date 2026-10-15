@@ -87,6 +87,9 @@
   - **Crowded columns (deferred here):** below a vertical plot, `categorySlots` rotates every name to read upward when a word would not fit its column, and never splits a word. Rotated names stay apart only while one line (14.4 units) fits a column, about 25 categories in the 368-unit plot. Past that they touch. Settle the crowded case for upright bars (and the line graph, which shares the kit): for example a wider drawing, fewer name lines, or labelling every other category. Then extend the pictograph's geometry property test (`tests/layout/pictograph.test.ts`, "the drawing's geometry") past 25 columns.
   - Use `valuesPerCategoryCheck()` from `src/core/definitions/categories.ts` for `series_length_mismatch` at `/values`; do not write the check inline.
   - Reserve room for names with the kit's exported `NAME_GAP`, and size rows from the tallest name with `categorySlots`' `slotSize`, as the pictograph does.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-005-security-review/SEC-001, SEC-002 (supersedes the "tallest name" wording above):
+  - Category names are at most `CATEGORY_NAME_LIMIT` (200) characters, a provisional limit pending the Product Owner. The shared `categories` spec enforces it, so the bar graph inherits it; do not draw from an unvalidated name.
+  - `categorySlots`' `slotSize` sizes each row from its own name's height, not the tallest. Use it for horizontal bars so one long name makes one tall row.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-006

@@ -157,7 +157,7 @@ export interface IssueParamsByCode {
    * `limit` is the documented maximum; `count` the number found, when known (a description is
    * not counted past its limit). `unit` names what is counted.
    */
-  too_large: { term: Term; limit: number; unit: "items" | "values" | "images"; count?: number };
+  too_large: { term: Term; limit: number; unit: "items" | "values" | "images" | "characters"; count?: number };
   /**
    * `got` is the repeated name; `conflicts` holds the JSON Pointer of the earlier entry with that
    * name, for the issue, and `conflictTerms` names it for the message (DGP TICKET-001 DEL-003).

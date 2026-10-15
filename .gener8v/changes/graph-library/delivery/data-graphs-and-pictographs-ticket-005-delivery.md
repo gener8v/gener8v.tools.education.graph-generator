@@ -313,3 +313,21 @@ Decisions taken with the plan: a provisional cap of 1,000 images in total, pendi
 - **Re-verification:** `pnpm generate` (no change to the generated files), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` and `publint` exit 0, as do `attw`, `audit` and `gener8v-state lint`. `pnpm test` (972 tests) exits 0 on three runs. `./pictograph` is 17.61 kB of 25 kB.
 - **Mutation checks:** 21 deliberate breaks, each made against a passing baseline of 222 tests and restored afterwards, every one failing a test. They cover 12 of the reviewer's 16 layout mutations, five to the rotation and slot sizing, and four to QR-003, QR-004 and QR-007.
 
+### Security review — `graph-library/data-graphs-and-pictographs-ticket-005-security-review` (2026-10-15, Approved)
+
+- **SEC-001** — **a provisional limit of 200 characters (code points) on category names**, `CATEGORY_NAME_LIMIT` in `src/core/definitions/categories.ts`, for the Product Owner beside DEL-001, under the caller-text length decision (GSS TICKET-002 SEC-002; DGP TICKET-001 SEC-002).
+  - Text properties gain an optional `maxLength` (`StringValue`). The validator reports a longer text as `too_large` with the unit `characters`, never cut. Both schemas and the vocabulary carry it, and the files are regenerated. The definitions test requires a positive whole number.
+  - It applies to every data graph through the shared `categories`.
+  - **Corrected figures for the decision**, which replace CR-005's half-megabyte horizontal case as the worst case:
+    - names of narrow words below a vertical plot are wrapped one word per line, about one text node per 2 bytes;
+    - unbounded, a 1 MB description drew 500,781 text nodes and 95.5 MB of markup in about 1.8 s;
+    - 4 MB threw `RangeError` past the component fallback, and two large renders in one process aborted Node.js;
+    - under the limit, the worst case (53 columns) is 3,923 text nodes and 0.77 MB, rendered in 13 ms.
+  - `tests/react/Graph.test.tsx` replaces the half-megabyte name test with the 1 MB columns case, now reported through both components' fallback, and a bound on the markup at the limit.
+- **SEC-002** — `categorySlots`' `slotSize` sizes each row beside a horizontal plot from its own name, not the tallest; the pictograph's rows box is the sum of its rows.
+  - With 100 rows and one 200-character word, the drawing is 3,639.6 units tall; an 11.8 KB description drew 2,058,210 before.
+  - The same in columns is 2,737.9 units.
+  - Tests pin the heights.
+- **SEC-003** — `README.md` gains a Styling section. A partial picture's crop relies on the default `overflow: hidden` of a nested `<svg>`, so a page-wide `svg { overflow: visible }` would draw 2.5 pictures as 3. Added to the queued AD-008 amendment.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (976 tests) exits 0 on three runs. `./pictograph` is 17.68 kB, `./core` 15.44 kB. Seven deliberate breaks of the fixes all fail a test.
+

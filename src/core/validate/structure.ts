@@ -83,6 +83,17 @@ function count(walk: Walk, values: number): void {
   if (walk.count > DESCRIPTION_VALUE_LIMIT) throw new TooLarge();
 }
 
+/**
+ * The number of characters (code points) in `text` when it has more than `limit`, else undefined.
+ * Code units first: a text no longer than the limit in code units cannot be longer in code points.
+ */
+function charactersOver(text: string, limit: number): number | undefined {
+  if (text.length <= limit) return undefined;
+  let characters = 0;
+  for (let i = 0; i < text.length; characters++) i += text.codePointAt(i)! > 0xffff ? 2 : 1;
+  return characters > limit ? characters : undefined;
+}
+
 /** Check one value against its spec. */
 // @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043, DGP-REQ-031
 function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, presentation: boolean): Outcome {
@@ -111,6 +122,10 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
     case "string": {
       if (typeof value !== "string") return wrongKind("plain text");
       if (findUnsafeTextChar(value) !== -1) return wrongKind(PLAIN_TEXT);
+      const characters = spec.maxLength === undefined ? undefined : charactersOver(value, spec.maxLength);
+      if (characters !== undefined) {
+        return fail(createIssue("too_large", path, { term: place.term, limit: spec.maxLength!, unit: "characters", count: characters }));
+      }
       // An empty label or title is no label (GSV Edge Cases): for shared presentation options,
       // and for a term that says so (code review CR-007; DGP TICKET-001 DEL-002).
       if (value === "" && (presentation || spec.emptyIsAbsent === true)) return OMITTED;

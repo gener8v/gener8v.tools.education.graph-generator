@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CATEGORY_LIMIT,
+  CATEGORY_NAME_LIMIT,
   type GivenValueScale,
   MAX_VALUE_TICKS,
   categoriesCheck,
@@ -103,6 +104,25 @@ describe("categories (DGP-REQ-001, DGP-REQ-003)", () => {
     const many = Array.from({ length: CATEGORY_LIMIT + 1 }, (_, i) => ({ name: `C${i}` }));
     expect(codesAndPaths(bar({ categories: many }))).toEqual(["too_large /categories"]);
     expect(check(bar({ categories: many.slice(1), values: many.slice(1).map(() => 1) })).valid).toBe(true);
+  });
+
+  it(`have names of at most ${CATEGORY_NAME_LIMIT} characters, reported whole, never cut (DGP TICKET-005 security review SEC-001)`, () => {
+    const at = (name: string) => bar({ categories: named("Mon", name, "Wed") });
+    expect(check(at("x".repeat(CATEGORY_NAME_LIMIT))).valid).toBe(true);
+    // Characters are code points, as JSON Schema counts them: 200 emoji are 400 code units.
+    expect(check(at("🍎".repeat(CATEGORY_NAME_LIMIT))).valid).toBe(true);
+    expect(issuesOf(check(at("x".repeat(CATEGORY_NAME_LIMIT + 1))))).toEqual([
+      {
+        code: "too_large",
+        path: "/categories/1/name",
+        message: `categories[1].name has ${CATEGORY_NAME_LIMIT + 1} characters, more than the limit of ${CATEGORY_NAME_LIMIT}; use fewer.`,
+      },
+    ]);
+    expect(codesAndPaths(at("🍎".repeat(CATEGORY_NAME_LIMIT + 1)))).toEqual(["too_large /categories/1/name"]);
+    // A megabyte is counted and reported, not drawn.
+    expect(codesAndPaths(at("i ".repeat(500_000)))).toEqual(["too_large /categories/1/name"]);
+    // An unsafe character is reported as such, whatever the length.
+    expect(codesAndPaths(at("\u202e".repeat(300)))).toEqual(["wrong_kind /categories/1/name"]);
   });
 
   it("each need a plain-text name", () => {

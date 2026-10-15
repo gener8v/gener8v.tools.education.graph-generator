@@ -74,6 +74,12 @@ export interface StringValue extends ValueBase {
    * list item it would leave a hole; the definitions test rejects both (quality review QR-006).
    */
   emptyIsAbsent?: boolean;
+  /**
+   * The most characters (Unicode code points, as JSON Schema counts them) the text may have. A
+   * longer text is reported as `too_large`, never cut, so caller text that is drawn whole stays
+   * bounded (DGP TICKET-005 security review SEC-001).
+   */
+  maxLength?: number;
 }
 
 export interface BooleanValue extends ValueBase {

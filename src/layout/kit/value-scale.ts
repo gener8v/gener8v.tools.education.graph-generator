@@ -164,9 +164,10 @@ function rotatedLines(name: string, slotSize: number, fontSize: number, widestWo
  *   as fit side by side across its slot, so a word is never split (quality review QR-002). Past
  *   about 25 categories one line no longer fits a slot and rotated names touch (DGP TICKET-003).
  *
- * `slotSize`, beside a horizontal plot only, sizes every slot from the tallest wrapped name, so a
- * layout learns the names' height and places the slots in one pass (quality review QR-006); the
- * slots then start at the box's top and the box's height is not used.
+ * `slotSize`, beside a horizontal plot only, sizes each slot from its own wrapped name's height, so a
+ * layout places the slots and wraps each name once (quality review QR-006), and one long name makes
+ * one tall slot, not every slot tall (security review SEC-002). The slots then follow one another
+ * from the box's top, and the box's height is not used.
  */
 // @spec DGP-REQ-001, DGP-REQ-003
 export function categorySlots(
@@ -174,7 +175,7 @@ export function categorySlots(
   box: Box,
   orientation: Orientation,
   nameWidth: number = CATEGORY_NAME_WIDTH,
-  slotSize?: (tallestName: number) => number,
+  slotSize?: (nameHeight: number) => number,
 ): CategorySlot[] {
   const fontSize = defaultStyle.fontSizes.tickLabel;
   const lineHeight = fontSize * LINE_HEIGHT;
@@ -206,15 +207,13 @@ export function categorySlots(
     }
   }
 
-  let size = share;
-  if (orientation === "horizontal" && slotSize !== undefined) {
-    let tallest = 0;
-    for (const name of named) tallest = Math.max(tallest, name.labelHeight);
-    size = slotSize(tallest);
-  }
+  const sizeOf = orientation === "horizontal" && slotSize !== undefined ? slotSize : () => share;
+  let start = along;
   return categories.map((category, index) => {
-    const start = along + index * size;
-    return { index, name: category.name, start, end: start + size, center: start + size / 2, ...named[index]! };
+    const size = sizeOf(named[index]!.labelHeight);
+    const slot = { index, name: category.name, start, end: start + size, center: start + size / 2, ...named[index]! };
+    start += size;
+    return slot;
   });
 }
 

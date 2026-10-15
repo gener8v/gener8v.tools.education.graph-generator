@@ -344,17 +344,31 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("draws category names whole however long, so their markup grows with them (DGP TICKET-001 SEC-002, pending the Product Owner's length bound)", () => {
-    // Recorded, not bounded: a name is never cut (DGP Scale and Layout). Half a megabyte, as the
-    // carried hazard asks (code review CR-005): about 33,000 text nodes and 7.5 MB of markup.
-    const name = "word ".repeat(100_000).trim();
-    const markup = html(
-      <PackagePictograph description={{ type: "pictograph", categories: [{ name }], values: [3], unitImage: "star", unitValue: 1 }} />,
-    );
-    const lines = markup.match(/<text /g)!.length;
-    expect(markup).toContain("<svg");
-    expect(lines).toBeGreaterThan(30_000);
-    expect(markup.length).toBeLessThan(10_000_000);
+  it("reports a category name over the limit rather than drawing it, so a megabyte of names never reaches the renderer (DGP TICKET-005 SEC-001)", () => {
+    // Before the limit, 40 columns of names like "i i i …" in 1 MB drew about 500,000 text nodes and
+    // 95.5 MB of markup, and 4 MB threw past the fallback.
+    const categories = Array.from({ length: 40 }, (_, i) => ({ name: "i ".repeat(12_500 + i).trim() }));
+    const description = { type: "pictograph", orientation: "vertical", categories, values: categories.map(() => 1), unitImage: "apple", unitValue: 1 };
+    for (const Component of [Graph, PackagePictograph]) {
+      const received: Issue[][] = [];
+      html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toHaveLength(1);
+      expect(received[0]!.map((issue) => `${issue.code} ${issue.path}`)).toEqual(categories.map((_, i) => `too_large /categories/${i}/name`));
+    }
+  });
+
+  it("keeps the names' markup bounded at the limit: the narrow-word worst case in columns (DGP TICKET-005 SEC-001)", () => {
+    // Names of narrow words wrap one word per line under narrow columns: the most text per byte.
+    // The worst case under the 200-character limit is 53 columns: 3,923 text nodes, 0.77 MB.
+    for (const count of [26, 53, 91, 100]) {
+      const categories = Array.from({ length: count }, (_, i) => ({ name: "i ".repeat(100 - i).trim() }));
+      const markup = html(
+        <PackagePictograph description={{ type: "pictograph", orientation: "vertical", categories, values: categories.map(() => 1), unitImage: "apple", unitValue: 1 }} />,
+      );
+      expect(markup).toContain("<svg");
+      expect(markup.match(/<text /g)!.length, String(count)).toBeLessThanOrEqual(5_000);
+      expect(markup.length, String(count)).toBeLessThan(1_000_000);
+    }
   });
 
   it("renders <Graph> and a per-type component for any JSON value", () => {

@@ -12,7 +12,7 @@ export interface PictographDescription {
   valueUnitLabel?: string;
   /** The categories, drawn in the order given: at least 1 and at most 100, each with a different name. */
   categories: ReadonlyArray<{
-    /** The category's name, as plain text. A long name wraps onto more lines; it is never cut short. */
+    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short. */
     name: string;
   }>;
   /** One value per category, in the same order: how many units the category has. */

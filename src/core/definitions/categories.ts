@@ -26,6 +26,14 @@ export {
 export const CATEGORY_LIMIT = 100;
 
 /**
+ * The most characters a category name may have. Provisional, pending the Product Owner's
+ * caller-text length decision (GSS TICKET-002 SEC-002): names are drawn whole, so an unbounded
+ * name let a valid description render millions of text nodes (DGP TICKET-005 security review
+ * SEC-001). Curriculum category names are a few words.
+ */
+export const CATEGORY_NAME_LIMIT = 200;
+
+/**
  * The `categories` list (DGP-REQ-001, DGP-REQ-003): at least one and at most `CATEGORY_LIMIT`
  * categories, drawn in the order given, each an object with a plain-text `name`. A graph type adds
  * what its categories carry beyond the name: the bar graph nests the shared `color` spec, so a
@@ -51,7 +59,8 @@ export function categoriesProperty(elementProperties: PropertyMap = {}): Propert
             term: "name",
             kind: "string",
             required: true,
-            description: "The category's name, as plain text. A long name wraps onto more lines; it is never cut short.",
+            maxLength: CATEGORY_NAME_LIMIT,
+            description: `The category's name, as plain text, at most ${CATEGORY_NAME_LIMIT} characters. A long name wraps onto more lines; it is never cut short.`,
           },
           ...elementProperties,
         },

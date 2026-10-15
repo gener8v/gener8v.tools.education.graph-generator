@@ -137,13 +137,13 @@ export const pictographLayout: Layout<Pictograph> = (p: Pictograph, provenance: 
     // is exactly equal, not merely equal after rounding each position (DGP-REQ-037).
     const step = gridStep(Math.min(MAX_IMAGE_STEP, width / most));
     const size = fmt(step * IMAGE_FILL);
-    // A row is tall enough for its picture and for the tallest wrapped name, with a gap between
-    // names; the names are wrapped once (quality review QR-006).
-    const slots = categorySlots(p.categories, { x: left, y: top, width, height: 0 }, "horizontal", CATEGORY_NAME_WIDTH, (tallestName) =>
-      Math.max(step, tallestName + NAME_GAP),
+    // Each row is tall enough for its picture and its own wrapped name, with a gap between names:
+    // the names are wrapped once (quality review QR-006), and one long name makes one tall row
+    // rather than every row tall (security review SEC-002).
+    const slots = categorySlots(p.categories, { x: left, y: top, width, height: 0 }, "horizontal", CATEGORY_NAME_WIDTH, (nameHeight) =>
+      Math.max(step, nameHeight + NAME_GAP),
     );
-    const rowHeight = slots.length === 0 ? step : slots[0]!.end - slots[0]!.start;
-    const box: Box = { x: left, y: top, width, height: rowHeight * p.categories.length };
+    const box: Box = { x: left, y: top, width, height: (slots.at(-1)?.end ?? top) - top };
     slots.forEach((slot: CategorySlot) => {
       const y = slot.center - size / 2;
       const pictures = categoryPictures(image, p.values[slot.index] ?? 0, p.unitValue, size, (i) => ({ x: left + i * step, y }), false);

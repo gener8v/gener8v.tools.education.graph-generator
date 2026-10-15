@@ -22,6 +22,14 @@ component file, and can be offered to a language model as a tool.
 
 The package makes no network requests and collects no data.
 
+## Styling
+
+Graphs are inline SVG and take their look from the package, not from your page. One page style
+can change what a graph shows: a pictograph draws a value that is not a whole number of pictures
+as a cut-off picture, a nested `<svg>` that relies on the browser's default `overflow: hidden`.
+Do not apply `overflow: visible` to every `svg` on the page. Scope such a rule away from the graphs
+(for example `svg:not(.your-icon-class)`), or a value of 2.5 pictures is drawn as 3.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).

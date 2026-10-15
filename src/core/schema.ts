@@ -81,6 +81,7 @@ function valueSchema(spec: ValueSpec, profile: Profile, nullable: boolean): Json
       // The published schema checks the plain-text policy up to U+FFFF (security review SEC-001);
       // the tool profile leaves it to the validator, which the tool handler always runs.
       if (profile === "published") schema["pattern"] = PLAIN_TEXT_PATTERN;
+      if (spec.maxLength !== undefined) schema["maxLength"] = spec.maxLength;
       break;
     case "color":
       schema["pattern"] = COLOR_PATTERN;
@@ -189,6 +190,8 @@ export interface TermUse {
   /** Plain-English descriptions of enum values, where the definition gives them. */
   valueDescriptions?: Record<string, string>;
   maxItems?: number;
+  /** The most characters a text may have, where the definition sets one. */
+  maxLength?: number;
   ordered?: Array<[string, string]>;
   items?: TermUse;
   properties?: Record<string, TermUse>;
@@ -238,6 +241,7 @@ function termUse(spec: ValueSpec, required: boolean | undefined, terms: Terms): 
     use.values = [...spec.values];
     if (spec.valueDescriptions !== undefined) use.valueDescriptions = { ...spec.valueDescriptions };
   }
+  if (spec.kind === "string" && spec.maxLength !== undefined) use.maxLength = spec.maxLength;
   if (spec.kind === "array") {
     use.maxItems = spec.maxItems;
     use.items = termUse(spec.items, undefined, terms);
