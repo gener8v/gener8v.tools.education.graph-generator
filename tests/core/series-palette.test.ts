@@ -3,25 +3,12 @@ import { SERIES_LIMIT, type LineGraph } from "../../src/core/definitions/line-gr
 import { validate } from "../../src/core/index";
 import { seriesStyles } from "../../src/core/style";
 import { lineGraphLayout } from "../../src/layout/line-graph";
+import { luminance, relativeLuminanceDifference as relativeDifference } from "../fixtures/luminance";
 
 // DGP-NFR-004: the default colors of the first six line-graph series differ pairwise by at least
-// 15% relative luminance, |La − Lb| / max(La, Lb), so they stay apart in greyscale. The relative
-// reading is the one compatible with 3:1 contrast on white (GSV TICKET-001 code review CR-005);
-// `tests/core/style.test.ts` checks the palette itself, and this checks what a line graph draws.
-
-/** WCAG 2.1 relative luminance of a `#rrggbb` color. */
-function luminance(hex: string): number {
-  const channel = (offset: number) => {
-    const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
-}
-
-const relativeDifference = (a: string, b: string) => {
-  const [la, lb] = [luminance(a), luminance(b)];
-  return Math.abs(la - lb) / Math.max(la, lb);
-};
+// 15% relative luminance (`relativeLuminanceDifference`, tests/fixtures/luminance.ts), so they stay
+// apart in greyscale. `tests/core/style.test.ts` checks the palette itself; this checks what a line
+// graph draws.
 
 describe("DGP-NFR-004: default series colors stay apart in greyscale", () => {
   it("checks the luminance formula against known values", () => {

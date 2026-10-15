@@ -102,6 +102,20 @@ describe("series issues (DGP-REQ-016, DGP Edge Cases)", () => {
     ]);
   });
 
+  it("reports a series longer than the categories, so no value is silently left out (quality review QR-002)", () => {
+    expect(issuesOf(validate(with_({ series: [{ values: [3, 5, 2, 9, 1] }] })))).toEqual([
+      {
+        code: "series_length_mismatch",
+        path: "/series/0/values",
+        message: "series[0].values has 5 values but there are 3 categories; give one value per category.",
+      },
+    ]);
+  });
+
+  it("reports no knock-on length issues when there are no categories (quality review QR-005)", () => {
+    expect(codesAndPaths(with_({ categories: [], series: [{ values: [1, 2] }, { values: [] }] }))).toEqual(["missing_property /categories"]);
+  });
+
   it("reports a length mismatch even beside a bad value or a bad series", () => {
     expect(codesAndPaths(with_({ series: [{ values: [3, "x"] }, 7] }))).toEqual([
       "wrong_kind /series/0/values/1",
@@ -145,6 +159,10 @@ describe("values and the value scale (DGP-REQ-015, DGP-REQ-007, DGP-REQ-008)", (
   it("reports a value outside a given scale at its own position, in any series", () => {
     expect(codesAndPaths(with_({ series: [{ values: [3, 5, 2] }, { values: [1, -4, 2] }], valueScale: { minimum: 0, maximum: 10 } }))).toEqual([
       "scale_excludes_value /series/1/values/1",
+    ]);
+    // Series and value positions differ, so a swapped path would show (quality review QR-002).
+    expect(codesAndPaths(with_({ series: [{ values: [3, 5, 12] }, { values: [1, 4, 2] }], valueScale: { minimum: 0, maximum: 10 } }))).toEqual([
+      "scale_excludes_value /series/0/values/2",
     ]);
   });
 

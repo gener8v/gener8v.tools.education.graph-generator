@@ -218,28 +218,37 @@ export function categorySlots(
 }
 
 /**
- * A rotated name's lines below a vertical plot: each reads upward and ends `NAME_GAP` below the
- * plot, the lines side by side and centered on the slot, in the order `textLines` stacks them.
+ * Lines of text read upward, side by side from `left` in the order `textLines` stacks them, each
+ * turned about its own anchor at height `y`: ending there (`"end"`, a name hanging below a plot) or
+ * centered on it (`"middle"`, an axis label beside one). The one rule for rotated text in the kit
+ * (quality review QR-003).
  */
-function rotatedNameLines(slot: CategorySlot, top: number, fontSize: number): SceneNode[] {
+function upwardLines(lines: readonly string[], left: number, y: number, fontSize: number, anchor: "end" | "middle"): SceneNode[] {
   const lineHeight = fontSize * LINE_HEIGHT;
-  const left = slot.center - (slot.lines.length * lineHeight) / 2;
-  return slot.lines.map((text, i) => {
+  return lines.map((text, i) => {
     const x = left + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * 0.8;
     return {
       kind: "text",
       attrs: [
         ["x", fmt(x)],
-        ["y", fmt(top)],
+        ["y", fmt(y)],
         ["fill", defaultStyle.colors.text],
         ["font-family", DEFAULT_FONT_STACK],
         ["font-size", fmt(fontSize)],
-        ["text-anchor", "end"],
-        ["transform", rotate(-90, x, top)],
+        ["text-anchor", anchor],
+        ["transform", rotate(-90, x, y)],
       ],
       text,
     };
   });
+}
+
+/**
+ * A rotated name's lines below a vertical plot: each reads upward and ends `NAME_GAP` below the
+ * plot, the lines side by side and centered on the slot.
+ */
+function rotatedNameLines(slot: CategorySlot, top: number, fontSize: number): SceneNode[] {
+  return upwardLines(slot.lines, slot.center - (slot.lines.length * fontSize * LINE_HEIGHT) / 2, top, fontSize, "end");
 }
 
 /**
@@ -285,32 +294,17 @@ export const axisLabelDepth = (lines: readonly string[]): number => lines.length
 
 /**
  * The value-axis label of a vertical plot `box`, read upward and centered on the plot's height, its
- * lines side by side from `left` toward the axis, in the order `textLines` stacks them.
+ * lines side by side from `left` toward the axis.
  */
 // @spec DGP-REQ-002
 export function drawValueAxisLabel(lines: readonly string[], left: number, box: Box): SceneNode[] {
-  const fontSize = defaultStyle.fontSizes.label;
-  const lineHeight = fontSize * LINE_HEIGHT;
-  const centerY = box.y + box.height / 2;
-  return lines.map((text, i) => {
-    const x = left + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * 0.8;
-    return {
-      kind: "text",
-      attrs: [
-        ["x", fmt(x)],
-        ["y", fmt(centerY)],
-        ["fill", defaultStyle.colors.text],
-        ["font-family", DEFAULT_FONT_STACK],
-        ["font-size", fmt(fontSize)],
-        ["text-anchor", "middle"],
-        ["transform", rotate(-90, x, centerY)],
-      ],
-      text,
-    };
-  });
+  return upwardLines(lines, left, box.y + box.height / 2, defaultStyle.fontSizes.label, "middle");
 }
 
-/** The category-axis label of a vertical plot `box`: its lines centered under the plot from `top`. */
+/**
+ * The category-axis label of a vertical plot `box`: its lines, wrapped to the plot's width with
+ * `axisLabelLines`, centered under the plot from `top`.
+ */
 // @spec DGP-REQ-002
 export function drawCategoryAxisLabel(lines: readonly string[], box: Box, top: number): SceneNode[] {
   return textLines(lines, box.x + box.width / 2, top, defaultStyle.fontSizes.label, defaultStyle.colors.text);

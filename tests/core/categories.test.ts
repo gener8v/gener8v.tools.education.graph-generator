@@ -11,6 +11,7 @@ import {
   checkValueScale,
   dataGraphProperties,
   resolveValueScale,
+  seriesValuesPerCategoryCheck,
   tickIntervalCheck,
   valuesPerCategoryCheck,
 } from "../../src/core/definitions/categories";
@@ -411,6 +412,10 @@ describe("one value per category (DGP-REQ-026; DGP TICKET-005 quality review QR-
     ]);
   });
 
+  it("adds nothing when there are no categories: the categories check reports that (DGP TICKET-002 QR-005)", () => {
+    expect(run({ categories: [], values: [1, 2] })).toEqual([]);
+  });
+
   it("stays silent when either list is missing or failed whole", () => {
     expect(run({ values: [1] })).toEqual([]);
     expect(run({ categories: two })).toEqual([]);
@@ -421,6 +426,43 @@ describe("one value per category (DGP-REQ-026; DGP TICKET-005 quality review QR-
   it("checks another top-level list by name", () => {
     expect(valuesPerCategoryCheck("counts").name).toBe("one value per category in counts");
     expect(run({ categories: two, counts: [1] }, "counts").map(([code, path]) => `${code} ${path}`)).toEqual(["series_length_mismatch /counts"]);
+  });
+});
+
+describe("one value per category in every series (DGP-REQ-016; DGP TICKET-002 quality review QR-002)", () => {
+  const run = (description: Record<string, unknown>) =>
+    seriesValuesPerCategoryCheck()
+      .check({ type: "line-graph", ...description } as unknown as DescriptionBase)
+      .map((issue) => `${issue.code} ${issue.path}`);
+  const three = [{ name: "Mon" }, { name: "Tue" }, { name: "Wed" }];
+
+  it("always runs, reading only lengths", () => {
+    expect(seriesValuesPerCategoryCheck().inputs).toBe(ALWAYS_RUNS);
+    expect(run({ categories: three, series: [{ values: [1, 2, 3] }, { values: [null, 2, null] }] })).toEqual([]);
+  });
+
+  it("reports each series too short, empty or too long, at its own values", () => {
+    expect(run({ categories: three, series: [{ values: [1, 2] }, { values: [1, 2, 3] }, { values: [] }, { values: [1, 2, 3, 4] }] })).toEqual([
+      "series_length_mismatch /series/0/values",
+      "series_length_mismatch /series/2/values",
+      "series_length_mismatch /series/3/values",
+    ]);
+  });
+
+  it("reports an empty series list as missing", () => {
+    expect(run({ categories: three, series: [] })).toEqual(["missing_property /series"]);
+  });
+
+  it("skips a failed series, a series whose values failed whole, and missing or failed lists", () => {
+    expect(run({ categories: three, series: [null, { values: "x" }, {}] })).toEqual([]);
+    expect(run({ categories: three })).toEqual([]);
+    expect(run({ series: [{ values: [1] }] })).toEqual([]);
+    expect(run({ categories: null, series: [{ values: [1] }] })).toEqual([]);
+    expect(run({ categories: three, series: "many" })).toEqual([]);
+  });
+
+  it("adds nothing when there are no categories: the categories check reports that (QR-005)", () => {
+    expect(run({ categories: [], series: [{ values: [1] }, { values: [] }] })).toEqual([]);
   });
 });
 

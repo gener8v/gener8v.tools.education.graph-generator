@@ -206,7 +206,9 @@ export function valuesPerCategoryCheck(term = "values"): DomainCheck {
     check: (description: DescriptionBase) => {
       const list: unknown = description[term];
       const names: unknown = description["categories"];
-      if (!Array.isArray(list) || !Array.isArray(names) || list.length === names.length) return [];
+      // No categories is the categories check's issue; a length against none would follow from it
+      // (AD-004; quality review QR-005 on DGP TICKET-002).
+      if (!Array.isArray(list) || !Array.isArray(names) || names.length === 0 || list.length === names.length) return [];
       return [createIssue("series_length_mismatch", pointer(term), { term, valueCount: list.length, categoryCount: names.length })];
     },
   };
@@ -233,7 +235,8 @@ export function seriesValuesPerCategoryCheck(): DomainCheck {
       if (Array.isArray(series) && series.length === 0) {
         return [createIssue("missing_property", pointer("series"), { term: "series", graphType: description.type })];
       }
-      if (!Array.isArray(series) || !Array.isArray(names)) return [];
+      // No categories is the categories check's issue; lengths against none would follow from it.
+      if (!Array.isArray(series) || !Array.isArray(names) || names.length === 0) return [];
       const issues: Issue[] = [];
       series.forEach((entry: unknown, index) => {
         const values: unknown = entry !== null && typeof entry === "object" ? (entry as { values?: unknown }).values : undefined;

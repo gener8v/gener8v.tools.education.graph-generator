@@ -1,20 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultStyle, namedColors, resolveColor, seriesStyles } from "../../src/core/style";
-
-/** WCAG 2.1 relative luminance of a `#rrggbb` color. */
-function luminance(hex: string): number {
-  const channel = (offset: number) => {
-    const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
-}
-
-/** WCAG 2.1 contrast ratio between two `#rrggbb` colors. */
-function contrast(a: string, b: string): number {
-  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
-  return (light + 0.05) / (dark + 0.05);
-}
+import { contrast, relativeLuminanceDifference } from "../fixtures/luminance";
 
 const HEX6 = /^#[0-9a-f]{6}$/;
 
@@ -91,8 +77,7 @@ describe("series styles (AD-011, prd/CC-002)", () => {
     // absolute 0.15 cannot coexist with 3:1 contrast on white (code review CR-005).
     for (let i = 0; i < seriesStyles.length; i++) {
       for (let j = i + 1; j < seriesStyles.length; j++) {
-        const [a, b] = [luminance(seriesStyles[i]!.color), luminance(seriesStyles[j]!.color)];
-        expect(Math.abs(a - b) / Math.max(a, b), `series ${i} and ${j}`).toBeGreaterThanOrEqual(0.15);
+        expect(relativeLuminanceDifference(seriesStyles[i]!.color, seriesStyles[j]!.color), `series ${i} and ${j}`).toBeGreaterThanOrEqual(0.15);
       }
     }
   });

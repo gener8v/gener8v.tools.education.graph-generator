@@ -13,7 +13,12 @@ import { defaultStyle } from "../../../src/core/style";
 import type { SceneNode } from "../../../src/layout/scene";
 import { textWidth } from "../../../src/layout/kit/text";
 import {
+  AXIS_LABEL_MAX_LINES,
+  axisLabelDepth,
+  axisLabelLines,
   categorySlots,
+  drawCategoryAxisLabel,
+  drawValueAxisLabel,
   defaultValueScale,
   drawCategoryNames,
   drawValueAxis,
@@ -495,6 +500,44 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
       expect(textsOf(nodes)).toEqual(slots.flatMap((slot) => slot.lines));
       for (const n of numbersOf(nodes)) expect(Math.round(n * 100) / 100).toBe(n);
     }
+  });
+});
+
+describe("axis labels (DGP-REQ-002; DGP TICKET-002 quality review QR-003)", () => {
+  const labelSize = defaultStyle.fontSizes.label;
+  const lineHeight = labelSize * 1.2;
+
+  it("wraps a label to the length it has, cleaned, and caps it at two lines ending in an ellipsis", () => {
+    expect(axisLabelLines(undefined, 200)).toEqual([]);
+    expect(axisLabelLines(" \u00a0 ", 200)).toEqual([]);
+    expect(axisLabelLines("Day", 200)).toEqual(["Day"]);
+    const long = axisLabelLines("word ".repeat(200), 200);
+    expect(long).toHaveLength(AXIS_LABEL_MAX_LINES);
+    expect(long.at(-1)!.endsWith("…")).toBe(true);
+    for (const line of long) expect(textWidth(line, labelSize)).toBeLessThanOrEqual(200);
+    expect(axisLabelDepth(long)).toBeCloseTo(2 * lineHeight);
+    expect(axisLabelDepth([])).toBe(0);
+  });
+
+  it("reads the value-axis label upward, centered on the plot's height, its lines in order from the left", () => {
+    const lines = ["Temperature in degrees", "Celsius"];
+    const nodes = drawValueAxisLabel(lines, 16, BOX);
+    const centerY = BOX.y + BOX.height / 2;
+    expect(textsOf(nodes)).toEqual(lines);
+    nodes.forEach((node, i) => {
+      const x = Math.round((16 + i * lineHeight + (lineHeight - labelSize) / 2 + labelSize * 0.8) * 100) / 100;
+      expect([attr(node, "x"), attr(node, "y"), attr(node, "text-anchor"), attr(node, "transform")]).toEqual([x, centerY, "middle", `rotate(-90 ${x} ${centerY})`]);
+    });
+    // The first line is the leftmost: read upward, it is the top line of the label.
+    expect(Number(attr(nodes[0]!, "x"))).toBeLessThan(Number(attr(nodes[1]!, "x")));
+  });
+
+  it("centers the category-axis label under the plot, from the top it is given", () => {
+    const nodes = drawCategoryAxisLabel(["Day of the week", "before school"], BOX, 300);
+    expect(textsOf(nodes)).toEqual(["Day of the week", "before school"]);
+    for (const node of nodes) expect([attr(node, "x"), attr(node, "text-anchor")]).toEqual([BOX.x + BOX.width / 2, "middle"]);
+    expect(Number(attr(nodes[0]!, "y"))).toBeCloseTo(300 + (lineHeight - labelSize) / 2 + labelSize * 0.8, 2);
+    expect(Number(attr(nodes[1]!, "y")) - Number(attr(nodes[0]!, "y"))).toBeCloseTo(lineHeight, 2);
   });
 });
 

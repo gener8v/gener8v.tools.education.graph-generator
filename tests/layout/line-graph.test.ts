@@ -6,8 +6,9 @@ import { validate } from "../../src/core/index";
 import { seriesStyles } from "../../src/core/style";
 import { createGraph } from "../../src/graph";
 import { checkScene } from "../../src/layout/kit/check";
-import { SCENE_MARGIN } from "../../src/layout/kit/title";
-import { LEGEND_MAX_LINES, lineGraphLayout } from "../../src/layout/line-graph";
+import { LINE_HEIGHT, SCENE_MARGIN } from "../../src/layout/kit/title";
+import { defaultStyle } from "../../src/core/style";
+import { LEGEND_MAX_LINES, SAMPLE_LENGTH, lineGraphLayout } from "../../src/layout/line-graph";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
 import { attr, boundsOf, nameOf, overlap } from "../fixtures/scene-geometry";
 
@@ -75,29 +76,43 @@ describe("points and segments (DGP-REQ-010, DGP-REQ-012)", () => {
     });
   });
 
+  it("puts each point under its category's name and level with its value on the axis (quality review QR-001)", () => {
+    const scene = sceneOf(example);
+    const { lines } = seriesOf(scene, 3, 5);
+    const names = ["Mon", "Tue", "Wed", "Thu", "Fri"].map((name) => scene.nodes.find((node) => node.kind === "text" && node.text === name)!);
+    const values = (example["series"] as Array<{ values: number[] }>).map((s) => s.values);
+    lines.forEach((line, s) =>
+      pointsOf(line).forEach(([x, y], i) => {
+        expect(x, `series ${s} point ${i}`).toBeCloseTo(num(names[i]!, "x"), 1);
+        expect(y, `series ${s} point ${i}`).toBeCloseTo(heightOf(scene, values[s]![i]!), 1);
+      }),
+    );
+    // The point for 5 is level with the tick labeled 5.
+    expect(heightOf(scene, 5)).toBe(ticks(scene).find((tick) => tick.value === 5)!.y);
+  });
+
   it("draws a single-category series as one point with no segment (DGP Edge Cases)", () => {
     const scene = sceneOf({ categories: [{ name: "Mon" }], series: [{ values: [4] }, { values: [2] }] });
     // The legend's two samples are the only lines in the drawing: two points, two legend markers.
     const lines = scene.nodes.filter((node) => node.kind === "polyline");
     expect(lines).toHaveLength(2);
     for (const line of lines) {
-      // A level, two-point sample 28 units long.
+      // A level, two-point sample.
       const points = pointsOf(line);
       expect(points).toHaveLength(2);
       const [[x1, y1], [x2, y2]] = points as [[number, number], [number, number]];
       expect(y2).toBe(y1);
-      expect(x2 - x1).toBeCloseTo(28, 1);
+      expect(x2 - x1).toBeCloseTo(SAMPLE_LENGTH, 1);
     }
     expect(scene.nodes.filter((node) => MARKER_KINDS.has(node.kind))).toHaveLength(4);
   });
 
   it("draws every marker after every line, so no line covers a point", () => {
     const scene = sceneOf(example);
-    const lastLine = scene.nodes.findIndex((node, i) => node.kind === "polyline" && scene.nodes.slice(i + 1).every((n) => n.kind !== "polyline" || false));
-    const firstMarker = scene.nodes.findIndex((node) => MARKER_KINDS.has(node.kind));
-    const plotLines = scene.nodes.slice(0, firstMarker).filter((node) => node.kind === "polyline");
-    expect(plotLines).toHaveLength(3);
-    expect(lastLine).toBeGreaterThan(firstMarker); // the legend's samples come later still
+    const { lines, markers } = seriesOf(scene, 3, 5);
+    const lastLine = Math.max(...lines.map((line) => scene.nodes.indexOf(line)));
+    const firstMarker = Math.min(...markers.flat().map((marker) => scene.nodes.indexOf(marker)));
+    expect(firstMarker).toBeGreaterThan(lastLine);
   });
 });
 
@@ -144,7 +159,6 @@ describe("the legend (DGP-REQ-013)", () => {
       const marker = scene.nodes.slice(scene.nodes.indexOf(sample) + 1, scene.nodes.indexOf(sample) + 2)[0]!;
       expect(MARKER_KINDS.has(marker.kind)).toBe(true);
       expect(covers(marker, (x1 + x2) / 2, y)).toBe(true);
-      expect(marker).toBeDefined();
     }
   });
 
@@ -187,14 +201,19 @@ describe("the value scale (DGP-REQ-015, DGP-REQ-006)", () => {
 });
 
 describe("axis labels (DGP-REQ-002)", () => {
-  it("reads the value-axis label upward beside the axis, and centers the category-axis label below the names", () => {
+  it("reads the value-axis label upward beside the axis, and centers the category-axis label under the axis, below the names (QR-004)", () => {
     const scene = sceneOf(example);
     const value = scene.nodes.find((node) => node.kind === "text" && node.text === "Temperature (°C)")!;
     expect(attr(value, "transform")).toMatch(/^rotate\(-90 /);
+    // Left of the tick labels, centered on the plot's height.
+    const axis = categoryAxis(scene);
+    const valueAxis = scene.nodes.find((node) => node.kind === "line" && attr(node, "x1") === attr(node, "x2"))!;
+    expect(boundsOf(value).x1).toBeLessThan(Math.min(...tickLabelNodes(scene).map((label) => boundsOf(label).x0)));
+    expect(num(value, "y")).toBeCloseTo((num(valueAxis, "y1") + num(valueAxis, "y2")) / 2, 1);
     const category = scene.nodes.find((node) => node.kind === "text" && node.text === "Day")!;
     const names = scene.nodes.filter((node) => node.kind === "text" && ["Mon", "Fri"].includes(node.text));
     expect(boundsOf(category).y0).toBeGreaterThan(Math.max(...names.map((name) => boundsOf(name).y1)));
-    expect(num(category, "x")).toBe(SCENE_WIDTH / 2);
+    expect(num(category, "x")).toBeCloseTo((num(axis, "x1") + num(axis, "x2")) / 2, 1);
   });
 
   it("caps each axis label at two lines", () => {
@@ -223,13 +242,37 @@ function geometryProblems(scene: Scene): string[] {
   return problems;
 }
 
-/** The plot's width: the category axis along its bottom, the widest horizontal line (ticks are short ones). */
-function plotWidth(scene: Scene): number {
-  let widest = 0;
+/** The category axis along the plot's bottom: the widest horizontal line (ticks are short ones). */
+function categoryAxis(scene: Scene): SceneNode {
+  let widest: SceneNode | undefined;
   for (const node of scene.nodes) {
-    if (node.kind === "line" && attr(node, "y1") === attr(node, "y2")) widest = Math.max(widest, num(node, "x2") - num(node, "x1"));
+    if (node.kind !== "line" || attr(node, "y1") !== attr(node, "y2")) continue;
+    if (widest === undefined || num(node, "x2") - num(node, "x1") > num(widest, "x2") - num(widest, "x1")) widest = node;
   }
-  return widest;
+  return widest!;
+}
+
+const plotWidth = (scene: Scene) => num(categoryAxis(scene), "x2") - num(categoryAxis(scene), "x1");
+
+/** The value axis's tick labels: its numeric texts, which are anchored at their end. */
+const tickLabelNodes = (scene: Scene) =>
+  scene.nodes.filter((node) => node.kind === "text" && attr(node, "text-anchor") === "end" && attr(node, "transform") === undefined && /^-?[\d.]+$/.test(node.text));
+
+/** Each tick's value and height: a tick label's number, and the short horizontal tick line level with it. */
+function ticks(scene: Scene): Array<{ value: number; y: number }> {
+  const marks = scene.nodes.filter((node) => node.kind === "line" && attr(node, "y1") === attr(node, "y2") && num(node, "x2") - num(node, "x1") <= defaultStyle.tickLength + 0.01);
+  return tickLabelNodes(scene).map((label) => {
+    const mark = marks.find((line) => Math.abs(num(line, "y1") - (num(label, "y") - defaultStyle.fontSizes.tickLabel * 0.35)) < 0.02);
+    if (mark === undefined || label.kind !== "text") throw new Error("a tick label with no tick");
+    return { value: Number(label.text), y: num(mark, "y1") };
+  });
+}
+
+/** Where a value is drawn, read off the axis: linear between its first and last ticks. */
+function heightOf(scene: Scene, value: number): number {
+  const all = ticks(scene);
+  const [low, high] = [all[0]!, all.at(-1)!];
+  return low.y + ((value - low.value) * (high.y - low.y)) / (high.value - low.value);
 }
 
 describe("the drawing's geometry", () => {
@@ -263,10 +306,36 @@ describe("the drawing's geometry", () => {
         // Crowded columns, where one line of a rotated name is wider than its slot, are DGP
         // TICKET-003's (DGP TICKET-005 QR-002): here that starts at about 17 to 25 categories,
         // with the value axis's labels narrowing the plot (DEL-004).
-        fc.pre(plotWidth(scene) / input.categories.length >= 12 * 1.2);
+        fc.pre(plotWidth(scene) / input.categories.length >= defaultStyle.fontSizes.tickLabel * LINE_HEIGHT);
         expect(geometryProblems(scene)).toEqual([]);
       }),
       { numRuns: 200 },
+    );
+  });
+
+  it("puts every point at its slot's center and its value's height on the axis, and leaves the bottom margin (QR-001)", () => {
+    fc.assert(
+      fc.property(lineGraph, (input) => {
+        const scene = sceneOf(input);
+        const axis = categoryAxis(scene);
+        const slot = plotWidth(scene) / input.categories.length;
+        const { lines, markers } = seriesOf(scene, input.series.length, input.categories.length);
+        const points =
+          lines.length > 0
+            ? lines.map(pointsOf)
+            : markers.map((series) => series.map((marker) => [(boundsOf(marker).x0 + boundsOf(marker).x1) / 2, Number.NaN] as [number, number]));
+        points.forEach((series, s) =>
+          series.forEach(([x, y], i) => {
+            expect(x, `series ${s} point ${i}`).toBeCloseTo(num(axis, "x1") + (i + 0.5) * slot, 1);
+            if (!Number.isNaN(y)) expect(y, `series ${s} point ${i}`).toBeCloseTo(heightOf(scene, input.series[s]!.values[i]!), 1);
+          }),
+        );
+        // Below the lowest drawn thing, the margin, plus at most a text line's leading.
+        const lowest = Math.max(...scene.nodes.map((node) => boundsOf(node).y1));
+        expect(scene.height - lowest).toBeGreaterThanOrEqual(SCENE_MARGIN - 0.02);
+        expect(scene.height - lowest).toBeLessThanOrEqual(SCENE_MARGIN + defaultStyle.fontSizes.label * LINE_HEIGHT);
+      }),
+      { numRuns: 100 },
     );
   });
 

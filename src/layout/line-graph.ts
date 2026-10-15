@@ -29,7 +29,7 @@ const GAP = 8;
 /** Room above the plot, so the top tick's label is not cut by what is above it. */
 const TOP_TICK_ROOM = defaultStyle.fontSizes.tickLabel / 2;
 /** A legend entry's line sample, with the series' dash pattern and marker. */
-const SAMPLE_LENGTH = 28;
+export const SAMPLE_LENGTH = 28;
 /** A legend label wraps to this width and is cut after `LEGEND_MAX_LINES` lines. */
 const LEGEND_TEXT_WIDTH = 140;
 export const LEGEND_MAX_LINES = 2;
@@ -190,11 +190,10 @@ export const lineGraphLayout: Layout<LineGraph> = (g: LineGraph, provenance: Pro
   for (const slot of slots) nameHeight = Math.max(nameHeight, slot.labelHeight);
   for (const node of drawCategoryNames(slots, "vertical", { ...box, height: box.height + MARKER_REACH })) nodes.push(node);
   let y = bottom + MARKER_REACH + NAME_GAP + nameHeight;
-  const categoryLabel = axisLabelLines(g.categoryAxisLabel, SCENE_WIDTH - 2 * SCENE_MARGIN);
+  // Under the category axis, wrapped to its width (quality review QR-004).
+  const categoryLabel = axisLabelLines(g.categoryAxisLabel, box.width);
   if (categoryLabel.length > 0) {
-    // Centered on the drawing, so a two-line label is never wider than the space it has.
-    const full: Box = { x: SCENE_MARGIN, y: box.y, width: SCENE_WIDTH - 2 * SCENE_MARGIN, height: box.height };
-    for (const node of drawCategoryAxisLabel(categoryLabel, full, y + GAP)) nodes.push(node);
+    for (const node of drawCategoryAxisLabel(categoryLabel, box, y + GAP)) nodes.push(node);
     y += GAP + axisLabelDepth(categoryLabel);
   }
   const legend = drawLegend(g, y + GAP);

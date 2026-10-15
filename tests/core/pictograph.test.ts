@@ -117,6 +117,10 @@ describe("pictograph issues (DGP-REQ-029..031)", () => {
     ]);
   });
 
+  it("reports no knock-on length issue when there are no categories (DGP TICKET-002 quality review QR-005)", () => {
+    expect(codesAndPaths(with_({ categories: [], values: [1, 2] }))).toEqual(["missing_property /categories"]);
+  });
+
   it("reports the shipped invalid examples", () => {
     expect(codesAndPaths(JSON.parse(readFileSync("examples/invalid/pictograph-unknown-image.json", "utf8")))).toEqual(["unknown_image /unitImage"]);
     expect(codesAndPaths(JSON.parse(readFileSync("examples/invalid/pictograph-zero-unit.json", "utf8")))).toEqual(["out_of_range /unitValue"]);

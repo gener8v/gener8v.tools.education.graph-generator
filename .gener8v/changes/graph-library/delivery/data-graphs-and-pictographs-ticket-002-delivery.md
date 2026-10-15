@@ -284,3 +284,17 @@ Coverage rows were added to `.gener8v/specifications/data-graphs-and-pictographs
   - `tests/core/validate-structure.test.ts` covers both behaviours.
 - **CR-004:** the line graph's tiny-span test keeps every value inside the given scale, asserts exactly `out_of_range /valueScale/maximum`, and asserts `createGraph` does not draw it.
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./line-graph` 18.49 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,026 tests) exits 0 on three runs. Deliberate breaks of the CR-003 rule (both ways) and of the tiny-span guard each fail a test.
+
+### Quality review — `graph-library/data-graphs-and-pictographs-ticket-002-quality-review` (2026-10-15, Approved)
+
+- **QR-001:** layout tests pin where points go. Each point sits under its category's name and level with its value on the drawn axis, in the example and in a property test, and the bottom margin is checked.
+- **QR-002:** new tests cover a series longer than the categories, a scale-issue path with different series and value positions, and `seriesValuesPerCategoryCheck`'s own cases.
+- **QR-003:** the kit tests cover the axis-label helpers. Rotated text is drawn by one helper, `upwardLines` (`src/layout/kit/value-scale.ts`), for rotated names and the value-axis label.
+- **QR-004:** the category-axis label is wrapped to the plot's width and centred under the axis, not the drawing.
+- **QR-005:** `valuesPerCategoryCheck` and `seriesValuesPerCategoryCheck` report nothing when there are no categories, since `categoriesCheck` already does (AD-004). This changes the pictograph too.
+- **QR-006:** test tidying.
+  - The marker-order test is fixed.
+  - `SAMPLE_LENGTH` is exported from `src/layout/line-graph.ts`.
+  - The luminance helpers moved to `tests/fixtures/luminance.ts`.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./line-graph` 18.45 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,040 tests) exits 0 on three runs. Nine deliberate breaks of the fixes each fail a test.
+
