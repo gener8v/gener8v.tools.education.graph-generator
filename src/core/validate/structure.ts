@@ -47,6 +47,8 @@ export interface StructureResult {
 
 interface Walk {
   graphType: GraphType;
+  /** Where the type's element options go, from its definition (`GraphTypeDefinition.elementsHint`). */
+  elementsHint: string | undefined;
   issues: Issue[];
   provenance: Provenance;
   failed: Set<string>;
@@ -212,19 +214,6 @@ function appliesToType(key: string, graphType: GraphType, atTop: boolean): boole
 }
 
 /**
- * Where a graph type's element options go, for the hint on an element option given at the top
- * level: "lineLabel does not apply to a line-graph as a whole; give it on each series instead"
- * (DGP TICKET-002 DEL-002).
- */
-const ELEMENTS_OF: Readonly<Partial<Record<GraphType, string>>> = Object.freeze({
-  "number-line": "each point or segment",
-  "xy-graph": "each point or segment",
-  "xyz-graph": "each point or segment",
-  "line-graph": "each series",
-  "bar-graph": "each category",
-});
-
-/**
  * Check every key of an object against its property map: unknown and inapplicable keys, each
  * value's kind and range, and every missing required property (GSV-REQ-017).
  */
@@ -255,11 +244,11 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
         // A presentation option, or a data-graph term, this graph type has nowhere (GSV-REQ-041;
         // DGP TICKET-001).
         walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType }));
-      } else if (applies === "elements") {
+      } else if (applies === "elements" && walk.elementsHint !== undefined) {
         // An element option given for the whole graph, such as a line graph's `lineLabel`, which
-        // belongs on each series: not applying here, with where it goes (DGP TICKET-002 DEL-002).
-        const elements = ELEMENTS_OF[walk.graphType];
-        walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, ...(elements === undefined ? {} : { elements }) }));
+        // belongs on each series: not applying here, with where it goes, as the type's definition
+        // says (DGP TICKET-002 DEL-002, code review CR-003).
+        walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, elements: walk.elementsHint }));
       } else {
         // Not a term here; a shared option that applies elsewhere in this type is still unknown
         // at this position, with the terms that are valid here (quality review QR-009).
@@ -307,7 +296,8 @@ export function checkStructure(
   version: number | undefined,
   registry: Registry,
 ): StructureResult {
-  const walk: Walk = { graphType: type, issues: [], provenance: emptyRecord() as Provenance, failed: new Set(), count: 0 };
+  const elementsHint = Object.hasOwn(registry, type) ? registry[type]?.elementsHint : undefined;
+  const walk: Walk = { graphType: type, elementsHint, issues: [], provenance: emptyRecord() as Provenance, failed: new Set(), count: 0 };
   let normalized: Record<string, unknown>;
   try {
     normalized = checkMap(contents, propertiesOf(type, registry), { segments: [], term: "" }, walk);

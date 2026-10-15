@@ -8,9 +8,9 @@ export interface LineGraphDescription {
   version?: 1;
   /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
-  /** A label for the axis that lists the categories, as plain text. */
+  /** A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   categoryAxisLabel?: string;
-  /** A label for the axis that shows the values, as plain text. */
+  /** A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   valueAxisLabel?: string;
   /** The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick. */
   valueScale?: {
@@ -26,11 +26,11 @@ export interface LineGraphDescription {
     /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short. */
     name: string;
   }>;
-  /** The series, at least 1 and at most 6, each drawn as a line through one point per category. Without a lineColor, each takes the next default color; every series also has its own point shape and dash pattern, so series differ without color. */
+  /** The series, at least 1 and at most 6, each drawn as a line through one point per category. Without a lineColor, a series takes the default color for its position (the first series the first color, and so on); every series also has its own point shape and dash pattern, so series differ without color. */
   series: ReadonlyArray<{
     /** One value per category, in the same order as the categories. */
     values: ReadonlyArray<number>;
-    /** A label for a line: the number line itself, or one series of a line graph, as plain text. */
+    /** A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
     lineLabel?: string;
     /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
     lineColor?: string;

@@ -83,7 +83,7 @@ function defineLineGraph(): GraphTypeDefinition<LineGraph> {
         kind: "array",
         required: true,
         maxItems: SERIES_LIMIT,
-        description: `The series, at least 1 and at most ${SERIES_LIMIT}, each drawn as a line through one point per category. Without a lineColor, each takes the next default color; every series also has its own point shape and dash pattern, so series differ without color.`,
+        description: `The series, at least 1 and at most ${SERIES_LIMIT}, each drawn as a line through one point per category. Without a lineColor, a series takes the default color for its position (the first series the first color, and so on); every series also has its own point shape and dash pattern, so series differ without color.`,
         items: {
           kind: "object",
           description: "One series: its values, and optionally its label and line color.",
@@ -105,6 +105,8 @@ function defineLineGraph(): GraphTypeDefinition<LineGraph> {
     }),
     derivations: [],
     checks: [categoriesCheck, seriesValuesPerCategoryCheck(), tickIntervalCheck, valueScaleCheck],
+    // A top-level lineLabel or lineColor belongs on a series (DEL-002; code review CR-003).
+    elementsHint: "each series",
     /**
      * "A line graph titled “Temperatures”. The category axis is labeled “Day”. The value axis is
      * labeled “°C”. It shows 2 series. “Week 1”: “Mon” is 3, “Tue” is -5 and “Wed” is 2. Series 2:

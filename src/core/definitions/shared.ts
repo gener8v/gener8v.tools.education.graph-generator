@@ -53,7 +53,8 @@ export const sharedProperties = defineProperties({
     kind: "string",
     required: false,
     presentation: "lineLabel",
-    description: "A label for a line: the number line itself, or one series of a line graph, as plain text.",
+    description:
+      "A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
     appliesTo: ["number-line"],
     elementsOf: ["line-graph"],
   },
@@ -89,7 +90,8 @@ export const sharedProperties = defineProperties({
     kind: "string",
     required: false,
     presentation: "axisLabel",
-    description: "A label for the axis that lists the categories, as plain text.",
+    description:
+      "A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
     appliesTo: ["line-graph", "bar-graph"],
     elementsOf: [],
   },
@@ -98,7 +100,8 @@ export const sharedProperties = defineProperties({
     kind: "string",
     required: false,
     presentation: "axisLabel",
-    description: "A label for the axis that shows the values, as plain text.",
+    description:
+      "A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
     appliesTo: ["line-graph", "bar-graph"],
     elementsOf: [],
   },

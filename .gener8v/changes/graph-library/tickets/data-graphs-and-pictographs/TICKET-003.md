@@ -95,6 +95,7 @@
   - Use `VALUES_DESCRIPTION` (`categories.ts`) for the `values` term: a term has one description in the vocabulary.
   - Draw axis labels with the kit's `axisLabelLines`, `drawValueAxisLabel` and `drawCategoryAxisLabel`.
   - A top-level `color` on a bar graph is now reported as "give it on each category instead" (DEL-002 of TICKET-002).
+- Carried from graph-library/data-graphs-and-pictographs-ticket-002-code-review/CR-003 (supersedes the line above about a top-level `color`): a top-level `color` on a bar graph is reported as `unknown_property`, with the top-level terms (so `barColor` shows), unless the bar graph's definition sets `elementsHint`. If you set one, name the whole-graph option in it, for example "each category, or use barColor for every bar".
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-006

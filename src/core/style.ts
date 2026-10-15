@@ -85,7 +85,7 @@ export interface SeriesStyle {
  * (DGP-NFR-004; code review CR-005). Each series also differs in marker shape and dash pattern,
  * so color is never the only cue (prd/CC-002).
  */
-// @spec GSV-REQ-044, GSV-NFR-004
+// @spec GSV-REQ-044, GSV-NFR-004, DGP-NFR-004
 export const seriesStyles: readonly SeriesStyle[] = Object.freeze(
   (
     [

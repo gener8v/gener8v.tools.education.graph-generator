@@ -274,4 +274,13 @@ Coverage rows were added to `.gener8v/specifications/data-graphs-and-pictographs
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/data-graphs-and-pictographs-ticket-002-code-review` (2026-10-15, Approved)
+
+- **CR-001:** the published descriptions of `lineLabel`, `categoryAxisLabel` and `valueAxisLabel` now say a label longer than two lines is cut short with "…" in the drawing (in a line graph's legend, for `lineLabel`), while the text alternative states it whole. The `series` description says each series takes the default color for its position. Regenerated.
+- **CR-002:** correction to `@spec` Annotations. DGP-NFR-004 was not "already annotated": `src/core/style.ts`:seriesStyles now carries `@spec GSV-REQ-044, GSV-NFR-004, DGP-NFR-004`.
+- **CR-003:** DEL-002 amended. The hint lives in the type's definition, not in a table in the shared validator (`ELEMENTS_OF` removed).
+  - `GraphTypeDefinition.elementsHint` is optional; the line graph's is "each series".
+  - A type without a hint keeps GSV TICKET-003 QR-009's behaviour at the top level: `unknown_property`, with the top-level terms listed, so a number line's `lineLabel`/`lineColor` or a bar graph's `barColor` stays visible.
+  - `tests/core/validate-structure.test.ts` covers both behaviours.
+- **CR-004:** the line graph's tiny-span test keeps every value inside the given scale, asserts exactly `out_of_range /valueScale/maximum`, and asserts `createGraph` does not draw it.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./line-graph` 18.49 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,026 tests) exits 0 on three runs. Deliberate breaks of the CR-003 rule (both ways) and of the tiny-span guard each fail a test.

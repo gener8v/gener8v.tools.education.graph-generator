@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SERIES_LIMIT, lineGraph, type LineGraph } from "../../src/core/definitions/line-graph";
 import { describe as describeGraph, validate } from "../../src/core/index";
+import { createGraph } from "../../src/graph";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { findUnsafeTextChar } from "../../src/core/format";
 import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT } from "../fixtures/plain-text";
@@ -151,9 +152,11 @@ describe("values and the value scale (DGP-REQ-015, DGP-REQ-007, DGP-REQ-008)", (
     expect(codesAndPaths(with_({ valueScale: { minimum: 0, maximum: 10, tickInterval: 3 } }))).toEqual(["tick_interval_not_dividing /valueScale/tickInterval"]);
   });
 
-  it("reports a scale too fine to draw near ±1,000,000,000, rather than drawing it (DGP TICKET-001 SEC-001)", () => {
-    const tiny = with_({ series: [{ values: [999_999_999.5, 999_999_999.5, 999_999_999.5] }], valueScale: { minimum: 999_999_999, maximum: 999_999_999.000001 } });
-    expect(validate(tiny).valid).toBe(false);
+  it("reports a scale too fine to draw near ±1,000,000,000, rather than drawing it (DGP TICKET-001 SEC-001; code review CR-004)", () => {
+    // Every value inside the given scale, so the span alone is at fault.
+    const tiny = with_({ series: [{ values: [999_999_999, 999_999_999, 999_999_999.000001] }], valueScale: { minimum: 999_999_999, maximum: 999_999_999.000001 } });
+    expect(codesAndPaths(tiny)).toEqual(["out_of_range /valueScale/maximum"]);
+    expect(createGraph(tiny).ok).toBe(false);
   });
 
   it("checks the scale on values that passed, skipping it when a value failed", () => {

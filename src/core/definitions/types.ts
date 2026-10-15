@@ -255,6 +255,14 @@ export interface GraphTypeDefinition<D extends DescriptionBase = DescriptionBase
   derivations: readonly Derivation[];
   checks: readonly DomainCheck<D>[];
   /**
+   * Where the type's element options go, such as "each series" for a line graph: given at the top
+   * level, an option that applies only to the type's elements (a series' `lineLabel`) is reported
+   * as not applying, with "give it on each series instead". Without a hint such a key is unknown
+   * at the top level, with the terms valid there, which may name a whole-graph alternative (GSV
+   * TICKET-003 QR-009; DGP TICKET-002 DEL-002, code review CR-003).
+   */
+  elementsHint?: string;
+  /**
    * The plain-text alternative for a normalized description. `provenance` says which values were
    * supplied and which derived, so a supplied value is stated as written and a derived one rounded
    * (GSS-REQ-034): pass both to `formatMeasurement` (GSS TICKET-002 DEL-001).

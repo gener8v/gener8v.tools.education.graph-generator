@@ -10,7 +10,7 @@ export interface NumberLineDescription {
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;
-  /** A label for a line: the number line itself, or one series of a line graph, as plain text. */
+  /** A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   lineLabel?: string;
   /** The number line's axis: its range and tick spacing. */
   axis: {

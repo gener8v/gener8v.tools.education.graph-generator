@@ -80,7 +80,33 @@ describe("unknown and inapplicable properties (GSV-REQ-019, GSV-REQ-020, GSV-REQ
     expect(issues[0]!.message).toBe("xAxisLabel does not apply for a circle; remove it.");
   });
 
-  it("reports an option that applies elsewhere in the type as unknown at that position, with the terms valid there", () => {
+  it("reports an element option given at the top level as unknown, with the top-level terms, when the type gives no hint (QR-009)", () => {
+    // A number line's points carry `label`; at the top level its own options are lineLabel and lineColor.
+    const [issue] = issuesOf(check({ ...NUMBER_LINE, label: "Temperature" }));
+    expect(issue).toMatchObject({ code: "unknown_property", path: "/label" });
+    expect((issue as { allowed?: string[] }).allowed).toEqual(expect.arrayContaining(["lineLabel", "lineColor", "title"]));
+  });
+
+  it("reports an element option given at the top level as not applying, with where it goes, when the type's definition names it (DGP TICKET-002 DEL-002, CR-003)", () => {
+    const hinted = Object.freeze({ ...fixtureRegistry, "number-line": { ...fixtureRegistry["number-line"]!, elementsHint: "each point or segment" } });
+    const issues = issuesOf(validateWith({ ...NUMBER_LINE, label: "Temperature", color: "red" }, hinted));
+    expect(issues).toEqual([
+      {
+        code: "inapplicable_property",
+        path: "/label",
+        message: "label does not apply for a number-line as a whole; give it on each point or segment instead.",
+      },
+      {
+        code: "inapplicable_property",
+        path: "/color",
+        message: "color does not apply for a number-line as a whole; give it on each point or segment instead.",
+      },
+    ]);
+    // Inside an element the rule is unchanged: an option valid elsewhere is unknown there.
+    expect(issuesOf(validateWith({ ...NUMBER_LINE, axis: { min: 0, max: 10, title: "t" } }, hinted))[0]).toMatchObject({ code: "unknown_property", path: "/axis/title" });
+  });
+
+  it("reports an option that applies elsewhere in the type as unknown inside an element or nested object, with the terms valid there", () => {
     // title applies to a number line, but not inside its axis (quality review QR-009).
     const [axisTitle] = issuesOf(check({ ...NUMBER_LINE, axis: { min: 0, max: 10, title: "t" } }));
     expect(axisTitle).toMatchObject({
