@@ -2,10 +2,10 @@ import { type ScaleOptions, type ValueScale, resolveValueScale, valueTicks } fro
 import { cleanText, formatSupplied } from "../../core/format";
 import { defaultStyle } from "../../core/style";
 import type { SceneNode } from "../scene";
-import { fmt } from "./format";
+import { fmt, rotate } from "./format";
 import type { Box } from "./labels";
 import { linearScale } from "./scale";
-import { DEFAULT_FONT_STACK, textWidth, wrap } from "./text";
+import { DEFAULT_FONT_STACK, textWidth, widestWord, wrap } from "./text";
 import { LINE_HEIGHT, textLines } from "./title";
 
 // The scale arithmetic is core's, shared with the validator (quality reviews QR-003, QR-005).
@@ -18,10 +18,14 @@ export { resolveValueScale, type ScaleOptions, type ValueScale, valueTicks } fro
  */
 export type Orientation = "vertical" | "horizontal";
 
-/** Space between a tick and its label, and around a category's name, in drawing units. */
+/** Space between a tick and its label, in drawing units. */
 const LABEL_GAP = 4;
-/** The narrowest a category name is wrapped to, so a crowded axis still breaks between words. */
-const MIN_NAME_WIDTH = 24;
+/**
+ * Space between the plot and the category names, in drawing units: names end this far left of a
+ * horizontal plot and start this far below a vertical one. A layout leaves this much room for them
+ * (quality review QR-006).
+ */
+export const NAME_GAP = 4;
 /** Category names beside a horizontal plot wrap to this width unless the caller gives another. */
 export const CATEGORY_NAME_WIDTH = 96;
 
@@ -122,16 +126,47 @@ export interface CategorySlot {
   readonly center: number;
   /** The name broken into lines, every word kept: a long name wraps, it is never cut short. */
   readonly lines: readonly string[];
-  /** The width the name's lines are wrapped to, and the height they take. */
+  /** The width the name's lines are wrapped to. */
   readonly labelWidth: number;
+  /**
+   * How far the name reaches across the plot's edge: the height of its lines beside a horizontal
+   * plot or below an unrotated vertical one, and the width of its widest line when it is rotated.
+   */
   readonly labelHeight: number;
+  /** Whether the name is turned to read upward below a vertical plot (quality review QR-002). */
+  readonly rotated: boolean;
+}
+
+/**
+ * The width a rotated name's lines are wrapped to: at least the name width and its widest word, so
+ * no word is split, and wide enough that its lines, side by side, fit across its slot. Widened in
+ * steps until they do; one line always fits, so the loop ends, and each step is linear in the name.
+ */
+function rotatedLines(name: string, slotSize: number, fontSize: number, widestWord: number): { lines: string[]; width: number } {
+  const lineHeight = fontSize * LINE_HEIGHT;
+  const maxLines = Math.max(1, Math.floor(slotSize / lineHeight));
+  let width = Math.max(CATEGORY_NAME_WIDTH, widestWord, textWidth(name, fontSize) / maxLines);
+  let lines = wrap(name, width, fontSize);
+  while (lines.length > maxLines) {
+    width *= 1.25;
+    lines = wrap(name, width, fontSize);
+  }
+  return { lines, width };
 }
 
 /**
  * The category slots of a plot `box` (DGP-REQ-003): equal slots in description order, left to right
  * along the bottom (vertical) or top to bottom down the left side (horizontal). Each name is wrapped
- * with the kit's `wrap` to its slot's width, or to `nameWidth` beside a horizontal plot, and never
- * truncated (DGP Scale and Layout; prd/TC-011).
+ * with the kit's `wrap` and never truncated (DGP Scale and Layout; prd/TC-011):
+ * - beside a horizontal plot, to `nameWidth`;
+ * - below a vertical plot, to its slot's width, when every word of every name fits there. When one
+ *   does not, every name is rotated to read upward, wrapped between words only, with as many lines
+ *   as fit side by side across its slot, so a word is never split (quality review QR-002). Past
+ *   about 25 categories one line no longer fits a slot and rotated names touch (DGP TICKET-003).
+ *
+ * `slotSize`, beside a horizontal plot only, sizes every slot from the tallest wrapped name, so a
+ * layout learns the names' height and places the slots in one pass (quality review QR-006); the
+ * slots then start at the box's top and the box's height is not used.
  */
 // @spec DGP-REQ-001, DGP-REQ-003
 export function categorySlots(
@@ -139,42 +174,94 @@ export function categorySlots(
   box: Box,
   orientation: Orientation,
   nameWidth: number = CATEGORY_NAME_WIDTH,
+  slotSize?: (tallestName: number) => number,
 ): CategorySlot[] {
   const fontSize = defaultStyle.fontSizes.tickLabel;
+  const lineHeight = fontSize * LINE_HEIGHT;
   const along = orientation === "vertical" ? box.x : box.y;
-  const length = orientation === "vertical" ? box.width : box.height;
-  const size = length / Math.max(1, categories.length);
-  const labelWidth = orientation === "vertical" ? Math.max(MIN_NAME_WIDTH, size - LABEL_GAP) : nameWidth;
+  const share = (orientation === "vertical" ? box.width : box.height) / Math.max(1, categories.length);
+  const names = categories.map((category) => cleanText(category.name));
+
+  let named: Array<{ lines: string[]; labelWidth: number; labelHeight: number; rotated: boolean }>;
+  if (orientation === "horizontal") {
+    named = names.map((name) => {
+      const lines = wrap(name, nameWidth, fontSize);
+      return { lines, labelWidth: nameWidth, labelHeight: lines.length * lineHeight, rotated: false };
+    });
+  } else {
+    const slotWidth = share - NAME_GAP;
+    const widest = names.map((name) => widestWord(name, fontSize));
+    if (slotWidth > 0 && widest.every((width) => width <= slotWidth)) {
+      named = names.map((name) => {
+        const lines = wrap(name, slotWidth, fontSize);
+        return { lines, labelWidth: slotWidth, labelHeight: lines.length * lineHeight, rotated: false };
+      });
+    } else {
+      named = names.map((name, i) => {
+        const { lines, width } = rotatedLines(name, share, fontSize, widest[i]!);
+        let longest = 0;
+        for (const line of lines) longest = Math.max(longest, textWidth(line, fontSize));
+        return { lines, labelWidth: width, labelHeight: longest, rotated: true };
+      });
+    }
+  }
+
+  let size = share;
+  if (orientation === "horizontal" && slotSize !== undefined) {
+    let tallest = 0;
+    for (const name of named) tallest = Math.max(tallest, name.labelHeight);
+    size = slotSize(tallest);
+  }
   return categories.map((category, index) => {
     const start = along + index * size;
-    const lines = wrap(cleanText(category.name), labelWidth, fontSize);
+    return { index, name: category.name, start, end: start + size, center: start + size / 2, ...named[index]! };
+  });
+}
+
+/**
+ * A rotated name's lines below a vertical plot: each reads upward and ends `NAME_GAP` below the
+ * plot, the lines side by side and centered on the slot, in the order `textLines` stacks them.
+ */
+function rotatedNameLines(slot: CategorySlot, top: number, fontSize: number): SceneNode[] {
+  const lineHeight = fontSize * LINE_HEIGHT;
+  const left = slot.center - (slot.lines.length * lineHeight) / 2;
+  return slot.lines.map((text, i) => {
+    const x = left + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * 0.8;
     return {
-      index,
-      name: category.name,
-      start,
-      end: start + size,
-      center: start + size / 2,
-      lines,
-      labelWidth,
-      labelHeight: lines.length * fontSize * LINE_HEIGHT,
+      kind: "text",
+      attrs: [
+        ["x", fmt(x)],
+        ["y", fmt(top)],
+        ["fill", defaultStyle.colors.text],
+        ["font-family", DEFAULT_FONT_STACK],
+        ["font-size", fmt(fontSize)],
+        ["text-anchor", "end"],
+        ["transform", rotate(-90, x, top)],
+      ],
+      text,
     };
   });
 }
 
 /**
  * The category names for `slots`, every line of every name drawn: below a vertical plot, centered
- * under each slot; beside a horizontal plot, centered in a column `labelWidth` wide that ends
- * `LABEL_GAP` left of the plot, and centered on the slot vertically.
+ * under each slot, or rotated to read upward when `categorySlots` rotated them; beside a horizontal
+ * plot, centered in a column `labelWidth` wide that ends `NAME_GAP` left of the plot, and centered
+ * on the slot vertically.
  */
 // @spec DGP-REQ-001, DGP-REQ-003
 export function drawCategoryNames(slots: readonly CategorySlot[], orientation: Orientation, box: Box): SceneNode[] {
   const fontSize = defaultStyle.fontSizes.tickLabel;
   const nodes: SceneNode[] = [];
   for (const slot of slots) {
+    if (orientation === "vertical" && slot.rotated) {
+      for (const node of rotatedNameLines(slot, box.y + box.height + NAME_GAP, fontSize)) nodes.push(node);
+      continue;
+    }
     const [centerX, top] =
       orientation === "vertical"
-        ? [slot.center, box.y + box.height + LABEL_GAP]
-        : [box.x - LABEL_GAP - slot.labelWidth / 2, slot.center - slot.labelHeight / 2];
+        ? [slot.center, box.y + box.height + NAME_GAP]
+        : [box.x - NAME_GAP - slot.labelWidth / 2, slot.center - slot.labelHeight / 2];
     // A loop, not a spread: a slot's lines grow with its name (GSS TICKET-002 security review SEC-001).
     for (const node of textLines(slot.lines, centerX, top, fontSize, defaultStyle.colors.text)) nodes.push(node);
   }

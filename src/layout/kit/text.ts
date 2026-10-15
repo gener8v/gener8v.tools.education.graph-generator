@@ -106,11 +106,23 @@ function rawWidth(text: string): number {
  */
 // @spec CPSE-REQ-011
 export function textWidth(text: string, fontSize: number): number {
-  return (rawWidth(text) / 1000) * fontSize * TEXT_WIDTH_SAFETY;
+  // The same product, in the same order, as `wrap` measures a word, so a word measured no wider
+  // than a line is never split there (DGP TICKET-005 quality review QR-002).
+  return rawWidth(text) * ((fontSize * TEXT_WIDTH_SAFETY) / 1000);
 }
 
 /** Break opportunities: whitespace other than the no-break spaces (U+00A0, U+2007, U+202F). */
 const BREAKING_SPACE = /[\t\n\v\f\r \u1680\u2000-\u2006\u2008-\u200a\u2028\u2029\u205f\u3000]+/;
+
+/**
+ * The width of the widest word in `text`, words split where `wrap` may break, so a word no wider
+ * than a line is never split by `wrap`. Linear in the length of the text.
+ */
+export function widestWord(text: string, fontSize: number): number {
+  let widest = 0;
+  for (const word of text.split(BREAKING_SPACE)) widest = Math.max(widest, textWidth(word, fontSize));
+  return widest;
+}
 
 const ZWJ = 0x200d;
 const isRegionalIndicator = (code: number) => code >= 0x1f1e6 && code <= 0x1f1ff;

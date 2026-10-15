@@ -1,9 +1,9 @@
 import { getImageNames, imageDescriptions, type ImageName } from "../../images/index";
-import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
+import { cleanText, formatList, isUnitShaped, quoteText, sourceOf, stateMeasurement } from "../format";
 import { createIssue, pointer } from "../issues";
 import type { Provenance } from "../result";
 import { intervalsIn } from "../value-scale";
-import { CATEGORY_LIMIT, VALUE_LIMIT, categories, categoriesCheck } from "./categories";
+import { CATEGORY_LIMIT, VALUE_LIMIT, categories, categoriesCheck, valuesPerCategoryCheck } from "./categories";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "./types";
 
 /** A normalized pictograph description. */
@@ -47,8 +47,12 @@ export function imageCount(value: number, unitValue: number): ImageCount {
   return { whole: count, fraction: fraction > 0 ? Math.min(fraction, 1) : 0 };
 }
 
-/** How many images a value draws: whole images plus one for a remainder. */
-const imagesDrawn = ({ whole, fraction }: ImageCount) => whole + (fraction > 0 ? 1 : 0);
+/**
+ * How many images a value draws: whole images plus one for a remainder. The one count both the
+ * picture limit and the layout's sizing use, so the limit bounds the longest row exactly (code
+ * review CR-001; quality review QR-005).
+ */
+export const imagesDrawn = ({ whole, fraction }: ImageCount): number => whole + (fraction > 0 ? 1 : 0);
 
 const UNITS = "units";
 
@@ -127,20 +131,7 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
     derivations: [],
     checks: [
       categoriesCheck,
-      {
-        name: "one value per category",
-        // No inputs: the check reads only the two lists' lengths, which a failed element does not
-        // change (it stays as null), so a bad value or name never hides a mismatch (code review
-        // CR-002). A list that failed whole, or is missing, is absent, and the check stays silent.
-        inputs: [],
-        // @spec DGP-REQ-026
-        check: (p) => {
-          const values: unknown = p.values;
-          const names: unknown = p.categories;
-          if (!Array.isArray(values) || !Array.isArray(names) || values.length === names.length) return [];
-          return [createIssue("series_length_mismatch", pointer("values"), { term: "values", valueCount: values.length, categoryCount: names.length })];
-        },
-      },
+      valuesPerCategoryCheck(),
       {
         name: "the pictures drawn stay within the limit",
         inputs: ["values/*", "unitValue"],
@@ -149,8 +140,10 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
           let total = 0;
           for (const value of p.values) total += imagesDrawn(imageCount(value, p.unitValue));
           if (!(total > PICTOGRAPH_IMAGE_LIMIT)) return [];
-          const count = Number.isFinite(total) ? total : Number.MAX_SAFE_INTEGER;
-          return [createIssue("too_large", pointer("values"), { term: "values", limit: PICTOGRAPH_IMAGE_LIMIT, unit: "images", count })];
+          // A count past exact whole numbers is left out, so the message says "more than 400"
+          // rather than a number nobody counted (quality review QR-007).
+          const count = Number.isSafeInteger(total) ? { count: total } : {};
+          return [createIssue("too_large", pointer("values"), { term: "values", limit: PICTOGRAPH_IMAGE_LIMIT, unit: "images", ...count })];
         },
       } satisfies DomainCheck<Pictograph>,
     ],
@@ -164,6 +157,9 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
       const title = p.title === undefined ? "" : cleanText(p.title);
       const titled = title === "" ? "" : ` titled ${quoteText(title)}`;
       const unit = unitLabelOf(p);
+      // A unit-shaped label follows every value; a longer one is stated once, in the key's
+      // sentence, so caller text is not repeated per category (quality review QR-003).
+      const valueUnit = isUnitShaped(unit) ? unit : undefined;
       const sentences = [
         `A pictograph${titled}.`,
         `Each ${p.unitImage} stands for ${stateMeasurement(p.unitValue, sourceOf(provenance, "unitValue"), unit)}.`,
@@ -171,7 +167,7 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
       const entries: string[] = [];
       p.categories.forEach((category, i) => {
         const value = p.values[i];
-        if (value !== undefined) entries.push(`${quoteText(category.name)}: ${stateMeasurement(value, sourceOf(provenance, `values/${i}`), unit)}`);
+        if (value !== undefined) entries.push(`${quoteText(category.name)}: ${stateMeasurement(value, sourceOf(provenance, `values/${i}`), valueUnit)}`);
       });
       sentences.push(`${formatList(entries)}.`);
       return sentences.join(" ");

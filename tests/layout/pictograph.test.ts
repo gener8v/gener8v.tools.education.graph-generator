@@ -6,8 +6,10 @@ import { validate } from "../../src/core/index";
 import { createGraph } from "../../src/graph";
 import { IMAGE_VIEW_BOX, images } from "../../src/images/index";
 import { checkScene } from "../../src/layout/kit/check";
+import { textWidth } from "../../src/layout/kit/text";
+import { LINE_HEIGHT, SCENE_MARGIN } from "../../src/layout/kit/title";
 import { KEY_MAX_LINES, MIN_PARTIAL, keyText, pictographLayout } from "../../src/layout/pictograph";
-import type { Scene, SceneNode } from "../../src/layout/scene";
+import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
 
 /** The Scene the pictograph layout draws for a valid description; it must pass `checkScene`. */
 function sceneOf(input: Record<string, unknown>): Scene {
@@ -138,6 +140,21 @@ describe("orientation (DGP-REQ-032)", () => {
   });
 });
 
+describe("names under columns (DGP Scale and Layout; quality review QR-002)", () => {
+  it("turns the week's names to read upward when a word would not fit under its column, never splitting a word", () => {
+    const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const scene = sceneOf({ orientation: "vertical", categories: week.map((name) => ({ name })), values: week.map(() => 3) });
+    const names = scene.nodes.filter((node) => node.kind === "text" && attr(node, "transform") !== undefined);
+    expect(names.map((node) => (node.kind === "text" ? node.text : ""))).toEqual(week);
+    expect(geometryProblems(scene)).toEqual([]);
+  });
+
+  it("keeps short names level", () => {
+    const scene = sceneOf({ orientation: "vertical", categories: [{ name: "Cats" }, { name: "Dogs" }], values: [4, 2] });
+    expect(scene.nodes.some((node) => attr(node, "transform") !== undefined)).toBe(false);
+  });
+});
+
 describe("the key (DGP-REQ-027)", () => {
   it('reads "each <image name> = <unitValue> <valueUnitLabel>", with "units" when no label is given', () => {
     expect(texts(sceneOf({ valueUnitLabel: "students" }))).toContain("each apple = 2 students");
@@ -192,6 +209,166 @@ describe("DGP-NFR-002: a partial picture's visible share is within 2% of the exa
       ),
       { numRuns: 600 },
     );
+  });
+});
+
+/** A drawn node's bounding box: a picture's viewport, or a text line's glyphs (rotated ones too). */
+interface Bounds {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  node: SceneNode;
+}
+
+function boundsOf(node: SceneNode): Bounds {
+  const [x, y] = [num(node, "x"), num(node, "y")];
+  if (node.kind === "svg") return { x0: x, y0: y, x1: x + num(node, "width"), y1: y + num(node, "height"), node };
+  if (node.kind !== "text") throw new Error(`unexpected ${node.kind}`);
+  const size = num(node, "font-size");
+  const width = textWidth(node.text, size);
+  // `textLines` puts the baseline 0.8 of the font size below a glyph's top.
+  if (attr(node, "transform") !== undefined) {
+    // Read upward, ending at (x, y): rotate(-90) turns the line's run down the page from y.
+    expect(attr(node, "transform")).toBe(`rotate(-90 ${x} ${y})`);
+    expect(attr(node, "text-anchor")).toBe("end");
+    return { x0: x - 0.8 * size, y0: y, x1: x + 0.2 * size, y1: y + width, node };
+  }
+  expect(attr(node, "text-anchor")).toBe("middle");
+  return { x0: x - width / 2, y0: y - 0.8 * size, x1: x + width / 2, y1: y + 0.2 * size, node };
+}
+
+/** Two boxes overlapping by more than rounding to the 0.01 grid. */
+const overlap = (a: Bounds, b: Bounds) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 0.02 && Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > 0.02;
+
+/** The Scene split into its parts: the title's lines, the plot (pictures and names) and the key. */
+function partsOf(scene: Scene) {
+  const keyAt = scene.nodes.findLastIndex((node) => node.kind === "svg");
+  const titleCount = scene.nodes.findIndex((node) => attr(node, "font-weight") !== "bold");
+  return {
+    title: scene.nodes.slice(0, titleCount).map(boundsOf),
+    plot: scene.nodes.slice(titleCount, keyAt).map(boundsOf),
+    key: scene.nodes.slice(keyAt).map(boundsOf),
+  };
+}
+
+/** Every way the drawing's geometry can be wrong, as messages; an empty list means it is sound. */
+function geometryProblems(scene: Scene): string[] {
+  const problems: string[] = [];
+  const { title, plot, key } = partsOf(scene);
+  const all = [...title, ...plot, ...key];
+  const label = (b: Bounds) => (b.node.kind === "text" ? `text "${b.node.text.slice(0, 20)}"` : `picture at ${b.x0},${b.y0}`);
+  for (const b of all) {
+    if (b.x0 < SCENE_MARGIN - 0.02 || b.x1 > SCENE_WIDTH - SCENE_MARGIN + 0.02 || b.y0 < -0.02 || b.y1 > scene.height + 0.02) {
+      problems.push(`${label(b)} outside the drawing`);
+    }
+  }
+  // The key's own picture and text sit side by side; everything else must stay apart.
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i + 1; j < all.length; j++) if (overlap(all[i]!, all[j]!)) problems.push(`${label(all[i]!)} overlaps ${label(all[j]!)}`);
+  }
+  const keyTop = Math.min(...key.map((b) => b.y0));
+  for (const b of [...title, ...plot]) if (b.y1 > keyTop + 0.02) problems.push(`${label(b)} reaches into the key`);
+  return problems;
+}
+
+describe("the drawing's geometry (quality review QR-001)", () => {
+  const WORDS = ["Monday", "Wednesday", "Apples", "September", "Average", "number", "of", "hours", "Cats", "A", "Pneumonoultramicroscopicsilicovolcanoconiosis"];
+  const pictograph = (maxCategories: number, orientation: "horizontal" | "vertical") =>
+    fc.integer({ min: 1, max: maxCategories }).chain((n) =>
+      fc.record({
+        names: fc.array(fc.array(fc.constantFrom(...WORDS), { minLength: 1, maxLength: 5 }), { minLength: n, maxLength: n }),
+        counts: fc.array(fc.integer({ min: 0, max: Math.floor(PICTOGRAPH_IMAGE_LIMIT / n) - 1 }), { minLength: n, maxLength: n }),
+        fraction: fc.constantFrom(0, 0.25, 0.5, 0.999),
+        unitValue: fc.constantFrom(1, 2, 0.5),
+        title: fc.option(fc.constantFrom("Pets", "How we get to school each morning, by class and by day of the week")),
+        label: fc.option(fc.constantFrom("students", "pupils who walk to school on a dry day")),
+      }).map(({ names, counts, fraction, unitValue, title, label }) => ({
+        orientation,
+        // Names are made distinct, as validation requires.
+        categories: names.map((words, i) => ({ name: `${words.join(" ")} ${i + 1}` })),
+        values: counts.map((count, i) => (count + (i % 2 === 0 ? fraction : 0)) * unitValue),
+        unitValue,
+        ...(title === null ? {} : { title }),
+        ...(label === null ? {} : { valueUnitLabel: label }),
+      })),
+    );
+
+  it("keeps every picture and line inside the drawing, apart from each other and above the key, in rows up to the category limit", () => {
+    fc.assert(
+      fc.property(pictograph(100, "horizontal"), (input) => {
+        expect(geometryProblems(sceneOf(input))).toEqual([]);
+      }),
+      { numRuns: 150 },
+    );
+  });
+
+  it("does the same in columns while one line of a name fits under a column, up to 25 categories (QR-002)", () => {
+    fc.assert(
+      fc.property(pictograph(25, "vertical"), (input) => {
+        expect(geometryProblems(sceneOf(input))).toEqual([]);
+      }),
+      { numRuns: 150 },
+    );
+  });
+
+  it("draws a row's partial picture one step after its last whole picture, every picture centered on the name", () => {
+    const scene = sceneOf({ categories: [{ name: "Cats" }, { name: "Average number of hours of sleep each night" }], values: [5, 3], unitValue: 2 });
+    const lineHeight = 12 * LINE_HEIGHT;
+    const names = partsOf(scene).plot.flatMap((b) => (b.node.kind === "text" ? [b.node] : []));
+    const lines = [names.slice(0, 1), names.slice(1)];
+    expect(lines[1]!.map((node) => (node.kind === "text" ? node.text : "")).join(" ")).toBe("Average number of hours of sleep each night");
+    rows(scene).forEach((row, r) => {
+      const step = num(row[1]!, "x") - num(row[0]!, "x");
+      row.forEach((node, i) => expect(num(node, "x")).toBeCloseTo(num(row[0]!, "x") + i * step, 2));
+      expect(isWhole(row.at(-1)!)).toBe(false);
+      // The name's lines, `textLines`' bands, centered on the same height as the pictures.
+      const top = num(lines[r]![0]!, "y") - (lineHeight - 12) / 2 - 12 * 0.8;
+      const center = top + (lines[r]!.length * lineHeight) / 2;
+      for (const node of row) expect(num(node, "y") + num(node, "height") / 2).toBeCloseTo(center, 1);
+    });
+  });
+
+  it("rests a column's partial picture on the picture below, one gap above it, every column centered on its name", () => {
+    const scene = sceneOf({ orientation: "vertical", categories: [{ name: "Cats" }, { name: "Dogs" }], values: [5, 3], unitValue: 2 });
+    const all = pictures(scene);
+    const columnOf = (name: string) => {
+      const text = scene.nodes.find((node) => node.kind === "text" && node.text === name)!;
+      return all.filter((node) => Math.abs(num(node, "x") + num(node, "width") / 2 - num(text, "x")) < 0.02);
+    };
+    const [cats, dogs] = [columnOf("Cats"), columnOf("Dogs")];
+    expect([cats.length, dogs.length]).toEqual([3, 2]);
+    // The gap between two whole pictures, from the Cats column.
+    const gap = num(cats[0]!, "y") - (num(cats[1]!, "y") + num(cats[1]!, "height"));
+    expect(gap).toBeGreaterThan(0);
+    for (const column of [cats, dogs]) {
+      const part = column.at(-1)!;
+      expect(isWhole(part)).toBe(false);
+      expect(num(part, "y") + num(part, "height")).toBeCloseTo(num(column.at(-2)!, "y") - gap, 2);
+    }
+  });
+
+  it("keeps 25 columns of pictures apart, each centered over its rotated name", () => {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const categories = Array.from({ length: 25 }, (_, i) => ({ name: `${months[i % 12]} ${i + 1}` }));
+    const scene = sceneOf({ orientation: "vertical", categories, values: categories.map(() => 7), unitValue: 2 });
+    expect(geometryProblems(scene)).toEqual([]);
+    const lineHeight = 12 * LINE_HEIGHT;
+    const names = scene.nodes.filter((node) => node.kind === "text" && attr(node, "transform") !== undefined);
+    expect(names).toHaveLength(25);
+    const columns = new Map<number, number>();
+    for (const node of pictures(scene)) columns.set(Math.round((num(node, "x") + num(node, "width") / 2) * 100) / 100, 1);
+    // One line per name: its glyphs run from its baseline back up the line height's share.
+    const centers = names.map((node) => num(node, "x") - (lineHeight - 12) / 2 - 12 * 0.8 + lineHeight / 2);
+    expect([...columns.keys()].map((x, i) => Math.abs(x - centers[i]!) < 0.02)).toEqual(names.map(() => true));
+  });
+
+  it("sizes the longest row and column by its remainder, so the partial picture stays inside the plot (QR-005)", () => {
+    const row = sceneOf({ values: [40.5], unitValue: 1 });
+    expect(Math.max(...pictures(row).map((node) => num(node, "x") + num(node, "width")))).toBeLessThanOrEqual(SCENE_WIDTH - SCENE_MARGIN);
+    const column = sceneOf({ values: [40.5], unitValue: 1, orientation: "vertical" });
+    // No title: the plot starts 8 below the top.
+    expect(Math.min(...pictures(column).map((node) => num(node, "y")))).toBeGreaterThanOrEqual(8);
   });
 });
 

@@ -1,4 +1,4 @@
-import { imageCount, pictograph as pictographDefinition, type Pictograph, unitLabelOf } from "../core/definitions/pictograph";
+import { imageCount, imagesDrawn, pictograph as pictographDefinition, type Pictograph, unitLabelOf } from "../core/definitions/pictograph";
 import { formatSupplied } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
@@ -7,7 +7,7 @@ import { fmt } from "./kit/format";
 import type { Box } from "./kit/labels";
 import { textWidth as measureText, wrap } from "./kit/text";
 import { LINE_HEIGHT, SCENE_MARGIN, textLines, titleBlock } from "./kit/title";
-import { CATEGORY_NAME_WIDTH, type CategorySlot, categorySlots, drawCategoryNames } from "./kit/value-scale";
+import { CATEGORY_NAME_WIDTH, type CategorySlot, NAME_GAP, categorySlots, drawCategoryNames } from "./kit/value-scale";
 import type { Layout } from "./registry";
 import { type Attrs, SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 
@@ -78,13 +78,12 @@ function partialPicture(image: ImageAsset, x: number, y: number, size: number, f
   return { kind: "svg", attrs, children: image.nodes };
 }
 
-/** The pictures for one category, in a row from `start` or a column up from `start`, `step` apart. */
+/** The pictures for one category, each at the place `place` gives its position in the row or column. */
 function categoryPictures(
   image: ImageAsset,
   value: number,
   unitValue: number,
   size: number,
-  step: number,
   place: (index: number) => { x: number; y: number },
   upright: boolean,
 ): SceneNode[] {
@@ -107,10 +106,7 @@ const gridStep = (step: number) => Math.max(0.01, Math.floor(step * 100) / 100);
 /** The most pictures any category draws, at least 1 so an all-zero pictograph still has a size. */
 function mostPictures(p: Pictograph): number {
   let most = 1;
-  for (const value of p.values) {
-    const { whole, fraction } = imageCount(value, p.unitValue);
-    most = Math.max(most, whole + (fraction > 0 ? 1 : 0));
-  }
+  for (const value of p.values) most = Math.max(most, imagesDrawn(imageCount(value, p.unitValue)));
   return most;
 }
 
@@ -135,33 +131,34 @@ export const pictographLayout: Layout<Pictograph> = (p: Pictograph, provenance: 
   let plotBottom: number;
   if (!upright) {
     // Rows: names in a column on the left, pictures to their right.
-    const left = SCENE_MARGIN + CATEGORY_NAME_WIDTH + 4;
+    const left = SCENE_MARGIN + CATEGORY_NAME_WIDTH + NAME_GAP;
     const width = SCENE_WIDTH - SCENE_MARGIN - left;
     // Step and size are rounded once, so every picture lands on the same 0.01 grid and the spacing
     // is exactly equal, not merely equal after rounding each position (DGP-REQ-037).
     const step = gridStep(Math.min(MAX_IMAGE_STEP, width / most));
     const size = fmt(step * IMAGE_FILL);
-    // A row is tall enough for its picture and for the tallest wrapped name.
-    const probe = categorySlots(p.categories, { x: left, y: top, width, height: p.categories.length }, "horizontal");
-    let nameHeight = 0;
-    for (const slot of probe) nameHeight = Math.max(nameHeight, slot.labelHeight);
-    const rowHeight = Math.max(step, nameHeight + 4);
+    // A row is tall enough for its picture and for the tallest wrapped name, with a gap between
+    // names; the names are wrapped once (quality review QR-006).
+    const slots = categorySlots(p.categories, { x: left, y: top, width, height: 0 }, "horizontal", CATEGORY_NAME_WIDTH, (tallestName) =>
+      Math.max(step, tallestName + NAME_GAP),
+    );
+    const rowHeight = slots.length === 0 ? step : slots[0]!.end - slots[0]!.start;
     const box: Box = { x: left, y: top, width, height: rowHeight * p.categories.length };
-    const slots = categorySlots(p.categories, box, "horizontal");
     slots.forEach((slot: CategorySlot) => {
       const y = slot.center - size / 2;
-      const pictures = categoryPictures(image, p.values[slot.index] ?? 0, p.unitValue, size, step, (i) => ({ x: left + i * step, y }), false);
+      const pictures = categoryPictures(image, p.values[slot.index] ?? 0, p.unitValue, size, (i) => ({ x: left + i * step, y }), false);
       for (const node of pictures) nodes.push(node);
     });
     for (const node of drawCategoryNames(slots, "horizontal", box)) nodes.push(node);
     plotBottom = box.y + box.height;
   } else {
-    // Columns: pictures grow upward from a common baseline, names below.
-    const box0: Box = { x: SCENE_MARGIN, y: top, width: SCENE_WIDTH - 2 * SCENE_MARGIN, height: COLUMN_HEIGHT };
-    const slotWidth = box0.width / Math.max(1, p.categories.length);
+    // Columns: pictures grow upward from a common baseline, names below (rotated when a word would
+    // not fit under its column; quality review QR-002).
+    const plotArea: Box = { x: SCENE_MARGIN, y: top, width: SCENE_WIDTH - 2 * SCENE_MARGIN, height: COLUMN_HEIGHT };
+    const slotWidth = plotArea.width / Math.max(1, p.categories.length);
     const step = gridStep(Math.min(MAX_IMAGE_STEP, COLUMN_HEIGHT / most, slotWidth / IMAGE_FILL));
     const size = fmt(step * IMAGE_FILL);
-    const box: Box = { ...box0, height: step * most };
+    const box: Box = { ...plotArea, height: step * most };
     const baseline = box.y + box.height;
     const slots = categorySlots(p.categories, box, "vertical");
     slots.forEach((slot: CategorySlot) => {
@@ -171,7 +168,6 @@ export const pictographLayout: Layout<Pictograph> = (p: Pictograph, provenance: 
         p.values[slot.index] ?? 0,
         p.unitValue,
         size,
-        step,
         (i) => ({ x, y: baseline - (i + 1) * step + (step - size) }),
         true,
       );
@@ -180,7 +176,7 @@ export const pictographLayout: Layout<Pictograph> = (p: Pictograph, provenance: 
     let nameHeight = 0;
     for (const slot of slots) nameHeight = Math.max(nameHeight, slot.labelHeight);
     for (const node of drawCategoryNames(slots, "vertical", box)) nodes.push(node);
-    plotBottom = baseline + 4 + nameHeight;
+    plotBottom = baseline + NAME_GAP + nameHeight;
   }
 
   // The key: one picture and "each apple = 2 students", wrapped and capped like any caller text.

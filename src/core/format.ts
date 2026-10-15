@@ -207,13 +207,18 @@ const SENTENCE_PUNCTUATION = /[.!?:;]/;
  */
 export function stateMeasurement(value: number, provenance: "supplied" | "derived", unit?: string): string {
   const cleanUnit = unit === undefined ? "" : cleanText(unit);
-  // Code units first, so a caller-sized unit is never spread into an array.
-  const unitShaped =
-    cleanUnit.length <= 2 * UNIT_MAX_PLAIN_LENGTH &&
-    [...cleanUnit].length <= UNIT_MAX_PLAIN_LENGTH &&
-    !SENTENCE_PUNCTUATION.test(cleanUnit);
-  if (cleanUnit === "" || unitShaped) return formatMeasurement(value, provenance, cleanUnit);
+  if (cleanUnit === "" || isUnitShaped(cleanUnit)) return formatMeasurement(value, provenance, cleanUnit);
   return `${formatMeasurement(value, provenance)} ${quoteText(cleanUnit)}`;
+}
+
+/**
+ * Whether a cleaned unit reads as a unit, stated plainly after a number: at most 20 characters and
+ * no sentence punctuation ("cm", "km/h", "students"). Anything else is stated quoted, and a text
+ * alternative states it once rather than after every value (DGP TICKET-005 quality review QR-003).
+ */
+export function isUnitShaped(cleanUnit: string): boolean {
+  // Code units first, so a caller-sized unit is never spread into an array.
+  return cleanUnit.length <= 2 * UNIT_MAX_PLAIN_LENGTH && [...cleanUnit].length <= UNIT_MAX_PLAIN_LENGTH && !SENTENCE_PUNCTUATION.test(cleanUnit);
 }
 
 /**

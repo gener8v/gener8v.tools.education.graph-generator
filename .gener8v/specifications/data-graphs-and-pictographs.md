@@ -165,7 +165,7 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-023 | `src/core/definitions/pictograph.ts`:pictograph; `src/layout/pictograph.ts`:pictographLayout; `src/react/graphs/PictographGraph.tsx`:Pictograph |
 | DGP-REQ-024 | `src/core/definitions/pictograph.ts`:pictograph, unitImage |
 | DGP-REQ-025 | `src/core/definitions/pictograph.ts`:pictograph |
-| DGP-REQ-026 | `src/core/definitions/pictograph.ts`:imageCount, pictograph; `src/layout/pictograph.ts`:pictographLayout |
+| DGP-REQ-026 | `src/core/definitions/pictograph.ts`:imageCount, pictograph; `src/core/definitions/categories.ts`:valuesPerCategoryCheck; `src/layout/pictograph.ts`:pictographLayout |
 | DGP-REQ-027 | `src/core/definitions/pictograph.ts`:describe; `src/layout/pictograph.ts`:keyText, pictographLayout |
 | DGP-REQ-028 | `src/core/definitions/pictograph.ts`:imageCount; `src/layout/pictograph.ts`:partialPicture, pictographLayout |
 | DGP-REQ-029 | `src/core/definitions/pictograph.ts`:pictograph |

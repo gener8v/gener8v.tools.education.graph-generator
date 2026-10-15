@@ -203,6 +203,13 @@ export interface Derivation {
 }
 
 /**
+ * The inputs of a domain check that always runs, even after another value failed, and guards
+ * itself (quality review QR-004): a failed list element reaches it as `null`, keeping the list's
+ * length, and a failed or missing property is absent.
+ */
+export const ALWAYS_RUNS: readonly string[] = /* @__PURE__ */ Object.freeze([]);
+
+/**
  * A type-specific check that reports issues the shape alone cannot (domain stage, AD-004), such
  * as points outside an axis range. It runs only when the top-level property of each input is
  * present and no earlier failure touches any path it reads, so its issues never follow from
@@ -216,10 +223,11 @@ export interface DomainCheck<D extends DescriptionBase = DescriptionBase> {
   /**
    * The paths the check reads, as JSON Pointers without the leading slash; `*` stands for any
    * list position: `["xAxis/min", "xAxis/max", "points/*\/x"]`. A failure elsewhere, such as a
-   * bad tick spacing or a typo in another key, does not stop the check. An empty list means the
-   * check always runs and guards itself against a missing or failed value, as a check that reads
-   * only list lengths does: a failed element stays as `null` and does not change a length (DGP
-   * TICKET-005 code review CR-002).
+   * bad tick spacing or a typo in another key, does not stop the check. `ALWAYS_RUNS` (an empty
+   * list) means the check always runs and guards itself against a missing or failed value, as a
+   * check that reads only list lengths does: a failed element stays as `null` and does not change
+   * a length (DGP TICKET-005 code review CR-002). Such a check must read its description as
+   * `unknown`, whatever its parameter type says.
    */
   inputs: readonly string[];
   // Method syntax keeps the parameter bivariant, so a check written for one graph type's

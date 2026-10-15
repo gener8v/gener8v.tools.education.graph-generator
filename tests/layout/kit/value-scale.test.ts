@@ -358,9 +358,9 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
     expect(slot!.labelHeight).toBeCloseTo(slot!.lines.length * defaultStyle.fontSizes.tickLabel * 1.2);
   });
 
-  it("splits a single word wider than its slot without dropping any of it", () => {
+  it("splits a single word wider than the name column beside a horizontal plot without dropping any of it", () => {
     const word = "Pneumonoultramicroscopicsilicovolcanoconiosis";
-    const [slot] = categorySlots(names(word, "B", "C", "D", "E", "F"), BOX, "vertical");
+    const [slot] = categorySlots(names(word), BOX, "horizontal", 60);
     expect(slot!.lines.length).toBeGreaterThan(1);
     expect(slot!.lines.join("")).toBe(word);
   });
@@ -371,12 +371,93 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
     expect(slot!.lines.join(" ")).toBe("A rather long category name");
   });
 
-  it("never wraps names narrower than the minimum width, so 100 categories still lay out (quality review QR-001)", () => {
-    const many = Array.from({ length: 100 }, (_, i) => ({ name: `Category ${i}` }));
-    const slots = categorySlots(many, BOX, "vertical");
-    expect(slots).toHaveLength(100);
-    expect(slots[0]!.labelWidth).toBe(24);
-    expect(slots.map((slot) => slot.name)).toEqual(many.map((c) => c.name));
+  describe("rotated names below a vertical plot (DGP TICKET-005 quality review QR-002)", () => {
+    const PLOT = { x: 16, y: 40, width: 368, height: 200 };
+    const lineHeight = defaultStyle.fontSizes.tickLabel * 1.2;
+    const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    it("keeps names level while every word fits under its column", () => {
+      const slots = categorySlots(names("Cats", "Dogs", "Fish"), PLOT, "vertical");
+      expect(slots.map((slot) => [slot.rotated, slot.lines])).toEqual([
+        [false, ["Cats"]],
+        [false, ["Dogs"]],
+        [false, ["Fish"]],
+      ]);
+    });
+
+    it.each([
+      ["five weekdays", week.slice(0, 5)],
+      ["the week", week],
+      ["the months", months],
+      ["a long word", ["Pneumonoultramicroscopicsilicovolcanoconiosis", "B", "C", "D", "E", "F"]],
+    ])("rotates every name when a word would not fit, never splitting a word: %s", (_, list) => {
+      const slots = categorySlots(names(...list), PLOT, "vertical");
+      for (const slot of slots) {
+        expect(slot.rotated, slot.name).toBe(true);
+        expect(slot.lines.join(" "), slot.name).toBe(slot.name);
+        // Each line holds whole words only.
+        for (const line of slot.lines) for (const word of line.split(" ")) expect(slot.name.split(" ")).toContain(word);
+        // Read upward, a name reaches as far below the plot as its widest line.
+        expect(slot.labelHeight).toBeCloseTo(Math.max(...slot.lines.map((line) => textWidth(line, defaultStyle.fontSizes.tickLabel))));
+      }
+    });
+
+    it("wraps a long rotated name onto lines side by side that fit across its column", () => {
+      const name = "Average number of hours of sleep each night, counted over one school week";
+      const slots = categorySlots(names(name, ...week.slice(1)), PLOT, "vertical");
+      const [slot] = slots;
+      expect(slot!.rotated).toBe(true);
+      expect(slot!.lines.length).toBeGreaterThan(1);
+      expect(slot!.lines.join(" ")).toBe(name);
+      expect(slot!.lines.length * lineHeight).toBeLessThanOrEqual(slot!.end - slot!.start);
+    });
+
+    it("keeps rotated names apart while one line fits a column, up to 25 categories", () => {
+      for (const count of [8, 13, 20, 25]) {
+        const list = Array.from({ length: count }, (_, i) => `${months[i % 12]} week ${i + 1}`);
+        for (const slot of categorySlots(names(...list), PLOT, "vertical")) {
+          expect(slot.rotated).toBe(true);
+          expect(slot.lines.length * lineHeight, `${count}: ${slot.name}`).toBeLessThanOrEqual(slot.end - slot.start);
+        }
+      }
+    });
+
+    it("still lays out 100 categories, one line each", () => {
+      const many = Array.from({ length: 100 }, (_, i) => ({ name: `Category ${i}` }));
+      const slots = categorySlots(many, PLOT, "vertical");
+      expect(slots).toHaveLength(100);
+      expect(slots.every((slot) => slot.rotated && slot.lines.length === 1)).toBe(true);
+      expect(slots.map((slot) => slot.lines[0])).toEqual(many.map((c) => c.name));
+    });
+
+    it("draws each line reading upward, ending just below the plot, the lines centered across the column", () => {
+      const slots = categorySlots(names("Wednesday afternoon club", ...week.slice(1)), PLOT, "vertical");
+      const nodes = drawCategoryNames(slots, "vertical", PLOT);
+      expect(textsOf(nodes)).toEqual(slots.flatMap((slot) => slot.lines));
+      const first = slots[0]!;
+      const top = PLOT.y + PLOT.height + 4;
+      const left = first.center - (first.lines.length * lineHeight) / 2;
+      const firstNodes = nodes.slice(0, first.lines.length);
+      firstNodes.forEach((node, i) => {
+        const x = Math.round((left + i * lineHeight + 1.2 + 9.6) * 100) / 100;
+        expect([attr(node, "x"), attr(node, "y"), attr(node, "text-anchor"), attr(node, "transform")]).toEqual([x, top, "end", `rotate(-90 ${x} ${top})`]);
+      });
+    });
+  });
+
+  it("sizes slots beside a horizontal plot from the tallest wrapped name, wrapping once (DGP TICKET-005 quality review QR-006)", () => {
+    const seen: number[] = [];
+    const slots = categorySlots(names("A rather long category name", "B"), { x: 100, y: 10, width: 200, height: 0 }, "horizontal", 60, (tallest) => {
+      seen.push(tallest);
+      return tallest + 4;
+    });
+    const tallest = slots[0]!.labelHeight;
+    expect(seen).toEqual([tallest]);
+    expect(slots.map((slot) => [slot.start, slot.end])).toEqual([
+      [10, 10 + tallest + 4],
+      [10 + tallest + 4, 10 + 2 * (tallest + 4)],
+    ]);
   });
 
   it("centers each name under its slot below a vertical plot (quality review QR-001)", () => {

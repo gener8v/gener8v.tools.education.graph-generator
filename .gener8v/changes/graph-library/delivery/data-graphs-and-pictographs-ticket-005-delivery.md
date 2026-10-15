@@ -290,3 +290,26 @@ Decisions taken with the plan: a provisional cap of 1,000 images in total, pendi
   - **DEL-005 departs from AD-008's wording:** a column's partial picture is cropped by height.
   - Both join the queued `system-design.md` amendments, alongside those from GSS TICKET-002 and DGP TICKET-004.
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (945 tests) exits 0 on three runs. Deliberate breaks of the CR-001, CR-002 and CR-003 fixes each fail their tests.
+
+### Quality review — `graph-library/data-graphs-and-pictographs-ticket-005-quality-review` (2026-10-15, Approved)
+
+- **QR-001** — `tests/layout/pictograph.test.ts` gains geometry tests:
+  - Two property tests check that every picture and text line is inside the drawing's margins, that nothing overlaps, and that the plot sits above the key. One covers rows (1–100 categories), the other columns (1–25).
+  - Direct checks pin each row's partial picture one step after its last whole picture, each row centred on its name, each column's partial resting one gap above the picture below, and 25 columns kept apart.
+- **QR-002** — the kit's `categorySlots` and `drawCategoryNames` (`src/layout/kit/value-scale.ts`) rotate names below a vertical plot.
+  - When any word would not fit its column, every name reads upward (−90°) and is wrapped only between words, with as many lines as fit across its column. A word is never split.
+  - `CategorySlot` gains `rotated`; for a rotated name `labelHeight` is its widest line, the drop below the plot. New helpers: `rotate()` in `src/layout/kit/format.ts`, `widestWord()` in `src/layout/kit/text.ts`.
+  - `textWidth` now multiplies in the same order as `wrap`, so a word measured to fit is never split by rounding.
+  - The kit's 24-unit minimum name width is gone; crowded columns rotate instead. Its two DGP TICKET-001 tests are replaced.
+  - Past about 25 columns, rotated names touch. Deferred to DGP TICKET-003 (Known Hazard).
+- **QR-003** — `describe` repeats the unit label after each value only when it is unit-shaped (`isUnitShaped()`, newly exported from `src/core/format.ts`). A longer label is stated once, quoted, in the key's sentence, and the values are given bare.
+  - **Measured** through `createGraph`, 100 categories with a 500,000-character label: the text alternative fell from 50,501,334 to 501,033 characters, and the time from 16.7 s to 384 ms. With 2 categories: 500,061 characters, 385 ms. For the Product Owner's caller-text length decision.
+- **QR-004** — the length check is `valuesPerCategoryCheck(term = "values")` in `src/core/definitions/categories.ts`, for the bar graph and the line graph to reuse.
+  - `ALWAYS_RUNS` (`src/core/definitions/types.ts`) names the always-run mode.
+  - `tests/core/validate-domain.test.ts` pins it: such a check runs after another value failed, a failed list element reaches it as `null`, and a failed property is absent.
+- **QR-005** — `imagesDrawn` is exported and the layout's `mostPictures` uses it; `categoryPictures` no longer takes the unused `step`.
+- **QR-006** — the kit exports `NAME_GAP`, which replaces the layout's three literal 4s. A new `slotSize` option on `categorySlots` sizes the slots beside a horizontal plot from the tallest name, so names are wrapped once.
+- **QR-007** — the picture-limit issue leaves out `count` unless it is an exact whole number, so an overflowing count reads "more than 400 pictures". Tested at `unitValue` 5e-324, 1e-300 and 1e-12.
+- **Re-verification:** `pnpm generate` (no change to the generated files), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` and `publint` exit 0, as do `attw`, `audit` and `gener8v-state lint`. `pnpm test` (972 tests) exits 0 on three runs. `./pictograph` is 17.61 kB of 25 kB.
+- **Mutation checks:** 21 deliberate breaks, each made against a passing baseline of 222 tests and restored afterwards, every one failing a test. They cover 12 of the reviewer's 16 layout mutations, five to the rotation and slot sizing, and four to QR-003, QR-004 and QR-007.
+

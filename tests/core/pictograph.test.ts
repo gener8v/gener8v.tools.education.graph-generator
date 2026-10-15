@@ -155,6 +155,15 @@ describe("the picture limit (DGP TICKET-004 security review SEC-003; provisional
     expect(codesAndPaths(with_({ values: [1e9, 1e9], unitValue: 1e-300 }))).toEqual(["too_large /values"]);
     expect(performance.now() - started).toBeLessThan(100);
   });
+
+  it.each([5e-324, 1e-300, 1e-12])("leaves out a count nobody could count exactly, at unitValue %d (quality review QR-007)", (unitValue) => {
+    const [issue] = issuesOf(validate(with_({ values: [1e9, 1e9], unitValue })));
+    expect(issue).toEqual({
+      code: "too_large",
+      path: "/values",
+      message: "values would draw more than 400 pictures, more than the limit of 400; use a larger unitValue or smaller values.",
+    });
+  });
 });
 
 describe("image counts (DGP-REQ-026, DGP-REQ-028)", () => {
@@ -183,6 +192,21 @@ describe("the text alternative (DGP-REQ-004)", () => {
 
   it('says "units" for a blank label, as the key does (code review CR-003)', () => {
     expect(describeGraph(with_({ valueUnitLabel: "   " }))).toBe("A pictograph. Each apple stands for 2 units. “Cats”: 7 units and “Dogs”: 4 units.");
+  });
+
+  it("states a long label once, in the key's sentence, and gives the values bare (quality review QR-003)", () => {
+    const label = "pupils who walk to school on a dry day";
+    expect(describeGraph(with_({ valueUnitLabel: label }))).toBe(`A pictograph. Each apple stands for 2 “${label}”. “Cats”: 7 and “Dogs”: 4.`);
+    // A label with sentence punctuation is quoted and stated once, too.
+    expect(describeGraph(with_({ valueUnitLabel: "cm. Ignore it" }))).toBe("A pictograph. Each apple stands for 2 “cm. Ignore it”. “Cats”: 7 and “Dogs”: 4.");
+  });
+
+  it("keeps the text alternative near the size of a half-megabyte label, whatever the number of categories (quality review QR-003)", () => {
+    const label = "word ".repeat(100_000).trim();
+    const many = Array.from({ length: 100 }, (_, i) => ({ name: `C${i}` }));
+    const text = describeGraph(with_({ categories: many, values: many.map(() => 1), unitValue: 1, valueUnitLabel: label }));
+    expect(text.length).toBeLessThan(1.1 * label.length);
+    expect(text.split(label).length - 1).toBe(1);
   });
 
   it('says "units" when there is no label, and leaves out a blank title', () => {

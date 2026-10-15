@@ -11,10 +11,11 @@ import {
   dataGraphProperties,
   resolveValueScale,
   tickIntervalCheck,
+  valuesPerCategoryCheck,
 } from "../../src/core/definitions/categories";
 import type { Registry } from "../../src/core/definitions/index";
 import { sharedProperties } from "../../src/core/definitions/shared";
-import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "../../src/core/definitions/types";
+import { ALWAYS_RUNS, type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "../../src/core/definitions/types";
 import { pointer } from "../../src/core/issues";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
@@ -368,3 +369,38 @@ describe("value scale checks (DGP-REQ-007, DGP-REQ-008)", () => {
     expect(resolveValueScale({ minimum: 5 }, [-30], { allowNegative: true }).minimum).toBe(5);
   });
 });
+
+describe("one value per category (DGP-REQ-026; DGP TICKET-005 quality review QR-004)", () => {
+  const run = (description: Record<string, unknown>, term?: string) =>
+    valuesPerCategoryCheck(term).check({ type: "pictograph", ...description } as unknown as DescriptionBase).map((issue) => [issue.code, issue.path, issue.message]);
+  const two = [{ name: "Cats" }, { name: "Dogs" }];
+
+  it("always runs, reading only the two lists' lengths", () => {
+    expect(valuesPerCategoryCheck().inputs).toBe(ALWAYS_RUNS);
+    expect(run({ categories: two, values: [1, 2] })).toEqual([]);
+    // Failed elements stay as null and still count.
+    expect(run({ categories: [null, { name: "Dogs" }], values: [null, 2] })).toEqual([]);
+  });
+
+  it("reports a different length at the list", () => {
+    expect(run({ categories: two, values: [7] })).toEqual([
+      ["series_length_mismatch", "/values", "values has 1 value but there are 2 categories; give one value per category."],
+    ]);
+    expect(run({ categories: [{ name: "Cats" }], values: [1, 2, 3] })).toEqual([
+      ["series_length_mismatch", "/values", "values has 3 values but there is 1 category; give one value per category."],
+    ]);
+  });
+
+  it("stays silent when either list is missing or failed whole", () => {
+    expect(run({ values: [1] })).toEqual([]);
+    expect(run({ categories: two })).toEqual([]);
+    expect(run({ categories: two, values: "many" })).toEqual([]);
+    expect(run({ categories: null, values: [1] })).toEqual([]);
+  });
+
+  it("checks another top-level list by name", () => {
+    expect(valuesPerCategoryCheck("counts").name).toBe("one value per category in counts");
+    expect(run({ categories: two, counts: [1] }, "counts").map(([code, path]) => `${code} ${path}`)).toEqual(["series_length_mismatch /counts"]);
+  });
+});
+

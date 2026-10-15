@@ -41,6 +41,12 @@ export function translate(x: number, y: number): string {
   return `translate(${fmt(x)} ${fmt(y)})`;
 }
 
+/** A `transform` attribute value turning by `angle` degrees about (`x`, `y`), every number through `fmt()`. */
+// @spec CPSE-REQ-011
+export function rotate(angle: number, x: number, y: number): string {
+  return `rotate(${fmt(angle)} ${fmt(x)} ${fmt(y)})`;
+}
+
 /**
  * A measurement value as displayed in a label: a supplied value exactly as given, a derived value
  * at the documented display precision (GSS-REQ-034). Built on the same formatters as the text

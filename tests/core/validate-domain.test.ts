@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GraphType, GraphTypeDefinition } from "../../src/core/definitions/types";
+import { ALWAYS_RUNS, type GraphType, type GraphTypeDefinition } from "../../src/core/definitions/types";
 import { createIssue, pointer } from "../../src/core/issues";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
@@ -151,6 +151,35 @@ describe("domain checks (AD-004 stage 4)", () => {
       const result = check({ type: "xy-graph", ...AXES, points: [{ x: 1, y: 1 }] }, { "xy-graph": handmade(issue) });
       expect(issuesOf(result).map((found) => found.code)).toEqual(["internal_error"]);
     }
+  });
+
+  it("runs a check with no inputs (ALWAYS_RUNS) after another value failed, handing it failed elements as null (DGP TICKET-005 quality review QR-004)", () => {
+    const seen: unknown[] = [];
+    const always: GraphTypeDefinition = {
+      ...xyGraph,
+      checks: [
+        {
+          name: "always runs",
+          inputs: ALWAYS_RUNS,
+          check: (description) => {
+            seen.push(description["points"]);
+            return [];
+          },
+        },
+      ],
+    };
+    expect(ALWAYS_RUNS).toEqual([]);
+    expect(Object.isFrozen(ALWAYS_RUNS)).toBe(true);
+    expect(codesAndPaths({ type: "xy-graph", ...AXES, points: [{ x: 1, y: 1 }, 3, { x: 1, y: Number.NaN }] }, { "xy-graph": always })).toEqual([
+      "wrong_kind /points/1",
+      "wrong_kind /points/2/y",
+    ]);
+    // A failed list element stays as null, keeping the length; a failed property is left out.
+    expect(seen).toEqual([[{ x: 1, y: 1 }, null, { x: 1 }]]);
+    // A missing list is absent, not an error: the check runs and must guard itself.
+    seen.length = 0;
+    expect(check({ type: "xy-graph", ...AXES }, { "xy-graph": always }).valid).toBe(true);
+    expect(seen).toEqual([undefined]);
   });
 
   it("skips a check whose input is absent", () => {

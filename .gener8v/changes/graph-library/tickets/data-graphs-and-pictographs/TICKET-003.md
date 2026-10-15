@@ -83,6 +83,10 @@
     - `checkValueScale` rejects scales too fine to draw: a non-zero given end smaller than 1e-9, or a span narrower than a billionth of its ends. Without it, `valueTicks` throws on a scale the validator passed.
     - Draw only scales that passed, with `resolveValueScale` and `valueTicks` / `drawValueAxis`.
     - Add a test that a description with a given end near ±`VALUE_LIMIT` and a tiny span is reported, not drawn.
+- Carried from graph-library/data-graphs-and-pictographs-ticket-005-quality-review/QR-002, QR-004 and QR-006 (category names and the length check, in the shared kit):
+  - **Crowded columns (deferred here):** below a vertical plot, `categorySlots` rotates every name to read upward when a word would not fit its column, and never splits a word. Rotated names stay apart only while one line (14.4 units) fits a column, about 25 categories in the 368-unit plot. Past that they touch. Settle the crowded case for upright bars (and the line graph, which shares the kit): for example a wider drawing, fewer name lines, or labelling every other category. Then extend the pictograph's geometry property test (`tests/layout/pictograph.test.ts`, "the drawing's geometry") past 25 columns.
+  - Use `valuesPerCategoryCheck()` from `src/core/definitions/categories.ts` for `series_length_mismatch` at `/values`; do not write the check inline.
+  - Reserve room for names with the kit's exported `NAME_GAP`, and size rows from the tallest name with `categorySlots`' `slotSize`, as the pictograph does.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-006

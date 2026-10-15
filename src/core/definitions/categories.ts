@@ -3,7 +3,7 @@ import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
 import { MAX_VALUE_TICKS, VALUE_LIMIT } from "../value-scale";
 import type { ScopedPropertySpec } from "./shared";
-import { type DescriptionBase, type DomainCheck, type GraphType, type PropertyMap, type PropertySpec, defineProperties } from "./types";
+import { ALWAYS_RUNS, type DescriptionBase, type DomainCheck, type GraphType, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 // The value scale's arithmetic and checks live in `src/core/value-scale.ts` (quality review QR-005);
 // they are re-exported here, where DGP TICKET-002, TICKET-003 and TICKET-005 expect them.
@@ -173,3 +173,25 @@ export const categoriesCheck: DomainCheck = {
   inputs: ["categories/*/name"],
   check: (description: DescriptionBase) => checkCategories(description["categories"] as readonly CategoryEntry[], description.type),
 };
+
+/**
+ * The check that a top-level list, `values` by default, has one entry per category, reporting
+ * `series_length_mismatch` at the list (DGP-REQ-026; the bar graph's TICKET-003 the same). It reads
+ * only the two lists' lengths, which a failed element does not change, so it always runs and a bad
+ * value or name never hides a mismatch (code review CR-002; quality review QR-004). A list that
+ * failed whole, or is missing, is absent, and the check stays silent.
+ */
+// @spec DGP-REQ-026
+/* @__NO_SIDE_EFFECTS__ */
+export function valuesPerCategoryCheck(term = "values"): DomainCheck {
+  return {
+    name: term === "values" ? "one value per category" : `one value per category in ${term}`,
+    inputs: ALWAYS_RUNS,
+    check: (description: DescriptionBase) => {
+      const list: unknown = description[term];
+      const names: unknown = description["categories"];
+      if (!Array.isArray(list) || !Array.isArray(names) || list.length === names.length) return [];
+      return [createIssue("series_length_mismatch", pointer(term), { term, valueCount: list.length, categoryCount: names.length })];
+    },
+  };
+}
