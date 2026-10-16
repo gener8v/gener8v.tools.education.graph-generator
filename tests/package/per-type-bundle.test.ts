@@ -179,6 +179,21 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     }
   });
 
+  it("leaves every other type out of the bar graph's entry and component, and the bar graph out of theirs (DGP TICKET-003)", async () => {
+    for (const entry of [`export { BarGraph } from "./src/entries/bar-graph";`, `export { BarGraph } from "./src/react/graphs/BarGraphGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A bar graph");
+      for (const other of ["A circle", "A pictograph", "A line graph", "A red apple", OTHER, OTHER_DEFINITION]) expect(code, other).not.toContain(other);
+    }
+    for (const entry of [
+      `export { CircleGraph } from "./src/entries/circle";`,
+      `export { Pictograph } from "./src/entries/pictograph";`,
+      `export { LineGraph } from "./src/entries/line-graph";`,
+    ]) {
+      expect(await bundle(entry), entry).not.toContain("A bar graph");
+    }
+  });
+
   it("keeps every type's layout and definition in the entry component's bundle", async () => {
     const code = await bundle(`export { Graph } from "./src/react/Graph";`);
     expect(code).toContain(OTHER);

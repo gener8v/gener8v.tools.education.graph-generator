@@ -1,5 +1,6 @@
 import type { DescriptionBase, GraphType } from "../core/definitions/types";
 import type { Provenance } from "../core/result";
+import { barGraphLayout } from "./bar-graph";
 import { circleLayout } from "./circle";
 import { lineGraphLayout } from "./line-graph";
 import { pictographLayout } from "./pictograph";
@@ -32,6 +33,7 @@ export type LayoutRegistry = Readonly<Partial<Record<GraphType, Layout>>>;
 export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, Layout>>, {
     "line-graph": lineGraphLayout,
+    "bar-graph": barGraphLayout,
     pictograph: pictographLayout,
     circle: circleLayout,
   } satisfies Partial<Record<GraphType, Layout>>),

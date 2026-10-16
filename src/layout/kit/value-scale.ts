@@ -245,10 +245,15 @@ function upwardLines(lines: readonly string[], left: number, y: number, fontSize
 
 /**
  * A rotated name's lines below a vertical plot: each reads upward and ends `NAME_GAP` below the
- * plot, the lines side by side and centered on the slot.
+ * plot, the lines side by side and centered on the slot. A block wider than its slot (crowded
+ * columns, where names may touch: "legibility is the caller's choice", DGP Edge Cases) is moved
+ * inward at the ends, so it never leaves the plot's span and the drawing (DGP TICKET-003 DEL-001).
  */
-function rotatedNameLines(slot: CategorySlot, top: number, fontSize: number): SceneNode[] {
-  return upwardLines(slot.lines, slot.center - (slot.lines.length * fontSize * LINE_HEIGHT) / 2, top, fontSize, "end");
+function rotatedNameLines(slot: CategorySlot, box: Box, fontSize: number): SceneNode[] {
+  const width = slot.lines.length * fontSize * LINE_HEIGHT;
+  const centered = slot.center - width / 2;
+  const left = Math.max(box.x, Math.min(centered, box.x + box.width - width));
+  return upwardLines(slot.lines, left, box.y + box.height + NAME_GAP, fontSize, "end");
 }
 
 /**
@@ -263,7 +268,7 @@ export function drawCategoryNames(slots: readonly CategorySlot[], orientation: O
   const nodes: SceneNode[] = [];
   for (const slot of slots) {
     if (orientation === "vertical" && slot.rotated) {
-      for (const node of rotatedNameLines(slot, box.y + box.height + NAME_GAP, fontSize)) nodes.push(node);
+      for (const node of rotatedNameLines(slot, box, fontSize)) nodes.push(node);
       continue;
     }
     const [centerX, top] =
@@ -293,19 +298,21 @@ export function axisLabelLines(text: string | undefined, length: number): string
 export const axisLabelDepth = (lines: readonly string[]): number => lines.length * defaultStyle.fontSizes.label * LINE_HEIGHT;
 
 /**
- * The value-axis label of a vertical plot `box`, read upward and centered on the plot's height, its
- * lines side by side from `left` toward the axis.
+ * An axis label beside a plot `box`, on its left: read upward and centered on the plot's height,
+ * its lines side by side from `left` toward the plot. The value axis's label of upright bars or a
+ * line graph, the category axis's label of horizontal bars (DGP TICKET-003 DEL-002).
  */
 // @spec DGP-REQ-002
-export function drawValueAxisLabel(lines: readonly string[], left: number, box: Box): SceneNode[] {
+export function drawLeftAxisLabel(lines: readonly string[], left: number, box: Box): SceneNode[] {
   return upwardLines(lines, left, box.y + box.height / 2, defaultStyle.fontSizes.label, "middle");
 }
 
 /**
- * The category-axis label of a vertical plot `box`: its lines, wrapped to the plot's width with
- * `axisLabelLines`, centered under the plot from `top`.
+ * An axis label under a plot `box`: its lines, wrapped to the plot's width with `axisLabelLines`,
+ * centered under the plot from `top`. The category axis's label of upright bars or a line graph,
+ * the value axis's label of horizontal bars (DGP TICKET-003 DEL-002).
  */
 // @spec DGP-REQ-002
-export function drawCategoryAxisLabel(lines: readonly string[], box: Box, top: number): SceneNode[] {
+export function drawBottomAxisLabel(lines: readonly string[], box: Box, top: number): SceneNode[] {
   return textLines(lines, box.x + box.width / 2, top, defaultStyle.fontSizes.label, defaultStyle.colors.text);
 }

@@ -41,6 +41,12 @@ export const CATEGORY_NAME_LIMIT = 200;
 export const VALUES_DESCRIPTION = "One value per category, in the same order as the categories.";
 
 /**
+ * The one definition of the `orientation` term, shared by the pictograph and the bar graph, whose
+ * defaults differ: each type's value descriptions say which is its default (DGP TICKET-003).
+ */
+export const ORIENTATION_DESCRIPTION = "Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type.";
+
+/**
  * The `categories` list (DGP-REQ-001, DGP-REQ-003): at least one and at most `CATEGORY_LIMIT`
  * categories, drawn in the order given, each an object with a plain-text `name`. A graph type adds
  * what its categories carry beyond the name: the bar graph nests the shared `color` spec, so a

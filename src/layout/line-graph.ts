@@ -11,10 +11,10 @@ import {
   axisLabelDepth,
   axisLabelLines,
   categorySlots,
-  drawCategoryAxisLabel,
+  drawBottomAxisLabel,
   drawCategoryNames,
   drawValueAxis,
-  drawValueAxisLabel,
+  drawLeftAxisLabel,
   resolveValueScale,
   valueAxisExtent,
   valuePosition,
@@ -150,10 +150,12 @@ export const lineGraphLayout: Layout<LineGraph> = (g: LineGraph, provenance: Pro
   const valueLabel = axisLabelLines(g.valueAxisLabel, PLOT_HEIGHT);
   const labelDepth = axisLabelDepth(valueLabel);
   const left = SCENE_MARGIN + (labelDepth > 0 ? labelDepth + GAP : 0) + valueAxisExtent(scale, "vertical");
-  const box: Box = { x: left, y: title.height + GAP + TOP_TICK_ROOM, width: SCENE_WIDTH - SCENE_MARGIN - left, height: PLOT_HEIGHT };
+  // The plot ends a marker's reach short of the margin, so the last point's marker stays inside even
+  // when crowded columns are narrower than a marker (DGP TICKET-003 DEL-001).
+  const box: Box = { x: left, y: title.height + GAP + TOP_TICK_ROOM, width: SCENE_WIDTH - SCENE_MARGIN - MARKER_REACH - left, height: PLOT_HEIGHT };
   const bottom = box.y + box.height;
 
-  for (const node of drawValueAxisLabel(valueLabel, SCENE_MARGIN, box)) nodes.push(node);
+  for (const node of drawLeftAxisLabel(valueLabel, SCENE_MARGIN, box)) nodes.push(node);
   for (const node of drawValueAxis(scale, "vertical", box)) nodes.push(node);
   // The category axis along the bottom of the plot.
   nodes.push({
@@ -193,7 +195,7 @@ export const lineGraphLayout: Layout<LineGraph> = (g: LineGraph, provenance: Pro
   // Under the category axis, wrapped to its width (quality review QR-004).
   const categoryLabel = axisLabelLines(g.categoryAxisLabel, box.width);
   if (categoryLabel.length > 0) {
-    for (const node of drawCategoryAxisLabel(categoryLabel, box, y + GAP)) nodes.push(node);
+    for (const node of drawBottomAxisLabel(categoryLabel, box, y + GAP)) nodes.push(node);
     y += GAP + axisLabelDepth(categoryLabel);
   }
   const legend = drawLegend(g, y + GAP);

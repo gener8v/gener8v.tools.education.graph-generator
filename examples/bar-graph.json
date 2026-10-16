@@ -1,0 +1,12 @@
+{
+  "type": "bar-graph",
+  "title": "How we get to school",
+  "categories": [{ "name": "Walk" }, { "name": "Bus", "color": "orange" }, { "name": "Car" }, { "name": "Bike" }, { "name": "Scooter" }],
+  "values": [12, 7.5, 9, 0, 3],
+  "orientation": "vertical",
+  "barColor": "#2e7d32",
+  "showValues": true,
+  "valueScale": { "minimum": 0, "maximum": 15, "tickInterval": 3 },
+  "categoryAxisLabel": "Way of travelling",
+  "valueAxisLabel": "Pupils"
+}

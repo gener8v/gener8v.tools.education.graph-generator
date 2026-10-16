@@ -11,6 +11,7 @@ import { SceneSvg } from "../../src/react/SceneSvg";
 import { CircleGraph as PackageCircleGraph } from "../../src/react/graphs/CircleGraph";
 import { Pictograph as PackagePictograph } from "../../src/react/graphs/PictographGraph";
 import { LineGraph as PackageLineGraph } from "../../src/react/graphs/LineGraphGraph";
+import { BarGraph as PackageBarGraph } from "../../src/react/graphs/BarGraphGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -114,6 +115,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
       "LineGraph",
     ]);
     expect(PackageLineGraph.displayName).toBe("LineGraph");
+    expect(PackageBarGraph.displayName).toBe("BarGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -364,6 +366,29 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       expect(received).toEqual([]);
       // Title 3 lines, two axis labels of 2, six legend labels of 2, two names, at most 12 tick labels.
       expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 4 + 12 + 2 + 12);
+    }
+  });
+
+  it("draws a valid bar graph with half a megabyte of title and axis-label text in <Graph> and <BarGraph>, in both orientations, never throwing (GSS TICKET-002 SEC-001)", () => {
+    const long = "word ".repeat(100_000).trim();
+    for (const orientation of ["vertical", "horizontal"]) {
+      const description = {
+        type: "bar-graph",
+        orientation,
+        title: long,
+        categoryAxisLabel: long,
+        valueAxisLabel: "@".repeat(500_000),
+        categories: [{ name: "Walk" }, { name: "Bus" }],
+        values: [7, 0.000123456789],
+        showValues: true,
+      };
+      for (const Component of [Graph, PackageBarGraph]) {
+        const received: Issue[][] = [];
+        const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+        expect(received).toEqual([]);
+        // Title 3 lines, two axis labels of 2, two names, two value labels, at most 12 tick labels.
+        expect(markup.match(/<text /g)!.length, orientation).toBeLessThanOrEqual(3 + 4 + 2 + 4 + 12);
+      }
     }
   });
 

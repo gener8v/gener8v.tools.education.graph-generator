@@ -1,0 +1,5 @@
+{
+  "type": "bar-graph",
+  "categories": [{ "name": "Walk" }, { "name": "Bus" }, { "name": "Car" }],
+  "values": [12, -3, 9]
+}

@@ -60,6 +60,10 @@
       "types": "./dist/line-graph.d.ts",
       "default": "./dist/line-graph.js"
     },
+    "./bar-graph": {
+      "types": "./dist/bar-graph.d.ts",
+      "default": "./dist/bar-graph.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./vocabulary.json": "./dist/vocabulary.json",
     "./package.json": "./package.json"

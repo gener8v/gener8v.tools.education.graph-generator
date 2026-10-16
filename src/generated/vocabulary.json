@@ -3,6 +3,10 @@
     1
   ],
   "terms": {
+    "barColor": {
+      "definition": "The color of every bar, unless a category gives its own: a color name or a hex code such as #0072b2.",
+      "kind": "color"
+    },
     "categories": {
       "definition": "The categories, drawn in the order given: at least 1 and at most 100, each with a different name.",
       "kind": "array"
@@ -18,6 +22,10 @@
     "circumferenceLabelText": {
       "definition": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
+    },
+    "color": {
+      "definition": "The color of this one point, segment or bar: a color name or a hex code such as #0072b2.",
+      "kind": "color"
     },
     "diameter": {
       "definition": "The distance across the circle through its center, twice the radius, from 0.002 to 2,000,000.",
@@ -60,7 +68,7 @@
       "kind": "string"
     },
     "orientation": {
-      "definition": "Whether the pictures run in rows (horizontal, the default) or columns (vertical).",
+      "definition": "Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type.",
       "kind": "enum"
     },
     "radius": {
@@ -85,6 +93,10 @@
     },
     "showRadius": {
       "definition": "Whether the radius is drawn, from the center horizontally to the right.",
+      "kind": "boolean"
+    },
+    "showValues": {
+      "definition": "Whether to write each bar's value beside it, exactly as given; a zero bar shows 0.",
       "kind": "boolean"
     },
     "tickInterval": {
@@ -252,6 +264,133 @@
         "every series has a different name",
         "the value-scale tick interval is greater than 0",
         "every series value fits the value scale"
+      ]
+    },
+    "bar-graph": {
+      "title": "Bar graph",
+      "description": "A bar graph: one bar per category, upright (the default) or across, its length in exact proportion to the category's value, from zero. Values are 0 or more. At most 100 categories.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "bar-graph"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false
+        },
+        "categoryAxisLabel": {
+          "kind": "string",
+          "required": false
+        },
+        "valueAxisLabel": {
+          "kind": "string",
+          "required": false
+        },
+        "valueScale": {
+          "kind": "object",
+          "required": false,
+          "properties": {
+            "minimum": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "maximum": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickInterval": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            }
+          },
+          "ordered": [
+            [
+              "minimum",
+              "maximum"
+            ]
+          ]
+        },
+        "categories": {
+          "kind": "array",
+          "required": true,
+          "maxItems": 100,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "name": {
+                "kind": "string",
+                "required": true,
+                "maxLength": 200
+              },
+              "color": {
+                "kind": "color",
+                "required": false
+              }
+            }
+          }
+        },
+        "values": {
+          "kind": "array",
+          "required": true,
+          "maxItems": 100,
+          "items": {
+            "kind": "number",
+            "range": {
+              "min": 0,
+              "max": 1000000000
+            }
+          }
+        },
+        "orientation": {
+          "kind": "enum",
+          "required": false,
+          "values": [
+            "vertical",
+            "horizontal"
+          ],
+          "valueDescriptions": {
+            "vertical": "Upright bars rising from the value axis, names below (the default).",
+            "horizontal": "Bars across, growing to the right, names on the left."
+          }
+        },
+        "barColor": {
+          "kind": "color",
+          "required": false
+        },
+        "showValues": {
+          "kind": "boolean",
+          "required": false
+        }
+      },
+      "derivations": [],
+      "checks": [
+        "categories are given, each with a different name",
+        "one value per category",
+        "the value-scale tick interval is greater than 0",
+        "every value fits the value scale",
+        "the value scale starts at or below zero"
       ]
     },
     "pictograph": {

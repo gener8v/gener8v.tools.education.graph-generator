@@ -1,0 +1,6 @@
+{
+  "type": "bar-graph",
+  "categories": [{ "name": "Walk" }, { "name": "Bus" }, { "name": "Car" }],
+  "values": [12, 7, 9],
+  "valueScale": { "minimum": 5, "maximum": 15 }
+}

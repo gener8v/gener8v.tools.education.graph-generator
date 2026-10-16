@@ -3,7 +3,7 @@ import { cleanText, formatList, isUnitShaped, quoteText, sourceOf, stateMeasurem
 import { createIssue, pointer } from "../issues";
 import type { Provenance } from "../result";
 import { intervalsIn } from "../value-scale";
-import { CATEGORY_LIMIT, VALUES_DESCRIPTION, VALUE_LIMIT, categories, categoriesCheck, valuesPerCategoryCheck } from "./categories";
+import { CATEGORY_LIMIT, ORIENTATION_DESCRIPTION, VALUES_DESCRIPTION, VALUE_LIMIT, categories, categoriesCheck, valuesPerCategoryCheck } from "./categories";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "./types";
 
 /** A normalized pictograph description. */
@@ -125,7 +125,7 @@ function definePictograph(): GraphTypeDefinition<Pictograph> {
           horizontal: "One row of pictures per category, names on the left (the default).",
           vertical: "One upright column of pictures per category, names below.",
         },
-        description: "Whether the pictures run in rows (horizontal, the default) or columns (vertical).",
+        description: ORIENTATION_DESCRIPTION,
       },
     }),
     derivations: [],

@@ -362,6 +362,20 @@ describe("the drawing's height with one long name (security review SEC-002)", ()
   });
 });
 
+describe("crowded columns (DGP TICKET-003 DEL-001)", () => {
+  it.each([50, 100])("draws every one of %d names under columns, all inside the drawing", (count) => {
+    const categories = Array.from({ length: count }, (_, i) => ({ name: `Category ${i + 1}` }));
+    const scene = sceneOf({ orientation: "vertical", categories, values: categories.map(() => 1), unitValue: 1 });
+    const names = scene.nodes.filter((node) => node.kind === "text" && node.text.startsWith("Category"));
+    expect(names.map((node) => (node.kind === "text" ? node.text : ""))).toEqual(categories.map((c) => c.name));
+    for (const node of scene.nodes) {
+      const b = boundsOf(node);
+      expect(b.x0).toBeGreaterThanOrEqual(SCENE_MARGIN - 0.02);
+      expect(b.x1).toBeLessThanOrEqual(SCENE_WIDTH - SCENE_MARGIN + 0.02);
+    }
+  });
+});
+
 describe("the whole pictograph through createGraph", () => {
   it("is the Scene createGraph returns for the example, with the text alternative", () => {
     const result = createGraph(example);

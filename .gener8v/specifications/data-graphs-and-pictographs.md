@@ -150,7 +150,7 @@ Defines the three graph types that present data sets rather than geometry: line 
 | Requirement | Code Location(s) |
 |-------------|-----------------|
 | DGP-REQ-001 | `src/core/definitions/categories.ts`:categoriesProperty, checkCategories; `src/layout/kit/value-scale.ts`:categorySlots, drawCategoryNames |
-| DGP-REQ-002 | `src/core/definitions/categories.ts`:dataGraphProperties; `src/core/definitions/shared.ts`:sharedProperties (category- and value-axis labels); `src/core/definitions/index.ts`:propertiesOf; `src/layout/kit/value-scale.ts`:drawValueAxisLabel, drawCategoryAxisLabel |
+| DGP-REQ-002 | `src/core/definitions/categories.ts`:dataGraphProperties; `src/core/definitions/shared.ts`:sharedProperties (category- and value-axis labels); `src/core/definitions/index.ts`:propertiesOf; `src/layout/kit/value-scale.ts`:drawLeftAxisLabel, drawBottomAxisLabel |
 | DGP-REQ-003 | `src/core/definitions/categories.ts`:categoriesProperty; `src/layout/kit/value-scale.ts`:categorySlots, drawCategoryNames |
 | DGP-REQ-005 | `src/core/definitions/categories.ts`:dataGraphProperties; `src/core/value-scale.ts`:resolveValueScale; `src/core/definitions/index.ts`:propertiesOf |
 | DGP-REQ-006 | `src/core/value-scale.ts`:resolveValueScale; `src/layout/kit/value-scale.ts`:defaultValueScale |
@@ -161,7 +161,7 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-034 | `src/images/types.ts`:ALLOWED_IMAGE_LICENSES, ImageAsset; `src/images/manifest.ts`:imageAssets, imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |
 | DGP-REQ-035 | `src/images/index.ts`:getImageNames, imageDescriptions (the names and descriptions); `src/core/definitions/pictograph.ts`:unitImage (published from them in the schema, the tool schema and the vocabulary) |
 | DGP-NFR-005 | `src/images/manifest.ts`:imageManifest; `scripts/check-image-licenses.ts`:checkImageLicenses |
-| DGP-REQ-004 | `src/core/definitions/pictograph.ts`:pictograph, describe (pictograph); `src/core/definitions/line-graph.ts`:lineGraph, describe (line graph) |
+| DGP-REQ-004 | `src/core/definitions/pictograph.ts`:pictograph, describe (pictograph); `src/core/definitions/line-graph.ts`:lineGraph, describe (line graph); `src/core/definitions/bar-graph.ts`:barGraph, describe (bar graph) |
 | DGP-REQ-023 | `src/core/definitions/pictograph.ts`:pictograph; `src/layout/pictograph.ts`:pictographLayout; `src/react/graphs/PictographGraph.tsx`:Pictograph |
 | DGP-REQ-024 | `src/core/definitions/pictograph.ts`:pictograph, unitImage |
 | DGP-REQ-025 | `src/core/definitions/pictograph.ts`:pictograph |
@@ -182,3 +182,10 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-015 | `src/core/definitions/line-graph.ts`:lineGraph, series, valueScaleCheck; `src/layout/line-graph.ts`:lineGraphLayout |
 | DGP-REQ-016 | `src/core/definitions/line-graph.ts`:lineGraph; `src/core/definitions/categories.ts`:seriesValuesPerCategoryCheck |
 | DGP-NFR-004 | `src/core/style.ts`:seriesStyles; `tests/core/series-palette.test.ts` (luminance check over what a line graph draws) |
+| DGP-REQ-017 | `src/core/definitions/bar-graph.ts`:barGraph; `src/layout/bar-graph.ts`:barLength, drawVertical, drawHorizontal, barGraphLayout; `src/react/graphs/BarGraphGraph.tsx`:BarGraph |
+| DGP-REQ-018 | `src/core/definitions/bar-graph.ts`:barGraph, orientation; `src/layout/bar-graph.ts`:drawVertical, drawHorizontal, barGraphLayout |
+| DGP-REQ-019 | `src/core/definitions/bar-graph.ts`:barGraph, barColor; `src/layout/bar-graph.ts`:barColorOf, barGraphLayout |
+| DGP-REQ-020 | `src/core/definitions/bar-graph.ts`:barGraph, showValues; `src/layout/bar-graph.ts`:valueLabelLines, drawVertical, drawHorizontal |
+| DGP-REQ-021 | `src/core/definitions/bar-graph.ts`:barGraph (values from 0), valueScaleCheck |
+| DGP-REQ-022 | `src/layout/bar-graph.ts`:drawVertical, drawHorizontal, barGraphLayout |
+| DGP-REQ-036 | `src/layout/bar-graph.ts`:barLength, barGraphLayout; `src/core/definitions/bar-graph.ts`:scaleStartsAtZeroCheck |

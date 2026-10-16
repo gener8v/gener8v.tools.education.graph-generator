@@ -13,6 +13,7 @@ export default defineConfig({
     circle: "src/entries/circle.ts",
     pictograph: "src/entries/pictograph.ts",
     "line-graph": "src/entries/line-graph.ts",
+    "bar-graph": "src/entries/bar-graph.ts",
   },
   format: ["esm"],
   // tsup sets the `baseUrl` option for declaration builds, which TypeScript 6 reports as deprecated.

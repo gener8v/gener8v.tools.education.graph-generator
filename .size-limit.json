@@ -40,5 +40,11 @@
     "path": "dist/line-graph.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./bar-graph",
+    "path": "dist/bar-graph.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

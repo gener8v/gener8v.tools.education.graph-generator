@@ -17,8 +17,8 @@ import {
   axisLabelDepth,
   axisLabelLines,
   categorySlots,
-  drawCategoryAxisLabel,
-  drawValueAxisLabel,
+  drawBottomAxisLabel,
+  drawLeftAxisLabel,
   defaultValueScale,
   drawCategoryNames,
   drawValueAxis,
@@ -428,6 +428,19 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
       }
     });
 
+    it("keeps a crowded name block inside the plot's span, moving the end ones inward (DGP TICKET-003 DEL-001)", () => {
+      const many = Array.from({ length: 100 }, (_, i) => ({ name: `Category ${i}` }));
+      const slots = categorySlots(many, PLOT, "vertical");
+      const nodes = drawCategoryNames(slots, "vertical", PLOT);
+      const xs = nodes.map((node) => Number(attr(node, "x")));
+      const fontSize = defaultStyle.fontSizes.tickLabel;
+      // A one-line block's glyphs run from 0.8 of the font size left of its x to 0.2 right.
+      expect(Math.min(...xs) - 0.8 * fontSize).toBeGreaterThanOrEqual(PLOT.x - 0.01);
+      expect(Math.max(...xs) + 0.2 * fontSize).toBeLessThanOrEqual(PLOT.x + PLOT.width + 0.01);
+      // Uncrowded middle names stay centered on their slot.
+      expect(xs[50]! - (lineHeight - fontSize) / 2 - fontSize * 0.8 + lineHeight / 2).toBeCloseTo(slots[50]!.center, 1);
+    });
+
     it("still lays out 100 categories, one line each", () => {
       const many = Array.from({ length: 100 }, (_, i) => ({ name: `Category ${i}` }));
       const slots = categorySlots(many, PLOT, "vertical");
@@ -503,6 +516,15 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
   });
 });
 
+describe("fewer chosen intervals for a short axis (DGP TICKET-003 DEL-004)", () => {
+  it("chooses an interval for at most the intervals asked, and uses a given one as given", () => {
+    expect(resolveValueScale(undefined, [8000], { allowNegative: false })).toMatchObject({ maximum: 8000, tickInterval: 1000 });
+    expect(resolveValueScale(undefined, [8000], { allowNegative: false, intervals: 3 })).toMatchObject({ maximum: 10000, tickInterval: 5000 });
+    expect(resolveValueScale(undefined, [8000], { allowNegative: false, intervals: 1 })).toMatchObject({ maximum: 10000, tickInterval: 10000 });
+    expect(resolveValueScale({ tickInterval: 500 }, [8000], { allowNegative: false, intervals: 2 })).toMatchObject({ tickInterval: 500 });
+  });
+});
+
 describe("axis labels (DGP-REQ-002; DGP TICKET-002 quality review QR-003)", () => {
   const labelSize = defaultStyle.fontSizes.label;
   const lineHeight = labelSize * 1.2;
@@ -521,7 +543,7 @@ describe("axis labels (DGP-REQ-002; DGP TICKET-002 quality review QR-003)", () =
 
   it("reads the value-axis label upward, centered on the plot's height, its lines in order from the left", () => {
     const lines = ["Temperature in degrees", "Celsius"];
-    const nodes = drawValueAxisLabel(lines, 16, BOX);
+    const nodes = drawLeftAxisLabel(lines, 16, BOX);
     const centerY = BOX.y + BOX.height / 2;
     expect(textsOf(nodes)).toEqual(lines);
     nodes.forEach((node, i) => {
@@ -533,7 +555,7 @@ describe("axis labels (DGP-REQ-002; DGP TICKET-002 quality review QR-003)", () =
   });
 
   it("centers the category-axis label under the plot, from the top it is given", () => {
-    const nodes = drawCategoryAxisLabel(["Day of the week", "before school"], BOX, 300);
+    const nodes = drawBottomAxisLabel(["Day of the week", "before school"], BOX, 300);
     expect(textsOf(nodes)).toEqual(["Day of the week", "before school"]);
     for (const node of nodes) expect([attr(node, "x"), attr(node, "text-anchor")]).toEqual([BOX.x + BOX.width / 2, "middle"]);
     expect(Number(attr(nodes[0]!, "y"))).toBeCloseTo(300 + (lineHeight - labelSize) / 2 + labelSize * 0.8, 2);

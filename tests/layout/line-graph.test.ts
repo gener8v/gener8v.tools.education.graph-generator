@@ -363,6 +363,20 @@ describe("the drawing's geometry", () => {
   });
 });
 
+describe("crowded columns (DGP TICKET-003 DEL-001)", () => {
+  it.each([50, 100])("draws every one of %d names, all inside the drawing", (count) => {
+    const categories = Array.from({ length: count }, (_, i) => ({ name: `Category ${i + 1}` }));
+    const scene = sceneOf({ categories, series: [{ values: categories.map((_, i) => i % 7) }], valueAxisLabel: "Value" });
+    const names = scene.nodes.filter((node) => node.kind === "text" && node.text.startsWith("Category"));
+    expect(names.map((node) => (node.kind === "text" ? node.text : ""))).toEqual(categories.map((c) => c.name));
+    for (const node of scene.nodes) {
+      const b = boundsOf(node);
+      expect(b.x0, nameOf(b)).toBeGreaterThanOrEqual(SCENE_MARGIN - 0.02);
+      expect(b.x1, nameOf(b)).toBeLessThanOrEqual(SCENE_WIDTH - SCENE_MARGIN + 0.02);
+    }
+  });
+});
+
 describe("the whole line graph through createGraph", () => {
   it("is the Scene createGraph returns for the example, with the text alternative", () => {
     const result = createGraph(example);

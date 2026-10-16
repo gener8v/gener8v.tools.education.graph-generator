@@ -189,3 +189,5 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-007 | `src/react/graphs/PictographGraph.tsx`:Pictograph (graph-library/data-graphs-and-pictographs/TICKET-005) |
 | CPSE-REQ-004 | `src/entries/line-graph.ts` (the `./line-graph` entry; graph-library/data-graphs-and-pictographs/TICKET-002) |
 | CPSE-REQ-007 | `src/react/graphs/LineGraphGraph.tsx`:LineGraph (graph-library/data-graphs-and-pictographs/TICKET-002) |
+| CPSE-REQ-004 | `src/entries/bar-graph.ts` (the `./bar-graph` entry; graph-library/data-graphs-and-pictographs/TICKET-003) |
+| CPSE-REQ-007 | `src/react/graphs/BarGraphGraph.tsx`:BarGraph (graph-library/data-graphs-and-pictographs/TICKET-003) |

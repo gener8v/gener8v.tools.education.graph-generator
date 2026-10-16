@@ -57,6 +57,12 @@ export interface ValueScale {
 export interface ScaleOptions {
   /** Whether a chosen minimum may be below zero for negative values: line graphs only (DGP-REQ-015). */
   readonly allowNegative: boolean;
+  /**
+   * At most how many intervals a chosen tick interval divides the span into (10 by default). A
+   * layout whose axis is short for its tick labels asks for fewer, so every tick keeps its label
+   * without crowding (DGP-REQ-009; DGP TICKET-003 DEL-004). A given interval is used as given.
+   */
+  readonly intervals?: number;
 }
 
 /** `x` with the binary noise of decimal arithmetic removed (0.1 × 3 → 0.3). */
@@ -129,7 +135,7 @@ export function resolveValueScale(given: GivenValueScale | undefined, values: re
   const [low, high] = extent(values);
   const floor = options.allowNegative ? low : 0;
   const givenInterval = given?.tickInterval;
-  const interval = givenInterval ?? niceInterval((given?.maximum ?? high) - (given?.minimum ?? floor));
+  const interval = givenInterval ?? niceInterval((given?.maximum ?? high) - (given?.minimum ?? floor), options.intervals);
 
   let minimum: number;
   if (given?.minimum !== undefined) minimum = given.minimum;

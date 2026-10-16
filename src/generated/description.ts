@@ -37,6 +37,44 @@ export interface LineGraphDescription {
   }>;
 }
 
+/** A bar graph: one bar per category, upright (the default) or across, its length in exact proportion to the category's value, from zero. Values are 0 or more. At most 100 categories. */
+export interface BarGraphDescription {
+  /** The graph type: which kind of graph the description draws. */
+  type: "bar-graph";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
+  version?: 1;
+  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  title?: string;
+  /** A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+  categoryAxisLabel?: string;
+  /** A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+  valueAxisLabel?: string;
+  /** The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick. */
+  valueScale?: {
+    /** The lowest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size. */
+    minimum?: number;
+    /** The highest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size; above the minimum by at least a billionth of the larger end's size. */
+    maximum?: number;
+    /** The distance between neighbouring ticks on the value axis: greater than 0, dividing the scale into whole intervals, with at most 100 ticks. */
+    tickInterval?: number;
+  };
+  /** The categories, drawn in the order given: at least 1 and at most 100, each with a different name. */
+  categories: ReadonlyArray<{
+    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short. */
+    name: string;
+    /** The color of this one point, segment or bar: a color name or a hex code such as #0072b2. */
+    color?: string;
+  }>;
+  /** One value per category, in the same order as the categories. */
+  values: ReadonlyArray<number>;
+  /** Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type. */
+  orientation?: "vertical" | "horizontal";
+  /** The color of every bar, unless a category gives its own: a color name or a hex code such as #0072b2. */
+  barColor?: string;
+  /** Whether to write each bar's value beside it, exactly as given; a zero bar shows 0. */
+  showValues?: boolean;
+}
+
 /** A pictograph: one row of pictures per category (or one column, upright), each picture standing for a number of units, with a key such as "each apple = 2 students". A value that is not a whole number of pictures ends in one cropped picture. At most 100 categories and 400 pictures in all. */
 export interface PictographDescription {
   /** The graph type: which kind of graph the description draws. */
@@ -58,7 +96,7 @@ export interface PictographDescription {
   unitImage: "apple" | "ball" | "book" | "fish" | "flower" | "person" | "star" | "tree";
   /** How many units one picture stands for: greater than 0, at most 1000000000. */
   unitValue: number;
-  /** Whether the pictures run in rows (horizontal, the default) or columns (vertical). */
+  /** Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type. */
   orientation?: "horizontal" | "vertical";
 }
 
@@ -101,4 +139,4 @@ export interface CircleDescription {
 }
 
 /** Any one graph description. */
-export type GraphDescription = LineGraphDescription | PictographDescription | CircleDescription;
+export type GraphDescription = LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription;
