@@ -2,7 +2,7 @@ import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "..
 import { createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
 import { type GivenValueScale, checkValueScale, tickIntervalCheck } from "../value-scale";
-import { CATEGORY_LIMIT, VALUES_DESCRIPTION, VALUE_LIMIT, categories, categoriesCheck, nameKey, seriesValuesPerCategoryCheck } from "./categories";
+import { CATEGORY_LIMIT, VALUES_DESCRIPTION, VALUE_LIMIT, axisLabelSentences, categories, categoriesCheck, nameKey, seriesValuesPerCategoryCheck } from "./categories";
 import { sharedProperties } from "./shared";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "./types";
 
@@ -158,13 +158,7 @@ function defineLineGraph(): GraphTypeDefinition<LineGraph> {
     describe: (g: LineGraph, provenance: Provenance) => {
       const title = g.title === undefined ? "" : cleanText(g.title);
       const sentences = [`A line graph${title === "" ? "" : ` titled ${quoteText(title)}`}.`];
-      for (const [term, axis] of [
-        ["categoryAxisLabel", "category"],
-        ["valueAxisLabel", "value"],
-      ] as const) {
-        const label = g[term] === undefined ? "" : cleanText(g[term]);
-        if (label !== "") sentences.push(`The ${axis} axis is labeled ${quoteText(label)}.`);
-      }
+      for (const sentence of axisLabelSentences(g)) sentences.push(sentence);
       sentences.push(`It shows ${g.series.length} series.`);
       g.series.forEach((series, s) => {
         const label = seriesLabelOf(series);

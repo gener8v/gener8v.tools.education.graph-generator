@@ -133,6 +133,11 @@ describe("bar-graph issues (DGP-REQ-021, DGP Edge Cases)", () => {
     );
   });
 
+  it("reads only the values each check needs: no scale issue follows a bad value, and a bad value never hides the minimum's (quality review QR-003)", () => {
+    expect(codesAndPaths(with_({ values: [12, "x", 9], valueScale: { maximum: 10 } }))).toEqual(["wrong_kind /values/1"]);
+    expect(codesAndPaths(with_({ values: [12, -1, 9], valueScale: { minimum: 5, maximum: 15 } }))).toEqual(["out_of_range /values/1", "out_of_range /valueScale/minimum"]);
+  });
+
   it("reports the shipped invalid examples", () => {
     expect(codesAndPaths(JSON.parse(readFileSync("examples/invalid/bar-graph-negative.json", "utf8")))).toEqual(["out_of_range /values/1"]);
     expect(codesAndPaths(JSON.parse(readFileSync("examples/invalid/bar-graph-scale-above-zero.json", "utf8")))).toEqual(["out_of_range /valueScale/minimum"]);

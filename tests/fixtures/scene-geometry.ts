@@ -1,5 +1,7 @@
+import { defaultStyle } from "../../src/core/style";
 import { textWidth } from "../../src/layout/kit/text";
-import type { SceneNode } from "../../src/layout/scene";
+import { TICK_LABEL_DROP } from "../../src/layout/kit/value-scale";
+import type { Scene, SceneNode } from "../../src/layout/scene";
 
 // Bounding boxes of drawn Scene nodes, for the layout tests' bounds and overlap checks (DGP
 // TICKET-005 quality review QR-001; shared with the line graph, DGP TICKET-002).
@@ -88,3 +90,43 @@ export const overlap = (a: Bounds, b: Bounds): boolean =>
 /** A short name for a node in a test message. */
 export const nameOf = (b: Bounds): string =>
   b.node.kind === "text" ? `text "${b.node.text.slice(0, 20)}"` : `${b.node.kind} at ${b.x0.toFixed(2)},${b.y0.toFixed(2)}`;
+
+/**
+ * A data graph's value axis, read from the drawing: the first axis-width line, which `drawValueAxis`
+ * draws first. `from` is its minimum end, `to` its maximum end, along y when upright.
+ */
+export function valueAxisOf(scene: Scene): { from: number; to: number; vertical: boolean } {
+  const axis = scene.nodes.find((node) => node.kind === "line" && attr(node, "stroke-width") === defaultStyle.lineWidths.axis)!;
+  const vertical = attr(axis, "x1") === attr(axis, "x2");
+  return vertical ? { from: num(axis, "y2"), to: num(axis, "y1"), vertical } : { from: num(axis, "x1"), to: num(axis, "x2"), vertical };
+}
+
+/** The value axis's tick labels: its numeric texts anchored as the axis anchors them (end when upright, middle when across). */
+export function tickLabelNodes(scene: Scene): SceneNode[] {
+  const { vertical } = valueAxisOf(scene);
+  return scene.nodes.filter((node) => node.kind === "text" && attr(node, "transform") === undefined && /^-?[\d.]+$/.test(node.text) && attr(node, "text-anchor") === (vertical ? "end" : "middle"));
+}
+
+/**
+ * Each tick's value and its position along the value axis (y when upright, x when across): a tick
+ * label's number, paired with the tick line level with it. Numeric texts with no tick beside them,
+ * such as value labels, are left out.
+ */
+export function ticksOf(scene: Scene): Array<{ value: number; at: number }> {
+  const { vertical } = valueAxisOf(scene);
+  const marks = scene.nodes.filter((node) => node.kind === "line" && attr(node, "stroke-width") === defaultStyle.lineWidths.tick);
+  return tickLabelNodes(scene).flatMap((label) => {
+    if (label.kind !== "text") return [];
+    const at = vertical ? num(label, "y") - defaultStyle.fontSizes.tickLabel * TICK_LABEL_DROP : num(label, "x");
+    const mark = marks.find((line) => Math.abs((vertical ? num(line, "y1") : num(line, "x1")) - at) < 0.02);
+    return mark === undefined ? [] : [{ value: Number(label.text), at }];
+  });
+}
+
+/** Where `value` is drawn along the value axis, read off its first and last ticks. */
+export function positionOf(scene: Scene, value: number): number {
+  const all = ticksOf(scene);
+  const [low, high] = [all[0]!, all.at(-1)!];
+  return low.at + ((value - low.value) * (high.at - low.at)) / (high.value - low.value);
+}
+

@@ -17,7 +17,8 @@ export const VALUE_LIMIT = 1_000_000_000;
 export const MAX_VALUE_TICKS = 100;
 
 /** A chosen interval gives at most this many intervals over the data, so tick labels stay readable. */
-const DEFAULT_INTERVALS = 10;
+/** At most how many intervals a chosen tick interval divides a scale into, unless a layout asks for fewer. */
+export const DEFAULT_VALUE_INTERVALS = 10;
 
 /**
  * The finest interval a scale chooses. Data spanning less than this (say, every value 1e-300) is
@@ -95,7 +96,7 @@ export function intervalsIn(span: number, interval: number): { count: number; ex
  * The smallest interval of the form 1, 2 or 5 × 10ⁿ that covers `span` in at most `intervals`
  * intervals, and never finer than 1e-9.
  */
-export function niceInterval(span: number, intervals: number = DEFAULT_INTERVALS): number {
+export function niceInterval(span: number, intervals: number = DEFAULT_VALUE_INTERVALS): number {
   const target = Math.max((span > 0 ? span : 1) / intervals, MIN_CHOSEN_INTERVAL);
   const magnitude = 10 ** Math.floor(Math.log10(target));
   for (const multiple of [1, 2, 5, 10]) {

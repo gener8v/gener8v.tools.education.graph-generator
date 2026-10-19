@@ -11,6 +11,7 @@ import {
   axisLabelDepth,
   axisLabelLines,
   categorySlots,
+  drawAxisLine,
   drawBottomAxisLabel,
   drawCategoryNames,
   drawValueAxis,
@@ -158,17 +159,7 @@ export const lineGraphLayout: Layout<LineGraph> = (g: LineGraph, provenance: Pro
   for (const node of drawLeftAxisLabel(valueLabel, SCENE_MARGIN, box)) nodes.push(node);
   for (const node of drawValueAxis(scale, "vertical", box)) nodes.push(node);
   // The category axis along the bottom of the plot.
-  nodes.push({
-    kind: "line",
-    attrs: [
-      ["x1", fmt(box.x)],
-      ["y1", fmt(bottom)],
-      ["x2", fmt(box.x + box.width)],
-      ["y2", fmt(bottom)],
-      ["stroke", defaultStyle.colors.line],
-      ["stroke-width", fmt(defaultStyle.lineWidths.axis)],
-    ],
-  });
+  nodes.push(drawAxisLine(box.x, bottom, box.x + box.width, bottom));
 
   // The series: every line first, then every marker, so no line covers a point.
   const slots = categorySlots(g.categories, box, "vertical");

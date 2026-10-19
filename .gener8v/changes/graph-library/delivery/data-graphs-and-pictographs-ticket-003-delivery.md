@@ -253,3 +253,24 @@ Coverage rows were added to `.gener8v/specifications/data-graphs-and-pictographs
 - **CR-004:** the crowded-columns tests of all three types also check the drawing's height, and the upright bar property test goes up to 30 categories.
 - **CR-005:** `ORIENTATION_DESCRIPTION` names both defaults (horizontal for a pictograph, vertical for a bar graph). Regenerated.
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./bar-graph` 18.71 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,089 tests) exits 0 on three runs. Four deliberate breaks of the fixes each fail a test.
+
+### Quality review — `graph-library/data-graphs-and-pictographs-ticket-003-quality-review` (2026-10-19, Approved)
+
+- **QR-001, QR-002, QR-003, QR-004:** tests.
+  - A value label is never cut: its lines join back to the whole value, both orientations, crowded and not.
+  - A −5..10 scale with labels, in both orientations: bars, zero line and labels all start from zero.
+  - Both checks' inputs are pinned.
+  - Test tidying: the bottom margin allows only rounding; `MIN_VALUE_LABEL_WIDTH` is exported and used; `BAR_FILL` is checked against bar spacing; a comment is fixed.
+- **QR-005:** horizontal bars use the kit.
+  - `categorySlots`' `slotSize` now receives the slot's index as well as the name's height, so value labels size their rows in one pass.
+  - `src/layout/kit/value-scale.ts` gains `offsetAlong`, `tickLabelOverhang`, `tickLabelsFit` and `fitHorizontalValueAxis`, which replace the bar graph's private copies and its placeholder box.
+  - `src/core/value-scale.ts` exports `DEFAULT_VALUE_INTERVALS`.
+- **QR-006:** shared code.
+  - `drawAxisLine` and `TICK_LABEL_DROP` live in the kit; the line graph uses `drawAxisLine` too.
+  - `axisLabelSentences` lives in `categories.ts` and serves both data graphs' text alternatives.
+  - The tests' tick readers moved to `tests/fixtures/scene-geometry.ts`.
+- **QR-007:** `planHorizontal` measures and `drawHorizontal` draws.
+  - The plot is re-measured until the category-axis label's reserved depth matches its drawn lines, so no empty band is left; a test covers 30 categories.
+  - Value labels are wrapped once.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./bar-graph` 18.8 kB, `./line-graph` 18.74 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,095 tests) exits 0 on three runs. Fifteen deliberate breaks each fail a test.
+

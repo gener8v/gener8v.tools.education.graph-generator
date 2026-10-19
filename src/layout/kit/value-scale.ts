@@ -1,4 +1,4 @@
-import { type ScaleOptions, type ValueScale, resolveValueScale, valueTicks } from "../../core/value-scale";
+import { DEFAULT_VALUE_INTERVALS, type GivenValueScale, type ScaleOptions, type ValueScale, resolveValueScale, valueTicks } from "../../core/value-scale";
 import { cleanText, formatSupplied } from "../../core/format";
 import { defaultStyle } from "../../core/style";
 import type { SceneNode } from "../scene";
@@ -9,7 +9,7 @@ import { DEFAULT_FONT_STACK, textWidth, widestWord, wrap } from "./text";
 import { LINE_HEIGHT, textLines } from "./title";
 
 // The scale arithmetic is core's, shared with the validator (quality reviews QR-003, QR-005).
-export { resolveValueScale, type ScaleOptions, type ValueScale, valueTicks } from "../../core/value-scale";
+export { DEFAULT_VALUE_INTERVALS, resolveValueScale, type ScaleOptions, type ValueScale, valueTicks } from "../../core/value-scale";
 
 /**
  * Which way values run: `"vertical"` draws the value axis up the left side of the plot and the
@@ -17,6 +17,9 @@ export { resolveValueScale, type ScaleOptions, type ValueScale, valueTicks } fro
  * and the categories down the left side.
  */
 export type Orientation = "vertical" | "horizontal";
+
+/** How far below its tick a vertical axis's tick label's baseline sits, as a share of the font size, so the digits center on the tick. */
+export const TICK_LABEL_DROP = 0.35;
 
 /** Space between a tick and its label, in drawing units. */
 const LABEL_GAP = 4;
@@ -106,7 +109,7 @@ export function drawValueAxis(scale: ValueScale, orientation: Orientation, box: 
     if (orientation === "vertical") {
       nodes.push(line(box.x - tickLength, p, box.x, p, defaultStyle.lineWidths.tick));
       // The baseline a little below the tick, so the digits sit centered on it.
-      nodes.push(label(box.x - tickLength - LABEL_GAP, p + fontSize * 0.35, "end"));
+      nodes.push(label(box.x - tickLength - LABEL_GAP, p + fontSize * TICK_LABEL_DROP, "end"));
     } else {
       nodes.push(line(p, bottom, p, bottom + tickLength, defaultStyle.lineWidths.tick));
       nodes.push(label(p, bottom + tickLength + LABEL_GAP + fontSize * 0.8, "middle"));
@@ -164,7 +167,8 @@ function rotatedLines(name: string, slotSize: number, fontSize: number, widestWo
  *   as fit side by side across its slot, so a word is never split (quality review QR-002). Past
  *   about 25 categories one line no longer fits a slot and rotated names touch (DGP TICKET-003).
  *
- * `slotSize`, beside a horizontal plot only, sizes each slot from its own wrapped name's height, so a
+ * `slotSize`, beside a horizontal plot only, sizes each slot from its own wrapped name's height (and
+ * its index, so a layout can add what else the row holds, such as a value label), so a
  * layout places the slots and wraps each name once (quality review QR-006), and one long name makes
  * one tall slot, not every slot tall (security review SEC-002). The slots then follow one another
  * from the box's top, and the box's height is not used.
@@ -175,7 +179,7 @@ export function categorySlots(
   box: Box,
   orientation: Orientation,
   nameWidth: number = CATEGORY_NAME_WIDTH,
-  slotSize?: (nameHeight: number) => number,
+  slotSize?: (nameHeight: number, index: number) => number,
 ): CategorySlot[] {
   const fontSize = defaultStyle.fontSizes.tickLabel;
   const lineHeight = fontSize * LINE_HEIGHT;
@@ -210,7 +214,7 @@ export function categorySlots(
   const sizeOf = orientation === "horizontal" && slotSize !== undefined ? slotSize : () => share;
   let start = along;
   return categories.map((category, index) => {
-    const size = sizeOf(named[index]!.labelHeight);
+    const size = sizeOf(named[index]!.labelHeight, index);
     const slot = { index, name: category.name, start, end: start + size, center: start + size / 2, ...named[index]! };
     start += size;
     return slot;
@@ -316,3 +320,56 @@ export function drawLeftAxisLabel(lines: readonly string[], left: number, box: B
 export function drawBottomAxisLabel(lines: readonly string[], box: Box, top: number): SceneNode[] {
   return textLines(lines, box.x + box.width / 2, top, defaultStyle.fontSizes.label, defaultStyle.colors.text);
 }
+
+/** An axis line from (`x1`, `y1`) to (`x2`, `y2`), in the axis color and width: a plot's category axis, or its zero line. */
+export function drawAxisLine(x1: number, y1: number, x2: number, y2: number): SceneNode {
+  return line(x1, y1, x2, y2, defaultStyle.lineWidths.axis);
+}
+
+/** Where `value` lies along a value axis `length` long, from the axis's minimum end. */
+export const offsetAlong = (scale: ValueScale, length: number, value: number): number => ((value - scale.minimum) / (scale.maximum - scale.minimum)) * length;
+
+/** How far the scale's wider end tick label reaches past either end of a horizontal value axis. */
+export function tickLabelOverhang(scale: ValueScale): number {
+  const fontSize = defaultStyle.fontSizes.tickLabel;
+  return Math.max(textWidth(tickLabel(scale.minimum), fontSize), textWidth(tickLabel(scale.maximum), fontSize)) / 2;
+}
+
+/** Space kept between neighbouring tick labels along a horizontal value axis. */
+const TICK_LABEL_GAP = 6;
+
+/** Whether every tick label of `scale` fits beside its neighbours along a horizontal axis `length` long. */
+export function tickLabelsFit(scale: ValueScale, length: number): boolean {
+  const fontSize = defaultStyle.fontSizes.tickLabel;
+  const ticks = valueTicks(scale);
+  for (let i = 1; i < ticks.length; i++) {
+    const apart = offsetAlong(scale, length, ticks[i]!) - offsetAlong(scale, length, ticks[i - 1]!);
+    const needed = (textWidth(tickLabel(ticks[i - 1]!), fontSize) + textWidth(tickLabel(ticks[i]!), fontSize)) / 2 + TICK_LABEL_GAP;
+    if (apart < needed) return false;
+  }
+  return true;
+}
+
+/**
+ * The scale of a horizontal value axis and the length it gets, `lengthFor(scale)`: when the tick
+ * interval is chosen, as few intervals as it takes for every tick's label to fit, so every tick stays
+ * labeled (DGP-REQ-009; DGP TICKET-003 DEL-004). A given interval is used as given: crowding is then
+ * the caller's choice.
+ */
+// @spec DGP-REQ-009
+export function fitHorizontalValueAxis(
+  given: GivenValueScale | undefined,
+  values: readonly number[],
+  options: ScaleOptions,
+  lengthFor: (scale: ValueScale) => number,
+): { scale: ValueScale; length: number } {
+  let scale = resolveValueScale(given, values, options);
+  let length = lengthFor(scale);
+  if (given?.tickInterval !== undefined) return { scale, length };
+  for (let intervals = DEFAULT_VALUE_INTERVALS - 1; intervals >= 1 && !tickLabelsFit(scale, length); intervals--) {
+    scale = resolveValueScale(given, values, { ...options, intervals });
+    length = lengthFor(scale);
+  }
+  return { scale, length };
+}
+

@@ -14,15 +14,16 @@ import {
   axisLabelDepth,
   axisLabelLines,
   categorySlots,
+  drawAxisLine,
   drawBottomAxisLabel,
   drawCategoryNames,
   drawLeftAxisLabel,
   drawValueAxis,
+  fitHorizontalValueAxis,
+  offsetAlong,
   resolveValueScale,
-  tickLabel,
+  tickLabelOverhang,
   valueAxisExtent,
-  valuePosition,
-  valueTicks,
 } from "./kit/value-scale";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
@@ -46,7 +47,7 @@ const VALUE_LABEL_GAP = 4;
  * (code review CR-001).
  */
 const VALUE_LABEL_WIDTH = 72;
-const MIN_VALUE_LABEL_WIDTH = 24;
+export const MIN_VALUE_LABEL_WIDTH = 24;
 
 const fontSize = defaultStyle.fontSizes.tickLabel;
 const lineHeight = fontSize * LINE_HEIGHT;
@@ -89,56 +90,10 @@ const rect = (x: number, y: number, width: number, height: number, color: string
   ],
 });
 
-const axisLine = (x1: number, y1: number, x2: number, y2: number): SceneNode => ({
-  kind: "line",
-  attrs: [
-    ["x1", fmt(x1)],
-    ["y1", fmt(y1)],
-    ["x2", fmt(x2)],
-    ["y2", fmt(y2)],
-    ["stroke", defaultStyle.colors.line],
-    ["stroke-width", fmt(defaultStyle.lineWidths.axis)],
-  ],
-});
-
-/** How far the scale's widest end tick label reaches past the end of a horizontal value axis. */
-function tickLabelOverhang(scale: ValueScale): number {
-  let widest = 0;
-  for (const tick of [scale.minimum, scale.maximum]) widest = Math.max(widest, textWidth(tickLabel(tick), fontSize));
-  return widest / 2;
-}
-
-/** Space kept between neighbouring tick labels along a horizontal value axis. */
-const TICK_LABEL_GAP = 6;
-
-/** Whether every tick label of `scale` fits beside its neighbours along an axis `length` long. */
-function tickLabelsFit(scale: ValueScale, length: number): boolean {
-  const ticks = valueTicks(scale);
-  for (let i = 1; i < ticks.length; i++) {
-    const apart = ((ticks[i]! - ticks[i - 1]!) / (scale.maximum - scale.minimum)) * length;
-    const needed = (textWidth(tickLabel(ticks[i - 1]!), fontSize) + textWidth(tickLabel(ticks[i]!), fontSize)) / 2 + TICK_LABEL_GAP;
-    if (apart < needed) return false;
-  }
-  return true;
-}
-
 /**
- * The scale of horizontal bars and the plot width it leaves: when the tick interval is chosen, as
- * few intervals as it takes for every tick's label to fit along the shorter axis, so every tick
- * stays labeled (DGP-REQ-009; DEL-004). A given interval is used as given: crowding is then the
- * caller's choice.
+ * Upright bars, appending their nodes to `nodes` from `top`: the value axis on the left, bars rising
+ * from zero, names and the category-axis label below. Returns the y where the drawing's content ends.
  */
-function horizontalScale(g: BarGraph, widthFor: (scale: ValueScale) => number): { scale: ValueScale; width: number } {
-  let scale = resolveValueScale(g.valueScale, g.values, { allowNegative: false });
-  let width = widthFor(scale);
-  for (let intervals = 9; intervals >= 1 && g.valueScale?.tickInterval === undefined && !tickLabelsFit(scale, width); intervals--) {
-    scale = resolveValueScale(g.valueScale, g.values, { allowNegative: false, intervals });
-    width = widthFor(scale);
-  }
-  return { scale, width };
-}
-
-/** Upright bars: the value axis on the left, bars rising from zero, names and the category-axis label below. */
 // @spec DGP-REQ-017, DGP-REQ-018, DGP-REQ-020, DGP-REQ-022
 function drawVertical(g: BarGraph, provenance: Provenance, top: number, nodes: SceneNode[]): number {
   const scale = resolveValueScale(g.valueScale, g.values, { allowNegative: false });
@@ -160,10 +115,10 @@ function drawVertical(g: BarGraph, provenance: Provenance, top: number, nodes: S
 
   for (const node of drawLeftAxisLabel(valueLabel, SCENE_MARGIN, box)) nodes.push(node);
   for (const node of drawValueAxis(scale, "vertical", box)) nodes.push(node);
-  nodes.push(axisLine(box.x, bottom, box.x + box.width, bottom));
+  nodes.push(drawAxisLine(box.x, bottom, box.x + box.width, bottom));
 
-  const zero = fmt(valuePosition(scale, "vertical", box)(0));
-  if (scale.minimum < 0) nodes.push(axisLine(box.x, zero, box.x + box.width, zero));
+  const zero = fmt(bottom - offsetAlong(scale, box.height, 0));
+  if (scale.minimum < 0) nodes.push(drawAxisLine(box.x, zero, box.x + box.width, zero));
   const slots = categorySlots(g.categories, box, "vertical");
   const thickness = fmt(Math.min(MAX_BAR_THICKNESS, slotWidth * BAR_FILL));
   for (const slot of slots) {
@@ -193,70 +148,99 @@ function drawVertical(g: BarGraph, provenance: Provenance, top: number, nodes: S
   return y;
 }
 
-/** Bars across: names on the left, each row sized to its name, bars growing right from zero, the value axis below. */
+/** Where horizontal bars go: measured before anything is drawn. */
+interface HorizontalPlan {
+  readonly scale: ValueScale;
+  readonly box: Box;
+  /** The category slots, one row each, top to bottom. */
+  readonly rows: readonly CategorySlot[];
+  /** Each category's value label, when shown. */
+  readonly labels: readonly (readonly string[])[];
+  /** The category-axis label, wrapped to the plot's height. */
+  readonly categoryLabel: readonly string[];
+}
+
+/**
+ * Measures horizontal bars for a category-axis label `depthLines` lines deep, in this order:
+ * 1. the plot's left edge, after the category-axis label and the names' column;
+ * 2. the room right of the plot for the value labels (each at most `VALUE_LABEL_WIDTH` wide) and the
+ *    end tick label, which with the left edge gives the plot's width, and so the scale, whose chosen
+ *    interval keeps every tick label apart (`fitHorizontalValueAxis`);
+ * 3. each value label, wrapped once, to the free width right of its own bar (code review CR-001);
+ * 4. the rows, each as tall as its name, its value label and a bar need, at least
+ *    `MIN_ROWS_HEIGHT` in all; then the category-axis label wrapped to their height.
+ */
+function planHorizontal(g: BarGraph, provenance: Provenance, top: number, depthLines: number): HorizontalPlan {
+  const depth = depthLines * defaultStyle.fontSizes.label * LINE_HEIGHT;
+  const left = SCENE_MARGIN + (depth > 0 ? depth + GAP : 0) + CATEGORY_NAME_WIDTH + NAME_GAP;
+
+  const written = g.showValues === true ? g.categories.map((_, i) => displayValue(g.values[i] ?? 0, sourceOf(provenance, `values/${i}`))) : [];
+  let widestLabel = 0;
+  for (const text of written) widestLabel = Math.max(widestLabel, Math.min(VALUE_LABEL_WIDTH, textWidth(text, fontSize)));
+  const labelRoom = widestLabel > 0 ? widestLabel + VALUE_LABEL_GAP : 0;
+  const { scale, length: width } = fitHorizontalValueAxis(
+    g.valueScale,
+    g.values,
+    { allowNegative: false },
+    (candidate) => SCENE_WIDTH - SCENE_MARGIN - Math.max(tickLabelOverhang(candidate), labelRoom) - left,
+  );
+
+  const zero = left + offsetAlong(scale, width, 0);
+  const labels = written.map((text, i) => {
+    const free = SCENE_WIDTH - SCENE_MARGIN - (zero + barLength(g.values[i] ?? 0, scale, width) + VALUE_LABEL_GAP);
+    return wrap(text, Math.max(VALUE_LABEL_WIDTH, free), fontSize);
+  });
+
+  const count = Math.max(1, g.categories.length);
+  const rows = categorySlots(g.categories, { x: left, y: top, width, height: 0 }, "horizontal", CATEGORY_NAME_WIDTH, (nameHeight, index) =>
+    Math.max(MIN_ROW, nameHeight + NAME_GAP, (labels[index]?.length ?? 0) * lineHeight + NAME_GAP, MIN_ROWS_HEIGHT / count),
+  );
+  const height = (rows.at(-1)?.end ?? top) - top;
+  return { scale, box: { x: left, y: top, width, height }, rows, labels, categoryLabel: axisLabelLines(g.categoryAxisLabel, height) };
+}
+
+/**
+ * Bars across, appending their nodes to `nodes` from `top`: names on the left, each row sized to its
+ * name, bars growing right from zero, the value axis and its label below. Returns the y where the
+ * drawing's content ends. The plot is measured for the category-axis label's depth, which depends on
+ * the plot's height: measured again until the two agree (at most twice more), so no band is left
+ * empty beside the plot (quality review QR-007).
+ */
 // @spec DGP-REQ-017, DGP-REQ-018, DGP-REQ-020, DGP-REQ-022
 function drawHorizontal(g: BarGraph, provenance: Provenance, top: number, nodes: SceneNode[]): number {
-  const count = Math.max(1, g.categories.length);
-  const categoryLabelSample = axisLabelLines(g.categoryAxisLabel, MIN_ROWS_HEIGHT);
-  const labelDepth = axisLabelDepth(categoryLabelSample);
-  const left = SCENE_MARGIN + (labelDepth > 0 ? labelDepth + GAP : 0) + CATEGORY_NAME_WIDTH + NAME_GAP;
-
-  // Right of the plot: room for the value labels when shown, and the last tick label's overhang.
-  const reserved = g.showValues === true ? g.categories.map((_, i) => valueLabelLines(g, provenance, i, VALUE_LABEL_WIDTH)) : [];
-  let widestLabel = 0;
-  for (const lines of reserved) widestLabel = Math.max(widestLabel, widestOf(lines));
-  const valueLabelRoom = widestLabel > 0 ? widestLabel + VALUE_LABEL_GAP : 0;
-  const { scale, width } = horizontalScale(g, (candidate) => SCENE_WIDTH - SCENE_MARGIN - Math.max(tickLabelOverhang(candidate), valueLabelRoom) - left);
-  // Each label then wraps to the free width right of its own bar, at least the width reserved for
-  // all: a short bar's long value takes fewer lines (code review CR-001).
-  const zeroAt = valuePosition(scale, "horizontal", { x: left, y: 0, width, height: 1 })(0);
-  const labels = reserved.map((_, i) => {
-    const free = SCENE_WIDTH - SCENE_MARGIN - (zeroAt + barLength(g.values[i] ?? 0, scale, width) + VALUE_LABEL_GAP);
-    return valueLabelLines(g, provenance, i, Math.max(VALUE_LABEL_WIDTH, free));
-  });
-
-  // Each row as tall as its name, its value label and a bar need, and the rows at least MIN_ROWS_HEIGHT in all.
-  const slots: CategorySlot[] = categorySlots(g.categories, { x: left, y: top, width, height: 0 }, "horizontal", CATEGORY_NAME_WIDTH, (nameHeight) =>
-    Math.max(MIN_ROW, nameHeight + NAME_GAP, MIN_ROWS_HEIGHT / count),
-  );
-  // A long value label can be taller than its row's name: grow the rows that need it.
-  const rows = slots.map((slot) => {
-    const needed = (labels[slot.index]?.length ?? 0) * lineHeight + NAME_GAP;
-    return Math.max(slot.end - slot.start, needed);
-  });
-  let y = top;
-  const placed = slots.map((slot, i) => {
-    const size = rows[i]!;
-    const moved = { ...slot, start: y, end: y + size, center: y + size / 2 };
-    y += size;
-    return moved;
-  });
-  const box: Box = { x: left, y: top, width, height: y - top };
+  let plan = planHorizontal(g, provenance, top, axisLabelLines(g.categoryAxisLabel, MIN_ROWS_HEIGHT).length);
+  for (let tries = 0; tries < 2; tries++) {
+    const again = planHorizontal(g, provenance, top, plan.categoryLabel.length);
+    if (again.categoryLabel.length === plan.categoryLabel.length) {
+      plan = again;
+      break;
+    }
+    plan = again;
+  }
+  const { scale, box, rows, labels, categoryLabel } = plan;
   const bottom = box.y + box.height;
 
-  for (const node of drawLeftAxisLabel(axisLabelLines(g.categoryAxisLabel, box.height), SCENE_MARGIN, box)) nodes.push(node);
+  for (const node of drawLeftAxisLabel(categoryLabel, SCENE_MARGIN, box)) nodes.push(node);
   for (const node of drawValueAxis(scale, "horizontal", box)) nodes.push(node);
-  nodes.push(axisLine(box.x, box.y, box.x, bottom));
+  nodes.push(drawAxisLine(box.x, box.y, box.x, bottom));
 
-  const zero = fmt(valuePosition(scale, "horizontal", box)(0));
-  if (scale.minimum < 0) nodes.push(axisLine(zero, box.y, zero, bottom));
+  const zero = fmt(box.x + offsetAlong(scale, box.width, 0));
+  if (scale.minimum < 0) nodes.push(drawAxisLine(zero, box.y, zero, bottom));
   let thinnest = Infinity;
-  for (const size of rows) thinnest = Math.min(thinnest, size);
+  for (const row of rows) thinnest = Math.min(thinnest, row.end - row.start);
   const thickness = fmt(Math.min(MAX_BAR_THICKNESS, thinnest * BAR_FILL));
-  for (const slot of placed) {
-    const value = g.values[slot.index] ?? 0;
-    const length = barLength(value, scale, box.width);
-    if (length > 0) nodes.push(rect(zero, slot.center - thickness / 2, length, thickness, barColorOf(g, slot.index)));
-    const lines = labels[slot.index];
+  for (const row of rows) {
+    const length = barLength(g.values[row.index] ?? 0, scale, box.width);
+    if (length > 0) nodes.push(rect(zero, row.center - thickness / 2, length, thickness, barColorOf(g, row.index)));
+    const lines = labels[row.index];
     if (lines !== undefined) {
-      const widest = widestOf(lines);
       const labelLeft = zero + length + VALUE_LABEL_GAP;
-      for (const node of textLines(lines, labelLeft + widest / 2, slot.center - (lines.length * lineHeight) / 2, fontSize, defaultStyle.colors.text)) {
+      for (const node of textLines(lines, labelLeft + widestOf(lines) / 2, row.center - (lines.length * lineHeight) / 2, fontSize, defaultStyle.colors.text)) {
         nodes.push(node);
       }
     }
   }
-  for (const node of drawCategoryNames(placed, "horizontal", box)) nodes.push(node);
+  for (const node of drawCategoryNames(rows, "horizontal", box)) nodes.push(node);
 
   let end = bottom + valueAxisExtent(scale, "horizontal");
   const valueLabel = axisLabelLines(g.valueAxisLabel, box.width);

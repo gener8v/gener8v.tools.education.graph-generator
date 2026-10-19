@@ -10,7 +10,7 @@ import { LINE_HEIGHT, SCENE_MARGIN } from "../../src/layout/kit/title";
 import { defaultStyle } from "../../src/core/style";
 import { LEGEND_MAX_LINES, SAMPLE_LENGTH, lineGraphLayout } from "../../src/layout/line-graph";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
-import { attr, boundsOf, nameOf, overlap } from "../fixtures/scene-geometry";
+import { attr, boundsOf, nameOf, overlap, positionOf as heightOf, tickLabelNodes, ticksOf as ticks } from "../fixtures/scene-geometry";
 
 /** The Scene the line-graph layout draws for a valid description; it must pass `checkScene`. */
 function sceneOf(input: Record<string, unknown>): Scene {
@@ -88,7 +88,7 @@ describe("points and segments (DGP-REQ-010, DGP-REQ-012)", () => {
       }),
     );
     // The point for 5 is level with the tick labeled 5.
-    expect(heightOf(scene, 5)).toBe(ticks(scene).find((tick) => tick.value === 5)!.y);
+    expect(heightOf(scene, 5)).toBeCloseTo(ticks(scene).find((tick) => tick.value === 5)!.at, 9);
   });
 
   it("draws a single-category series as one point with no segment (DGP Edge Cases)", () => {
@@ -253,27 +253,6 @@ function categoryAxis(scene: Scene): SceneNode {
 }
 
 const plotWidth = (scene: Scene) => num(categoryAxis(scene), "x2") - num(categoryAxis(scene), "x1");
-
-/** The value axis's tick labels: its numeric texts, which are anchored at their end. */
-const tickLabelNodes = (scene: Scene) =>
-  scene.nodes.filter((node) => node.kind === "text" && attr(node, "text-anchor") === "end" && attr(node, "transform") === undefined && /^-?[\d.]+$/.test(node.text));
-
-/** Each tick's value and height: a tick label's number, and the short horizontal tick line level with it. */
-function ticks(scene: Scene): Array<{ value: number; y: number }> {
-  const marks = scene.nodes.filter((node) => node.kind === "line" && attr(node, "y1") === attr(node, "y2") && num(node, "x2") - num(node, "x1") <= defaultStyle.tickLength + 0.01);
-  return tickLabelNodes(scene).map((label) => {
-    const mark = marks.find((line) => Math.abs(num(line, "y1") - (num(label, "y") - defaultStyle.fontSizes.tickLabel * 0.35)) < 0.02);
-    if (mark === undefined || label.kind !== "text") throw new Error("a tick label with no tick");
-    return { value: Number(label.text), y: num(mark, "y1") };
-  });
-}
-
-/** Where a value is drawn, read off the axis: linear between its first and last ticks. */
-function heightOf(scene: Scene, value: number): number {
-  const all = ticks(scene);
-  const [low, high] = [all[0]!, all.at(-1)!];
-  return low.y + ((value - low.value) * (high.y - low.y)) / (high.value - low.value);
-}
 
 describe("the drawing's geometry", () => {
   const WORDS = ["Monday", "Wednesday", "Apples", "September", "Average", "of", "A", "Pneumonoultramicroscopicsilicovolcanoconiosis"];

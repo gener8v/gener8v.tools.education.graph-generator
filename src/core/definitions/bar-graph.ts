@@ -7,6 +7,7 @@ import {
   ORIENTATION_DESCRIPTION,
   VALUES_DESCRIPTION,
   VALUE_LIMIT,
+  axisLabelSentences,
   categoriesCheck,
   categoriesProperty,
   valuesPerCategoryCheck,
@@ -130,13 +131,7 @@ function defineBarGraph(): GraphTypeDefinition<BarGraph> {
     describe: (g: BarGraph, provenance: Provenance) => {
       const title = g.title === undefined ? "" : cleanText(g.title);
       const sentences = [`A bar graph${title === "" ? "" : ` titled ${quoteText(title)}`}.`];
-      for (const [term, axis] of [
-        ["categoryAxisLabel", "category"],
-        ["valueAxisLabel", "value"],
-      ] as const) {
-        const label = g[term] === undefined ? "" : cleanText(g[term]);
-        if (label !== "") sentences.push(`The ${axis} axis is labeled ${quoteText(label)}.`);
-      }
+      for (const sentence of axisLabelSentences(g)) sentences.push(sentence);
       const entries: string[] = [];
       g.categories.forEach((category, i) => {
         const value = g.values[i];

@@ -1,4 +1,4 @@
-import { cleanText } from "../format";
+import { cleanText, quoteText } from "../format";
 import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
 import { MAX_VALUE_TICKS, VALUE_LIMIT } from "../value-scale";
@@ -39,6 +39,23 @@ export const CATEGORY_NAME_LIMIT = 200;
  * type goes in its item's description.
  */
 export const VALUES_DESCRIPTION = "One value per category, in the same order as the categories.";
+
+/**
+ * The text alternative's sentences for a data graph's axis labels, in order, each left out when its
+ * label is absent or blank: "The category axis is labeled “Day”." (DGP-REQ-004; the line graph and
+ * the bar graph alike).
+ */
+export function axisLabelSentences(g: { readonly categoryAxisLabel?: string; readonly valueAxisLabel?: string }): string[] {
+  const sentences: string[] = [];
+  for (const [label, axis] of [
+    [g.categoryAxisLabel, "category"],
+    [g.valueAxisLabel, "value"],
+  ] as const) {
+    const cleaned = label === undefined ? "" : cleanText(label);
+    if (cleaned !== "") sentences.push(`The ${axis} axis is labeled ${quoteText(cleaned)}.`);
+  }
+  return sentences;
+}
 
 /**
  * The one definition of the `orientation` term, shared by the pictograph and the bar graph, whose

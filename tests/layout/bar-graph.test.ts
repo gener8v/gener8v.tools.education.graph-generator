@@ -5,11 +5,12 @@ import type { BarGraph } from "../../src/core/definitions/bar-graph";
 import { validate } from "../../src/core/index";
 import { defaultStyle } from "../../src/core/style";
 import { createGraph } from "../../src/graph";
-import { BAR_FILL, MAX_BAR_THICKNESS, barGraphLayout } from "../../src/layout/bar-graph";
+import { BAR_FILL, MAX_BAR_THICKNESS, MIN_VALUE_LABEL_WIDTH, barGraphLayout } from "../../src/layout/bar-graph";
+import { displayValue } from "../../src/layout/kit/format";
 import { checkScene } from "../../src/layout/kit/check";
 import { LINE_HEIGHT, SCENE_MARGIN } from "../../src/layout/kit/title";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
-import { attr, boundsOf, nameOf, overlap } from "../fixtures/scene-geometry";
+import { attr, boundsOf, nameOf, overlap, positionOf, ticksOf as ticks, valueAxisOf as valueAxis } from "../fixtures/scene-geometry";
 
 /** The Scene the bar-graph layout draws for a valid description; it must pass `checkScene`. */
 function sceneOf(input: Record<string, unknown>): Scene {
@@ -25,26 +26,6 @@ const texts = (scene: Scene) => scene.nodes.flatMap((node) => (node.kind === "te
 const bars = (scene: Scene) => scene.nodes.filter((node) => node.kind === "rect");
 const textNode = (scene: Scene, text: string) => scene.nodes.find((node) => node.kind === "text" && node.text === text)!;
 const lineHeight = defaultStyle.fontSizes.tickLabel * LINE_HEIGHT;
-
-/** The value axis: the first axis-width line, which `drawValueAxis` draws first. */
-function valueAxis(scene: Scene): { from: number; to: number; vertical: boolean } {
-  const axis = scene.nodes.find((node) => node.kind === "line" && attr(node, "stroke-width") === defaultStyle.lineWidths.axis)!;
-  const vertical = attr(axis, "x1") === attr(axis, "x2");
-  return vertical ? { from: num(axis, "y2"), to: num(axis, "y1"), vertical } : { from: num(axis, "x1"), to: num(axis, "x2"), vertical };
-}
-
-/** Each tick's value and position along the value axis, read from its label and its tick line. */
-function ticks(scene: Scene): Array<{ value: number; at: number }> {
-  const { vertical } = valueAxis(scene);
-  const labels = scene.nodes.filter((node) => node.kind === "text" && /^-?[\d.]+$/.test(node.text) && attr(node, "text-anchor") === (vertical ? "end" : "middle"));
-  const marks = scene.nodes.filter((node) => node.kind === "line" && attr(node, "stroke-width") === defaultStyle.lineWidths.tick);
-  return labels.flatMap((label) => {
-    if (label.kind !== "text") return [];
-    const at = vertical ? num(label, "y") - defaultStyle.fontSizes.tickLabel * 0.35 : num(label, "x");
-    const mark = marks.find((line) => Math.abs((vertical ? num(line, "y1") : num(line, "x1")) - at) < 0.02);
-    return mark === undefined ? [] : [{ value: Number(label.text), at }];
-  });
-}
 
 const example = JSON.parse(readFileSync("examples/bar-graph.json", "utf8")) as Record<string, unknown>;
 
@@ -107,6 +88,34 @@ describe("bars (DGP-REQ-017, DGP-REQ-036)", () => {
     );
   });
 
+  it.each(["vertical", "horizontal"] as const)("on a scale from −5, draws %s bars, their zero line and their value labels from zero (quality review QR-002)", (orientation) => {
+    const scene = sceneOf({ orientation, values: [10, 5, 0], valueScale: { minimum: -5, maximum: 10 }, showValues: true });
+    const vertical = orientation === "vertical";
+    const zero = positionOf(scene, 0);
+    // The zero line, across the plot.
+    expect(
+      scene.nodes.some((node) => node.kind === "line" && attr(node, "stroke-width") === defaultStyle.lineWidths.axis && (vertical
+          ? Math.abs(num(node, "y1") - zero) < 0.02 && num(node, "y1") === num(node, "y2") && num(node, "x2") - num(node, "x1") > 100
+          : Math.abs(num(node, "x1") - zero) < 0.02 && num(node, "x1") === num(node, "x2") && num(node, "y2") - num(node, "y1") > 40)),
+    ).toBe(true);
+    bars(scene).forEach((bar, i) => {
+      const value = [10, 5][i]!;
+      const [start, end] = vertical ? [num(bar, "y") + num(bar, "height"), num(bar, "y")] : [num(bar, "x"), num(bar, "x") + num(bar, "width")];
+      expect(start, `${orientation} bar ${i} start`).toBeCloseTo(zero, 1);
+      expect(end, `${orientation} bar ${i} end`).toBeCloseTo(positionOf(scene, value), 1);
+      // Its label beyond its end, level with the bar.
+      const label = boundsOf(scene.nodes.find((node) => node.kind === "text" && node.text === String(value) && Math.abs((vertical ? num(node, "x") : boundsOf(node).y0 + 6) - (vertical ? num(bar, "x") + num(bar, "width") / 2 : num(bar, "y") + num(bar, "height") / 2)) < 7)!);
+      if (vertical) expect(label.y1, `${orientation} label ${i}`).toBeLessThanOrEqual(end);
+      else {
+        expect(label.x0, `${orientation} label ${i}`).toBeGreaterThanOrEqual(end);
+        expect((label.y0 + label.y1) / 2).toBeCloseTo(num(bar, "y") + num(bar, "height") / 2, 0);
+      }
+    });
+    // The zero bar's label sits at the zero line.
+    const zeroLabels = scene.nodes.filter((node) => node.kind === "text" && node.text === "0");
+    expect(zeroLabels.some((node) => (vertical ? Math.abs(boundsOf(node).y1 - zero) < 6 : Math.abs(boundsOf(node).x0 - zero) < 6))).toBe(true);
+  });
+
   it("draws non-integer values proportionally (DGP Edge Cases)", () => {
     const [a, b] = bars(sceneOf({ categories: [{ name: "A" }, { name: "B" }], values: [2.5, 5], valueScale: { minimum: 0, maximum: 10 } }));
     expect(num(a!, "height") * 2).toBeCloseTo(num(b!, "height"), 1);
@@ -118,6 +127,19 @@ describe("bars (DGP-REQ-017, DGP-REQ-036)", () => {
       const thickness = bars(scene).map((bar) => (orientation === "vertical" ? num(bar, "width") : num(bar, "height")));
       expect(new Set(thickness).size, orientation).toBe(1);
       expect(thickness[0]!).toBeLessThanOrEqual(MAX_BAR_THICKNESS);
+    }
+    // Equal slots, narrow enough to stay under the cap: a bar is BAR_FILL of the distance between bars.
+    for (const [orientation, count] of [
+      ["vertical", 8],
+      ["horizontal", 3],
+    ] as const) {
+      const categories = Array.from({ length: count }, (_, i) => ({ name: `C${i}` }));
+      const drawn = bars(sceneOf({ orientation, categories, values: categories.map(() => 5) }));
+      const centerOf = (bar: SceneNode) => (orientation === "vertical" ? num(bar, "x") + num(bar, "width") / 2 : num(bar, "y") + num(bar, "height") / 2);
+      const spacing = centerOf(drawn[1]!) - centerOf(drawn[0]!);
+      const thickness = orientation === "vertical" ? num(drawn[0]!, "width") : num(drawn[0]!, "height");
+      expect(thickness, orientation).toBeLessThan(MAX_BAR_THICKNESS);
+      expect(thickness, orientation).toBeCloseTo(BAR_FILL * spacing, 1);
     }
   });
 });
@@ -151,13 +173,27 @@ describe("orientation (DGP-REQ-018)", () => {
     expect(valueAxis(across).vertical).toBe(false);
   });
 
+  it("reserves exactly the room the category-axis label's drawn lines take, left of the names (quality review QR-007)", () => {
+    // Wrapped to a short provisional height this label takes two lines; at 30 rows' height, one.
+    const label = "The way each pupil travels to school on a normal school day";
+    const categories = Array.from({ length: 30 }, (_, i) => ({ name: `C${i}` }));
+    const scene = sceneOf({ orientation: "horizontal", categories, values: categories.map(() => 1), categoryAxisLabel: label });
+    const drawn = scene.nodes.filter((node) => node.kind === "text" && attr(node, "transform") !== undefined);
+    expect(drawn.map((node) => (node.kind === "text" ? node.text : ""))).toEqual([label]);
+    // The plot's left edge (the category axis) is the margin, one label line and its gap, then the names' column.
+    const axis = scene.nodes.find((node) => node.kind === "line" && attr(node, "x1") === attr(node, "x2") && num(node, "y2") - num(node, "y1") > 100)!;
+    expect(num(axis, "x1")).toBeCloseTo(SCENE_MARGIN + defaultStyle.fontSizes.label * LINE_HEIGHT + 8 + 96 + 4, 1);
+  });
+
   it("sizes each horizontal row to its own name, so one long name makes one tall row", () => {
     const scene = sceneOf({ orientation: "horizontal", categories: [{ name: "Walk" }, { name: "word ".repeat(30).trim() }, { name: "Car" }] });
     const names = ["Walk", "Car"].map((name) => boundsOf(textNode(scene, name)));
     const longLines = scene.nodes.filter((node) => node.kind === "text" && node.text.startsWith("word"));
     expect(longLines.length).toBeGreaterThan(3);
-    // The short rows stay short: Walk's and Car's centers are less than three long rows apart.
+    // The short rows stay short: from Walk's name to Car's is the long name's block, its gap and two
+    // short rows (each at most 40 here), not three rows as tall as the long one.
     expect(names[1]!.y0 - names[0]!.y0).toBeLessThan(longLines.length * lineHeight + 3 * 40);
+    expect(names[1]!.y0 - names[0]!.y0).toBeLessThan(2 * longLines.length * lineHeight);
   });
 });
 
@@ -189,6 +225,18 @@ describe("value labels (DGP-REQ-020)", () => {
     }
   });
 
+  it.each(["vertical", "horizontal"] as const)("never cuts a value label: its lines, %s, join back to the whole written value, even in crowded columns (quality review QR-001)", (orientation) => {
+    const full = displayValue(5e-324, "supplied");
+    expect(full).toHaveLength(326);
+    for (const count of [3, 100]) {
+      const categories = Array.from({ length: count }, (_, i) => ({ name: `C${i}` }));
+      const scene = sceneOf({ orientation, categories, values: categories.map((_, i) => (i === 0 ? 5e-324 : 1)), showValues: true });
+      // A label's lines are consecutive text nodes: joined in drawing order, they hold the whole value.
+      expect(texts(scene).join(""), `${orientation} ${count}`).toContain(full);
+      expect(texts(scene).some((text) => text.endsWith("…")), `${orientation} ${count}`).toBe(false);
+    }
+  });
+
   it("writes nothing without showValues", () => {
     const scene = sceneOf({ values: [12, 7.5, 9], valueScale: { minimum: 0, maximum: 20, tickInterval: 5 } });
     expect(texts(scene)).not.toContain("7.5");
@@ -200,7 +248,7 @@ function geometryProblems(scene: Scene): string[] {
   const problems: string[] = [];
   const all = scene.nodes.map(boundsOf);
   for (const b of all) {
-    if (b.x0 < SCENE_MARGIN - 0.02 || b.x1 > SCENE_WIDTH - SCENE_MARGIN + 0.02 || b.y0 < -0.02 || b.y1 > scene.height - SCENE_MARGIN + 2) {
+    if (b.x0 < SCENE_MARGIN - 0.02 || b.x1 > SCENE_WIDTH - SCENE_MARGIN + 0.02 || b.y0 < -0.02 || b.y1 > scene.height - SCENE_MARGIN + 0.02) {
       problems.push(`${nameOf(b)} outside the drawing`);
     }
   }
@@ -244,7 +292,7 @@ describe("the drawing's geometry", () => {
           // Crowded columns (a name line or a value label wider than its slot) may touch: DEL-001.
           const axis = scene.nodes.find((node) => node.kind === "line" && attr(node, "y1") === attr(node, "y2") && num(node, "x2") - num(node, "x1") > 50)!;
           const slot = (num(axis, "x2") - num(axis, "x1")) / input.categories.length;
-          fc.pre(slot >= lineHeight && ((input as { showValues?: boolean }).showValues !== true || slot >= 26));
+          fc.pre(slot >= lineHeight && ((input as { showValues?: boolean }).showValues !== true || slot >= MIN_VALUE_LABEL_WIDTH + 2));
         }
         expect(geometryProblems(scene)).toEqual([]);
       }),
