@@ -392,23 +392,36 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("keeps the bar graph's value labels bounded at the limits: 100 categories, every value written in full (DGP TICKET-003 code review CR-001)", () => {
+  it("keeps the bar graph's value labels bounded at the limits: 100 categories, every value written in full (DGP TICKET-003 code review CR-001, security review SEC-001, SEC-002)", () => {
     // The longest written value, 5e-324, is 326 characters, never cut. Measured 2026-10-19:
-    // upright, 3,802 text nodes and 861,141 characters of markup (crowded labels wrap to 72 units);
-    // across, 2,502 text nodes, 617,007 characters, and a drawing 22,048 units tall (each label wraps
-    // to the free width right of its bar). Before the review: 11,002 nodes and 2.19 MB; 53,728 units.
-    const categories = Array.from({ length: 100 }, (_, i) => ({ name: `${String(i).padStart(3, "0")}${"x".repeat(197)}` }));
-    for (const [orientation, nodes, markupLength, height] of [
-      ["vertical", 4_000, 900_000, 2_500],
-      ["horizontal", 2_700, 650_000, 23_000],
+    // - upright: 3,802 text nodes and 861,141 characters of markup (crowded labels wrap to 72 units).
+    //   Crowded names rotate to one line whatever their words, so 87 columns of combining-mark words
+    //   draw 3,308 nodes, down from 11,921 and 2.32 MB (SEC-002);
+    // - across, from a scale at zero: 2,502 text nodes, 616,995 characters, 22,048 units tall (each
+    //   label wraps to the free width right of its bar). A negative minimum puts a label before the
+    //   zero line when there is more room there: at most 29,248 units (a minimum about −2.2 of a
+    //   maximum of 1), down from 53,728 (SEC-001). Names of 200 wide characters alone reach 42,208.
+    // Before code review CR-001: 11,002 nodes and 2.19 MB; 53,728 units.
+    const name = (i: number, fill: string) => `${String(i).padStart(3, "0")}${fill.repeat(197)}`;
+    const x = Array.from({ length: 100 }, (_, i) => ({ name: name(i, "x") }));
+    const wide = Array.from({ length: 100 }, (_, i) => ({ name: name(i, "@") }));
+    const short = Array.from({ length: 100 }, (_, i) => ({ name: `C${i}` }));
+    const marks = Array.from({ length: 87 }, (_, i) => ({ name: Array.from({ length: 100 }, (_, j) => (j === i ? "\u0301" : "\u0300")).join(" ") }));
+    for (const [what, orientation, categories, valueScale, nodes, markupLength, height] of [
+      ["x names", "vertical", x, undefined, 4_000, 900_000, 2_500],
+      ["combining-mark words", "vertical", marks, { maximum: 1, tickInterval: 1 }, 4_000, 900_000, 2_500],
+      ["x names", "horizontal", x, undefined, 2_700, 650_000, 23_000],
+      ["x names, minimum −2.2", "horizontal", x, { minimum: -2.2, maximum: 1 }, 4_000, 900_000, 30_000],
+      ["short names, minimum −1", "horizontal", short, { minimum: -1, maximum: 1e-9 }, 1_500, 400_000, 20_000],
+      ["wide names", "horizontal", wide, undefined, 4_000, 900_000, 43_000],
     ] as const) {
-      const description = { type: "bar-graph", orientation, categories, values: categories.map(() => 5e-324), showValues: true };
+      const description = { type: "bar-graph", orientation, categories, values: categories.map(() => 5e-324), showValues: true, ...(valueScale && { valueScale }) };
       const result = createGraph(description);
       if (!result.ok) throw new Error(JSON.stringify(result.issues));
-      expect(result.scene.height, orientation).toBeLessThan(height);
+      expect(result.scene.height, what).toBeLessThan(height);
       const markup = html(<PackageBarGraph description={description} />);
-      expect(markup.match(/<text /g)!.length, orientation).toBeLessThan(nodes);
-      expect(markup.length, orientation).toBeLessThan(markupLength);
+      expect(markup.match(/<text /g)!.length, what).toBeLessThan(nodes);
+      expect(markup.length, what).toBeLessThan(markupLength);
     }
   });
 
@@ -444,15 +457,19 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
 
   it("keeps the names' markup bounded at the limit: the narrow-word worst case in columns (DGP TICKET-005 SEC-001)", () => {
     // Names of narrow words wrap one word per line under narrow columns: the most text per byte.
-    // The worst case under the 200-character limit is 53 columns: 3,923 text nodes, 0.77 MB.
-    for (const count of [26, 53, 91, 100]) {
-      const categories = Array.from({ length: count }, (_, i) => ({ name: "i ".repeat(100 - i).trim() }));
+    // Crowded columns rotate names to one line (DGP TICKET-003 security review SEC-002), so the worst
+    // case under the 200-character limit is 25 columns: 1,107 text nodes, 0.23 MB. Before, 53 columns
+    // of "i" drew 3,923 nodes, and 91 of combining-mark words 9,101 nodes and 1.77 MB.
+    const marks = (count: number) => Array.from({ length: count }, (_, i) => ({ name: Array.from({ length: 100 }, (_, j) => (j === i ? "\u0301" : "\u0300")).join(" ") }));
+    const narrow = (count: number) => Array.from({ length: count }, (_, i) => ({ name: "i ".repeat(100 - i).trim() }));
+    for (const categories of [25, 26, 53, 91, 100].flatMap((count) => [narrow(count), marks(count)])) {
+      const count = categories.length;
       const markup = html(
         <PackagePictograph description={{ type: "pictograph", orientation: "vertical", categories, values: categories.map(() => 1), unitImage: "apple", unitValue: 1 }} />,
       );
       expect(markup).toContain("<svg");
-      expect(markup.match(/<text /g)!.length, String(count)).toBeLessThanOrEqual(5_000);
-      expect(markup.length, String(count)).toBeLessThan(1_000_000);
+      expect(markup.match(/<text /g)!.length, String(count)).toBeLessThanOrEqual(1_200);
+      expect(markup.length, String(count)).toBeLessThan(250_000);
     }
   });
 

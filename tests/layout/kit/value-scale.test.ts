@@ -441,6 +441,16 @@ describe("categorySlots (DGP-REQ-001, DGP-REQ-003)", () => {
       expect(xs[50]! - (lineHeight - fontSize) / 2 - fontSize * 0.8 + lineHeight / 2).toBeCloseTo(slots[50]!.center, 1);
     });
 
+    it("rotates names of narrow words once a line no longer fits across a column, so none stacks a word per line (DGP TICKET-003 security review SEC-002)", () => {
+      // 25 columns are 14.72 wide, room for a line (14.4); 26 are not.
+      const narrow = (count: number) => Array.from({ length: count }, (_, i) => ({ name: Array.from({ length: 100 }, (_, j) => (j === i ? "\u0301" : "\u0300")).join(" ") }));
+      expect(categorySlots(narrow(25), PLOT, "vertical").every((slot) => !slot.rotated)).toBe(true);
+      for (const count of [26, 87, 100]) {
+        const slots = categorySlots(narrow(count), PLOT, "vertical");
+        expect(slots.every((slot) => slot.rotated && slot.lines.length === 1 && slot.lines[0] === slot.name), String(count)).toBe(true);
+      }
+    });
+
     it("still lays out 100 categories, one line each", () => {
       const many = Array.from({ length: 100 }, (_, i) => ({ name: `Category ${i}` }));
       const slots = categorySlots(many, PLOT, "vertical");

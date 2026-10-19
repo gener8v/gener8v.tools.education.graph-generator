@@ -136,7 +136,9 @@ export function resolveValueScale(given: GivenValueScale | undefined, values: re
   const [low, high] = extent(values);
   const floor = options.allowNegative ? low : 0;
   const givenInterval = given?.tickInterval;
-  const interval = givenInterval ?? niceInterval((given?.maximum ?? high) - (given?.minimum ?? floor), options.intervals);
+  // Read own-key: an inherited `intervals` would change every chosen scale (security review SEC-003).
+  const intervals = Object.hasOwn(options, "intervals") ? options.intervals : undefined;
+  const interval = givenInterval ?? niceInterval((given?.maximum ?? high) - (given?.minimum ?? floor), intervals);
 
   let minimum: number;
   if (given?.minimum !== undefined) minimum = given.minimum;

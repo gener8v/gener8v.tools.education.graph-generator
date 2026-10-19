@@ -162,10 +162,12 @@ function rotatedLines(name: string, slotSize: number, fontSize: number, widestWo
  * along the bottom (vertical) or top to bottom down the left side (horizontal). Each name is wrapped
  * with the kit's `wrap` and never truncated (DGP Scale and Layout; prd/TC-011):
  * - beside a horizontal plot, to `nameWidth`;
- * - below a vertical plot, to its slot's width, when every word of every name fits there. When one
- *   does not, every name is rotated to read upward, wrapped between words only, with as many lines
- *   as fit side by side across its slot, so a word is never split (quality review QR-002). Past
- *   about 25 categories one line no longer fits a slot and rotated names touch (DGP TICKET-003).
+ * - below a vertical plot, to its slot's width, when every word of every name fits there and a
+ *   line of text fits across the slot. Otherwise every name is rotated to read upward, wrapped
+ *   between words only, with as many lines as fit side by side across its slot, so a word is never
+ *   split (quality review QR-002). Past about 25 categories one line no longer fits a slot and
+ *   rotated names touch (DGP TICKET-003). Crowded columns always rotate, so names of narrow words
+ *   never stack one word per line (DGP TICKET-003 security review SEC-002).
  *
  * `slotSize`, beside a horizontal plot only, sizes each slot from its own wrapped name's height (and
  * its index, so a layout can add what else the row holds, such as a value label), so a
@@ -196,7 +198,7 @@ export function categorySlots(
   } else {
     const slotWidth = share - NAME_GAP;
     const widest = names.map((name) => widestWord(name, fontSize));
-    if (slotWidth > 0 && widest.every((width) => width <= slotWidth)) {
+    if (share >= lineHeight && slotWidth > 0 && widest.every((width) => width <= slotWidth)) {
       named = names.map((name) => {
         const lines = wrap(name, slotWidth, fontSize);
         return { lines, labelWidth: slotWidth, labelHeight: lines.length * lineHeight, rotated: false };

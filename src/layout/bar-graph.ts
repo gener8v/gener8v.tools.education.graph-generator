@@ -73,6 +73,12 @@ function valueLabelLines(g: BarGraph, provenance: Provenance, index: number, wid
   return wrap(displayValue(g.values[index] ?? 0, sourceOf(provenance, `values/${index}`)), width, fontSize);
 }
 
+/**
+ * The entry at `index` of a list the layout built, never one inherited through a polluted prototype:
+ * the value labels' list is empty without `showValues` (security review SEC-003).
+ */
+const ownEntry = <T>(list: readonly T[], index: number): T | undefined => (Object.hasOwn(list, index) ? list[index] : undefined);
+
 const widestOf = (lines: readonly string[]) => {
   let widest = 0;
   for (const line of lines) widest = Math.max(widest, textWidth(line, fontSize));
@@ -126,7 +132,7 @@ function drawVertical(g: BarGraph, provenance: Provenance, top: number, nodes: S
     const length = barLength(value, scale, box.height);
     // A zero value draws no bar; its slot and name remain (DGP-REQ-022).
     if (length > 0) nodes.push(rect(slot.center - thickness / 2, zero - length, thickness, length, barColorOf(g, slot.index)));
-    const lines = labels[slot.index];
+    const lines = ownEntry(labels, slot.index);
     if (lines !== undefined) {
       const labelTop = zero - length - VALUE_LABEL_GAP - lines.length * lineHeight;
       // Centered on the bar, but kept inside the plot's span when crowded columns make it wider (DEL-001).
@@ -148,6 +154,15 @@ function drawVertical(g: BarGraph, provenance: Provenance, top: number, nodes: S
   return y;
 }
 
+/**
+ * A horizontal bar's value label: its lines, and whether it sits before the zero line, in the part of
+ * the plot a negative minimum leaves free, rather than after its bar (security review SEC-001).
+ */
+interface ValueLabel {
+  readonly lines: readonly string[];
+  readonly beforeZero: boolean;
+}
+
 /** Where horizontal bars go: measured before anything is drawn. */
 interface HorizontalPlan {
   readonly scale: ValueScale;
@@ -155,7 +170,7 @@ interface HorizontalPlan {
   /** The category slots, one row each, top to bottom. */
   readonly rows: readonly CategorySlot[];
   /** Each category's value label, when shown. */
-  readonly labels: readonly (readonly string[])[];
+  readonly labels: readonly ValueLabel[];
   /** The category-axis label, wrapped to the plot's height. */
   readonly categoryLabel: readonly string[];
 }
@@ -166,7 +181,9 @@ interface HorizontalPlan {
  * 2. the room right of the plot for the value labels (each at most `VALUE_LABEL_WIDTH` wide) and the
  *    end tick label, which with the left edge gives the plot's width, and so the scale, whose chosen
  *    interval keeps every tick label apart (`fitHorizontalValueAxis`);
- * 3. each value label, wrapped once, to the free width right of its own bar (code review CR-001);
+ * 3. each value label, wrapped once, to the free width right of its own bar (code review CR-001), or,
+ *    when it would wrap there and the plot left of the zero line is wider, to that width, placed
+ *    there: values are never negative, so no bar is drawn there (security review SEC-001);
  * 4. the rows, each as tall as its name, its value label and a bar need, at least
  *    `MIN_ROWS_HEIGHT` in all; then the category-axis label wrapped to their height.
  */
@@ -186,14 +203,16 @@ function planHorizontal(g: BarGraph, provenance: Provenance, top: number, depthL
   );
 
   const zero = left + offsetAlong(scale, width, 0);
-  const labels = written.map((text, i) => {
-    const free = SCENE_WIDTH - SCENE_MARGIN - (zero + barLength(g.values[i] ?? 0, scale, width) + VALUE_LABEL_GAP);
-    return wrap(text, Math.max(VALUE_LABEL_WIDTH, free), fontSize);
+  const before = zero - left - VALUE_LABEL_GAP;
+  const labels = written.map((text, i): ValueLabel => {
+    const after = Math.max(VALUE_LABEL_WIDTH, SCENE_WIDTH - SCENE_MARGIN - (zero + barLength(g.values[i] ?? 0, scale, width) + VALUE_LABEL_GAP));
+    const beforeZero = textWidth(text, fontSize) > after && before > after;
+    return { lines: wrap(text, beforeZero ? before : after, fontSize), beforeZero };
   });
 
   const count = Math.max(1, g.categories.length);
   const rows = categorySlots(g.categories, { x: left, y: top, width, height: 0 }, "horizontal", CATEGORY_NAME_WIDTH, (nameHeight, index) =>
-    Math.max(MIN_ROW, nameHeight + NAME_GAP, (labels[index]?.length ?? 0) * lineHeight + NAME_GAP, MIN_ROWS_HEIGHT / count),
+    Math.max(MIN_ROW, nameHeight + NAME_GAP, (ownEntry(labels, index)?.lines.length ?? 0) * lineHeight + NAME_GAP, MIN_ROWS_HEIGHT / count),
   );
   const height = (rows.at(-1)?.end ?? top) - top;
   return { scale, box: { x: left, y: top, width, height }, rows, labels, categoryLabel: axisLabelLines(g.categoryAxisLabel, height) };
@@ -201,7 +220,8 @@ function planHorizontal(g: BarGraph, provenance: Provenance, top: number, depthL
 
 /**
  * Bars across, appending their nodes to `nodes` from `top`: names on the left, each row sized to its
- * name, bars growing right from zero, the value axis and its label below. Returns the y where the
+ * name, bars growing right from zero, each value label after its bar or, with room only there,
+ * before the zero line, the value axis and its label below. Returns the y where the
  * drawing's content ends. The plot is measured for the category-axis label's depth, which depends on
  * the plot's height: measured again until the two agree (at most twice more), so no band is left
  * empty beside the plot (quality review QR-007).
@@ -232,12 +252,12 @@ function drawHorizontal(g: BarGraph, provenance: Provenance, top: number, nodes:
   for (const row of rows) {
     const length = barLength(g.values[row.index] ?? 0, scale, box.width);
     if (length > 0) nodes.push(rect(zero, row.center - thickness / 2, length, thickness, barColorOf(g, row.index)));
-    const lines = labels[row.index];
-    if (lines !== undefined) {
-      const labelLeft = zero + length + VALUE_LABEL_GAP;
-      for (const node of textLines(lines, labelLeft + widestOf(lines) / 2, row.center - (lines.length * lineHeight) / 2, fontSize, defaultStyle.colors.text)) {
-        nodes.push(node);
-      }
+    const label = ownEntry(labels, row.index);
+    if (label !== undefined) {
+      const { lines, beforeZero } = label;
+      const half = widestOf(lines) / 2;
+      const center = beforeZero ? zero - VALUE_LABEL_GAP - half : zero + length + VALUE_LABEL_GAP + half;
+      for (const node of textLines(lines, center, row.center - (lines.length * lineHeight) / 2, fontSize, defaultStyle.colors.text)) nodes.push(node);
     }
   }
   for (const node of drawCategoryNames(rows, "horizontal", box)) nodes.push(node);

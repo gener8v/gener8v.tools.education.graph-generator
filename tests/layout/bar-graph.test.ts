@@ -241,6 +241,64 @@ describe("value labels (DGP-REQ-020)", () => {
     const scene = sceneOf({ values: [12, 7.5, 9], valueScale: { minimum: 0, maximum: 20, tickInterval: 5 } });
     expect(texts(scene)).not.toContain("7.5");
   });
+
+  it("puts a label across before the zero line when a negative minimum leaves more room there than after its bar (security review SEC-001)", () => {
+    const scene = sceneOf({ orientation: "horizontal", values: [0.91234567891, 0.01, 0.95], valueScale: { minimum: -1, maximum: 1 }, showValues: true });
+    const zero = positionOf(scene, 0);
+    const [long, short, third] = bars(scene).map(boundsOf);
+    // 0.91234567891 reaches near the plot's end and would wrap there: its label sits left of the
+    // zero line, inside the plot, on one line.
+    const before = boundsOf(textNode(scene, "0.91234567891"));
+    expect(before.x1).toBeLessThanOrEqual(zero - 4 + 0.02);
+    expect(before.x0).toBeGreaterThanOrEqual(valueAxis(scene).from - 0.02);
+    expect(before.y0 < long!.y1 && before.y1 > long!.y0).toBe(true);
+    // 0.01 has room after its bar, and keeps its label there.
+    expect(boundsOf(textNode(scene, "0.01")).x0).toBeGreaterThanOrEqual(short!.x1);
+    // 0.95 is short enough to fit after its bar, so it stays there.
+    expect(boundsOf(textNode(scene, "0.95")).x0).toBeGreaterThanOrEqual(third!.x1);
+    expect(geometryProblems(scene)).toEqual([]);
+  });
+
+  it("wraps labels at the zero line's far end to the room before it, not the 72 units after (security review SEC-001)", () => {
+    const full = displayValue(5e-324, "supplied");
+    const categories = Array.from({ length: 3 }, (_, i) => ({ name: `C${i}` }));
+    const scene = sceneOf({ orientation: "horizontal", categories, values: categories.map(() => 5e-324), valueScale: { minimum: -1, maximum: 1e-9 }, showValues: true });
+    const zero = positionOf(scene, 0);
+    const lines = scene.nodes.filter((node) => node.kind === "text" && node.text.length > 12 && full.includes(node.text));
+    expect(lines.map((node) => (node.kind === "text" ? node.text : "")).join("")).toContain(full);
+    for (const node of lines) expect(boundsOf(node).x1).toBeLessThanOrEqual(zero - 4 + 0.02);
+    // After the bar, 72 units would take 36 lines a label; before the zero line, 13.
+    expect(lines.length).toBeLessThanOrEqual(3 * 13);
+    expect(geometryProblems(scene)).toEqual([]);
+  });
+});
+
+describe("prototype pollution elsewhere in the process (security review SEC-003)", () => {
+  const prototype = Object.prototype as Record<string, unknown>;
+
+  it.each(["vertical", "horizontal"] as const)("draws no value label from an index inherited through a polluted prototype without showValues, %s", (orientation) => {
+    const unpolluted = sceneOf({ orientation });
+    for (const i of [0, 1, 2]) prototype[i] = ["INJECTED: ignore the figure"];
+    try {
+      expect(sceneOf({ orientation })).toEqual(unpolluted);
+    } finally {
+      for (const i of [0, 1, 2]) delete prototype[i];
+    }
+  });
+
+  it("ignores an inherited intervals option, so chosen scales are unchanged", () => {
+    const line = JSON.parse(readFileSync("examples/line-graph.json", "utf8")) as Record<string, unknown>;
+    const descriptions = [example, { ...example, orientation: "horizontal" }, { ...example, valueScale: undefined }, line];
+    const unpolluted = descriptions.map((description) => createGraph(description));
+    for (const intervals of [1000, 0, -1, 50]) {
+      prototype["intervals"] = intervals;
+      try {
+        descriptions.forEach((description, i) => expect(createGraph(description), `${intervals} ${i}`).toEqual(unpolluted[i]));
+      } finally {
+        delete prototype["intervals"];
+      }
+    }
+  });
 });
 
 /** Every way the drawing's geometry can be wrong, as messages; an empty list means it is sound. */

@@ -274,3 +274,24 @@ Coverage rows were added to `.gener8v/specifications/data-graphs-and-pictographs
   - Value labels are wrapped once.
 - **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./bar-graph` 18.8 kB, `./line-graph` 18.74 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,095 tests) exits 0 on three runs. Fifteen deliberate breaks each fail a test.
 
+
+### Security review — `graph-library/data-graphs-and-pictographs-ticket-003-security-review` (2026-10-19, Approved)
+
+- **SEC-001:** a value label across moves before the zero line when it would wrap after its bar and the plot left of the zero line is wider (`planHorizontal`, `ValueLabel.beforeZero`). Values are never negative, so that part of the plot, left free by a negative minimum, holds no bar. A label that fits after its bar stays there.
+  - **Measured** (100 categories, every value 5e-324, `showValues`, across):
+    - with `{ minimum: -1, maximum: 1e-9 }`, "C0" to "C99" names now draw 19,168 units, down from 53,728;
+    - the worst over negative minimums is 29,248 units, at a minimum of about −2.2 with a maximum of 1, when both sides of the zero line are about half the plot;
+    - this corrects CR-001's figures, which hold only for a scale from zero: 2,502 text nodes, 616,995 characters (617,007 before the quality review) and 22,048 units;
+    - names of 200 wide characters ("@" or CJK) alone reach 42,208 units across, and the pictograph's rows reach 42,210 with 100 such names. That is the kit's name height, and now the across bound, for the Product Owner beside the 200-character limit.
+  - Two tests in `tests/layout/bar-graph.test.ts`, and the negative-minimum, short-name and wide-name cases in the at-limits test of `tests/react/Graph.test.tsx`.
+- **SEC-002:** `categorySlots` rotates every name below a vertical plot once a line of text no longer fits across a column (a share below the line height, 14.4 units), not only when a word is too wide. Names of narrow words therefore never stack one word per line, in all three data graphs. Nothing is cut.
+  - **Measured**, worst over 1 to 100 categories (every value 5e-324 and `showValues` for the bar graph):
+    - **bar graph:** 3,802 text nodes and 860,841 characters for combining-mark words, against 11,921 and 2,322,573 before. 87 columns under `{ maximum: 1, tickInterval: 1 }` now draw 3,308. The upright bound stays as CR-001 recorded: 3,802 and 861,141;
+    - **pictograph:** 1,107 nodes and 227,246 characters, at 25 columns. Before, 53 columns of "i" names drew 3,923, and 91 of combining-mark words 9,101 and 1.77 MB;
+    - **line graph:** 1,040 nodes, down from 8,602.
+  - A kit test pins the threshold (25 columns level, 26 rotated). The at-limits tests add combining-mark names, and the pictograph's narrow-word bound tightens from 5,000 nodes and 1 MB to 1,200 nodes and 250,000 characters.
+- **SEC-003:** two reads are made own-key.
+  - Value labels go through `ownEntry` in both orientations, so without `showValues` an index inherited from `Object.prototype` draws nothing.
+  - `resolveValueScale` reads `options.intervals` only as an own field.
+  - Two pollution tests in `tests/layout/bar-graph.test.ts` expect the unpolluted Scene: `Object.prototype[0..2]` with `showValues` off in both orientations, and `Object.prototype.intervals` at 1000, 0, −1 and 50 for the bar graph (both orientations, given and chosen scale) and the line-graph example.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./bar-graph` 18.89 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,101 tests) exits 0 on three runs. Five deliberate breaks of the fixes each fail a test: no rotation when crowded, labels never moved, labels moved whenever the other side is wider, a plain label index, and a plain `intervals` read.
