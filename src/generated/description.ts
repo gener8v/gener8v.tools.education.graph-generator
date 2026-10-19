@@ -67,7 +67,7 @@ export interface BarGraphDescription {
   }>;
   /** One value per category, in the same order as the categories. */
   values: ReadonlyArray<number>;
-  /** Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type. */
+  /** Which way the categories' rows, columns or bars run: horizontal or vertical. The default is horizontal for a pictograph and vertical for a bar graph. */
   orientation?: "vertical" | "horizontal";
   /** The color of every bar, unless a category gives its own: a color name or a hex code such as #0072b2. */
   barColor?: string;
@@ -96,7 +96,7 @@ export interface PictographDescription {
   unitImage: "apple" | "ball" | "book" | "fish" | "flower" | "person" | "star" | "tree";
   /** How many units one picture stands for: greater than 0, at most 1000000000. */
   unitValue: number;
-  /** Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type. */
+  /** Which way the categories' rows, columns or bars run: horizontal or vertical. The default is horizontal for a pictograph and vertical for a bar graph. */
   orientation?: "horizontal" | "vertical";
 }
 

@@ -39,7 +39,12 @@ export const MAX_BAR_THICKNESS = 48;
 /** Space between the plot, its labels and the title, and between a bar and its value label. */
 const GAP = 8;
 const VALUE_LABEL_GAP = 4;
-/** A horizontal bar's value label wraps to this width; an upright bar's to its slot, at least `MIN_VALUE_LABEL_WIDTH`. */
+/**
+ * A horizontal bar's value label wraps to the free width right of its bar, at least this; an upright
+ * bar's to its slot, at least `MIN_VALUE_LABEL_WIDTH`, or this in crowded columns, where labels may
+ * touch as names do (DEL-001). Wider wrapping keeps a long value's line count small, never cut
+ * (code review CR-001).
+ */
 const VALUE_LABEL_WIDTH = 72;
 const MIN_VALUE_LABEL_WIDTH = 24;
 
@@ -143,8 +148,9 @@ function drawVertical(g: BarGraph, provenance: Provenance, top: number, nodes: S
   const width = SCENE_WIDTH - SCENE_MARGIN - left;
   const slotWidth = width / Math.max(1, g.categories.length);
 
-  // Room above the plot for the top tick's label, and for the value labels when shown.
-  const labelWidth = Math.max(MIN_VALUE_LABEL_WIDTH, slotWidth - 2);
+  // Room above the plot for the top tick's label, and for the value labels when shown. In crowded
+  // columns, narrower than a line of text, a label takes VALUE_LABEL_WIDTH rather than its slot.
+  const labelWidth = slotWidth < lineHeight ? VALUE_LABEL_WIDTH : Math.max(MIN_VALUE_LABEL_WIDTH, slotWidth - 2);
   const labels = g.showValues === true ? g.categories.map((_, i) => valueLabelLines(g, provenance, i, labelWidth)) : [];
   let tallest = 0;
   for (const lines of labels) tallest = Math.max(tallest, lines.length * lineHeight);
@@ -195,12 +201,19 @@ function drawHorizontal(g: BarGraph, provenance: Provenance, top: number, nodes:
   const labelDepth = axisLabelDepth(categoryLabelSample);
   const left = SCENE_MARGIN + (labelDepth > 0 ? labelDepth + GAP : 0) + CATEGORY_NAME_WIDTH + NAME_GAP;
 
-  // Right of the plot: the value labels when shown, and the last tick label's overhang.
-  const labels = g.showValues === true ? g.categories.map((_, i) => valueLabelLines(g, provenance, i, VALUE_LABEL_WIDTH)) : [];
+  // Right of the plot: room for the value labels when shown, and the last tick label's overhang.
+  const reserved = g.showValues === true ? g.categories.map((_, i) => valueLabelLines(g, provenance, i, VALUE_LABEL_WIDTH)) : [];
   let widestLabel = 0;
-  for (const lines of labels) widestLabel = Math.max(widestLabel, widestOf(lines));
+  for (const lines of reserved) widestLabel = Math.max(widestLabel, widestOf(lines));
   const valueLabelRoom = widestLabel > 0 ? widestLabel + VALUE_LABEL_GAP : 0;
   const { scale, width } = horizontalScale(g, (candidate) => SCENE_WIDTH - SCENE_MARGIN - Math.max(tickLabelOverhang(candidate), valueLabelRoom) - left);
+  // Each label then wraps to the free width right of its own bar, at least the width reserved for
+  // all: a short bar's long value takes fewer lines (code review CR-001).
+  const zeroAt = valuePosition(scale, "horizontal", { x: left, y: 0, width, height: 1 })(0);
+  const labels = reserved.map((_, i) => {
+    const free = SCENE_WIDTH - SCENE_MARGIN - (zeroAt + barLength(g.values[i] ?? 0, scale, width) + VALUE_LABEL_GAP);
+    return valueLabelLines(g, provenance, i, Math.max(VALUE_LABEL_WIDTH, free));
+  });
 
   // Each row as tall as its name, its value label and a bar need, and the rows at least MIN_ROWS_HEIGHT in all.
   const slots: CategorySlot[] = categorySlots(g.categories, { x: left, y: top, width, height: 0 }, "horizontal", CATEGORY_NAME_WIDTH, (nameHeight) =>

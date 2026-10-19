@@ -239,4 +239,17 @@ Coverage rows were added to `.gener8v/specifications/data-graphs-and-pictographs
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/data-graphs-and-pictographs-ticket-003-code-review` (2026-10-19, Approved)
+
+- **CR-001:** DEL-005 amended. Value labels still never cut a digit, but wrap wider:
+  - a horizontal bar's label wraps to the free width right of its own bar (at least 72 units);
+  - in crowded upright columns, narrower than a line of text, a label wraps to 72 units, and labels may touch as names do (DEL-001).
+  - **Measured at the limits**, for the Security Review and the Product Owner's caller-text decision (100 categories, 200-character names, every value 5e-324, `showValues`):
+    - upright: 3,802 text nodes and 861,141 characters of markup, down from 11,002 and 2,188,061;
+    - across: 2,502 text nodes, 617,007 characters, and a drawing 22,048 units tall, down from 5,202 nodes and 53,728 units.
+  - `tests/react/Graph.test.tsx` pins both. This corrects the Notes' "Bounded text": each label is bounded, but at 100 categories their total is as above.
+- **CR-002:** `@spec DGP-REQ-021` moved to the `values` term. The coverage rows for DGP-REQ-020 and 021 are corrected.
+- **CR-003:** a test states values with all their digits, so a dropped provenance fails it.
+- **CR-004:** the crowded-columns tests of all three types also check the drawing's height, and the upright bar property test goes up to 30 categories.
+- **CR-005:** `ORIENTATION_DESCRIPTION` names both defaults (horizontal for a pictograph, vertical for a bar graph). Regenerated.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./bar-graph` 18.71 kB), `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,089 tests) exits 0 on three runs. Four deliberate breaks of the fixes each fail a test.

@@ -372,6 +372,9 @@ describe("crowded columns (DGP TICKET-003 DEL-001)", () => {
       const b = boundsOf(node);
       expect(b.x0).toBeGreaterThanOrEqual(SCENE_MARGIN - 0.02);
       expect(b.x1).toBeLessThanOrEqual(SCENE_WIDTH - SCENE_MARGIN + 0.02);
+      // And within the drawing's height (DGP TICKET-003 code review CR-004).
+      expect(b.y0).toBeGreaterThanOrEqual(-0.02);
+      expect(b.y1).toBeLessThanOrEqual(scene.height + 0.02);
     }
   });
 });

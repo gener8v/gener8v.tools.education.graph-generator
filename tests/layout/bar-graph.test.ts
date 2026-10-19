@@ -219,7 +219,7 @@ function geometryProblems(scene: Scene): string[] {
 describe("the drawing's geometry", () => {
   const WORDS = ["Monday", "Wednesday", "Apples", "September", "Average", "of", "A", "Pneumonoultramicroscopicsilicovolcanoconiosis"];
   const barGraph = (orientation: "vertical" | "horizontal") =>
-    fc.integer({ min: 1, max: orientation === "vertical" ? 12 : 30 }).chain((n) =>
+    fc.integer({ min: 1, max: 30 }).chain((n) =>
       fc
         .record({
           names: fc.array(fc.array(fc.constantFrom(...WORDS), { minLength: 1, maxLength: 3 }), { minLength: n, maxLength: n }),
@@ -263,6 +263,9 @@ describe("crowded columns (DGP TICKET-005 QR-002, deferred here; DEL-001)", () =
       const b = boundsOf(node);
       expect(b.x0, nameOf(b)).toBeGreaterThanOrEqual(SCENE_MARGIN - 0.02);
       expect(b.x1, nameOf(b)).toBeLessThanOrEqual(SCENE_WIDTH - SCENE_MARGIN + 0.02);
+      // And within the drawing's height (code review CR-004).
+      expect(b.y0, nameOf(b)).toBeGreaterThanOrEqual(-0.02);
+      expect(b.y1, nameOf(b)).toBeLessThanOrEqual(scene.height + 0.02);
     }
   });
 });

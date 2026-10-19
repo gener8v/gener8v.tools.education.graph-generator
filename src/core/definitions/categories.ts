@@ -44,7 +44,8 @@ export const VALUES_DESCRIPTION = "One value per category, in the same order as 
  * The one definition of the `orientation` term, shared by the pictograph and the bar graph, whose
  * defaults differ: each type's value descriptions say which is its default (DGP TICKET-003).
  */
-export const ORIENTATION_DESCRIPTION = "Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type.";
+export const ORIENTATION_DESCRIPTION =
+  "Which way the categories' rows, columns or bars run: horizontal or vertical. The default is horizontal for a pictograph and vertical for a bar graph.";
 
 /**
  * The `categories` list (DGP-REQ-001, DGP-REQ-003): at least one and at most `CATEGORY_LIMIT`

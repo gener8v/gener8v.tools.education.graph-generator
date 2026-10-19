@@ -147,6 +147,10 @@ describe("the text alternative (DGP-REQ-004)", () => {
     );
   });
 
+  it("states every value as supplied, with all its digits, not rounded as a derived value would be (code review CR-003)", () => {
+    expect(describeGraph(with_({ values: [1234.56789012, 0.123456789, 9] }))).toContain("“Walk” is 1234.56789012, “Bus” is 0.123456789 and “Car” is 9");
+  });
+
   it("leaves out a blank title and blank axis labels, and states values exactly as written", () => {
     expect(describeGraph(with_({ title: " ", categoryAxisLabel: " ", values: [0.1, 1234567.25, 0.000001] }))).toBe(
       "A bar graph. “Walk” is 0.1, “Bus” is 1234567.25 and “Car” is 0.000001.",

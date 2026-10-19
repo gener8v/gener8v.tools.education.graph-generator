@@ -185,7 +185,7 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-017 | `src/core/definitions/bar-graph.ts`:barGraph; `src/layout/bar-graph.ts`:barLength, drawVertical, drawHorizontal, barGraphLayout; `src/react/graphs/BarGraphGraph.tsx`:BarGraph |
 | DGP-REQ-018 | `src/core/definitions/bar-graph.ts`:barGraph, orientation; `src/layout/bar-graph.ts`:drawVertical, drawHorizontal, barGraphLayout |
 | DGP-REQ-019 | `src/core/definitions/bar-graph.ts`:barGraph, barColor; `src/layout/bar-graph.ts`:barColorOf, barGraphLayout |
-| DGP-REQ-020 | `src/core/definitions/bar-graph.ts`:barGraph, showValues; `src/layout/bar-graph.ts`:valueLabelLines, drawVertical, drawHorizontal |
-| DGP-REQ-021 | `src/core/definitions/bar-graph.ts`:barGraph (values from 0), valueScaleCheck |
+| DGP-REQ-020 | `src/core/definitions/bar-graph.ts`:barGraph, showValues; `src/layout/bar-graph.ts`:valueLabelLines, drawVertical, drawHorizontal, barGraphLayout |
+| DGP-REQ-021 | `src/core/definitions/bar-graph.ts`:barGraph, values (from 0) |
 | DGP-REQ-022 | `src/layout/bar-graph.ts`:drawVertical, drawHorizontal, barGraphLayout |
 | DGP-REQ-036 | `src/layout/bar-graph.ts`:barLength, barGraphLayout; `src/core/definitions/bar-graph.ts`:scaleStartsAtZeroCheck |

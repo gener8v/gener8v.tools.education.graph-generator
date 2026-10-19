@@ -35,7 +35,6 @@ export interface BarGraph extends DescriptionBase {
  * value, and one too fine to draw is reported. Bars never go below zero (DGP-REQ-021), so a chosen
  * minimum is zero.
  */
-// @spec DGP-REQ-021
 const valueScaleCheck: DomainCheck<BarGraph> = {
   name: "every value fits the value scale",
   inputs: ["valueScale/minimum", "valueScale/maximum", "valueScale/tickInterval", "values/*"],
@@ -82,6 +81,7 @@ function defineBarGraph(): GraphTypeDefinition<BarGraph> {
     properties: defineProperties({
       // The shared color, nested in each category, colors that category's bar (DGP-REQ-019).
       categories: categoriesProperty({ color: sharedProperties.color }),
+      // @spec DGP-REQ-021 (a value below 0 is out_of_range at /values/<i>)
       values: {
         term: "values",
         kind: "array",

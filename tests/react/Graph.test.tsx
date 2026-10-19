@@ -392,6 +392,26 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("keeps the bar graph's value labels bounded at the limits: 100 categories, every value written in full (DGP TICKET-003 code review CR-001)", () => {
+    // The longest written value, 5e-324, is 326 characters, never cut. Measured 2026-10-19:
+    // upright, 3,802 text nodes and 861,141 characters of markup (crowded labels wrap to 72 units);
+    // across, 2,502 text nodes, 617,007 characters, and a drawing 22,048 units tall (each label wraps
+    // to the free width right of its bar). Before the review: 11,002 nodes and 2.19 MB; 53,728 units.
+    const categories = Array.from({ length: 100 }, (_, i) => ({ name: `${String(i).padStart(3, "0")}${"x".repeat(197)}` }));
+    for (const [orientation, nodes, markupLength, height] of [
+      ["vertical", 4_000, 900_000, 2_500],
+      ["horizontal", 2_700, 650_000, 23_000],
+    ] as const) {
+      const description = { type: "bar-graph", orientation, categories, values: categories.map(() => 5e-324), showValues: true };
+      const result = createGraph(description);
+      if (!result.ok) throw new Error(JSON.stringify(result.issues));
+      expect(result.scene.height, orientation).toBeLessThan(height);
+      const markup = html(<PackageBarGraph description={description} />);
+      expect(markup.match(/<text /g)!.length, orientation).toBeLessThan(nodes);
+      expect(markup.length, orientation).toBeLessThan(markupLength);
+    }
+  });
+
   it("keeps the line graph's text alternative and markup bounded at its limits: 6 series × 100 categories, 200-character names, values written in full (DGP TICKET-002 SEC-001)", () => {
     // The worst case the provisional limits allow: every category name repeated once per series and
     // every value at its longest written form (-5e-324 is 327 characters). Measured 2026-10-15:

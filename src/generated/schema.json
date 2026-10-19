@@ -217,7 +217,7 @@
         },
         "orientation": {
           "type": "string",
-          "description": "Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type.",
+          "description": "Which way the categories' rows, columns or bars run: horizontal or vertical. The default is horizontal for a pictograph and vertical for a bar graph.",
           "enum": [
             "vertical",
             "horizontal"
@@ -319,7 +319,7 @@
         },
         "orientation": {
           "type": "string",
-          "description": "Which way the categories' rows, columns or bars run: horizontal or vertical. The default depends on the graph type.",
+          "description": "Which way the categories' rows, columns or bars run: horizontal or vertical. The default is horizontal for a pictograph and vertical for a bar graph.",
           "enum": [
             "horizontal",
             "vertical"
