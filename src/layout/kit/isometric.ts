@@ -6,7 +6,8 @@ export const ISO_SCALE = Math.sqrt(2 / 3);
 
 /**
  * The minor-to-major ratio of a horizontal circle's ellipse: 1/√3 ≈ 0.57735, the sine of the
- * angle the page tilts from the horizontal plane, atan(1/√2) ≈ 35.264°.
+ * angle between the line of sight and the horizontal plane, atan(1/√2) ≈ 35.264° (equivalently,
+ * the cosine of the page's 54.74° tilt from the horizontal; code review CR-002).
  */
 export const ELLIPSE_RATIO = 1 / Math.sqrt(3);
 
@@ -23,7 +24,11 @@ const COS_30 = Math.sqrt(3) / 2;
  *   equal, and drawn ratios along an axis are the measurements' ratios (GSS-REQ-030);
  * - the faces facing +x (left front), +y (right front) and +z (top) are visible, and the faces
  *   facing −x, −y and −z are hidden: a cube shows 9 edges and hides the 3 that meet at its back
- *   bottom corner (`VISIBLE_FACES`, `faceVisible`).
+ *   bottom corner (`VISIBLE_FACES`, `faceVisible`);
+ * - the line of sight runs along a cube's main diagonal, so its front top corner and its hidden
+ *   back bottom corner land on the same point: the cube draws as a regular hexagon whose centre
+ *   joins the three visible edges and the three hidden ones, alternating 60° apart (code review
+ *   CR-004).
  *
  * Returns drawing coordinates with the origin at (0, 0) and y pointing down the page, as in a
  * Scene. The result is not rounded: rounding once, with `fmt()`, when it is written into a Scene

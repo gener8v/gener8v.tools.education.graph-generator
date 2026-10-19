@@ -64,6 +64,10 @@
   - Wrap every label with `wrap(text, maxWidth, fontSize, maxLines)`, as the circle does with `LABEL_MAX_LINES` (4), and draw titles with `titleBlock`, which caps them at `TITLE_MAX_LINES` (3). The cut line ends in "…" (DEL-008), so the Scene stays small however long the description's text. Say so in the label-text descriptions, and keep the full text in the text alternative.
   - In `describe`, state measurements with `stateMeasurement(value, source, unit)` (`src/core/format.ts`), not `formatMeasurement`. It quotes a unit that is not unit-shaped, so the unit cannot read as the package's own sentence. Drawn labels keep `measurementLabel` / `formatMeasurement`.
   - Add a test that a valid description with half a megabyte of unit or label text renders in `<Graph>` and the type's component without throwing, with a bounded number of text nodes.
+- Carried from graph-library/geometric-shapes-and-solids-ticket-001-code-review/CR-003 (a radius across the page is not foreshortened):
+  - `isoEllipse` gives `rx = r`: a horizontal circle's left-to-right extent is parallel to the page and draws at full length, while the height draws `h × ISO_SCALE`. A radius drawn from the top centre straight across the page to the ellipse's end (the specification's default "horizontally to the right") therefore draws r : h × ISO_SCALE, 22.5% off GSS-REQ-030 for r 2, h 5.
+  - Draw the radius (and a diameter) on the top face along a projected horizontal axis instead: from `isometric(x0, y0, h)` to `isometric(x0 + r, y0, h)` (or along y). That end lies on the `isoEllipse` ellipse, and the segment shares the height's scale, so their drawn ratio is the measurements' ratio. Document that direction as the cylinder's "otherwise documented" radius direction.
+  - Never divide `rx` or `ry` by `ISO_SCALE` to recover a length; compare along projected axes. If the Product Owner prefers the radius across the page, the specification needs a stated exception to GSS-REQ-030 first.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-008

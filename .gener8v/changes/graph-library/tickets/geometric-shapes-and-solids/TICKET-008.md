@@ -38,6 +38,7 @@
 **Known Hazards:**
 - GSS-NFR-003 is verified on estimated text boxes with the default font (AD-010, TR-003); do not attempt DOM measurement in tests to "prove" it — that would test something layout never sees.
 - If a figure fails, fix its layout ticket's code here only if trivial; otherwise record the failure as a finding against that type rather than loosening the 1% tolerance.
+- Carried from graph-library/geometric-shapes-and-solids-ticket-001-code-review/CR-003: measure a cylinder's radius along the projected horizontal axis it is drawn on (see TICKET-007's hazard), never as `rx / ISO_SCALE`; `isoEllipse`'s `rx` is the radius at full length, not foreshortened.
 
 **Depends On:** TICKET-003, TICKET-005, TICKET-006, TICKET-007
 **Blocks:** None

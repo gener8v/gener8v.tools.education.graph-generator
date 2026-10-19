@@ -146,4 +146,15 @@ GSS-REQ-032 is met only in part here: this ticket supplies the one documented vi
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/geometric-shapes-and-solids-ticket-001-code-review` (2026-10-19, Approved)
+
+- **CR-001:** DEL-001's figures were wrong, and this corrects them.
+  - sin(35.264°) is 0.5773447, so the gap to 1/√3 = 0.5773503 is 5.55e-6, not 6.3e-5. That figure was the gap for sin(35.26°).
+  - The gap still exceeds the criterion's 10⁻⁶, so the criterion is met against the exact tilt, atan(1/√2) = 35.26439°, and not against the rounded angle the ticket writes. That is a deviation from the approved plan, which repeated the 10⁻⁶ tolerance against 35.264°.
+  - DEL-001's rationale that a cylinder's sides would "miss the ellipse ends" with the rounded ratio is withdrawn: the sides touch the ellipse at (cx ± rx, cy) whatever `ry` is, and the difference is below `fmt()`'s step. The reason for the exact ratio is AD-009 (true isometric) and the 1e-9 ellipse test.
+  - `tests/layout/kit/isometric.test.ts`: the comment states the correct gap, and the check against sin(35.264°) tightens from 1e-4 to 1e-5.
+  - For the next Audit: the criterion should have named 1/√3 = sin(atan(1/√2)). The ticket's file is not rewritten.
+- **CR-002:** `ELLIPSE_RATIO`'s comment now names 35.264° as the angle between the line of sight and the horizontal plane (the page tilts 54.74° from the horizontal).
+- **CR-003:** a radius drawn across the page is not foreshortened (`rx = r`), while lengths along the axes are. Deferred to TICKET-007, with Known Hazards on TICKET-007 and TICKET-008: draw a cylinder's radius or diameter along a projected horizontal axis, whose end lies on the same ellipse and shares the height's scale; never divide `rx` or `ry` by `ISO_SCALE`.
+- **CR-004:** a cube's front top corner and its hidden back bottom corner project to the same point, so the cube is a hexagon whose centre joins three solid and three dashed edges. The `isometric` doc comment says so. Deferred to TICKET-006 with a Known Hazard: the hidden edges are label obstacles for the front-corner edge labels.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,111 tests) exits 0 on three runs.

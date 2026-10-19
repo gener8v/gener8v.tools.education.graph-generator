@@ -63,6 +63,9 @@
   - Wrap every label with `wrap(text, maxWidth, fontSize, maxLines)`, as the circle does with `LABEL_MAX_LINES` (4), and draw titles with `titleBlock`, which caps them at `TITLE_MAX_LINES` (3). The cut line ends in "…" (DEL-008), so the Scene stays small however long the description's text. Say so in the label-text descriptions, and keep the full text in the text alternative.
   - In `describe`, state measurements with `stateMeasurement(value, source, unit)` (`src/core/format.ts`), not `formatMeasurement`. It quotes a unit that is not unit-shaped, so the unit cannot read as the package's own sentence. Drawn labels keep `measurementLabel` / `formatMeasurement`.
   - Add a test that a valid description with half a megabyte of unit or label text renders in `<Graph>` and the type's component without throwing, with a bounded number of text nodes.
+- Carried from graph-library/geometric-shapes-and-solids-ticket-001-code-review/CR-004 (the projection's front and back corners coincide):
+  - In true isometric the line of sight runs along the cube's main diagonal, so the front top corner (a, a, a) and the hidden back bottom corner (0, 0, 0) both project to the same point. The cube draws as a regular hexagon whose centre joins the three visible edges (toward the upper left, the upper right and straight down) and the three hidden ones (toward the lower left, the lower right and straight up), alternating 60° apart.
+  - The labels for "the three visible edges meeting at the front corner" sit inside the hexagon, between the dashed hidden edges. Pass the hidden edges to `placeLabel` as obstacles, as well as the visible ones, so no label sits on a dashed line (GSS-NFR-003).
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-008

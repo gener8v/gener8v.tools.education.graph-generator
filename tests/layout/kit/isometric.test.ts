@@ -91,11 +91,11 @@ describe("visible faces", () => {
 describe("horizontal circles", () => {
   it("project to a level ellipse whose minor-to-major ratio is the sine of the isometric tilt, 35.264° (DEL-001)", () => {
     // The tilt is exactly atan(1/√2) = 35.26439°; the ticket's 35.264° is that angle rounded, and
-    // its sine differs from the exact ratio by 6.3e-5.
+    // its sine, 0.5773447, differs from the exact ratio by 5.55e-6 (code review CR-001).
     const tilt = Math.atan(1 / Math.SQRT2);
     expect((tilt * 180) / Math.PI).toBeCloseTo(35.264, 3);
     expect(Math.abs(ELLIPSE_RATIO - Math.sin(tilt))).toBeLessThan(1e-6);
-    expect(Math.abs(ELLIPSE_RATIO - Math.sin((35.264 * Math.PI) / 180))).toBeLessThan(1e-4);
+    expect(Math.abs(ELLIPSE_RATIO - Math.sin((35.264 * Math.PI) / 180))).toBeLessThan(1e-5);
     const { rx, ry } = isoEllipse([0, 0, 0], 5);
     expect(ry / rx).toBe(ELLIPSE_RATIO);
   });
