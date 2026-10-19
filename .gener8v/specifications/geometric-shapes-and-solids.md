@@ -156,6 +156,7 @@ The type-specific vocabulary terms this area adds to the GSV single definition (
 | GSS-REQ-004 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-005 | `src/core/definitions/circle.ts`:circle; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-006 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-032 | `src/layout/kit/isometric.ts`:isometric, faceVisible, isoEllipse (the viewpoint only; the cube and cylinder layouts, TICKET-006 and TICKET-007, draw from it) |
 | GSS-REQ-033 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-034 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-035 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout |
