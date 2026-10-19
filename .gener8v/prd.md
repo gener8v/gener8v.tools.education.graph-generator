@@ -1,7 +1,7 @@
 # Curricular Graph Generator
 
 **Status:** Approved
-**Approved by:** Product Owner — Thomas, 2026-10-04
+**Approved by:** Product Owner — Thomas Eaves, 2026-10-19
 
 ## Problem Context
 
@@ -38,6 +38,9 @@ Authors of curricular materials (lessons, worksheets, assessments) need many sma
 - The system should render two-dimensional (x, y) coordinate graphs covering one, two or all four quadrants, with configurable axis ranges, grid and tick spacing
 - The system should plot specified points and line segments on an x, y graph, each with optional label and color
 - The system should render three-dimensional (x, y, z) coordinate graphs with labeled axes and plotted points
+- The system should render rulers of a given length marked in centimetres, with the whole centimetres numbered, millimetre marks between them and longer half-centimetre marks
+- The system should render rulers of a given length marked in inches, with the whole inches numbered and the half, quarter, eighth and sixteenth marks drawn at lengths that grade down with the fraction
+- The system should allow an object to be drawn lying along a ruler from a given start mark to a given end mark, which need not be zero, so that its length can be read from the ruler
 
 ### Data Graphs & Pictographs
 
@@ -71,6 +74,9 @@ Authors of curricular materials (lessons, worksheets, assessments) need many sma
 **Scenario: Worksheet number line**
 A curriculum developer writing a grade-6 integers worksheet needs a number line from −10 to 10 with arrowheads at both ends and points marked at −3 and 4. They describe it with the number-line type, the range, the arrow setting and the two points, and drop the resulting component into the worksheet page. When the editor later changes a point to −2, they edit one value and the figure updates.
 
+**Scenario: Measuring with a ruler**
+A grade-2 measurement worksheet shows a crayon lying along a 15 cm ruler, and a harder question shows a ribbon that starts at the 2 cm mark and ends at the 9 cm mark. The developer describes each with the ruler type, its length and unit, and the object's start and end marks. The students read the lengths, 6 cm and 7 cm, off the drawn rulers; a second version of the worksheet uses an inch ruler marked to quarters.
+
 **Scenario: Labeled circle for a geometry lesson**
 A developer needs a circle with radius 5 cm, with the radius and diameter drawn and labeled and the line in blue. They supply the circle type, the radius, the labels and the color. The system derives the diameter and circumference. When a reviewer accidentally adds "diameter 12" as well, the system reports that it contradicts the radius instead of drawing a wrong figure.
 
@@ -93,6 +99,9 @@ A team publishes an assessment in a separate project that should not depend on t
 - This work does not include calling or hosting a language model; the package supplies the tool definition and handler, and the consuming application runs the model
 - Future consideration: an English-phrase front end that produces the same structured description
 - Future consideration: additional solids and shapes (cones, spheres, prisms, pyramids, polygons)
+- This work does not include drawing rulers at true physical size (1 cm on the ruler measuring 1 cm on screen or paper); rulers are drawn to scale with themselves
+- This work does not include converting between metric and imperial units
+- Future consideration: a ruler showing centimetres along one edge and inches along the other; other measuring tools (protractors, measuring tapes, weighing scales)
 
 ## Open Questions
 
@@ -109,8 +118,13 @@ A team publishes an assessment in a separate project that should not depend on t
 - [ ] Which open-source license applies (a permissive license such as MIT is assumed in system context), and is a contributor agreement required?
 - [ ] Which model tool-calling formats must the tool definition be ready for (a plain JSON Schema only, or adapters for specific model providers)?
 - [ ] Should the unified description carry a version so stored descriptions keep rendering after the schema evolves?
+- [ ] Is an inch ruler always marked to sixteenths, or can a description choose a coarser smallest division (halves, quarters, eighths) for younger grades?
+- [ ] Can a measured object's ends fall between marks (for example, at 3.25 cm, for estimation questions), or must each end sit on a drawn mark?
+- [ ] What does a measured object look like: a plain bar only, or a choice of simple pictures (a pencil, a crayon, a ribbon)?
+- [ ] Is the object's length ever written on the figure, or always left for the student to read?
 
 ## Change Log
 
 - 2026-10-04 — opened; capability areas Graph Specification & Vocabulary, Number Lines & Coordinate Graphs, Data Graphs & Pictographs, Geometric Shapes & Solids, Component Packaging & Source Export (Planning, change: graph-library)
 - 2026-10-04 — approved by Product Owner; Graph Specification & Vocabulary and Component Packaging & Source Export amended: unified JSON description with a single entry point and published schema, structured validation results, model tool definition and handler, open-source distribution (Planning, change: graph-library)
+- 2026-10-19 — Number Lines & Coordinate Graphs amended: rulers in centimetres and in inches, and an object lying along a ruler from any start mark to any end mark; scenario, scope boundaries and open questions added (Planning, change: rulers)
