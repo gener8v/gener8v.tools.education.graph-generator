@@ -6,8 +6,10 @@ import {
   RULER_MAX_LENGTH,
   RULER_UNITS,
   divisionsPerUnit,
+  isOnRuler,
   isRulerMark,
   nearestRulerMarks,
+  rulerMarkIndex,
   rulerMarks,
 } from "../../src/core/ruler";
 
@@ -32,6 +34,9 @@ describe("the ruler's units, divisions and limits", () => {
     expect(divisionsPerUnit("inches", "third")).toBeUndefined();
     expect(divisionsPerUnit("inches", "toString")).toBeUndefined();
     expect(divisionsPerUnit("cm")).toBeUndefined();
+    // Only an absent division takes the default: null is not a division (code review CR-001).
+    expect(divisionsPerUnit("inches", null)).toBeUndefined();
+    expect(divisionsPerUnit("centimeters", null)).toBeUndefined();
   });
 });
 
@@ -69,6 +74,8 @@ describe("a ruler's marks (NLC-REQ-044, NLC-REQ-047)", () => {
     ["feet", 3, undefined],
     ["centimeters", 5, "half"],
     ["inches", 5, "third"],
+    ["inches", 6, null],
+    ["centimeters", 6, null],
   ])("lists nothing, and throws nothing, for a ruler no description gives: %s, %s, %s", (unit, length, division) => {
     expect(rulerMarks(unit, length, division)).toBeUndefined();
   });
@@ -151,5 +158,41 @@ describe("whether a value is a mark (NLC-REQ-053)", () => {
     expect(nearestRulerMarks(3.25, 10)).toEqual([3.2, 3.3]);
     expect(nearestRulerMarks(1.3, 8)).toEqual([1.25, 1.375]);
     expect(nearestRulerMarks(0.7, 10)).toEqual([0.7, 0.7]);
+    // Never −0, for a value just below 0 or between −0.1 and 0.
+    expect(Object.is(nearestRulerMarks(0.3 - 0.1 - 0.2, 10)[0], 0)).toBe(true);
+    expect(Object.is(nearestRulerMarks(-0.05, 10)[1], 0)).toBe(true);
+  });
+});
+
+describe("whether a value is on the ruler, and which mark it is (NLC-REQ-052, NLC-REQ-053; code review CR-003)", () => {
+  it("counts a computed end within noise of 0 or of the length as on the ruler, at its end mark", () => {
+    expect(0.3 - 0.1 - 0.2).toBeLessThan(0);
+    expect(0.1 * 3 * 100).toBeGreaterThan(30);
+    expect(isOnRuler(0.3 - 0.1 - 0.2, 30, 10)).toBe(true);
+    expect(isOnRuler(0.1 * 3 * 100, 30, 10)).toBe(true);
+    expect(rulerMarkIndex(0.3 - 0.1 - 0.2, 30, 10)).toBe(0);
+    expect(rulerMarkIndex(0.1 * 3 * 100, 30, 10)).toBe(300);
+  });
+
+  it("refuses a value off the ruler by more than noise, and one between marks", () => {
+    expect(isOnRuler(-0.05, 30, 10)).toBe(false);
+    expect(isOnRuler(30.05, 30, 10)).toBe(false);
+    expect(isOnRuler(12.0625, 12, 16)).toBe(false);
+    expect(isOnRuler(Number.NaN, 30, 10)).toBe(false);
+    expect(rulerMarkIndex(30.1, 30, 10)).toBeUndefined();
+    expect(rulerMarkIndex(-0.1, 30, 10)).toBeUndefined();
+    expect(rulerMarkIndex(3.25, 30, 10)).toBeUndefined();
+    expect(rulerMarkIndex(1.3, 6, 8)).toBeUndefined();
+  });
+
+  it("gives every listed mark's index back from its decimal, and agrees with isRulerMark and isOnRuler", () => {
+    for (const mark of rulerMarks("centimeters", 30)!) expect(rulerMarkIndex(Number(mark.value.toFixed(1)), 30, 10)).toBe(mark.index);
+    for (const mark of rulerMarks("inches", 12)!) expect(rulerMarkIndex(Number(mark.value.toFixed(4)), 12, 16)).toBe(mark.index);
+    fc.assert(
+      fc.property(fc.double({ min: -2, max: 32, noNaN: true }), (value) => {
+        const index = rulerMarkIndex(value, 30, 10);
+        expect(index !== undefined).toBe(isOnRuler(value, 30, 10) && isRulerMark(value, 10));
+      }),
+    );
   });
 });

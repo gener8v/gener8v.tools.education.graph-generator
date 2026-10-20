@@ -51,13 +51,14 @@ const isOwnKey = <T extends object>(table: T, key: unknown): key is keyof T => t
 /**
  * How many marks a ruler draws per unit: 10 for centimetres, or the denominator of an inch ruler's
  * smallest division (a sixteenth when none is given). Undefined for an unknown unit or division,
- * and for a division given on a centimetre ruler, which has none.
+ * `null` included, and for a division given on a centimetre ruler, which has none. Only an absent
+ * (undefined) division takes the default (code review CR-001).
  */
 // @spec NLC-REQ-044, NLC-REQ-046, NLC-REQ-047
 export function divisionsPerUnit(unit: unknown, division?: unknown): number | undefined {
   if (unit === "centimeters") return division === undefined ? MILLIMETERS_PER_CENTIMETER : undefined;
   if (unit !== "inches") return undefined;
-  const name = division ?? DEFAULT_INCH_DIVISION;
+  const name = division === undefined ? DEFAULT_INCH_DIVISION : division;
   return isOwnKey(INCH_DIVISIONS, name) ? INCH_DIVISIONS[name] : undefined;
 }
 
@@ -100,6 +101,7 @@ export function rulerMarks(unit: unknown, length: unknown, division?: unknown): 
 }
 
 /** Whether `length` is a whole number from 1 to `unit`'s maximum (NLC-REQ-042). */
+// @spec NLC-REQ-042
 export function isRulerLength(unit: RulerUnit, length: unknown): length is number {
   return Number.isInteger(length) && (length as number) >= 1 && (length as number) <= RULER_MAX_LENGTH[unit];
 }
@@ -108,7 +110,8 @@ export function isRulerLength(unit: RulerUnit, length: unknown): length is numbe
  * Whether `value` is one of the marks of a ruler with `divisions` marks per unit: `value ×
  * divisions` within decimal noise of a whole number, so 0.7, 2.3 and 0.1 + 0.2 cm are marks and 3.25 cm is not
  * (NLC-REQ-053). It says nothing about the ruler's length: whether a value lies on the ruler is a
- * separate check. The one rule for an object's ends, checked and drawn.
+ * separate check (`isOnRuler`, or both at once with `rulerMarkIndex`). The one rule for an object's
+ * ends, checked and drawn.
  */
 // @spec NLC-REQ-053
 export function isRulerMark(value: number, divisions: number): boolean {
@@ -117,15 +120,43 @@ export function isRulerMark(value: number, divisions: number): boolean {
 }
 
 /**
+ * Whether `value` lies on a ruler of `length` units with `divisions` marks per unit, from 0 to its
+ * length, with the same allowance for decimal noise as `isRulerMark`, so a computed end such as
+ * 0.1 × 3 × 100 (30.000000000000004 cm) is on a 30 cm ruler and −2.8e-17 is at its 0 (code review
+ * CR-003). The one rule for whether an object's end is on the ruler.
+ */
+// @spec NLC-REQ-052
+export function isOnRuler(value: number, length: number, divisions: number): boolean {
+  const position = value * divisions;
+  return Number.isFinite(position) && position >= -MARK_NOISE && position <= length * divisions + MARK_NOISE;
+}
+
+/**
+ * The index of the ruler mark `value` stands for, from 0 at the ruler's start to `length ×
+ * divisions` at its end, when `value` is on the ruler and on a mark, both within decimal noise
+ * (`isOnRuler`, `isRulerMark`); else undefined. One call answers both of an object end's questions
+ * with one allowance, so the check and the drawing agree at the ruler's ends too (code review
+ * CR-003).
+ */
+// @spec NLC-REQ-052, NLC-REQ-053
+export function rulerMarkIndex(value: number, length: number, divisions: number): number | undefined {
+  if (!isOnRuler(value, length, divisions) || !isRulerMark(value, divisions)) return undefined;
+  return Math.round(value * divisions) + 0;
+}
+
+/**
  * The marks on either side of `value` on a ruler with `divisions` marks per unit, for an issue
  * naming where an object's end could go: 3.25 cm gives 3.2 and 3.3, and 1.3 in on a ruler marked to
- * eighths gives 1.25 and 1.375. A value that is a mark is both.
+ * eighths gives 1.25 and 1.375. A value that is a mark is both. The marks are not clamped to a
+ * ruler's ends: check that a value is on the ruler (`isOnRuler`) first (code review CR-003).
  */
+// @spec NLC-REQ-053
 export function nearestRulerMarks(value: number, divisions: number): readonly [number, number] {
   if (isRulerMark(value, divisions)) {
-    const mark = Math.round(value * divisions) / divisions;
+    // `+ 0` turns a −0 from a value just below 0 into 0.
+    const mark = Math.round(value * divisions) / divisions + 0;
     return [mark, mark];
   }
   const position = value * divisions;
-  return [Math.floor(position) / divisions, Math.ceil(position) / divisions];
+  return [Math.floor(position) / divisions + 0, Math.ceil(position) / divisions + 0];
 }

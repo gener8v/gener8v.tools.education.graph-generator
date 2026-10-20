@@ -54,6 +54,13 @@
 - Since 301 marks exceed the axis kit's 100-tick bound, the layout uses TICKET-001's kit only, never `drawAxis` for marks (graph-library NLC TICKET-001 SEC-004).
 - Carried from the graph-library hazards on every type (see `.gener8v/changes/graph-library/tickets/number-lines-and-coordinate-graphs/TICKET-002.md`): `layout(normalized, provenance)`, call the type's own `describe`, `titleBlock` for titles, `wrap` every label, and never spread a caller-sized array into function arguments.
 - The documentation site (`graph-library/component-packaging-and-source-export/TICKET-008`, not yet delivered) promises a working example of every graph type. If it was delivered before this ticket, add the ruler to it here. If not, it picks the ruler up from the registry and `examples/ruler.json`. Record which in the delivery record.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-005 (number size):
+  - At the default tick-label size (12), a 30 cm ruler's numbers "10" to "30" overlap on any horizontal edge that fits the drawing. They need about 1.2 × the size per centimetre, so at most about 9.8 across 360 units.
+  - Pass `fontSize` to `drawRulerMarks`, chosen from the length and the edge, and test that no two numbers overlap at either maximum length.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-004 (mark contrast at small sizes, CC-002 1.4.11):
+  - Marks narrow to half their spacing (0.6 units on a 30 cm ruler over 360 units) and never below `RULER_MIN_MARK_WIDTH` (0.25).
+  - The line color has 15.9:1 contrast, but a sub-pixel stroke renders lighter. By the reviewer's estimate, 30 cm millimetre marks fall under 3:1 below about 320 px shown width, and 12 in sixteenths below about 205 px.
+  - State the smallest shown width at which the marks keep 3:1, in the component's documentation, or widen the marks (for example a longer edge, or a minimum width), and record the choice in a DEL-XXX.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-004

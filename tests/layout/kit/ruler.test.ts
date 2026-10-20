@@ -4,7 +4,7 @@ import { RULER_MAX_LENGTH, type RulerUnit, divisionsPerUnit, rulerMarks } from "
 import { defaultStyle } from "../../../src/core/style";
 import { checkScene } from "../../../src/layout/kit/check";
 import { fmt } from "../../../src/layout/kit/format";
-import { RULER_MARK_LENGTHS, type RulerMarksOptions, drawRulerMarks } from "../../../src/layout/kit/ruler";
+import { RULER_MARK_LENGTHS, RULER_MIN_MARK_WIDTH, type RulerMarksOptions, drawRulerMarks } from "../../../src/layout/kit/ruler";
 import { linearScale } from "../../../src/layout/kit/scale";
 import type { SceneNode } from "../../../src/layout/scene";
 import { attr, boundsOf } from "../../fixtures/scene-geometry";
@@ -54,6 +54,25 @@ describe("drawRulerMarks (NLC-REQ-044, NLC-REQ-047)", () => {
       }),
       { numRuns: 60 },
     );
+  });
+
+  it.each([
+    ["horizontal", [20, 100], [380, 100]],
+    ["vertical, upward", [60, 380], [60, 20]],
+    ["diagonal", [40, 300], [360, 60]],
+  ] as const)("puts every mark of the two largest rulers within 0.5 units of linearScale(value) along a %s edge (code review CR-006)", (_, from, to) => {
+    for (const unit of ["centimeters", "inches"] as const) {
+      const length = RULER_MAX_LENGTH[unit];
+      const marks = rulerMarks(unit, length)!;
+      const xAt = linearScale([0, length], [from[0], to[0]]);
+      const yAt = linearScale([0, length], [from[1], to[1]]);
+      const drawn = lines(drawRulerMarks(ruler(unit, length, { from: [from[0], from[1]], to: [to[0], to[1]] })));
+      expect(drawn).toHaveLength(marks.length);
+      drawn.forEach((mark, i) => {
+        const value = marks[i]!.value;
+        expect(Math.hypot(num(mark, "x1") - xAt(value), num(mark, "y1") - yAt(value))).toBeLessThanOrEqual(0.5);
+      });
+    }
   });
 
   it("runs every mark perpendicular to the edge, into the side asked for", () => {
@@ -110,6 +129,8 @@ describe("graded mark lengths (NLC-REQ-045, NLC-REQ-048)", () => {
     expect(widths(ruler("centimeters", 30))).toEqual(new Set([0.6]));
     expect(widths(ruler("inches", 12))).toEqual(new Set([0.94]));
     expect(widths(ruler("centimeters", 5))).toEqual(new Set([defaultStyle.lineWidths.tick]));
+    // Never narrower than the floor, so no mark is drawn at width 0 (code review CR-004).
+    expect(widths(ruler("centimeters", 30, { to: [22, 100] }))).toEqual(new Set([RULER_MIN_MARK_WIDTH]));
   });
 });
 
@@ -136,6 +157,28 @@ describe("numbers (NLC-REQ-043)", () => {
     });
   });
 
+  it("draws the numbers at the font size asked for, so a 30 cm ruler's numbers can be sized apart (code review CR-005)", () => {
+    const boxes = (fontSize?: number) =>
+      texts(drawRulerMarks(ruler("centimeters", 30, fontSize === undefined ? {} : { fontSize }))).map((node) => ({ size: num(node, "font-size"), box: boundsOf(node) }));
+    expect(new Set(boxes().map((number) => number.size))).toEqual(new Set([defaultStyle.fontSizes.tickLabel]));
+    const overlaps = (numbers: ReturnType<typeof boxes>) => numbers.slice(1).filter((number, i) => number.box.x0 < numbers[i]!.box.x1).length;
+    // At the default size, "10" to "30" run together across 360 units; at 9.5 none do.
+    expect(overlaps(boxes())).toBeGreaterThan(0);
+    const small = boxes(9.5);
+    expect(new Set(small.map((number) => number.size))).toEqual(new Set([9.5]));
+    expect(overlaps(small)).toBe(0);
+  });
+
+  it("reads the font size only as the options' own key", () => {
+    const prototype = Object.prototype as Record<string, unknown>;
+    Object.defineProperty(prototype, "fontSize", { value: 40, configurable: true, writable: true });
+    try {
+      expect(new Set(texts(drawRulerMarks(ruler("centimeters", 5))).map((node) => num(node, "font-size")))).toEqual(new Set([defaultStyle.fontSizes.tickLabel]));
+    } finally {
+      delete prototype["fontSize"];
+    }
+  });
+
   it("clears its marks on a vertical edge too, numbering beside them", () => {
     const nodes = drawRulerMarks(ruler("inches", 5, { from: [60, 380], to: [60, 20], side: "right" }));
     const wholes = lines(nodes).filter((mark) => markLength(mark) > 21);
@@ -159,6 +202,9 @@ describe("options no validated ruler gives", () => {
     ["an end that is not finite", { to: [Number.NaN, 100] }],
     ["a zero-length edge", { to: [20, 100] }],
     ["an unknown side", { side: "below" as "left" }],
+    ["a null division on an inch ruler (code review CR-001)", { unit: "inches", division: null as unknown as string }],
+    ["a font size of 0", { fontSize: 0 }],
+    ["a font size that is not finite", { fontSize: Number.NaN }],
   ])("throw on %s rather than drawing it", (_, extra) => {
     expect(() => drawRulerMarks({ ...ruler("centimeters", 10), ...extra })).toThrow(RangeError);
   });

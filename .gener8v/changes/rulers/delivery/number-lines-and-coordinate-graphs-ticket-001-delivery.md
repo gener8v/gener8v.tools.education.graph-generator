@@ -192,4 +192,33 @@ TICKET-002 annotates the definition that uses them.
 
 ## Post-Review Amendments
 
-None
+### Code review — `rulers/number-lines-and-coordinate-graphs-ticket-001-code-review` (2026-10-20, Approved)
+
+- **CR-001:** only an absent division takes the default. `divisionsPerUnit("inches", null)` is now undefined, so `rulerMarks` and `drawRulerMarks` refuse `null` on both units, with tests.
+  - **Correction to the Notes:** a division the validator refuses reaches domain checks as absent, so `divisionsPerUnit` and `rulerMarks` read it as a sixteenth. They do not return undefined for every refused ruler.
+  - A Known Hazard on TICKET-002 says to skip the off-mark check while the division is reported.
+- **CR-002:** annotations follow one rule: annotate where the rule a later ticket relies on lives.
+  - `isRulerLength` carries `@spec NLC-REQ-042`.
+  - `nearestRulerMarks` carries `@spec NLC-REQ-053`.
+  - The new `isOnRuler` and `rulerMarkIndex` carry NLC-REQ-052 and NLC-REQ-053.
+  - Every partial coverage row now says "(kit; drawn with rulers NLC TICKET-003)" or "(rule; checked with rulers NLC TICKET-002)".
+- **CR-003:** a computed end within noise of 0 or of the length is now on the ruler and on its end mark:
+  - `isOnRuler(value, length, divisions)` and `rulerMarkIndex(value, length, divisions)` in `src/core/ruler.ts` share `MARK_NOISE` with `isRulerMark`;
+  - `nearestRulerMarks` says it does not clamp, and never returns −0.
+  - A Known Hazard on TICKET-002 says to check both with them. It also corrects that ticket's "0.7 × 10" example.
+- **CR-004:** marks are never narrower than `RULER_MIN_MARK_WIDTH` (0.25), so no width rounds to 0. Tested on a 30 cm ruler over a 2-unit edge.
+  - **Correction to DEL-002:** contrast holds for the line color (15.9:1). A sub-pixel mark's rendered contrast depends on the size the ruler is shown at, and is TICKET-003's to decide.
+  - A Known Hazard on TICKET-003 gives the reviewer's estimates (about 320 px for 30 cm, about 205 px for 12 in at sixteenths).
+- **CR-005:** `RulerMarksOptions.fontSize` (optional, read own-key, a finite number above 0) sets the numbers' size, defaulting to 12.
+  - Tested: at 12 a 30 cm ruler's numbers overlap across 360 units, and at 9.5 none do.
+  - A Known Hazard on TICKET-003 says to size them from the length and test no overlap.
+- **CR-006:** a deterministic test draws the 30 cm and 12 in (sixteenths) rulers on the horizontal, vertical and diagonal edges and checks every mark within 0.5 units.
+- **CR-007:** `RULER_MARK_LENGTHS`' doc comment states the lengths.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,260 tests) exits 0 on three runs. Nine deliberate breaks of the fixes each fail a test:
+  - `null` taking the default;
+  - no noise at the ends;
+  - the index skipping the range;
+  - −0 kept;
+  - no width floor;
+  - the font size ignored, read through the prototype, or unchecked;
+  - a position shift on the largest rulers.

@@ -57,6 +57,16 @@
 - An off-mark end must be reported with TICKET-001's predicate, never by a fresh `value * 10 % 1` test: 0.7 × 10 is not exactly 7.
 - Order the checks so one fault gives one issue (AD-004). A reversed object should not also be reported as off the ruler, and an end off the ruler should not also be reported as between marks. Declare every path the check reads in `inputs`.
 - Every caller string (the object's label) goes through `quoteText` in `describe` and is capped with `maxLength`, as the graph-library hazards require (GSS TICKET-002 SEC-001).
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-001 (a refused division reaches domain checks as absent):
+  - The validator leaves a refused value out of the description, so when an inch ruler's division is refused ("eighths", 8), the domain stage sees no division, and `divisionsPerUnit` / `rulerMarks` answer for sixteenths.
+  - Skip the off-mark check while the division is being reported: declare the division in the check's `inputs`, or test whether a division was supplied but failed, and say which in a DEL-XXX. Otherwise an end valid only at sixteenths is accepted on a ruler meant for eighths.
+  - Only an absent (undefined) division takes the default. `null` is refused (`divisionsPerUnit` returns undefined).
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-003 (the ruler's ends):
+  - Decide "on the ruler" and "on a mark" with the core rule, not a fresh comparison.
+    - `isOnRuler(value, length, divisions)` and `rulerMarkIndex(value, length, divisions)` (`src/core/ruler.ts`) share `isRulerMark`'s noise allowance.
+    - So 30.000000000000004 is the 30 cm end and −2.8e-17 is 0. A plain `value > length` would report them as off the ruler while the drawing marks them.
+  - `nearestRulerMarks` does not clamp to the ruler: call it only for an end that `isOnRuler` accepts.
+  - Correction to the hazard above: 0.7 × 10 is exactly 7, as is every decimal written to one place from 0.0 to 30.0. Noise comes from values a caller's code computes (0.1 + 0.2). The rule is unchanged: use the core predicates.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-003
