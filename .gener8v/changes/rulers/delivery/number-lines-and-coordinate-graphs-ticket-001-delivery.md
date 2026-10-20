@@ -222,3 +222,44 @@ TICKET-002 annotates the definition that uses them.
   - no width floor;
   - the font size ignored, read through the prototype, or unchecked;
   - a position shift on the largest rulers.
+
+### Quality review — `rulers/number-lines-and-coordinate-graphs-ticket-001-quality-review` (2026-10-20, Approved)
+
+- **QR-001, QR-006 (the core rule's interface):** `src/core/ruler.ts` now exposes one value, `rulerScale(unit, length, smallestDivision)`.
+  - It is undefined for any ruler no description gives.
+  - It is frozen, and carries `unit`, `length`, `marksPerUnit` and `marks`.
+  - Its `locate(value)` returns `{ kind: "mark", index, value }`, `{ kind: "between", below, above }` or `{ kind: "off" }`, with one noise allowance at the ends and at every mark. Off the ruler is decided first.
+  - Two ends are ordered by their mark `index`, so 0.3 and 0.1 + 0.2 are the same mark.
+  - `isRulerMark`, `isOnRuler`, `rulerMarkIndex`, `nearestRulerMarks` and `rulerMarks` are replaced by the private `locateOnRuler` behind `locate`. `rulerMarkRank` is the private `markRank`.
+  - `divisionsPerUnit` is renamed `marksPerUnit`, and the division is `smallestDivision`, in the kit's options too. `isRulerLength` reads `RULER_MAX_LENGTH` own-key.
+  - A Known Hazard on TICKET-002 maps the old names to the new ones and gives the ordering rule.
+- **QR-002:** the allowance is pinned on both sides: 1e-12 cm off is on the mark, and 1e-7 cm off is between marks or off the ruler, at a mark and at both ends. The cross-check property is replaced by two properties, built from mark indexes:
+  - every index from −10 to 310, with noise within ±1e-11, is on its mark, or off the ruler past the ends;
+  - every value a millionth of a mark or more from a mark lies between exactly its two neighbours.
+- **QR-003:** a fixture, `tests/fixtures/rulers.ts` (`EVERY_RULER`), lists all 78 rulers a description can give. The tests loop over every one instead of sampling them:
+  - listing, ranks and numbers;
+  - positions on three edges and both sides;
+  - lengths by rank;
+  - mark gaps;
+  - room for marks and numbers.
+- **QR-004:** numbers are tested on both sides of horizontal, vertical and diagonal edges: each is centred on the line through its mark, and no mark crosses any number's box.
+- **QR-005:** a test checks the gap: on every ruler, the gap between neighbouring marks is at least a mark's width unless the floor applies. The pinned widths carry their arithmetic, and whole marks are selected by rank, not by length.
+- **QR-007:** the inch rank comes from a table of the reduced denominator, so nothing outside `0 | 1 | 2 | 3 | 4` is returned without a cast. The centimetre branch is two `if` statements on the named constant.
+- **QR-008:** the guard is `checkedOptions`, one check per line, run before any mark is listed. Each `RangeError` names its option, and a font size must survive `fmt()` (0.004 is refused).
+- **QR-009:** `fontSize: undefined` takes the default, as `smallestDivision: undefined` does. Both are tested, and both are read own-key.
+- **QR-010:** the kit exports `rulerMarksDepth(unit, fontSize)` and `rulerNumberOverhang(length, fontSize)`. A test on every ruler at two sizes shows the drawn boxes within them. A Known Hazard on TICKET-003 says to use them.
+- **Re-verification:**
+  - `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0.
+  - `pnpm test` (1,265 tests): one of the first three runs failed one test, and its name was not captured. The next two passed, and eleven further runs passed (six with vitest alone, five through `pnpm test`).
+  - Six suites run at once to load the machine failed only graph-library's time-bound and megabyte-input tests (up to 51 s each under that load), never a ruler test. The lone failure is most likely one of those under load. It is outside this ticket.
+  - Thirteen deliberate breaks each fail a test, including the reviewer's three:
+    - an allowance of 0.39, and one of 1e-6;
+    - a 17 cm ruler refused;
+    - no gap before numbers;
+    - no noise at the ends;
+    - a wrong eighth rank;
+    - `null` taking the default;
+    - `fontSize: undefined` throwing, and a font size that rounds to 0 passing;
+    - too little depth, and a wrong overhang;
+    - unhalved widths;
+    - the division read through the prototype.

@@ -1,9 +1,10 @@
-import { type RulerMarkRank, type RulerUnit, divisionsPerUnit, rulerMarks } from "../../core/ruler";
+import { type RulerMarkRank, type RulerScale, type RulerUnit, rulerScale } from "../../core/ruler";
 import { defaultStyle } from "../../core/style";
 import type { SceneNode } from "../scene";
 import { fmt } from "./format";
 import { linearScale } from "./scale";
 import { DEFAULT_FONT_STACK, textWidth } from "./text";
+import { LINE_HEIGHT } from "./title";
 import { TICK_LABEL_DROP } from "./value-scale";
 
 /**
@@ -36,18 +37,65 @@ export interface RulerMarksOptions {
   /** A whole number of units, from 1 to the unit's maximum. */
   readonly length: number;
   /** An inch ruler's smallest division; a sixteenth when absent. Never given on a centimetre ruler. */
-  readonly division?: string;
+  readonly smallestDivision?: string;
   /**
    * Which side of the edge the marks run into, seen travelling from `from` to `to`: on an edge
    * drawn left to right, `right` is down the page.
    */
   readonly side: "left" | "right";
   /**
-   * The numbers' font size, in drawing units; the default tick-label size (12) when absent. Read
-   * only as the options' own key. Two-digit numbers need about 1.2 × their size per unit, so a
-   * 30 cm ruler across 360 units needs at most about 9.8 (code review CR-005).
+   * The numbers' font size, in drawing units; the default tick-label size (12) when absent or
+   * undefined. Read only as the options' own key. Two-digit numbers need about 1.2 × their size per
+   * unit, so a 30 cm ruler across 360 units needs at most about 9.8 (code review CR-005).
    */
   readonly fontSize?: number;
+}
+
+/** The checked options: the ruler, and the drawing's numbers. */
+interface CheckedOptions {
+  readonly ruler: RulerScale;
+  readonly from: readonly [number, number];
+  readonly to: readonly [number, number];
+  readonly edge: number;
+  readonly side: "left" | "right";
+  readonly fontSize: number;
+}
+
+/**
+ * The options, checked one at a time before any mark is listed, each failure naming its option. A
+ * failure is a layout bug, so it throws `RangeError`, which `createGraph` turns into the fixed
+ * `internal_error` rather than a wrong ruler (quality review QR-008).
+ */
+function checkedOptions(options: RulerMarksOptions): CheckedOptions {
+  const refuse = (problem: string) => new RangeError(`drawRulerMarks(): ${problem}`);
+  const { from, to, side, unit, length } = options;
+  const smallestDivision = Object.hasOwn(options, "smallestDivision") ? options.smallestDivision : undefined;
+  const fontSize = (Object.hasOwn(options, "fontSize") ? options.fontSize : undefined) ?? defaultStyle.fontSizes.tickLabel;
+  if (![...from, ...to].every(Number.isFinite)) throw refuse(`from and to must be finite points, got ${String(from)} and ${String(to)}`);
+  const edge = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  if (!(edge > 0)) throw refuse("from and to must be different points");
+  if (side !== "left" && side !== "right") throw refuse(`side must be "left" or "right", got ${String(side)}`);
+  if (!(typeof fontSize === "number" && Number.isFinite(fontSize) && fmt(fontSize) > 0)) throw refuse(`fontSize must be at least 0.01, got ${String(fontSize)}`);
+  const ruler = rulerScale(unit, length, smallestDivision);
+  if (ruler === undefined) throw refuse(`no ruler is ${String(length)} ${String(unit)} long marked to ${String(smallestDivision ?? "its default division")}`);
+  return { ruler, from, to, edge, side, fontSize };
+}
+
+/**
+ * How far a ruler's marks and numbers reach past its edge, on a horizontal edge, in drawing units:
+ * the longest mark, the gap and a line of numbers, so a layout can leave room for them (quality
+ * review QR-010).
+ */
+export function rulerMarksDepth(unit: RulerUnit, fontSize: number = defaultStyle.fontSizes.tickLabel): number {
+  return Math.max(...RULER_MARK_LENGTHS[unit]) + NUMBER_GAP + fontSize * LINE_HEIGHT;
+}
+
+/**
+ * How far the "0" before a horizontal ruler's start, and its last number past its end, reach
+ * beyond the edge, in drawing units: half of each number's estimated width (quality review QR-010).
+ */
+export function rulerNumberOverhang(length: number, fontSize: number = defaultStyle.fontSizes.tickLabel): { start: number; end: number } {
+  return { start: textWidth("0", fontSize) / 2, end: textWidth(String(length), fontSize) / 2 };
 }
 
 const line = (x1: number, y1: number, x2: number, y2: number, width: number): SceneNode => ({
@@ -64,39 +112,32 @@ const line = (x1: number, y1: number, x2: number, y2: number, width: number): Sc
 
 /**
  * A ruler's marks and numbers (NLC-REQ-043, NLC-REQ-044, NLC-REQ-045, NLC-REQ-047, NLC-REQ-048):
- * a mark at every value of `rulerMarks`, at its proportional place along the edge from `from` to
+ * a mark at every mark of `rulerScale`, at its proportional place along the edge from `from` to
  * `to` (`linearScale`), running perpendicular into `side` for its rank's length
  * (`RULER_MARK_LENGTHS`), and a number past every whole mark, from 0 to the length, at `fontSize`.
  * No other text is drawn. A mark's width is the default tick width, or half the space between
  * neighbouring marks on the page when that is less, so a 30 cm ruler's millimetres stay apart
- * (DEL-002), and never less than `RULER_MIN_MARK_WIDTH` (code review CR-004). Marks come
- * before numbers, and every number passes through `fmt()` (AD-007). Never uses `drawAxis`, whose
- * 100-tick limit a ruler's 301 marks exceed. Throws `RangeError` on options no validated ruler
- * gives, so a layout bug becomes the fixed `internal_error` rather than a wrong ruler.
+ * (DEL-002), and never less than `RULER_MIN_MARK_WIDTH` (code review CR-004). Marks come before
+ * numbers, and every number passes through `fmt()` (AD-007). Never uses `drawAxis`, whose 100-tick
+ * limit a ruler's 301 marks exceed. Throws `RangeError`, naming the option, on options no validated
+ * ruler gives (`checkedOptions`).
  */
 // @spec NLC-REQ-043, NLC-REQ-044, NLC-REQ-045, NLC-REQ-047, NLC-REQ-048
 export function drawRulerMarks(options: RulerMarksOptions): SceneNode[] {
-  const { from, to, unit, length, side } = options;
-  const division = Object.hasOwn(options, "division") ? options.division : undefined;
-  const fontSize = Object.hasOwn(options, "fontSize") ? options.fontSize : defaultStyle.fontSizes.tickLabel;
-  const divisions = divisionsPerUnit(unit, division);
-  const marks = rulerMarks(unit, length, division);
+  const { ruler, from, to, edge, side, fontSize } = checkedOptions(options);
   const [x0, y0] = from;
   const [x1, y1] = to;
-  const edge = Math.hypot(x1 - x0, y1 - y0);
-  if (divisions === undefined || marks === undefined || ![x0, y0, x1, y1].every(Number.isFinite) || !(edge > 0) || (side !== "left" && side !== "right") || !(typeof fontSize === "number" && fontSize > 0 && Number.isFinite(fontSize))) {
-    throw new RangeError("drawRulerMarks(): the options do not describe a drawable ruler");
-  }
   // The unit normal toward `side`: (−dy, dx) is to the right of travel on the page, where y runs down.
   const turn = side === "right" ? 1 : -1;
   const [nx, ny] = [(turn * -(y1 - y0)) / edge, (turn * (x1 - x0)) / edge];
-  const at = linearScale([0, length], [0, 1]);
-  const lengths = RULER_MARK_LENGTHS[unit];
-  const width = Math.max(RULER_MIN_MARK_WIDTH, Math.min(defaultStyle.lineWidths.tick, edge / (length * divisions) / 2));
+  const at = linearScale([0, ruler.length], [0, 1]);
+  const lengths = RULER_MARK_LENGTHS[ruler.unit];
+  const spacing = edge / (ruler.length * ruler.marksPerUnit);
+  const width = Math.max(RULER_MIN_MARK_WIDTH, Math.min(defaultStyle.lineWidths.tick, spacing / 2));
 
   const nodes: SceneNode[] = [];
   const numbers: SceneNode[] = [];
-  for (const { value, rank } of marks) {
+  for (const { value, rank } of ruler.marks) {
     const t = at(value);
     const [x, y] = [x0 + t * (x1 - x0), y0 + t * (y1 - y0)];
     const reach = markLength(lengths, rank);

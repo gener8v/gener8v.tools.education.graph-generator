@@ -67,6 +67,13 @@
     - So 30.000000000000004 is the 30 cm end and −2.8e-17 is 0. A plain `value > length` would report them as off the ruler while the drawing marks them.
   - `nearestRulerMarks` does not clamp to the ruler: call it only for an end that `isOnRuler` accepts.
   - Correction to the hazard above: 0.7 × 10 is exactly 7, as is every decimal written to one place from 0.0 to 30.0. Noise comes from values a caller's code computes (0.1 + 0.2). The rule is unchanged: use the core predicates.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-quality-review/QR-001, QR-006 (the core rule's interface). This supersedes the function names in the two hazards above.
+  - Build one `rulerScale(unit, length, smallestDivision)` and ask it.
+    - It is undefined for any ruler the validator refuses (an unknown unit or division, `null` included, or a bad length).
+    - `marks` and `marksPerUnit` describe the ruler.
+    - `locate(value)` returns `{ kind: "mark", index, value }`, `{ kind: "between", below, above }` (both on the ruler) or `{ kind: "off" }`, with one noise allowance at the ends and at every mark.
+  - `isOnRuler`, `isRulerMark`, `rulerMarkIndex`, `nearestRulerMarks`, `divisionsPerUnit` and `rulerMarks` no longer exist. `marksPerUnit(unit, smallestDivision)` and `isRulerLength(unit, length)` remain.
+  - Order an object's two ends by their mark `index`, not by their values. 0.3 and 0.1 + 0.2 pass a structural `ordered` check (0.3 > 0.30000000000000004 is false), yet both are mark 3. So report a start not before its end when `start.index >= end.index` (NLC-REQ-051), and report it once.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-003

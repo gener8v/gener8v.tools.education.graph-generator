@@ -61,6 +61,7 @@
   - Marks narrow to half their spacing (0.6 units on a 30 cm ruler over 360 units) and never below `RULER_MIN_MARK_WIDTH` (0.25).
   - The line color has 15.9:1 contrast, but a sub-pixel stroke renders lighter. By the reviewer's estimate, 30 cm millimetre marks fall under 3:1 below about 320 px shown width, and 12 in sixteenths below about 205 px.
   - State the smallest shown width at which the marks keep 3:1, in the component's documentation, or widen the marks (for example a longer edge, or a minimum width), and record the choice in a DEL-XXX.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-quality-review/QR-010 (room for the marks): size the ruler's body and margins with `rulerMarksDepth(unit, fontSize)` (how far marks and numbers reach past a horizontal edge) and `rulerNumberOverhang(length, fontSize)` (how far "0" and the last number reach past the edge's ends), from `src/layout/kit/ruler.ts`. Do not recompute them. `drawRulerMarks` takes `smallestDivision` (renamed from `division`, QR-006) and `fontSize`, and builds its ruler with `rulerScale`.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-004

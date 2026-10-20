@@ -207,11 +207,11 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-008 | `src/core/value-scale.ts`:tickCount; `src/core/definitions/axis.ts`:axisChecks |
 | NLC-REQ-009 | `src/core/definitions/axis.ts`:axisChecks |
 | NLC-REQ-043 | `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
-| NLC-REQ-044 | `src/core/ruler.ts`:divisionsPerUnit, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
-| NLC-REQ-045 | `src/core/ruler.ts`:rulerMarkRank, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
-| NLC-REQ-046 | `src/core/ruler.ts`:divisionsPerUnit (rule: the divisions and their default; the term with rulers NLC TICKET-002) |
-| NLC-REQ-047 | `src/core/ruler.ts`:divisionsPerUnit, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
-| NLC-REQ-048 | `src/core/ruler.ts`:rulerMarkRank, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
-| NLC-REQ-053 | `src/core/ruler.ts`:isRulerMark, rulerMarkIndex, nearestRulerMarks (rule; checked with rulers NLC TICKET-002) |
+| NLC-REQ-044 | `src/core/ruler.ts`:marksPerUnit, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
+| NLC-REQ-045 | `src/core/ruler.ts`:markRank, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
+| NLC-REQ-046 | `src/core/ruler.ts`:marksPerUnit, rulerScale (rule: the divisions and their default; the term with rulers NLC TICKET-002) |
+| NLC-REQ-047 | `src/core/ruler.ts`:marksPerUnit, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
+| NLC-REQ-048 | `src/core/ruler.ts`:markRank, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
+| NLC-REQ-053 | `src/core/ruler.ts`:locateOnRuler (`rulerScale(…).locate`) (rule; checked with rulers NLC TICKET-002) |
 | NLC-REQ-042 | `src/core/ruler.ts`:isRulerLength (rule; checked with rulers NLC TICKET-002) |
-| NLC-REQ-052 | `src/core/ruler.ts`:isOnRuler, rulerMarkIndex (rule; checked with rulers NLC TICKET-002) |
+| NLC-REQ-052 | `src/core/ruler.ts`:locateOnRuler (`rulerScale(…).locate`) (rule; checked with rulers NLC TICKET-002) |
