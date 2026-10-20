@@ -34,6 +34,7 @@ export const ISSUE_CODES = Object.freeze([
   "internal_error",
   "too_large",
   "duplicate_name",
+  "not_on_mark",
 ] as const);
 
 export type IssueCode = (typeof ISSUE_CODES)[number];
@@ -81,6 +82,7 @@ export const issueDocs: Readonly<Record<IssueCode, string>> = Object.freeze(
       "A defect in the package stopped the check. It is not a problem with the description; report it.",
     too_large: "A list, or the whole description, holds more values than its documented limit.",
     duplicate_name: "Two entries of a list that must be told apart by name, such as two categories, have the same name.",
+    not_on_mark: "A value that must be one of a ruler's drawn marks lies between two of them; the issue names both.",
   } satisfies Record<IssueCode, string>),
 );
 
@@ -176,6 +178,8 @@ export interface IssueParamsByCode {
    * name, for the issue, and `conflictTerms` names it for the message (DGP TICKET-001 DEL-003).
    */
   duplicate_name: { term: Term; got: unknown; conflicts: Terms; conflictTerms: Terms };
+  /** `below` and `above` are the drawn marks on either side of `got` (rulers NLC TICKET-002 DEL-003). */
+  not_on_mark: { term: Term; got: unknown; below: number; above: number };
 }
 
 const MAX_VALUE_CHARS = 40;
@@ -375,6 +379,8 @@ const templates: Templates = {
   },
   duplicate_name: (p) =>
     `${describeTerm(p.term)} (${describeValue(p.got)}) repeats ${list(p.conflictTerms)}; give each one a different name.`,
+  not_on_mark: (p) =>
+    `${describeTerm(p.term)} must be on a mark of the ruler; got ${describeValue(p.got)}, between the marks at ${describeNumber(p.below)} and ${describeNumber(p.above)}.`,
 };
 
 /**

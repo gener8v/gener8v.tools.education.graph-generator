@@ -83,6 +83,7 @@ describe("issue-code set (GSV-REQ-030, GSV-REQ-034)", () => {
         "internal_error",
         "too_large",
         "duplicate_name",
+        "not_on_mark",
       ]
     `);
   });
@@ -152,6 +153,7 @@ const SAMPLES: Samples = {
   internal_error: {},
   too_large: { term: "points", limit: 1000, unit: "items", count: 5000 },
   duplicate_name: { term: "categories[2].name", got: "Mon", conflicts: ["/categories/0/name"], conflictTerms: ["categories[0].name"] },
+  not_on_mark: { term: "measuredObject.end", got: 3.25, below: 3.2, above: 3.3 },
 };
 
 const sampleMessage = <C extends IssueCode>(code: C) => issueMessage(code, SAMPLES[code]);
@@ -173,6 +175,7 @@ describe("issue messages (GSV-REQ-031)", () => {
         "missing_property": "radius is required for a circle; add it.",
         "not_a_triangle": "sideLengths cannot form a triangle: 3 + 4 is not greater than 9; change the values so they do.",
         "not_an_object": "A graph description must be a JSON object with a "type" field; got a list.",
+        "not_on_mark": "measuredObject.end must be on a mark of the ruler; got 3.25, between the marks at 3.2 and 3.3.",
         "out_of_range": "radius must be a number greater than 0; got -2.",
         "outside_axis_range": "points[2].x (12) is outside the axis range, from -10 to 10; move it inside the range or widen the axis.",
         "scale_excludes_value": "values[3] (140) is outside the value scale, from 0 to 100; widen the scale or leave the scale out.",

@@ -67,6 +67,12 @@
   - `fontSize` must be from 0.01 to 36;
   - the unit and length must be a ruler's.
   Compute the edge and font size inside those limits. A layout bug then fails closed as `internal_error`.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-002 DEL-002 (registration): TICKET-002 defined `ruler` in `src/core/definitions/ruler.ts` but did NOT register it, because `tests/react/Graph.test.tsx` requires every registered definition to have a layout, a per-type component and a drawable `examples/<type>.json`. Register it here, in `src/core/definitions/index.ts`, together with the layout (`src/layout/registry.ts`) and the component.
+  - Then run `pnpm generate` and commit the regenerated schema, tool schema, types and vocabulary.
+  - Move the ruler out of the explicit lists in `tests/core/definitions.test.ts` (the "defined but not yet registered" block and the condition rules), since `allDefinitions()` then includes it.
+  - `tests/core/schema-agreement.test.ts` then mutates `examples/ruler.json` (an inch ruler at eighths).
+  - NLC-REQ-013 (a caller's `textAlternative` replaces the generated one) is applied when the Scene is printed (`textAlternativeFor`), so the ruler's case is tested here, through `<RulerGraph>` and `<Graph>`.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-002 DEL-001 (term names): the unit term is `rulerUnit` (`unit` is the circle's), and the object is `measuredObject` with `start`, `end`, `label` and `color`. Read the division as `ruler.smallestDivision` and build the marks with `rulerScale(ruler.rulerUnit, ruler.length, ruler.smallestDivision)`, as `describe` does, so the drawing and the text alternative use the same division.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-004

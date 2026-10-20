@@ -1,0 +1,13 @@
+{
+  "type": "ruler",
+  "rulerUnit": "inches",
+  "length": 6,
+  "smallestDivision": "eighth",
+  "title": "How long is the pencil?",
+  "measuredObject": {
+    "start": 1.5,
+    "end": 4.25,
+    "label": "pencil",
+    "color": "orange"
+  }
+}

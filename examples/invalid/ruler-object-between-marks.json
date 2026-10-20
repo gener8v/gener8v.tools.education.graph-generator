@@ -1,0 +1,9 @@
+{
+  "type": "ruler",
+  "rulerUnit": "centimeters",
+  "length": 15,
+  "measuredObject": {
+    "start": 2,
+    "end": 7.25
+  }
+}

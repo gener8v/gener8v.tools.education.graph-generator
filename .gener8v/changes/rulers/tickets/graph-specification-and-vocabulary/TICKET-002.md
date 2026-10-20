@@ -42,6 +42,7 @@
 - Cross-area predecessor: this ticket checks the published output of `rulers/number-lines-and-coordinate-graphs/TICKET-002` (the ruler definition), which is not on `Depends On` (cross-area). Orchestrate will show it ready once TICKET-001 is delivered. Do not start until `src/core/definitions/ruler.ts` is registered.
 - If a ruler term name clashes with an existing term of a different meaning (for example `length`), the consistency check fails. The fix belongs in the ruler definition (rename the term there, recorded as a DEL-XXX), never in a second definition of the same term.
 - The vocabulary's spelling is US (`color`, `centimeters`). Keep descriptions consistent, and never offer "centimetres" as an accepted value in a description.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-002 DEL-002: the ruler definition exists (`src/core/definitions/ruler.ts`) but is registered by rulers NLC TICKET-003, together with its layout. Start this ticket after NLC TICKET-003, once `ruler` is in `definitions`. The terms are `rulerUnit`, `length`, `smallestDivision`, `measuredObject`, `start` and `end` (DEL-001), and the issue code `not_on_mark` (DEL-003) joins the documented set.
 
 **Depends On:** TICKET-001
 **Blocks:** None
