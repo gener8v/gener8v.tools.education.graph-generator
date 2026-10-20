@@ -206,3 +206,10 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-007 | `src/layout/kit/axis.ts`:drawAxis (ticks; points and segments with NLC TICKET-002..004) |
 | NLC-REQ-008 | `src/core/value-scale.ts`:tickCount; `src/core/definitions/axis.ts`:axisChecks |
 | NLC-REQ-009 | `src/core/definitions/axis.ts`:axisChecks |
+| NLC-REQ-043 | `src/layout/kit/ruler.ts`:drawRulerMarks (kit; the ruler type with rulers NLC TICKET-003) |
+| NLC-REQ-044 | `src/core/ruler.ts`:divisionsPerUnit, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks |
+| NLC-REQ-045 | `src/core/ruler.ts`:rulerMarkRank, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks |
+| NLC-REQ-046 | `src/core/ruler.ts`:divisionsPerUnit (the divisions and their default; the term with rulers NLC TICKET-002) |
+| NLC-REQ-047 | `src/core/ruler.ts`:divisionsPerUnit, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks |
+| NLC-REQ-048 | `src/core/ruler.ts`:rulerMarkRank, rulerMarks; `src/layout/kit/ruler.ts`:drawRulerMarks |
+| NLC-REQ-053 | `src/core/ruler.ts`:isRulerMark (the rule; the check with rulers NLC TICKET-002) |
