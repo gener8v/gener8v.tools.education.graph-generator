@@ -233,3 +233,41 @@ The existing rows for GSV-REQ-003 and GSV-REQ-040 already name these locations. 
   - no schema sentence;
   - no `allowed`;
   - the old wording.
+
+### Quality review — `rulers/graph-specification-and-vocabulary-ticket-001-quality-review` (2026-10-20, Approved)
+
+- **QR-001:** `checkMap` carries each conditional term with its condition (`AppliesWhen`), so no assertion is needed. `checkConditional(spec, condition, element, parent, normalized, walk)` derives the term's place and decides "cannot be known" by `walk.failed` alone, since a required missing sibling is in it too. Its doc lists the three branches in the order they run.
+- **QR-002:** new tests for:
+  - left-out terms absent from the description and the provenance and present in `failed`, at the top level and nested, read from `checkStructure`;
+  - an object-kind conditional term's provenance removed below it;
+  - a positive control for the probe check (`spare: { unit: "inches" }` reports);
+  - a two- and three-value condition in the message and in `describeCondition`;
+  - the exact schema description of the conditional term, and none on `unit`;
+  - the strict tool schema validating a conditional term.
+- **QR-003:** `describeCondition(name, values)` (`src/core/definitions/types.ts`) is the one wording, `only when unit is "inches" or "feet"`. The validator passes the sibling's full place and the schemas pass its term. The schemas build the note in `describeProperty`.
+- **QR-004:** `leaveOut(spec, path, walk)` deletes the one provenance entry of a leaf and scans only below an object or list term.
+  - On a probe of 3,000 list elements, each with a kept value and a conditional division under a failed unit, validation took 26 ms against 127 ms with the full scan.
+  - No timing test was added (timing tests are flaky under load, as earlier in this change). The behaviour tests above pin the removals.
+- **QR-005:** the fixture defines `unit` and `smallestDivision` once and nests them three times. The hand-written condition is gone from the description.
+  - The fixture's doc says why it is outside `allDefinitions()`: it does not nest the shared label and color, which list `ruler`.
+  - `stageProblems` and `vocabularyProblems` now run on it.
+- **QR-006:** `optionalInputs`' doc says it differs from `inputs` only at the top level. `stageProblems` refuses a path in both lists. `tests/core/validate-domain.test.ts` has stage-4 cases for:
+  - an absent, a passed and a failed top-level optional input;
+  - a nested one under an absent, a passed and a failed parent;
+  - a `*` one with a failed element.
+- **QR-007:** `inapplicable_property`'s published description covers the conditional case. Its params are typed so that a `condition` always comes with `conflicts` and never with `elements`. The two messages share `aGraph`.
+- **Re-verification:**
+  - `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw` and `gener8v-state lint` exit 0.
+  - `pnpm test` (1,299 tests) exits 0 on three runs.
+  - Five deliberate breaks each fail a test:
+    - leaf provenance kept;
+    - subtree provenance kept;
+    - several values joined with "or" only;
+    - a left-out term not failed;
+    - the schema note dropped.
+- **`pnpm audit` exits 1: outside this ticket.** Six advisories (2 high, 4 moderate) were published since this morning's clean audits, with the lockfile unchanged since `main`:
+  - `vite` 8.3.0–8.3.2, through `vitest`;
+  - `launch-editor` ≤ 2.14.1, through `@changesets/cli`.
+  - All are in development tooling and Windows-specific. `pnpm audit --prod` reports no known vulnerabilities, and the package has no runtime dependencies.
+  - Updating them is a dependency change for its own commit, raised with the user.
+

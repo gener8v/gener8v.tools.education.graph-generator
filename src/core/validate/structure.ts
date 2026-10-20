@@ -1,5 +1,5 @@
 import { type Registry, propertiesOf, scopedProperty } from "../definitions/index";
-import { type GraphType, type PropertyMap, type PropertySpec, type ValueSpec, propertySpec } from "../definitions/types";
+import { type AppliesWhen, type GraphType, type PropertyMap, type PropertySpec, type ValueSpec, describeCondition, propertySpec } from "../definitions/types";
 import { findUnsafeTextChar } from "../format";
 import { asTerms, createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
@@ -223,7 +223,7 @@ function appliesToType(key: string, graphType: GraphType, atTop: boolean): boole
 // @spec GSV-REQ-017, GSV-REQ-018, GSV-REQ-019, GSV-REQ-020, GSV-REQ-041
 function checkMap(contents: ObjectContents, properties: PropertyMap, place: Place, walk: Walk): Record<string, unknown> {
   const normalized = emptyRecord();
-  const conditional: Array<{ spec: PropertySpec; element: unknown; at: Place }> = [];
+  const conditional: Array<{ spec: PropertySpec; condition: AppliesWhen; element: unknown }> = [];
   const atTop = place.segments.length === 0;
   count(walk, contents.values.size + contents.opaque.length);
   for (const key of contents.opaque) {
@@ -270,7 +270,7 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
       continue;
     }
     if (spec.appliesWhen !== undefined) {
-      conditional.push({ spec, element, at });
+      conditional.push({ spec, condition: spec.appliesWhen, element });
       continue;
     }
     // Keys are only ever vocabulary terms (camel case), so assigning them is safe.
@@ -288,57 +288,56 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
       walk.failed.add(path);
     }
   }
-  for (const { spec, element, at } of conditional) checkConditional(spec, element, at, properties, place, normalized, walk);
+  for (const { spec, condition, element } of conditional) checkConditional(spec, condition, element, place, normalized, walk);
   return normalized;
 }
 
 /**
- * A property that applies only while its sibling `appliesWhen.term` has one of `appliesWhen.values`
- * (GSV-REQ-051), decided after the sibling:
- * - the sibling passed with one of the values: the property is checked as usual;
- * - the sibling passed with another value, or is optional and absent: `inapplicable_property` at
- *   the property's path, naming the condition and, in `conflicts`, the sibling's path; its value is
- *   not checked;
- * - the sibling failed, or is required and missing: whether the property applies cannot be known,
- *   so that is not reported, but its own value is still checked, so every problem is reported in
- *   one pass (GSV-REQ-017; code review CR-001), as `ordered` checks each value on its own. Either
- *   way it is left out and marked failed, so checks that read it are skipped (DEL-002).
+ * A property that applies only while its sibling `condition.term` has one of `condition.values`
+ * (GSV-REQ-051), decided after every other property of `parent`, in this order:
+ * 1. the sibling failed its own check or is required and missing (either way it is in
+ *    `walk.failed`, already reported): whether the property applies cannot be known, so that is
+ *    not reported, but its own value is still checked, so every problem is reported in one pass
+ *    (GSV-REQ-017; code review CR-001), as `ordered` checks each value on its own; it is then left
+ *    out (`leaveOut`);
+ * 2. the sibling passed with one of the values: the property is checked as usual;
+ * 3. the sibling passed with another value, or is optional and absent: `inapplicable_property` at
+ *    the property's path, with the condition and, in `conflicts`, the sibling's path; its value is
+ *    not checked, and it is marked failed (DEL-002).
  */
 // @spec GSV-REQ-051
-function checkConditional(
-  spec: PropertySpec,
-  element: unknown,
-  at: Place,
-  properties: PropertyMap,
-  place: Place,
-  normalized: Record<string, unknown>,
-  walk: Walk,
-): void {
-  const { term, values } = spec.appliesWhen!;
+function checkConditional(spec: PropertySpec, condition: AppliesWhen, element: unknown, parent: Place, normalized: Record<string, unknown>, walk: Walk): void {
+  const at = child(parent, spec.term);
   const path = pointer(...at.segments);
-  const sibling = child(place, term);
+  const sibling = child(parent, condition.term);
   const siblingPath = pointer(...sibling.segments);
-  const value = Object.hasOwn(normalized, term) ? normalized[term] : undefined;
-  if (value === undefined && (walk.failed.has(siblingPath) || propertySpec(properties, term)?.required === true)) {
+  if (walk.failed.has(siblingPath)) {
     checkValue(spec, element, at, walk, spec.presentation !== undefined);
-    leaveOut(path, walk);
+    leaveOut(spec, path, walk);
     return;
   }
-  if (typeof value === "string" && (values as readonly string[]).includes(value)) {
+  const value = Object.hasOwn(normalized, condition.term) ? normalized[condition.term] : undefined;
+  if (typeof value === "string" && (condition.values as readonly string[]).includes(value)) {
     const outcome = checkValue(spec, element, at, walk, spec.presentation !== undefined);
     if (outcome.kind === "passed") normalized[spec.term] = outcome.value;
     return;
   }
-  // The sibling's full name, so a nested or listed one reads "spare.unit" or "rulers[1].unit" (code review CR-003).
-  const condition = `only when ${sibling.term} is ${values.map((accepted) => JSON.stringify(accepted)).join(" or ")}`;
-  walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, condition, conflicts: [siblingPath] }));
+  // The sibling's full place, so a nested or listed one reads "spare.unit" or "extras[1].unit" (code review CR-003).
+  const reason = describeCondition(sibling.term, condition.values);
+  walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, condition: reason, conflicts: [siblingPath] }));
   walk.failed.add(path);
 }
 
-/** Leave a checked value out of the result, as a failed value: no provenance, at its path or under it. */
-function leaveOut(path: string, walk: Walk): void {
+/**
+ * Leave a checked value out of the result, as a failed value, with no provenance. A leaf has one
+ * provenance entry, at its path; only an object or list has entries below it, so only then are the
+ * entries scanned, which keeps many conditional leaves linear (quality review QR-004).
+ */
+function leaveOut(spec: PropertySpec, path: string, walk: Walk): void {
   walk.failed.add(path);
-  for (const key of Object.keys(walk.provenance)) if (key === path || key.startsWith(`${path}/`)) delete walk.provenance[key];
+  delete walk.provenance[path];
+  if (spec.kind !== "object" && spec.kind !== "array") return;
+  for (const key of Object.keys(walk.provenance)) if (key.startsWith(`${path}/`)) delete walk.provenance[key];
 }
 
 /**

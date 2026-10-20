@@ -356,11 +356,19 @@ describe("terms with fixed lists and conditions in the published vocabulary and 
     expect(ajv.validate(buildSchema(conditionalRegistry), description)).toBe(true);
   });
 
-  it("states each condition in the term's description in both schemas, from the definition (code review CR-006)", () => {
-    for (const schema of [buildSchema(conditionalRegistry), buildToolSchema(conditionalRegistry)]) {
-      const text = JSON.stringify(schema);
-      expect(text).toContain('Give it only when unit is \\"inches\\".');
-    }
-    expect(JSON.stringify(buildSchema(conditionalRegistry))).toContain("a term given only when another term has a stated value");
+  it("states each condition in the term's description in both schemas, from the definition (code review CR-006, quality review QR-002)", () => {
+    const published = buildSchema(conditionalRegistry) as { anyOf: Array<{ properties: Record<string, { description: string }> }> };
+    const ruler = published.anyOf[0]!.properties;
+    expect(ruler["smallestDivision"]!.description).toBe('An inch ruler\'s smallest division. Give it only when unit is "inches".');
+    expect(ruler["unit"]!.description).toBe("The unit a ruler is marked in.");
+    const tool = JSON.stringify(buildToolSchema(conditionalRegistry));
+    expect(tool).toContain('An inch ruler\'s smallest division. Give it only when unit is \\"inches\\".');
+    expect(JSON.stringify(published)).toContain("a term given only when another term has a stated value");
+  });
+
+  it("lets the strict tool schema accept a conditional term too, as the published one does", () => {
+    const ajv = createAjv();
+    const graph = { type: "ruler", version: null, title: null, unit: "centimeters", length: 6, smallestDivision: "half", spare: null, extras: null };
+    expect(ajv.validate(buildToolSchema(conditionalRegistry), { graph }), JSON.stringify(ajv.errors)).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALWAYS_RUNS, type GraphType, type GraphTypeDefinition } from "../../src/core/definitions/types";
+import { ALWAYS_RUNS, type GraphType, type GraphTypeDefinition, defineProperties } from "../../src/core/definitions/types";
 import { createIssue, pointer } from "../../src/core/issues";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
@@ -207,5 +207,52 @@ describe("domain checks (AD-004 stage 4)", () => {
     const description: Record<string, unknown> = { type: "xy-graph", ...AXES, points: [{ x: 9, y: 9 }] };
     for (let i = 0; i < DESCRIPTION_VALUE_LIMIT; i++) description[`junk${i}`] = i;
     expect(codesAndPaths(description)).toEqual(["too_large "]);
+  });
+});
+
+describe("optional inputs (rulers GSV TICKET-001 code review CR-002, quality review QR-006)", () => {
+  /** A probe check reading optional paths: it reports whenever it runs. */
+  const withProbe = (optionalInputs: string[]): typeof fixtureRegistry => {
+    const definition: GraphTypeDefinition = {
+      type: "circle",
+      title: "Optional inputs (test only)",
+      description: "A check with optional inputs.",
+      properties: defineProperties({
+        a: { term: "a", kind: "number", required: true, description: "A number." },
+        b: { term: "b", kind: "number", required: false, description: "An optional number." },
+        o: {
+          term: "o",
+          kind: "object",
+          required: false,
+          description: "An optional object.",
+          properties: defineProperties({ c: { term: "c", kind: "number", required: false, description: "A number." } }),
+        },
+        list: { term: "list", kind: "array", required: false, maxItems: 5, description: "A list.", items: { kind: "number", description: "A number." } },
+      }),
+      derivations: [],
+      checks: [{ name: "probe", inputs: ["a"], optionalInputs, check: () => [createIssue("out_of_range", "/a", { term: "a", got: 0, range: { min: 1 } })] }],
+      describe: () => "A test-only definition.",
+    };
+    return Object.freeze(Object.assign(Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, { circle: definition }));
+  };
+  const ran = (optionalInputs: string[], input: Record<string, unknown>) => codesAndPaths({ type: "circle", a: 1, ...input }, withProbe(optionalInputs)).includes("out_of_range /a");
+
+  it("runs the check when a top-level optional input is absent, and skips it when that input failed", () => {
+    expect(ran(["b"], {})).toBe(true);
+    expect(ran(["b"], { b: 2 })).toBe(true);
+    expect(ran(["b"], { b: "two" })).toBe(false);
+  });
+
+  it("skips the check when a nested optional input's parent failed, and runs it when the parent is absent or passed", () => {
+    expect(ran(["o/c"], {})).toBe(true);
+    expect(ran(["o/c"], { o: {} })).toBe(true);
+    expect(ran(["o/c"], { o: { c: 3 } })).toBe(true);
+    expect(ran(["o/c"], { o: "an object" })).toBe(false);
+    expect(ran(["o/c"], { o: { c: "three" } })).toBe(false);
+  });
+
+  it("skips the check when any element an optional `*` input names failed", () => {
+    expect(ran(["list/*"], { list: [1, 2] })).toBe(true);
+    expect(ran(["list/*"], { list: [1, "two"] })).toBe(false);
   });
 });

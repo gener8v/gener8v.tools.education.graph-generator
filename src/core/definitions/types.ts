@@ -153,8 +153,26 @@ export type PropertySpec = ValueSpec & {
    * other values; and the sibling has no condition of its own, since conditions are not chained
    * (code review CR-007).
    */
-  appliesWhen?: { readonly term: string; readonly values: Terms };
+  appliesWhen?: AppliesWhen;
 };
+
+/** When a property applies: while its sibling `term` has one of `values` (GSV-REQ-051). */
+export interface AppliesWhen {
+  readonly term: string;
+  readonly values: Terms;
+}
+
+/**
+ * A condition as words, `only when unit is "inches"` or `only when unit is "inches" or "feet"`,
+ * with `name` the sibling as the reader should see it: its term in a schema, its full place
+ * (`spare.unit`) in an issue. The one wording for the validator and the schemas, so the two cannot
+ * drift (quality review QR-003).
+ */
+export function describeCondition(name: string, values: Terms): string {
+  const quoted = values.map((value) => JSON.stringify(value));
+  const choices = quoted.length === 1 ? quoted[0]! : `${quoted.slice(0, -1).join(", ")} or ${quoted[quoted.length - 1]!}`;
+  return `only when ${name} is ${choices}`;
+}
 
 /** A map of properties by term. Built with `defineProperties`, so it is frozen and has no prototype. */
 export type PropertyMap = Readonly<Record<string, PropertySpec>>;
@@ -254,7 +272,10 @@ export interface DomainCheck<D extends DescriptionBase = DescriptionBase> {
   /**
    * Paths the check reads that may be absent, such as an optional term with a default: the check
    * runs without them, and is skipped only when one of them failed, so it never reads a value
-   * that was reported or left out (rulers GSV TICKET-001 code review CR-002). An inch ruler's
+   * that was reported or left out (rulers GSV TICKET-001 code review CR-002). Unlike `inputs`, the
+   * top-level property need not be present; below it, both lists behave the same, since `inputs`
+   * checks presence only at the top level. A path belongs in one list, never both; the definitions
+   * test refuses it in both (quality review QR-006). An inch ruler's
    * `smallestDivision` is one: absent means the default sixteenth, but a refused division
    * ("eighths") or one given on a centimetre ruler must stop a check that reads the ruler's marks.
    */

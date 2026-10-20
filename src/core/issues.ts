@@ -58,7 +58,8 @@ export const issueDocs: Readonly<Record<IssueCode, string>> = Object.freeze(
     unsupported_version: "The `version` field names a schema version this package does not support.",
     missing_property: "A property the graph type requires is missing.",
     unknown_property: "A property name is not a vocabulary term of this graph type.",
-    inapplicable_property: "A vocabulary term, such as a presentation option, does not apply to this graph type.",
+    inapplicable_property:
+      "A vocabulary term, such as a presentation option, does not apply to this graph type, or applies only while another term has a given value; that term is then in conflicts.",
     wrong_kind: "A value has the wrong kind, for example text where a number is required.",
     out_of_range: "A value is outside its allowed range, for example a length that is not positive.",
     contradiction: "Two or more values disagree, for example a radius and a diameter.",
@@ -119,7 +120,10 @@ export interface IssueParamsByCode {
    * `only when unit is "inches"`, and `conflicts` then holds the JSON Pointer of the term it
    * depends on (rulers GSV TICKET-001 DEL-003, code review CR-003).
    */
-  inapplicable_property: { term: Term; graphType: string; elements?: string; condition?: string; conflicts?: Terms };
+  inapplicable_property: { term: Term; graphType: string } & (
+    | { elements?: string; condition?: never; conflicts?: never }
+    | { condition: string; conflicts: Terms; elements?: never }
+  );
   /**
    * `expected` is the kind of value accepted, e.g. "a number"; `allowed`, for a value outside a
    * fixed list, holds every accepted value (rulers GSV TICKET-001 code review CR-008).
@@ -287,10 +291,12 @@ export function describeInterval(range: Range): string {
 
 const list = (values: Terms) => values.map(describeTerm).join(", ");
 const article = (word: string) => (/^([aeiou]|x[^aeiou])/i.test(word) ? "an" : "a");
-const forGraph = (graphType: string) => {
+/** "a ruler", "an xy-graph": a graph type with its article. */
+const aGraph = (graphType: string) => {
   const name = describeTerm(graphType);
-  return `for ${article(name)} ${name}`;
+  return `${article(name)} ${name}`;
 };
+const forGraph = (graphType: string) => `for ${aGraph(graphType)}`;
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 type Templates = { readonly [C in IssueCode]: (p: IssueParamsByCode[C]) => string };
@@ -315,7 +321,7 @@ const templates: Templates = {
       : `${describeTerm(p.term)} is not a property ${forGraph(p.graphType)}; did you mean ${describeTerm(p.suggestion)}?`,
   inapplicable_property: (p) =>
     p.condition !== undefined
-      ? `${describeTerm(p.term)} applies to ${article(describeTerm(p.graphType))} ${describeTerm(p.graphType)} ${describeDetail(p.condition)}; remove it.`
+      ? `${describeTerm(p.term)} applies to ${aGraph(p.graphType)} ${describeDetail(p.condition)}; remove it.`
       : p.elements === undefined
         ? `${describeTerm(p.term)} does not apply ${forGraph(p.graphType)}; remove it.`
         : `${describeTerm(p.term)} does not apply ${forGraph(p.graphType)} as a whole; give it on ${p.elements} instead.`,

@@ -8,6 +8,7 @@ import { runInNewContext } from "node:vm";
 import { closestTerm, editDistance } from "../../src/core/validate/suggest";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions/index";
 import { conditionalRegistry } from "../fixtures/definitions/conditional-ruler";
+import { defineProperties, describeCondition } from "../../src/core/definitions/types";
 import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
 
 const check = (input: unknown) => validateWith(input, fixtureRegistry);
@@ -637,6 +638,8 @@ describe("a term that applies only while a sibling has given values (GSV-REQ-051
 
   it("marks a nested term it leaves out as failed, so a check reading it is skipped though its parent is present", () => {
     const spare = (unit: string) => found({ unit: "inches", spare: { unit, smallestDivision: "half" } });
+    // The probe check runs, and reports, when the division is absent and nothing failed (quality review QR-002).
+    expect(found({ unit: "inches", spare: { unit: "inches" } })).toEqual(["missing_property /spare/smallestDivision"]);
     expect(spare("inches")).toEqual([]);
     expect(spare("cm")).toEqual(["wrong_kind /spare/unit"]);
     expect(spare("centimeters")).toEqual(["inapplicable_property /spare/smallestDivision"]);
@@ -656,5 +659,65 @@ describe("a term that applies only while a sibling has given values (GSV-REQ-051
     const [division] = issues({ unit: "inches", smallestDivision: "1/8" });
     expect(division!.message).toContain("half, quarter, eighth, sixteenth");
     expect(division!.allowed).toEqual(["half", "quarter", "eighth", "sixteenth"]);
+  });
+});
+
+describe("leaving a conditional term out (rulers GSV TICKET-001 quality review QR-002, QR-004)", () => {
+  const structureOf = (input: Record<string, unknown>, registry = conditionalRegistry) => {
+    const envelope = checkEnvelope(input, registry);
+    if (!envelope.ok) throw new Error("expected the envelope to pass");
+    return checkStructure(envelope.contents, envelope.type, envelope.version, registry);
+  };
+
+  it("keeps a left-out term out of the description and the provenance, and lists it as failed, at the top level and nested", () => {
+    const result = structureOf({ type: "ruler", length: 6, unit: "cm", smallestDivision: "half", spare: { unit: "cm", smallestDivision: "half" } });
+    expect(result.description["smallestDivision"]).toBeUndefined();
+    expect((result.description["spare"] as Record<string, unknown>)["smallestDivision"]).toBeUndefined();
+    expect(Object.keys(result.provenance).filter((key) => key.endsWith("smallestDivision"))).toEqual([]);
+    expect([...result.failed].filter((key) => key.endsWith("smallestDivision")).sort()).toEqual(["/smallestDivision", "/spare/smallestDivision"]);
+  });
+
+  const objectTerm = {
+    type: "ruler" as const,
+    title: "Conditional object (test only)",
+    description: "A conditional term that is an object.",
+    properties: defineProperties({
+      unit: { term: "unit", kind: "enum", required: true, values: ["centimeters", "inches", "feet"], description: "A unit." },
+      detail: {
+        term: "detail",
+        kind: "object",
+        required: false,
+        description: "Details for inches and feet.",
+        appliesWhen: { term: "unit", values: ["inches", "feet"] },
+        properties: defineProperties({ a: { term: "a", kind: "number", required: true, description: "A number." } }),
+      },
+    }),
+    derivations: [],
+    checks: [],
+    describe: () => "A test-only conditional object.",
+  };
+  const objectRegistry = Object.freeze(Object.assign(Object.create(null) as Record<string, unknown>, { ruler: objectTerm })) as typeof conditionalRegistry;
+
+  it("removes the provenance under a left-out object term too", () => {
+    const result = structureOf({ type: "ruler", unit: "cm", detail: { a: 1 } }, objectRegistry);
+    expect(result.description["detail"]).toBeUndefined();
+    expect(Object.keys(result.provenance)).toEqual([]);
+    expect(result.failed.has("/detail")).toBe(true);
+    // And keeps it when the condition holds.
+    expect(structureOf({ type: "ruler", unit: "feet", detail: { a: 1 } }, objectRegistry).provenance).toEqual({ "/unit": "supplied", "/detail/a": "supplied" });
+  });
+
+  it("states a condition of several values in one wording, in the issue and in the schema (quality review QR-003)", () => {
+    expect(describeCondition("unit", ["inches"])).toBe('only when unit is "inches"');
+    expect(describeCondition("unit", ["inches", "feet"])).toBe('only when unit is "inches" or "feet"');
+    expect(describeCondition("spare.unit", ["a", "b", "c"])).toBe('only when spare.unit is "a", "b" or "c"');
+    const result = validateWith({ type: "ruler", unit: "centimeters", detail: { a: 1 } }, objectRegistry);
+    expect(result.valid ? "" : result.issues[0]!.message).toBe('detail applies to a ruler only when unit is "inches" or "feet"; remove it.');
+  });
+
+  it("leaves out every conditional term in a list, each reported once at its own position", () => {
+    const extras = Array.from({ length: 3 }, () => ({ unit: "centimeters", smallestDivision: "half" }));
+    const result = validateWith({ type: "ruler", unit: "inches", length: 6, extras }, conditionalRegistry);
+    expect(result.valid ? [] : result.issues.map((issue) => issue.path)).toEqual(["/extras/0/smallestDivision", "/extras/1/smallestDivision", "/extras/2/smallestDivision"]);
   });
 });

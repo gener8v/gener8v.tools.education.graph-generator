@@ -1,5 +1,5 @@
 import { type Registry, SUPPORTED_VERSIONS, definitions, propertiesOf, registeredTypes } from "./definitions/index";
-import type { GraphType, PropertyKind, PropertyMap, PropertySpec, ValueSpec } from "./definitions/types";
+import { type GraphType, type PropertyKind, type PropertyMap, type PropertySpec, type ValueSpec, describeCondition } from "./definitions/types";
 import { PLAIN_TEXT_PATTERN } from "./format";
 import type { Range } from "./result";
 import { namedColors } from "./style";
@@ -68,6 +68,16 @@ function describeValue(spec: ValueSpec): string {
   return notes.join(" ");
 }
 
+/**
+ * A property's description: its value's, with the condition only the validator checks stated as a
+ * note, in the validator's own words (`describeCondition`; code review CR-006, quality review
+ * QR-003).
+ */
+function describeProperty(spec: PropertySpec): string {
+  const note = spec.appliesWhen === undefined ? [] : [`Give it ${describeCondition(spec.appliesWhen.term, spec.appliesWhen.values)}.`];
+  return [describeValue(spec), ...note].join(" ");
+}
+
 /** The schema of one value. In the tool profile, an optional value also accepts `null`. */
 function valueSchema(spec: ValueSpec, profile: Profile, nullable: boolean): JsonSchema {
   const jsonType = JSON_TYPE[spec.kind];
@@ -108,11 +118,7 @@ function objectSchema(properties: PropertyMap, profile: Profile, extra: Record<s
   for (const spec of Object.values(properties)) {
     const optionalInTool = profile === "tool" && !spec.required;
     schemas[spec.term] = valueSchema(spec, profile, optionalInTool);
-    // A condition only the validator checks, stated from the definition itself (code review CR-006).
-    if (spec.appliesWhen !== undefined) {
-      const { term, values } = spec.appliesWhen;
-      schemas[spec.term]!["description"] += ` Give it only when ${term} is ${values.map((value) => JSON.stringify(value)).join(" or ")}.`;
-    }
+    schemas[spec.term]!["description"] = describeProperty(spec);
     // The strict profile lists every property as required; optional ones accept null instead.
     if (spec.required || profile === "tool") required.push(spec.term);
   }

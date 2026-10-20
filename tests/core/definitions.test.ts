@@ -252,6 +252,12 @@ describe("terms that apply only while a sibling has given values (GSV-REQ-051)",
     for (const definition of [...allDefinitions(), conditionalRuler]) expect(conditionProblems(definition), definition.type).toEqual([]);
   });
 
+  it("hold the test-only conditional ruler to the other definition rules too (quality review QR-005)", () => {
+    // Outside allDefinitions(): it does not nest the shared label and color, which list ruler.
+    expect(stageProblems(conditionalRuler)).toEqual([]);
+    expect(vocabularyProblems(conditionalRuler.properties)).toEqual([]);
+  });
+
   it("are caught when they name no sibling enum or a value outside its list", () => {
     const division = conditionalRuler.properties["smallestDivision"]!;
     const broken = (appliesWhen: { term: string; values: readonly [string, ...string[]] }) =>
@@ -461,6 +467,9 @@ function stageProblems(definition: GraphTypeDefinition): string[] {
     for (const input of [...check.inputs, ...(check.optionalInputs ?? [])]) {
       if (!pathExists(properties, input)) problems.push(`${definition.type}: check "${check.name}" reads ${input}, which is not a property path`);
     }
+    for (const input of check.optionalInputs ?? []) {
+      if (check.inputs.includes(input)) problems.push(`${definition.type}: check "${check.name}" lists ${input} as both required and optional`);
+    }
   }
   return problems;
 }
@@ -483,7 +492,7 @@ describe("derivation groups and domain checks are well formed (GSV-REQ-035)", ()
           derive: (term: string, value: number) => (term === "diameter" ? { diameter: value } : { diameter: value, circumference: value }),
         },
       ],
-      checks: [{ name: "reads nothing real", inputs: ["sparkle", "radius/*", "radius"], optionalInputs: ["glitter"], check: () => [] }],
+      checks: [{ name: "reads nothing real", inputs: ["sparkle", "radius/*", "radius"], optionalInputs: ["glitter", "radius"], check: () => [] }],
     } as unknown as GraphTypeDefinition;
     const problems = stageProblems(bad);
     expect(problems).toContain("circle: a group lists a member twice");
@@ -494,6 +503,7 @@ describe("derivation groups and domain checks are well formed (GSV-REQ-035)", ()
     expect(problems).toContain('circle: check "reads nothing real" reads sparkle, which is not a property path');
     expect(problems).toContain('circle: check "reads nothing real" reads radius/*, which is not a property path');
     expect(problems).toContain('circle: check "reads nothing real" reads glitter, which is not a property path');
+    expect(problems).toContain('circle: check "reads nothing real" lists radius as both required and optional');
     expect(problems).not.toContain('circle: check "reads nothing real" reads radius, which is not a property path');
 
     const unbounded = {
