@@ -1,11 +1,12 @@
 import type { DescriptionBase, DomainCheck } from "./definitions/types";
+import { formatSupplied } from "./format";
 import { createIssue, pointer } from "./issues";
 import type { Issue } from "./result";
 
-// The value scale of the data graphs (DGP-REQ-005..009): its arithmetic and checks, in core so the
-// validator and the layouts share one rule (DGP TICKET-001 quality review QR-005). A future shared
-// tick rule (the number line's, NLC TICKET-001) belongs here too, not in the layout kit, which core
-// cannot import.
+// The value scale of the data graphs (DGP-REQ-005..009) and the axis ticks of the number line and
+// coordinate graphs (NLC-REQ-004, NLC-REQ-005): their arithmetic and checks, in core so the
+// validator and the layouts share one rule (DGP TICKET-001 quality review QR-005). Both choose
+// intervals with `niceInterval`, parameterised by how many intervals they aim at.
 
 /**
  * The largest magnitude of a value-scale end, and the bound each data graph puts on its values, so
@@ -193,11 +194,14 @@ export function valueTicks(scale: ValueScale): number[] {
   return ticks;
 }
 
-/** `too_many_ticks` for the tick interval, with a finite count and a finite interval that fits. */
-function tooManyTicks(tickCount: number, span: number): Issue {
+/**
+ * `too_many_ticks` at `path`, with a finite count and a finite interval that fits: a value scale's
+ * tick interval or an axis's tick spacing.
+ */
+export function tooManyTicks(path: string, term: string, tickCount: number, span: number): Issue {
   const fitting = niceInterval(span, MAX_VALUE_TICKS - 1);
-  return createIssue("too_many_ticks", scalePath("tickInterval"), {
-    term: scaleTerm("tickInterval"),
+  return createIssue("too_many_ticks", path, {
+    term,
     tickCount: Number.isFinite(tickCount) ? Math.min(Math.floor(tickCount), Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER,
     maxTicks: MAX_VALUE_TICKS,
     fittingSpacing: Number.isFinite(fitting) ? fitting : niceInterval(2 * VALUE_LIMIT, MAX_VALUE_TICKS - 1),
@@ -275,7 +279,7 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
     const [low, high] = extent(numbers);
     const roughSpan = (given.maximum ?? high) - (given.minimum ?? (options.allowNegative ? low : 0));
     if (roughSpan / interval >= MAX_VALUE_TICKS) {
-      issues.push(tooManyTicks(roughSpan / interval + 1, roughSpan));
+      issues.push(tooManyTicks(scalePath("tickInterval"), scaleTerm("tickInterval"), roughSpan / interval + 1, roughSpan));
       return issues;
     }
     tooSmall("tickInterval");
@@ -323,7 +327,7 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
 
   if (interval !== undefined && intervalValid) {
     const { count, exact } = intervalsIn(span, interval);
-    if (count + 1 > MAX_VALUE_TICKS) issues.push(tooManyTicks(count + 1, span));
+    if (count + 1 > MAX_VALUE_TICKS) issues.push(tooManyTicks(scalePath("tickInterval"), scaleTerm("tickInterval"), count + 1, span));
     else if (!exact) {
       issues.push(createIssue("tick_interval_not_dividing", scalePath("tickInterval"), { term: scaleTerm("tickInterval"), got: interval }));
     }
@@ -336,4 +340,79 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
     }
   }
   return issues;
+}
+
+/**
+ * How many intervals an axis's chosen tick spacing aims at: at most 19, so at most 20 ticks. The
+ * candidates 1, 2 and 5 × 10ⁿ are at most 2.5 times apart, so the spacing chosen gives more than
+ * 19 / 2.5 intervals, and every range 0.001 to 10⁶ wide gets between 7 and 20 ticks (NLC-REQ-005).
+ */
+export const AXIS_DEFAULT_INTERVALS = 19;
+
+/**
+ * The index range `first..last` of the multiples `k × spacing` inside `[min, max]`, allowing for
+ * decimal noise at the ends (0.3 / 0.1 counts as 3). Arithmetic only: never lists a tick.
+ */
+function multiplesIn(min: number, max: number, spacing: number): { first: number; last: number } {
+  return { first: ceilWhole(min / spacing), last: floorWhole(max / spacing) };
+}
+
+/**
+ * How many ticks an axis from `min` to `max` draws with `spacing`: the whole multiples of the
+ * spacing inside the range, counted arithmetically, so a spacing of 1e-300 is counted, never
+ * listed (NLC-REQ-008). Infinity when the count overflows.
+ */
+// @spec NLC-REQ-004, NLC-REQ-008
+export function tickCount(min: number, max: number, spacing: number): number {
+  const { first, last } = multiplesIn(min, max, spacing);
+  const count = last - first + 1;
+  return Number.isFinite(count) ? Math.max(0, count) : Number.POSITIVE_INFINITY;
+}
+
+/** The spacing an axis draws with: the given one, else 1, 2 or 5 × 10ⁿ for 7 to 20 ticks (NLC-REQ-005). */
+// @spec NLC-REQ-005
+export function axisSpacing(min: number, max: number, spacing?: number): number {
+  return spacing ?? niceInterval(max - min, AXIS_DEFAULT_INTERVALS);
+}
+
+/**
+ * An axis's ticks (NLC-REQ-004, NLC-REQ-005): every whole multiple `k × spacing` inside
+ * `[min, max]`, endpoints included, anchored at zero, so zero is ticked whenever the range holds
+ * it and an endpoint off the grid gets no tick. Each tick is `k × spacing` for an integer `k`,
+ * never a running sum, with decimal noise removed (0.1-spaced ticks give 0.3, not
+ * 0.30000000000000004); values are not rounded otherwise. Without a spacing, it is 1, 2 or
+ * 5 × 10ⁿ, giving 7 to 20 ticks (`AXIS_DEFAULT_INTERVALS`). An axis the validator would refuse
+ * (an empty range, a spacing of 0 or less, more than `MAX_VALUE_TICKS` ticks) is a layout bug and
+ * throws rather than listing millions.
+ */
+// @spec NLC-REQ-004, NLC-REQ-005
+export function niceTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } {
+  const used = axisSpacing(min, max, spacing);
+  const { first, last } = multiplesIn(min, max, used);
+  const count = tickCount(min, max, used);
+  if (!(used > 0) || !(max > min) || !Number.isSafeInteger(first) || !Number.isSafeInteger(last) || !(count <= MAX_VALUE_TICKS)) {
+    throw new RangeError(`niceTicks(): ${used} does not give a drawable number of ticks from ${min} to ${max}`);
+  }
+  const ticks: number[] = [];
+  // A bounded counter: at most `MAX_VALUE_TICKS` turns.
+  for (let j = 0; j < count; j++) ticks.push(onGrid((first + j) * used, used));
+  return { spacing: used, ticks };
+}
+
+/** The number of decimal places in `spacing` written out in full: 0.25 → 2, 2 → 0, 1e-7 → 7. */
+function decimalPlaces(spacing: number): number {
+  const text = formatSupplied(Math.abs(spacing));
+  const point = text.indexOf(".");
+  return point < 0 ? 0 : text.length - point - 1;
+}
+
+/**
+ * A tick's label (NLC-REQ-004, Behaviors & Rules → Ticks): its value with no more decimal places
+ * than the spacing needs, and trailing zeros dropped: spacing 0.25 gives "0.75" and "0.5",
+ * spacing 2 gives "4". Never in exponent form and never "-0".
+ */
+// @spec NLC-REQ-004
+export function axisTickLabel(value: number, spacing: number): string {
+  const rounded = Number(value.toFixed(Math.min(100, decimalPlaces(spacing))));
+  return formatSupplied(rounded === 0 ? 0 : rounded);
 }

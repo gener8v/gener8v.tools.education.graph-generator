@@ -141,3 +141,16 @@ Defines the three axis-based graph types: number lines, two-dimensional (x, y) c
 - Assumption: Graphs are static figures; interaction is out of scope per the PRD
 - Assumption: The x,y,z projection is fixed until OQ-003 is answered
 - Assumption: A text alternative is required for every figure, as education material must be usable with assistive technology
+
+## @spec Coverage
+
+| Requirement | Code Location(s) |
+|-------------|-----------------|
+| NLC-REQ-002 | `src/core/definitions/axis.ts`:axisProperties, axisProperty |
+| NLC-REQ-003 | `src/core/definitions/axis.ts`:axisProperties |
+| NLC-REQ-004 | `src/core/definitions/axis.ts`:axisProperties; `src/core/value-scale.ts`:tickCount, niceTicks, axisTickLabel; `src/layout/kit/axis.ts`:drawAxis |
+| NLC-REQ-005 | `src/core/definitions/axis.ts`:axisProperties; `src/core/value-scale.ts`:axisSpacing, niceTicks |
+| NLC-REQ-006 | `src/core/definitions/axis.ts`:axisProperties; `src/layout/kit/axis.ts`:drawAxis |
+| NLC-REQ-007 | `src/layout/kit/axis.ts`:drawAxis (ticks; points and segments with NLC TICKET-002..004) |
+| NLC-REQ-008 | `src/core/value-scale.ts`:tickCount; `src/core/definitions/axis.ts`:axisChecks |
+| NLC-REQ-009 | `src/core/definitions/axis.ts`:axisChecks |
