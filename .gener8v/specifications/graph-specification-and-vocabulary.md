@@ -9,8 +9,8 @@ Defines the one way every graph is described: a single unified JSON description 
 **Parent PRD:** Curricular Graph Generator
 **Requirement prefix:** GSV
 **Status:** Approved
-**Approved by:** Product Owner — Thomas, 2026-10-04
-**Related Capabilities:** Number Lines & Coordinate Graphs, Data Graphs & Pictographs, Geometric Shapes & Solids (each defines the type-specific parameters this area's description carries); Component Packaging & Source Export (exposes the single entry point, the schema and the model tool built on this area)
+**Approved by:** Product Owner — Thomas Eaves, 2026-10-20 (`rulers` amendment; previously Product Owner — Thomas, 2026-10-04)
+**Related Capabilities:** Number Lines & Coordinate Graphs (including rulers), Data Graphs & Pictographs, Geometric Shapes & Solids (each defines the type-specific parameters this area's description carries); Component Packaging & Source Export (exposes the single entry point, the schema and the model tool built on this area)
 
 ## Functional Requirements
 
@@ -18,7 +18,7 @@ Defines the one way every graph is described: a single unified JSON description 
 
 - **GSV-REQ-001** *(must · change: graph-library)*: The system should accept one JSON object as the complete description of a graph, for every supported graph type
 - **GSV-REQ-002** *(must · change: graph-library)*: The system should identify the graph type of a description from a single required graph-type field in that description
-- **GSV-REQ-003** *(must · change: graph-library)*: The system should support exactly these graph types in this change: number line, x,y coordinate graph, x,y,z coordinate graph, line graph, bar graph, pictograph, circle, square, triangle, cube, cylinder
+- **GSV-REQ-003** *(must · change: graph-library)*: The system should support exactly these graph types in this change: number line, ruler, x,y coordinate graph, x,y,z coordinate graph, line graph, bar graph, pictograph, circle, square, triangle, cube, cylinder *(amended 2026-10-20 by rulers)*
 - **GSV-REQ-004** *(must · change: graph-library)*: The system should accept a description of any supported graph type through a single point of entry, without the caller choosing a type-specific entry
 - **GSV-REQ-005** *(must · change: graph-library)*: The system should accept only plain JSON data in a description (objects, arrays, strings, finite numbers, booleans, null), so that a description survives serialization and deserialization without change
 - **GSV-REQ-006** *(must · change: graph-library)*: The system should accept an optional schema-version field in a description and treat a description without one as written for the current schema version
@@ -73,12 +73,21 @@ Defines the one way every graph is described: a single unified JSON description 
 
 ### Presentation Options
 
-- **GSV-REQ-040** *(must · change: graph-library)*: The system should accept line color, line label, axis labels, title and point labels on every graph type to which each applies
+- **GSV-REQ-040** *(must · change: graph-library)*: The system should accept line color, line label, axis labels, title, point labels, and a measured object's label and color on every graph type to which each applies *(amended 2026-10-20 by rulers)*
 - **GSV-REQ-041** *(must · change: graph-library)*: The system should report a presentation option given for a graph type to which it does not apply
 - **GSV-REQ-042** *(must · change: graph-library)*: The system should accept a color as a named color from a published list of plain-English color names or as a hexadecimal color code
 - **GSV-REQ-043** *(must · change: graph-library)*: The system should accept labels and titles as plain text, never as markup
 - **GSV-REQ-044** *(must · change: graph-library)*: The system should apply one published default style (colors, line widths, text size, font) to every graph type when presentation options are omitted
 - **GSV-REQ-045** *(must · change: graph-library)*: The system should apply a presentation option only to the element it names, leaving every other element at its default
+
+### Ruler Vocabulary
+
+- **GSV-REQ-046** *(must · change: rulers)*: The system should define vocabulary terms, each with a plain-English definition, for a ruler's unit and a ruler's length
+- **GSV-REQ-047** *(must · change: rulers)*: The system should define a vocabulary term, with a plain-English definition, for an inch ruler's smallest division
+- **GSV-REQ-048** *(must · change: rulers)*: The system should define vocabulary terms, each with a plain-English definition, for a measured object lying along a ruler and for that object's start mark and end mark
+- **GSV-REQ-049** *(must · change: rulers)*: The system should accept a ruler's unit only as a name from a fixed, published list of unit names, and report any other value, listing the accepted names
+- **GSV-REQ-050** *(must · change: rulers)*: The system should accept an inch ruler's smallest division only as one of a fixed, published list of divisions (a half, a quarter, an eighth, a sixteenth of an inch), and report any other value, listing the accepted divisions
+- **GSV-REQ-051** *(must · change: rulers)*: The system should report a smallest division given on a ruler whose unit is not inches, as a property that does not apply to that ruler
 
 ## Non-Functional Requirements
 
@@ -105,6 +114,12 @@ Defines the one way every graph is described: a single unified JSON description 
 - A supplied dependent value agrees when it is within 1% (relative) of the derived value, so that values computed with π ≈ 3.14 or π ≈ 22/7 are accepted
 - When values disagree, the issue should name every property involved and state the value that would agree
 
+### Rulers
+
+- A ruler's unit is a property of the ruler, given once; a ruler's length and its object's start and end marks are plain numbers in that unit, never strings carrying a unit ("5 cm")
+- The unit names and the division names follow the vocabulary's spelling, as for `color`; spelling variants and abbreviations ("centimetres", "cm", "in") are reported, listing the accepted names, consistent with the strict vocabulary of OQ-002
+- The ruler's own rules (whole-number lengths, maximum lengths, object marks on drawn marks) are Number Lines & Coordinate Graphs' (NLC-REQ-040..056); this area owns the terms, the type's place in the schema and the reports' shape
+
 ### Presentation
 
 - When a color name is not in the published list and is not a valid hexadecimal code, the system should report it and list the accepted color names
@@ -123,6 +138,11 @@ Defines the one way every graph is described: a single unified JSON description 
 | Label text is empty | The system should treat an empty label as no label |
 | Label text is very long | The system should accept it; how it is laid out is the rendering area's concern |
 | Supplied dependent value differs by just over 1% | The system should report a contradiction stating the derived value |
+| Ruler unit written as an abbreviation or another spelling ("cm", "centimetres") | The system should report it per GSV-REQ-049, listing the accepted unit names |
+| Ruler length written with its unit ("5 cm") | The system should report a wrong-kind issue: a length is a number |
+| Smallest division given as a number of divisions (16) or a fraction value (0.0625) where a division name is expected | The system should report it per GSV-REQ-050, listing the accepted divisions |
+| Smallest division given on a centimetre ruler | The system should report it per GSV-REQ-051 |
+| Measured object given on a graph type other than a ruler | The system should report it as a property that does not apply (GSV-REQ-019) |
 | Description written for a newer, unsupported schema version | The system should report an unsupported-version issue and not attempt further checks |
 
 ## States & Transitions
@@ -136,6 +156,7 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 - The system should hold the vocabulary terms with their plain-English definitions
 - The system should hold the issue-code set with a documented meaning for each code
 - The system should hold the named-color list and the default style
+- The system should hold the published list of ruler unit names and the published list of inch-ruler divisions
 - The system should return, in a validation result: validity, the normalized description (valid) or the issue list (invalid)
 
 ## User Interactions
@@ -150,7 +171,7 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 - [ ] **OQ-002**: Should synonyms and plurals be accepted (for example, `diam` or `radii`), or is the vocabulary strictly one term per concept? Assumed strict, with suggestions
 - [ ] **OQ-003**: Is a 1% relative tolerance right for supplied dependent values, and should a description be able to set its own tolerance?
 - [ ] **OQ-004**: Should area, perimeter and volume be derived and labelable values, or only the measurements the PRD names (radius, diameter, circumference, side, edge, height)?
-- [ ] **OQ-005**: Should units (cm, in, students) be part of a value, or a separate label-only property? (Carried from PRD)
+- [ ] **OQ-005**: Should units (cm, in, students) be part of a value, or a separate label-only property? (Carried from PRD) — For rulers, settled by the `rulers` amendment: the unit is a separate property of the ruler and values are plain numbers; open for other types
 - [ ] **OQ-006**: Which named colors are in the published list?
 - [ ] **OQ-007**: Some model providers support only a subset of JSON Schema in tool definitions; must the published schema stay within a stated subset? (Carried from PRD)
 - [ ] **OQ-008**: What is the policy when the schema version changes: does the system keep accepting older versions, and for how long? (Carried from PRD)
@@ -161,6 +182,8 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 - Assumption: Validation is strict — unknown and inapplicable properties are errors, not warnings, so a model's mistakes are always surfaced
 - Assumption: The type-specific parameters (ranges, points, series, side lengths and so on) are defined by the three rendering areas and enter this area's single definition; this area owns the mechanism, the shared properties and the rules that apply across types
 - Assumption: Parsing JSON text into an object is done by the caller or by the model-tool handler in Component Packaging & Source Export
+- Assumption: The ruler type falls under every requirement and NFR here worded for every graph type (validation, schema, vocabulary documentation, the validation benchmark and the schema-agreement test); this amendment adds only what is ruler-specific
+- Assumption: The accepted unit names are the US spellings `centimeters` and `inches`, matching the vocabulary's US spelling (`color`)
 
 ## @spec Coverage
 

@@ -19,7 +19,7 @@ Measuring length is a core strand of early-grade mathematics, and worksheets ask
 | Area | Kind | Requirements |
 |------|------|--------------|
 | Number Lines & Coordinate Graphs | modifies | Adds NLC-REQ-040..056, NLC-NFR-005..008; Modifies NLC-REQ-001; Withdraws — |
-| Graph Specification & Vocabulary | modifies | (pending specification) |
+| Graph Specification & Vocabulary | modifies | Adds GSV-REQ-046..051; Modifies GSV-REQ-003, GSV-REQ-040; Withdraws — |
 
 ## Priority Cut
 - **Must:** centimetre rulers with millimetre and half-centimetre marks; inch rulers with half, quarter, eighth and sixteenth marks; an object lying along a ruler from any start mark to any end mark
@@ -45,3 +45,4 @@ Measuring length is a core strand of early-grade mathematics, and worksheets ask
 - 2026-10-19 — opened (Planning)
 - 2026-10-19 — approved by Product Owner (Planning)
 - 2026-10-20 — NLC specification amended: adds NLC-REQ-040..056 and NLC-NFR-005..008, modifies NLC-REQ-001, withdraws none; OQ-001..004 answered by the Product Owner (Specification)
+- 2026-10-20 — GSV specification amended: adds GSV-REQ-046..051, modifies GSV-REQ-003 and GSV-REQ-040, withdraws none (Specification)
