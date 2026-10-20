@@ -77,6 +77,9 @@
   - Wrap every label with `wrap(text, maxWidth, fontSize, maxLines)`, as the circle does with `LABEL_MAX_LINES` (4), and draw titles with `titleBlock`, which caps them at `TITLE_MAX_LINES` (3). The cut line ends in "…" (DEL-008), so the Scene stays small however long the description's text. Say so in the label-text descriptions, and keep the full text in the text alternative.
   - In `describe`, state measurements with `stateMeasurement(value, source, unit)` (`src/core/format.ts`), not `formatMeasurement`. It quotes a unit that is not unit-shaped, so the unit cannot read as the package's own sentence. Drawn labels keep `measurementLabel` / `formatMeasurement`.
   - Add a test that a valid description with half a megabyte of unit or label text renders in `<Graph>` and the type's component without throwing, with a bounded number of text nodes.
+- Carried from graph-library/geometric-shapes-and-solids-ticket-001-security-review/SEC-002 (overflow in the projection):
+  - `isometric()` (`src/layout/kit/isometric.ts`) overflows for finite coordinates from about 9e307: `(x + y) / 2` and `y − x` become ±Infinity, and even a point on the line of sight, which projects exactly to (0, 0), comes out as (0, Infinity). `fmt()` then throws, so `createGraph` fails closed with `internal_error`, which is still a bug for a valid description.
+  - Scale each axis's values into drawing units first, then project: never pass raw axis values to `isometric()`. Add a `createGraph` test at the axis limits (NLC TICKET-001's bound, both signs) that the result is not `internal_error`.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-005

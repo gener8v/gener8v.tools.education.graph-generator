@@ -88,6 +88,20 @@ describe("visible faces", () => {
     expect(ty).toBeLessThan(0);
   });
 
+  it("keeps the face table on a null prototype, so polluting Object.prototype changes no face (security review SEC-001)", () => {
+    expect(Object.getPrototypeOf(VISIBLE_FACES)).toBeNull();
+    const prototype = Object.prototype as Record<string, unknown>;
+    prototype["front"] = [1, 1, 1];
+    try {
+      expect((VISIBLE_FACES as Record<string, unknown>)["front"]).toBeUndefined();
+      expect((VISIBLE_FACES as Record<string, unknown>)["constructor"]).toBeUndefined();
+      expect(Object.keys(VISIBLE_FACES)).toEqual(["left", "right", "top"]);
+      expect(Object.values(VISIBLE_FACES).map((normal) => faceVisible(normal))).toEqual([true, true, true]);
+    } finally {
+      delete prototype["front"];
+    }
+  });
+
   it("hides exactly the 3 edges of a unit cube that meet at its back bottom corner, the origin", () => {
     // Each of the 12 edges runs along one axis; the faces it joins are the ones its two fixed
     // coordinates lie on: −axis at 0, +axis at 1. An edge is hidden when both faces are.

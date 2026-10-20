@@ -43,12 +43,18 @@ export function isometric(x: number, y: number, z: number): [number, number] {
   return [ISO_SCALE * COS_30 * (y - x), ISO_SCALE * ((x + y) / 2 - z)];
 }
 
-/** The outward normals of the three faces the viewpoint shows: left front (+x), right front (+y) and top (+z). */
-export const VISIBLE_FACES = Object.freeze({
-  left: Object.freeze([1, 0, 0] as const),
-  right: Object.freeze([0, 1, 0] as const),
-  top: Object.freeze([0, 0, 1] as const),
-});
+/**
+ * The outward normals of the three faces the viewpoint shows: left front (+x), right front (+y) and
+ * top (+z). On a null prototype, so a name it does not hold reads as undefined, never as an
+ * inherited value (security review SEC-001).
+ */
+export const VISIBLE_FACES: { readonly left: Point3; readonly right: Point3; readonly top: Point3 } = /* @__PURE__ */ Object.freeze(
+  Object.assign(Object.create(null) as object, {
+    left: Object.freeze([1, 0, 0] as const),
+    right: Object.freeze([0, 1, 0] as const),
+    top: Object.freeze([0, 0, 1] as const),
+  }),
+);
 
 /**
  * Whether a flat face with outward normal `normal` faces the viewer, so its edges are drawn solid

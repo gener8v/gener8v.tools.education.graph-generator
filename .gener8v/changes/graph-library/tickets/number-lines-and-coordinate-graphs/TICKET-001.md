@@ -70,6 +70,9 @@
   - Validation needs the tick rule too, and core cannot import the layout kit. So put the number line's tick arithmetic (the default spacing, the tick count, multiples anchored at zero) in core, and share or extend `src/core/value-scale.ts`, rather than building a second rule in `src/layout/kit/ticks.ts`.
   - Keep only drawing helpers in the kit, and reuse `tickLabel` from `src/layout/kit/value-scale.ts` (which prints with `formatSupplied`) unless NLC's label-decimals rule differs. If it does, record why.
   - NLC aims at 5–20 ticks; the data graphs aim at no more than 10 intervals. Give both rules one home, parameterised.
+- Carried from graph-library/geometric-shapes-and-solids-ticket-001-security-review/SEC-002 (overflow in the projection):
+  - Bound every axis minimum, maximum and tick spacing to a published limit (for example ±1e9, as DGP's `VALUE_LIMIT` does), reported as `out_of_range`, and state it in the property descriptions. Without a bound, x,y,z graphs (NLC TICKET-004) can hand `isometric()` values that overflow:
+  - `isometric()` (`src/layout/kit/isometric.ts`) overflows for finite coordinates from about 9e307: `(x + y) / 2` and `y − x` become ±Infinity, and even a point on the line of sight, which projects exactly to (0, 0), comes out as (0, Infinity). `fmt()` then throws, so `createGraph` fails closed with `internal_error`, which is still a bug for a valid description.
 
 **Depends On:** None
 **Blocks:** TICKET-002, TICKET-003, TICKET-004

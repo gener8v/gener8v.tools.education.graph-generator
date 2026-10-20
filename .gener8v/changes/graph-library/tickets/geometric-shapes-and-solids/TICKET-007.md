@@ -68,6 +68,9 @@
   - `isoEllipse` gives `rx = r`: a horizontal circle's left-to-right extent is parallel to the page and draws at full length, while the height draws `h × ISO_SCALE`. A radius drawn from the top centre straight across the page to the ellipse's end (the specification's default "horizontally to the right") therefore draws r : h × ISO_SCALE, 22.5% off GSS-REQ-030 for r 2, h 5.
   - Draw the radius (and a diameter) on the top face along a projected horizontal axis instead: from `isometric(x0, y0, h)` to `isometric(x0 + r, y0, h)` (or along y). That end lies on the `isoEllipse` ellipse, and the segment shares the height's scale, so their drawn ratio is the measurements' ratio. Document that direction as the cylinder's "otherwise documented" radius direction.
   - Never divide `rx` or `ry` by `ISO_SCALE` to recover a length; compare along projected axes. If the Product Owner prefers the radius across the page, the specification needs a stated exception to GSS-REQ-030 first.
+- Carried from graph-library/geometric-shapes-and-solids-ticket-001-security-review/SEC-002 (overflow in the projection):
+  - `isometric()` (`src/layout/kit/isometric.ts`) overflows for finite coordinates from about 9e307: `(x + y) / 2` and `y − x` become ±Infinity, and even a point on the line of sight, which projects exactly to (0, 0), comes out as (0, Infinity). `fmt()` then throws, so `createGraph` fails closed with `internal_error`, which is still a bug for a valid description.
+  - Scale the radius and height into drawing units before projecting, and add a `createGraph` test at their limits that the result is not `internal_error`.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-008

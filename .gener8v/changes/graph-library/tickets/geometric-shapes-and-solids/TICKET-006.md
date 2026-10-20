@@ -66,6 +66,9 @@
 - Carried from graph-library/geometric-shapes-and-solids-ticket-001-code-review/CR-004 (the projection's front and back corners coincide):
   - In true isometric the line of sight runs along the cube's main diagonal, so the front top corner (a, a, a) and the hidden back bottom corner (0, 0, 0) both project to the same point. The cube draws as a regular hexagon whose centre joins the three visible edges (toward the upper left, the upper right and straight down) and the three hidden ones (toward the lower left, the lower right and straight up), alternating 60° apart.
   - The labels for "the three visible edges meeting at the front corner" sit inside the hexagon, between the dashed hidden edges. Pass the hidden edges to `placeLabel` as obstacles, as well as the visible ones, so no label sits on a dashed line (GSS-NFR-003).
+- Carried from graph-library/geometric-shapes-and-solids-ticket-001-security-review/SEC-002 (overflow in the projection):
+  - `isometric()` (`src/layout/kit/isometric.ts`) overflows for finite coordinates from about 9e307: `(x + y) / 2` and `y − x` become ±Infinity, and even a point on the line of sight, which projects exactly to (0, 0), comes out as (0, Infinity). `fmt()` then throws, so `createGraph` fails closed with `internal_error`, which is still a bug for a valid description.
+  - Scale the edge length into drawing units before projecting, and add a `createGraph` test at the edge-length limit that the result is not `internal_error`.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-008

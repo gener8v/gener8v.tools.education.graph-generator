@@ -165,3 +165,9 @@ GSS-REQ-032 is met only in part here: this ticket supplies the one documented vi
 - **QR-002:** a new test pins `VISIBLE_FACES`' normals and where each named face is drawn. The cube-edge test enumerates the 12 edges and asserts that the hidden ones are exactly the three from the origin.
 - **QR-003:** `VIEW_DIRECTION` is declared from 1/√3, and `ELLIPSE_RATIO` is derived from it (its upward component), so the ratio follows from the viewpoint.
 - **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,112 tests) exits 0 on three runs. Four deliberate breaks of the fixes each fail a test.
+
+### Security review — `graph-library/geometric-shapes-and-solids-ticket-001-security-review` (2026-10-20, Approved)
+
+- **SEC-001:** `VISIBLE_FACES` is built on a null prototype (frozen, `/* @__PURE__ */`), so a name it does not hold reads as undefined rather than an inherited value. A test pollutes `Object.prototype` and checks that the table and every face's visibility are unchanged.
+- **SEC-002:** finite coordinates from about 9e307 overflow inside `isometric()`; `fmt()` then fails the graph closed as `internal_error`. Deferred with Known Hazards: NLC TICKET-001 bounds axis values, and NLC TICKET-004 and GSS TICKET-006 and TICKET-007 scale into drawing units before projecting, each with a `createGraph` test at its limits.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,113 tests) exits 0 on three runs. Reverting the table to a plain object fails the new test.
