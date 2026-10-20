@@ -54,14 +54,46 @@ export const conditionalRuler: GraphTypeDefinition = {
         },
       }),
     },
+    // And inside list elements, where the sibling's name carries its position.
+    extras: {
+      term: "extras",
+      kind: "array",
+      required: false,
+      maxItems: 3,
+      description: "More sets of markings, for conditions in list elements.",
+      items: {
+        kind: "object",
+        description: "One set of markings.",
+        properties: defineProperties({
+          unit: {
+            term: "unit",
+            kind: "enum",
+            required: true,
+            values: ["centimeters", "inches"],
+            valueDescriptions: { centimeters: "Marked in centimetres and millimetres.", inches: "Marked in inches and fractions of an inch." },
+            description: "The unit a ruler is marked in.",
+          },
+          smallestDivision: {
+            term: "smallestDivision",
+            kind: "enum",
+            required: false,
+            values: ["half", "quarter", "eighth", "sixteenth"],
+            description: "An inch ruler's smallest division; applies only when unit is inches.",
+            appliesWhen: { term: "unit", values: ["inches"] },
+          },
+        }),
+      },
+    },
   }),
   derivations: [],
   checks: [
     {
-      name: "a sixteenth needs at least 2 units",
-      inputs: ["smallestDivision", "length"],
+      // Reads the division as optional: absent means the default sixteenth on an inch ruler.
+      name: "an inch ruler marked to sixteenths needs at least 2 units",
+      inputs: ["unit", "length"],
+      optionalInputs: ["smallestDivision"],
       check: (description) =>
-        description["smallestDivision"] === "sixteenth" && description["length"] === 1
+        description["unit"] === "inches" && (description["smallestDivision"] ?? "sixteenth") === "sixteenth" && description["length"] === 1
           ? [createIssue("out_of_range", "/length", { term: "length", got: 1, range: { min: 2 } })]
           : [],
     },

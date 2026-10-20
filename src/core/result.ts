@@ -26,11 +26,14 @@ export interface Issue {
   /** The kind of value the property accepts, e.g. "a number". */
   expected?: string;
   range?: Range;
-  /** JSON Pointers of the other properties involved in a contradiction. */
+  /**
+   * JSON Pointers of the other properties involved: in a contradiction, or the term a conditional
+   * term depends on (`inapplicable_property` with a condition).
+   */
   conflicts?: string[];
   /** The closest applicable vocabulary term, for an unknown property name. */
   suggestion?: string;
-  /** The accepted values: terms, graph types, color names or image names. */
+  /** The accepted values: terms, graph types, color names, image names, or a fixed list's values. */
   allowed?: string[];
 }
 

@@ -205,4 +205,31 @@ The existing rows for GSV-REQ-003 and GSV-REQ-040 already name these locations. 
 
 ## Post-Review Amendments
 
-None
+### Code review — `rulers/graph-specification-and-vocabulary-ticket-001-code-review` (2026-10-20, Approved)
+
+- **CR-001 (amends DEL-002):** when the sibling failed or is missing, the conditional term's own value is now checked, and only whether it applies goes unreported. Either way the term is left out and marked failed, with its provenance removed. So `{unit: "cm", smallestDivision: 16}` reports both values (GSV-REQ-017, AD-004), as `ordered` does, and `{unit: "cm", smallestDivision: "half"}` still reports one.
+- **CR-002:** `DomainCheck.optionalInputs` lists paths a check reads that may be absent. The check runs without them, and is skipped only when one failed (`src/core/validate/domain.ts`), and the definitions test checks those paths too.
+  - **Correction to the Notes:** listing `smallestDivision` in `inputs` would skip the check on every centimetre ruler and on every inch ruler using the default. List it in `optionalInputs`.
+  - The fixture's check uses it. NLC TICKET-002's CR-001 hazard is re-worded to say so.
+- **CR-003 (amends DEL-003):** the conditional `inapplicable_property` carries `conflicts: [<sibling's path>]`. Its message names the sibling in full ("spare.unit", "extras[1].unit") and reads "… applies to a ruler only when …". The top-level, nested and list cases are tested.
+- **CR-004:** `PropertySpec`'s annotation now lists GSV-REQ-051, matching the coverage row.
+- **CR-005:** deferred to rulers NLC TICKET-002. Its Known Hazard asks it to:
+  - build the unit and division lists from `RULER_UNITS` and `INCH_DIVISIONS`;
+  - give `smallestDivision` its `appliesWhen`;
+  - nest the shared label and color;
+  - annotate GSV-REQ-040 and 049..051, and update the coverage rows.
+- **CR-006:** both schemas state each condition in the term's description, generated from `appliesWhen` ("Give it only when unit is "inches"."), and the root rules mention conditional terms. `src/generated/schema.json` and `tool-schema.json` are regenerated (the root rules text).
+- **CR-007:** the definitions check refuses `appliesWhen` on a required property and on a sibling with a condition of its own, with tests. The doc comment states both rules.
+- **CR-008:** a value outside a fixed list also carries `allowed` (every accepted value), an optional field on `wrong_kind`, with no new code.
+- **CR-009:**
+  - The `definitions` and `PresentationOption` doc comments are updated.
+  - Graph-library GSV TICKET-006's hazard now also covers the `Record<GraphType, …>` tightening.
+  - AD-005's type list is left to the Technical Design skill.
+- **Re-verification:** `pnpm generate` (the root rules text), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,290 tests) exits 0 on three runs. Seven deliberate breaks of the fixes each fail a test:
+  - the value unchecked when the sibling failed;
+  - optional inputs ignored;
+  - no `conflicts`;
+  - a bare sibling name;
+  - no schema sentence;
+  - no `allowed`;
+  - the old wording.

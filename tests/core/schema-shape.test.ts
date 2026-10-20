@@ -355,4 +355,12 @@ describe("terms with fixed lists and conditions in the published vocabulary and 
     // Validation is stricter than the schema here, never looser (GSV-NFR-003).
     expect(ajv.validate(buildSchema(conditionalRegistry), description)).toBe(true);
   });
+
+  it("states each condition in the term's description in both schemas, from the definition (code review CR-006)", () => {
+    for (const schema of [buildSchema(conditionalRegistry), buildToolSchema(conditionalRegistry)]) {
+      const text = JSON.stringify(schema);
+      expect(text).toContain('Give it only when unit is \\"inches\\".');
+    }
+    expect(JSON.stringify(buildSchema(conditionalRegistry))).toContain("a term given only when another term has a stated value");
+  });
 });

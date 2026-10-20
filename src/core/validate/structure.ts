@@ -155,7 +155,8 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
           }),
         );
       }
-      return wrongKind(`one of: ${spec.values.join(", ")}`);
+      // A fixed list: every accepted value in the issue's data too (code review CR-008).
+      return fail(createIssue("wrong_kind", path, { term: place.term, got: value, expected: `one of: ${spec.values.join(", ")}`, allowed: spec.values }));
     }
     case "object": {
       const contents = isPlainObject(value) ? readObject(value) : undefined;
@@ -293,12 +294,15 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
 
 /**
  * A property that applies only while its sibling `appliesWhen.term` has one of `appliesWhen.values`
- * (GSV-REQ-051), decided after the sibling, so one fault gives one issue (AD-004):
+ * (GSV-REQ-051), decided after the sibling:
  * - the sibling passed with one of the values: the property is checked as usual;
  * - the sibling passed with another value, or is optional and absent: `inapplicable_property` at
- *   the property's path, stating the condition, and its value is not checked;
- * - the sibling failed, or is required and missing, which is already reported: the property is
- *   left out without an issue and marked failed, so checks that read it are skipped (DEL-002).
+ *   the property's path, naming the condition and, in `conflicts`, the sibling's path; its value is
+ *   not checked;
+ * - the sibling failed, or is required and missing: whether the property applies cannot be known,
+ *   so that is not reported, but its own value is still checked, so every problem is reported in
+ *   one pass (GSV-REQ-017; code review CR-001), as `ordered` checks each value on its own. Either
+ *   way it is left out and marked failed, so checks that read it are skipped (DEL-002).
  */
 // @spec GSV-REQ-051
 function checkConditional(
@@ -312,21 +316,29 @@ function checkConditional(
 ): void {
   const { term, values } = spec.appliesWhen!;
   const path = pointer(...at.segments);
-  const siblingPath = pointer(...child(place, term).segments);
-  const sibling = Object.hasOwn(normalized, term) ? normalized[term] : undefined;
-  const siblingSpec = propertySpec(properties, term);
-  if (sibling === undefined && (walk.failed.has(siblingPath) || siblingSpec?.required === true)) {
-    walk.failed.add(path);
+  const sibling = child(place, term);
+  const siblingPath = pointer(...sibling.segments);
+  const value = Object.hasOwn(normalized, term) ? normalized[term] : undefined;
+  if (value === undefined && (walk.failed.has(siblingPath) || propertySpec(properties, term)?.required === true)) {
+    checkValue(spec, element, at, walk, spec.presentation !== undefined);
+    leaveOut(path, walk);
     return;
   }
-  if (typeof sibling === "string" && (values as readonly string[]).includes(sibling)) {
+  if (typeof value === "string" && (values as readonly string[]).includes(value)) {
     const outcome = checkValue(spec, element, at, walk, spec.presentation !== undefined);
     if (outcome.kind === "passed") normalized[spec.term] = outcome.value;
     return;
   }
-  const condition = `only when ${term} is ${values.map((value) => JSON.stringify(value)).join(" or ")}`;
-  walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, condition }));
+  // The sibling's full name, so a nested or listed one reads "spare.unit" or "rulers[1].unit" (code review CR-003).
+  const condition = `only when ${sibling.term} is ${values.map((accepted) => JSON.stringify(accepted)).join(" or ")}`;
+  walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, condition, conflicts: [siblingPath] }));
   walk.failed.add(path);
+}
+
+/** Leave a checked value out of the result, as a failed value: no provenance, at its path or under it. */
+function leaveOut(path: string, walk: Walk): void {
+  walk.failed.add(path);
+  for (const key of Object.keys(walk.provenance)) if (key === path || key.startsWith(`${path}/`)) delete walk.provenance[key];
 }
 
 /**

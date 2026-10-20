@@ -59,7 +59,7 @@
 - Every caller string (the object's label) goes through `quoteText` in `describe` and is capped with `maxLength`, as the graph-library hazards require (GSS TICKET-002 SEC-001).
 - Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-001 (a refused division reaches domain checks as absent):
   - The validator leaves a refused value out of the description, so when an inch ruler's division is refused ("eighths", 8), the domain stage sees no division, and `divisionsPerUnit` / `rulerMarks` answer for sixteenths.
-  - Skip the off-mark check while the division is being reported: declare the division in the check's `inputs`, or test whether a division was supplied but failed, and say which in a DEL-XXX. Otherwise an end valid only at sixteenths is accepted on a ruler meant for eighths.
+  - Skip the off-mark check while the division is being reported: list `smallestDivision` in the check's `optionalInputs` (`DomainCheck`, added by rulers GSV TICKET-001's code review CR-002), so the check runs when the division is absent (the default sixteenth) and is skipped when it failed or does not apply. Do NOT list it in `inputs`: a check is skipped whenever an input is absent, so it would never run on a centimetre ruler or on an inch ruler at the default. Otherwise an end valid only at sixteenths is accepted on a ruler meant for eighths.
   - Only an absent (undefined) division takes the default. `null` is refused (`divisionsPerUnit` returns undefined).
 - Carried from rulers/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-003 (the ruler's ends):
   - Decide "on the ruler" and "on a mark" with the core rule, not a fresh comparison.
@@ -74,6 +74,12 @@
     - `locate(value)` returns `{ kind: "mark", index, value }`, `{ kind: "between", below, above }` (both on the ruler) or `{ kind: "off" }`, with one noise allowance at the ends and at every mark.
   - `isOnRuler`, `isRulerMark`, `rulerMarkIndex`, `nearestRulerMarks`, `divisionsPerUnit` and `rulerMarks` no longer exist. `marksPerUnit(unit, smallestDivision)` and `isRulerLength(unit, length)` remain.
   - Order an object's two ends by their mark `index`, not by their values. 0.3 and 0.1 + 0.2 pass a structural `ordered` check (0.3 > 0.30000000000000004 is false), yet both are mark 3. So report a start not before its end when `start.index >= end.index` (NLC-REQ-051), and report it once.
+- Carried from rulers/graph-specification-and-vocabulary-ticket-001-code-review/CR-005 (the ruler's own lists and term). GSV TICKET-001 delivered the mechanism, and this ticket gives GSV-REQ-049..051 their ruler:
+  - build `unit`'s `values` from `RULER_UNITS` and `smallestDivision`'s from `Object.keys(INCH_DIVISIONS)` (`src/core/ruler.ts`), so the lists cannot drift from the mark rule;
+  - give `smallestDivision` `appliesWhen: { term: "unit", values: ["inches"] }`, optional (a required conditional term is refused);
+  - nest `sharedProperties.label` and `.color` themselves in the measured object (GSV-REQ-040);
+  - annotate those specs `@spec GSV-REQ-040`, `GSV-REQ-049`, `GSV-REQ-050` and `GSV-REQ-051`, and update GSV's `## @spec Coverage` rows for GSV-REQ-049..051 to name `src/core/definitions/ruler.ts`.
+  The condition reaches the schemas' text and the vocabulary from `appliesWhen`, so do not repeat it in the term's own description.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-003

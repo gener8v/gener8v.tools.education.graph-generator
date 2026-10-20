@@ -240,7 +240,11 @@ describe("terms that apply only while a sibling has given values (GSV-REQ-051)",
         const sibling = map[spec.appliesWhen.term];
         const where = `${definition.type}: ${spec.term} applies when ${spec.appliesWhen.term}`;
         if (sibling?.kind !== "enum") return [`${where}, which is not a sibling enum term`];
-        return spec.appliesWhen.values.filter((value) => !sibling.values.includes(value)).map((value) => `${where} is ${value}, not one of its values`);
+        return [
+          ...spec.appliesWhen.values.filter((value) => !sibling.values.includes(value)).map((value) => `${where} is ${value}, not one of its values`),
+          ...(spec.required ? [`${where}, but is required, so it could never be satisfied`] : []),
+          ...(sibling.appliesWhen !== undefined ? [`${where}, which has a condition of its own`] : []),
+        ];
       }),
     );
 
@@ -254,6 +258,17 @@ describe("terms that apply only while a sibling has given values (GSV-REQ-051)",
       ({ ...conditionalRuler, properties: { ...conditionalRuler.properties, smallestDivision: { ...division, appliesWhen } } }) as GraphTypeDefinition;
     expect(conditionProblems(broken({ term: "length", values: ["inches"] }))).toEqual(["ruler: smallestDivision applies when length, which is not a sibling enum term"]);
     expect(conditionProblems(broken({ term: "unit", values: ["feet"] }))).toEqual(["ruler: smallestDivision applies when unit is feet, not one of its values"]);
+  });
+
+  it("are caught when the term is required, or its sibling has a condition of its own (code review CR-007)", () => {
+    const { unit, smallestDivision } = conditionalRuler.properties as Record<string, PropertyMap[string]>;
+    const required = { ...conditionalRuler, properties: { ...conditionalRuler.properties, smallestDivision: { ...smallestDivision!, required: true } } } as GraphTypeDefinition;
+    expect(conditionProblems(required)).toEqual(["ruler: smallestDivision applies when unit, but is required, so it could never be satisfied"]);
+    const chained = {
+      ...conditionalRuler,
+      properties: { ...conditionalRuler.properties, unit: { ...unit!, required: false, appliesWhen: { term: "smallestDivision", values: ["half"] } } },
+    } as GraphTypeDefinition;
+    expect(conditionProblems(chained)).toContain("ruler: smallestDivision applies when unit, which has a condition of its own");
   });
 });
 
@@ -443,7 +458,7 @@ function stageProblems(definition: GraphTypeDefinition): string[] {
     }
   }
   for (const check of definition.checks) {
-    for (const input of check.inputs) {
+    for (const input of [...check.inputs, ...(check.optionalInputs ?? [])]) {
       if (!pathExists(properties, input)) problems.push(`${definition.type}: check "${check.name}" reads ${input}, which is not a property path`);
     }
   }
@@ -468,7 +483,7 @@ describe("derivation groups and domain checks are well formed (GSV-REQ-035)", ()
           derive: (term: string, value: number) => (term === "diameter" ? { diameter: value } : { diameter: value, circumference: value }),
         },
       ],
-      checks: [{ name: "reads nothing real", inputs: ["sparkle", "radius/*", "radius"], check: () => [] }],
+      checks: [{ name: "reads nothing real", inputs: ["sparkle", "radius/*", "radius"], optionalInputs: ["glitter"], check: () => [] }],
     } as unknown as GraphTypeDefinition;
     const problems = stageProblems(bad);
     expect(problems).toContain("circle: a group lists a member twice");
@@ -478,6 +493,7 @@ describe("derivation groups and domain checks are well formed (GSV-REQ-035)", ()
     expect(problems).toContain("circle: deriving circumference back from diameter does not round-trip");
     expect(problems).toContain('circle: check "reads nothing real" reads sparkle, which is not a property path');
     expect(problems).toContain('circle: check "reads nothing real" reads radius/*, which is not a property path');
+    expect(problems).toContain('circle: check "reads nothing real" reads glitter, which is not a property path');
     expect(problems).not.toContain('circle: check "reads nothing real" reads radius, which is not a property path');
 
     const unbounded = {

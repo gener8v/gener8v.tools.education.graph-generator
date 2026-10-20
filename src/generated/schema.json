@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Graph description",
-  "description": "One graph, described by its type and the values that type accepts. Text is plain text: control, line-break, text-direction and invisible characters are not accepted. A color is a color name (black, gray, red, orange, green, blue, purple, brown) in any case, or a hex code such as #0072b2. The package's validator also checks what this schema cannot: tag characters, rare variation selectors and broken surrogates in text; values that determine one another must agree within 1%; ranges must have their minimum below their maximum; type-specific rules such as points inside the axes; and at most 10000 values in one description. Schema and validator agree on the JSON form of a description.",
+  "description": "One graph, described by its type and the values that type accepts. Text is plain text: control, line-break, text-direction and invisible characters are not accepted. A color is a color name (black, gray, red, orange, green, blue, purple, brown) in any case, or a hex code such as #0072b2. The package's validator also checks what this schema cannot: tag characters, rare variation selectors and broken surrogates in text; values that determine one another must agree within 1%; ranges must have their minimum below their maximum; a term given only when another term has a stated value; type-specific rules such as points inside the axes; and at most 10000 values in one description. Schema and validator agree on the JSON form of a description.",
   "anyOf": [
     {
       "type": "object",

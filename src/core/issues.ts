@@ -116,11 +116,15 @@ export interface IssueParamsByCode {
   /**
    * `elements`, when given, names where the option goes instead, such as "each series".
    * `condition`, when given, is package-authored text saying when the term applies, such as
-   * `only when unit is "inches"` (rulers GSV TICKET-001 DEL-003).
+   * `only when unit is "inches"`, and `conflicts` then holds the JSON Pointer of the term it
+   * depends on (rulers GSV TICKET-001 DEL-003, code review CR-003).
    */
-  inapplicable_property: { term: Term; graphType: string; elements?: string; condition?: string };
-  /** `expected` is the kind of value accepted, e.g. "a number". */
-  wrong_kind: { term: Term; got: unknown; expected: string };
+  inapplicable_property: { term: Term; graphType: string; elements?: string; condition?: string; conflicts?: Terms };
+  /**
+   * `expected` is the kind of value accepted, e.g. "a number"; `allowed`, for a value outside a
+   * fixed list, holds every accepted value (rulers GSV TICKET-001 code review CR-008).
+   */
+  wrong_kind: { term: Term; got: unknown; expected: string; allowed?: Terms };
   /** `range` is the allowed range of the value at the issue's path. */
   out_of_range: { term: Term; got: unknown; range: Range };
   /**
@@ -311,7 +315,7 @@ const templates: Templates = {
       : `${describeTerm(p.term)} is not a property ${forGraph(p.graphType)}; did you mean ${describeTerm(p.suggestion)}?`,
   inapplicable_property: (p) =>
     p.condition !== undefined
-      ? `${describeTerm(p.term)} applies ${forGraph(p.graphType)} ${describeDetail(p.condition)}; remove it.`
+      ? `${describeTerm(p.term)} applies to ${article(describeTerm(p.graphType))} ${describeTerm(p.graphType)} ${describeDetail(p.condition)}; remove it.`
       : p.elements === undefined
         ? `${describeTerm(p.term)} does not apply ${forGraph(p.graphType)}; remove it.`
         : `${describeTerm(p.term)} does not apply ${forGraph(p.graphType)} as a whole; give it on ${p.elements} instead.`,

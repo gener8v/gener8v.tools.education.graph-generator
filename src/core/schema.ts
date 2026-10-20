@@ -31,7 +31,8 @@ const RULES =
   `A color is a color name (${COLOR_NAMES.join(", ")}) in any case, or a hex code such as #0072b2. ` +
   `The package's validator also checks what this schema cannot: tag characters, rare variation selectors and broken ` +
   `surrogates in text; values that determine one another must agree within 1%; ranges must have their minimum below ` +
-  `their maximum; type-specific rules such as points inside the axes; and at most ${DESCRIPTION_VALUE_LIMIT} values in ` +
+  `their maximum; a term given only when another term has a stated value; type-specific rules such as points inside ` +
+  `the axes; and at most ${DESCRIPTION_VALUE_LIMIT} values in ` +
   `one description. Schema and validator agree on the JSON form of a description.`;
 
 /** "radius, diameter or circumference". */
@@ -107,6 +108,11 @@ function objectSchema(properties: PropertyMap, profile: Profile, extra: Record<s
   for (const spec of Object.values(properties)) {
     const optionalInTool = profile === "tool" && !spec.required;
     schemas[spec.term] = valueSchema(spec, profile, optionalInTool);
+    // A condition only the validator checks, stated from the definition itself (code review CR-006).
+    if (spec.appliesWhen !== undefined) {
+      const { term, values } = spec.appliesWhen;
+      schemas[spec.term]!["description"] += ` Give it only when ${term} is ${values.map((value) => JSON.stringify(value)).join(" or ")}.`;
+    }
     // The strict profile lists every property as required; optional ones accept null instead.
     if (spec.required || profile === "tool") required.push(spec.term);
   }

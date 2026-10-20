@@ -12,8 +12,8 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
 /**
  * Every graph type's definition, keyed by its `type` value, on a null prototype. Each type ticket
  * adds one import and one entry here, with no cast: `satisfies` checks that each entry is a whole
- * definition (GSS TICKET-002 quality review QR-005). TICKET-006 then requires all eleven graph
- * types (GSV-REQ-003).
+ * definition (GSS TICKET-002 quality review QR-005). GSV TICKET-006 then requires every graph
+ * type in `GRAPH_TYPES` (GSV-REQ-003): graph-library's eleven and the `rulers` change's ruler.
  */
 // Marked pure so a bundler drops the table, and every definition in it, wherever nothing reads it:
 // per-type components validate with their own definition only (GSS TICKET-002 DEL-002; CPSE

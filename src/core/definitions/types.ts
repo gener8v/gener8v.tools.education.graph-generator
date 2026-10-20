@@ -40,8 +40,8 @@ export type PropertyKind = (typeof PROPERTY_KINDS)[number];
 
 /**
  * Which shared presentation option a property is (GSV-REQ-040). `elementLabel` and
- * `elementColor` sit on one point, segment or category, so they affect that element only
- * (GSV-REQ-045).
+ * `elementColor` sit on one point, segment, category or measured object, so they affect that
+ * element only (GSV-REQ-045).
  */
 // @spec GSV-REQ-040, GSV-REQ-045
 export type PresentationOption = "title" | "lineColor" | "lineLabel" | "axisLabel" | "elementLabel" | "elementColor";
@@ -135,7 +135,7 @@ export type ValueSpec = NumberValue | StringValue | BooleanValue | ColorValue | 
  * One property of a description. A property's key in its map equals its `term`, and the spec
  * declares that term with its definition (GSV-REQ-012).
  */
-// @spec GSV-REQ-012, GSV-REQ-043
+// @spec GSV-REQ-012, GSV-REQ-043, GSV-REQ-051
 export type PropertySpec = ValueSpec & {
   /** The vocabulary term, a camel-cased noun phrase (AD-005). */
   term: string;
@@ -145,9 +145,13 @@ export type PropertySpec = ValueSpec & {
    * When the property applies only while a sibling term has one of given values, as an inch
    * ruler's `smallestDivision` applies only when `unit` is `inches` (GSV-REQ-051). Given otherwise,
    * it is `inapplicable_property` at its own path, stating the condition, and its value is not
-   * checked. When the sibling failed or is missing, which is already reported, the property is
-   * left out without an issue (DEL-002). `term` names an `enum` sibling and `values` some of its
-   * values; the definitions test checks both.
+   * checked. When the sibling failed or is missing, which is already reported, the property's own
+   * value is still checked, but whether it applies is not reported; either way it is left out
+   * (DEL-002, code review CR-001). The schemas state the condition in the term's description.
+   * Rules, which the definitions test checks: `term` names an `enum` sibling and `values` some of
+   * its values; the property is optional, since a required one could never be satisfied on the
+   * other values; and the sibling has no condition of its own, since conditions are not chained
+   * (code review CR-007).
    */
   appliesWhen?: { readonly term: string; readonly values: Terms };
 };
@@ -247,6 +251,14 @@ export interface DomainCheck<D extends DescriptionBase = DescriptionBase> {
    * `unknown`, whatever its parameter type says.
    */
   inputs: readonly string[];
+  /**
+   * Paths the check reads that may be absent, such as an optional term with a default: the check
+   * runs without them, and is skipped only when one of them failed, so it never reads a value
+   * that was reported or left out (rulers GSV TICKET-001 code review CR-002). An inch ruler's
+   * `smallestDivision` is one: absent means the default sixteenth, but a refused division
+   * ("eighths") or one given on a centimetre ruler must stop a check that reads the ruler's marks.
+   */
+  optionalInputs?: readonly string[];
   // Method syntax keeps the parameter bivariant, so a check written for one graph type's
   // description can sit in the registry typed by `DescriptionBase`.
   check(description: D): readonly Issue[];
