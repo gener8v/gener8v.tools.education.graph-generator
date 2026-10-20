@@ -207,3 +207,12 @@ NLC-REQ-007 is covered here for ticks only; points and segments come with TICKET
 - **CR-007:** `drawAxis` matches a custom label to its tick with `isTickValue` (within a millionth of the spacing), also re-exported from `src/layout/kit/ticks.ts`. A Known Hazard on NLC TICKET-002 makes its off-tick label check use the same rule.
 - **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,161 tests) exits 0 on three runs. Six deliberate breaks of the fixes each fail a test.
 
+### Quality review — `graph-library/number-lines-and-coordinate-graphs-ticket-001-quality-review` (2026-10-20, Approved)
+
+- **QR-001:** the multiples property no longer fails on correct code (about 1 run in 100): when no tick falls in the range, it asserts that no multiple fits, with the rule's own allowance.
+- **QR-002:** ticks are cleaned at the spacing's own precision (`axisTick`), not at 12 significant digits, so ticks far from zero stay on their multiples and labels state their true values (1e8 + 0.0025 is labeled "100000000.0025"). The data graphs keep `onGrid`.
+- **QR-003, QR-004:** the default-spacing target (19 intervals) and `isTickValue`'s rejections are pinned by tests.
+- **QR-005:** `drawableTicks` is the one decision on whether an axis can be drawn, and lists the ticks; `niceTicks` returns its result or throws, now also on a range too narrow to draw.
+- **QR-006:** in `src/core/definitions/axis.ts` the parameter is `term`, and `axisCheck` is renamed `axisDomainChecks` (the Notes' `axisCheck("xAxis")` now reads `...axisDomainChecks("xAxis")`); the Known Hazards on NLC TICKET-002..004 are updated.
+- **QR-007:** `drawAxis` moves each label out by half its estimated width (or height) times the axis's slope, so labels clear a sloping axis line; tested on both diagonals for each side.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,169 tests) exits 0 on three runs. Five deliberate breaks of the fixes each fail a test.

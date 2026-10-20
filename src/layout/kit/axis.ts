@@ -2,11 +2,14 @@ import { defaultStyle } from "../../core/style";
 import type { SceneNode } from "../scene";
 import { fmt } from "./format";
 import { linearScale } from "./scale";
-import { DEFAULT_FONT_STACK } from "./text";
+import { DEFAULT_FONT_STACK, textWidth } from "./text";
 import { isTickValue, tickLabel } from "./ticks";
 import { TICK_LABEL_DROP } from "./value-scale";
 
-/** Which side of an axis its tick labels are written on, on the page. */
+/**
+ * Which side of an axis its tick labels are written on, on the page: `below` or `above` for an axis
+ * running more across the page than up it, `left` or `right` for one running more up it.
+ */
 export type AxisSide = "below" | "above" | "left" | "right";
 
 /** An axis to draw: where it runs on the page, the values at its ends, and its ticks. */
@@ -53,8 +56,8 @@ const line = (x1: number, y1: number, x2: number, y2: number, width: number): Sc
  * value, else the value with the decimals the spacing needs (`tickLabel`). Ticks are
  * perpendicular to the line and centered on it, so the same call draws a number line, either axis
  * of an x,y graph through its origin, or a diagonal axis of an x,y,z graph. Hidden labels leave the
- * ticks. Every number passes through `fmt()` (AD-007); tick labels are short, so no text is
- * measured (prd/TC-001).
+ * ticks. On a sloping axis each label moves out far enough to clear the line, by its estimated
+ * width (`textWidth`, prd/TC-001). Every number passes through `fmt()` (AD-007).
  */
 // @spec NLC-REQ-004, NLC-REQ-006, NLC-REQ-007
 export function drawAxis(options: AxisOptions): SceneNode[] {
@@ -67,8 +70,14 @@ export function drawAxis(options: AxisOptions): SceneNode[] {
   const half = defaultStyle.tickLength / 2;
   const at = linearScale([domain[0], domain[1]], [0, 1]);
   const fontSize = defaultStyle.fontSizes.tickLabel;
-  // How far a tick reaches toward the label side, so the label clears it on a diagonal axis too.
-  const reach = half * (side === "below" || side === "above" ? Math.abs(ny) : Math.abs(nx));
+  const across = side === "below" || side === "above";
+  // How far a tick reaches toward the label side, so the label clears it.
+  const reach = half * (across ? Math.abs(ny) : Math.abs(nx));
+  // On a sloping axis the line climbs toward one end of a label: move the label out by that much,
+  // half the label's width (or height) times the slope, so it clears the line (quality review QR-007).
+  const [ux, uy] = length > 0 ? [(x1 - x0) / length, (y1 - y0) / length] : [1, 0];
+  const climb = (labelWidth: number) =>
+    across ? (Math.abs(ux) > 1e-9 ? (Math.abs(uy / ux) * labelWidth) / 2 : 0) : Math.abs(uy) > 1e-9 ? (Math.abs(ux / uy) * fontSize) / 2 : 0;
 
   const custom = labels === undefined ? [] : [...labels];
   const labelAt = (tick: number) => {
@@ -84,14 +93,16 @@ export function drawAxis(options: AxisOptions): SceneNode[] {
     const y = y0 + t * (y1 - y0);
     nodes.push(line(x - nx * half, y - ny * half, x + nx * half, y + ny * half, defaultStyle.lineWidths.tick));
     if (!showTickLabels) continue;
+    const text = labelAt(value);
+    const clear = reach + LABEL_GAP + climb(textWidth(text, fontSize));
     const [lx, ly, anchor] =
       side === "below"
-        ? [x, y + reach + LABEL_GAP + fontSize * 0.8, "middle"]
+        ? [x, y + clear + fontSize * 0.8, "middle"]
         : side === "above"
-          ? [x, y - reach - LABEL_GAP - fontSize * 0.2, "middle"]
+          ? [x, y - clear - fontSize * 0.2, "middle"]
           : side === "left"
-            ? [x - reach - LABEL_GAP, y + fontSize * TICK_LABEL_DROP, "end"]
-            : [x + reach + LABEL_GAP, y + fontSize * TICK_LABEL_DROP, "start"];
+            ? [x - clear, y + fontSize * TICK_LABEL_DROP, "end"]
+            : [x + clear, y + fontSize * TICK_LABEL_DROP, "start"];
     texts.push({
       kind: "text",
       attrs: [
@@ -102,7 +113,7 @@ export function drawAxis(options: AxisOptions): SceneNode[] {
         ["font-size", fmt(fontSize)],
         ["text-anchor", anchor],
       ],
-      text: labelAt(value),
+      text,
     });
   }
   // Labels after every tick, so no tick is drawn over a label.

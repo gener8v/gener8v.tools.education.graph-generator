@@ -90,7 +90,7 @@
 - Carried from graph-library/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-006 (ticks in a domain check):
   - Domain checks do not see one another's issues, so a check that lists an axis's ticks can meet an axis another check is reporting (a spacing giving more than 100 ticks, a range too narrow to draw). `niceTicks` throws on such an axis, which `createGraph` turns into a single `internal_error`.
   - In a check, get ticks with `drawableTicks(min, max, tickSpacing)` (`src/core/value-scale.ts`), which returns undefined for an axis that cannot be drawn; skip the check then. Use `niceTicks` only in layouts, on validated descriptions.
-  - Register an axis's checks with `checks: [...axisCheck("xAxis"), …]`: `axisCheck` returns two checks, one for the range and one for the spacing (code review CR-002).
+  - Register an axis's checks with `checks: [...axisDomainChecks("xAxis"), …]`: it returns two checks, one for the range and one for the spacing (code review CR-002; renamed from `axisCheck` by quality review QR-006).
 - Carried from graph-library/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-007 (custom tick labels):
   - Tick values are listed at 12 significant digits, so a custom label's value written in full (⅔ as 0.6666666666666666) is not equal to its tick (0.666666666667). `drawAxis` matches a label to its tick with `isTickValue(value, tick, spacing)`.
   - The `tick_label_not_on_tick` check must use the same rule, `isTickValue`, against `drawableTicks`, so a label the check accepts is always drawn and one it reports never is.

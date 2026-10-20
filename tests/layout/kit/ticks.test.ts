@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { drawableTicks } from "../../../src/core/value-scale";
-import { AXIS_DEFAULT_INTERVALS, niceTicks, tickCount, tickLabel } from "../../../src/layout/kit/ticks";
+import { AXIS_DEFAULT_INTERVALS, isTickValue, niceTicks, tickCount, tickLabel } from "../../../src/layout/kit/ticks";
 
 /** Whether `x` is 1, 2 or 5 times a power of ten. */
 const isNice = (x: number) => {
@@ -39,9 +39,39 @@ describe("ticks at whole multiples of the spacing (NLC-REQ-004)", () => {
           expect(Math.abs(tick / spacing - Math.round(tick / spacing))).toBeLessThan(1e-6);
           if (i > 0) expect(Math.abs(tick - ticks[i - 1]! - spacing)).toBeLessThan(tolerance);
         }
-        // No multiple is left out at either end.
-        expect(ticks[0] ?? Infinity).toBeLessThan(min + spacing + tolerance);
-        expect(ticks.at(-1) ?? -Infinity).toBeGreaterThan(max - spacing - tolerance);
+        // No multiple is left out at either end; with none at all, no multiple fits the range, as
+        // when one step's spacing rounds up past the span (quality review QR-001).
+        if (ticks.length === 0) {
+          // The smallest multiple at or above min, with the same decimal-noise allowance as the rule.
+          const noise = (value: number) => 1e-12 * Math.max(Math.abs(value), spacing);
+          expect(Math.ceil((min - noise(min)) / spacing) * spacing).toBeGreaterThan(max + noise(max));
+        }
+        else {
+          expect(ticks[0]!).toBeLessThan(min + spacing + tolerance);
+          expect(ticks.at(-1)!).toBeGreaterThan(max - spacing - tolerance);
+        }
+      }),
+      { numRuns: 300 },
+    );
+  });
+
+  it("keeps ticks far from zero on their multiples, so labels state their true values (quality review QR-002)", () => {
+    const { ticks, spacing } = niceTicks(1e8, 1e8 + 0.2, 0.0025);
+    expect(ticks[1]).toBe(100000000.0025);
+    expect(tickLabel(ticks[1]!, spacing)).toBe("100000000.0025");
+    expect(ticks.at(-1)).toBe(100000000.2);
+    fc.assert(
+      fc.property(fc.double({ min: -1, max: 1, noNaN: true }), fc.constantFrom(0.0025, 0.01, 0.125, 0.5, 2.5), fc.integer({ min: 5, max: 90 }), (where, step, steps) => {
+        // A range starting on a multiple, anywhere up to ±1e9.
+        const min = Math.round((where * 1e9) / step) * step;
+        const max = min + step * steps;
+        fc.pre(max <= 1e9 && max - min >= 1e-9 * Math.max(1, Math.abs(min), Math.abs(max)));
+        const { ticks } = niceTicks(min, max, step);
+        expect(ticks).toHaveLength(steps + 1);
+        ticks.forEach((tick, i) => {
+          // Each tick is the decimal its label states, within a millionth of the spacing.
+          expect(Math.abs(Number(tickLabel(tick, step)) - (min + i * step))).toBeLessThanOrEqual(step * 1e-6);
+        });
       }),
       { numRuns: 300 },
     );
@@ -112,6 +142,10 @@ describe("the default spacing (NLC-REQ-005)", () => {
     expect(niceTicks(0, 0.001).spacing).toBe(0.0001);
     expect(niceTicks(0, 1e6).spacing).toBe(100000);
     expect(niceTicks(-3.5, 7.25).ticks).toEqual([-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7]);
+    // At most 19 intervals: 0 to 19 by 1 is 20 ticks; 0 to 19.5 needs 2 (quality review QR-003).
+    expect(niceTicks(0, 19).spacing).toBe(1);
+    expect(niceTicks(0, 19.5).spacing).toBe(2);
+    expect(AXIS_DEFAULT_INTERVALS).toBe(19);
   });
 });
 
@@ -128,6 +162,8 @@ describe("tick counts", () => {
     expect(() => niceTicks(0, 10, 0)).toThrow(RangeError);
     expect(() => niceTicks(0, 100, 0.5)).toThrow(RangeError);
     expect(() => niceTicks(5, 5)).toThrow(RangeError);
+    // A range too narrow to draw: one decision with drawableTicks (quality review QR-005).
+    expect(() => niceTicks(1e6, 1e6 + 1e-6)).toThrow(RangeError);
   });
 });
 
@@ -148,6 +184,16 @@ describe("ticks for a check (code review CR-006)", () => {
     ] as const) {
       expect(drawableTicks(min, max, spacing), `${min} to ${max} by ${spacing}`).toBeUndefined();
     }
+  });
+});
+
+describe("custom label matching", () => {
+  it("matches a value written in full to its tick, and nothing a hundredth of a spacing away (quality review QR-004)", () => {
+    expect(isTickValue(2 / 3, 0.666666666667, 1 / 3)).toBe(true);
+    expect(isTickValue(1_000_000 + 2 / 3, 1_000_000.6666666666, 1 / 3)).toBe(true);
+    expect(isTickValue(0.51, 0.5, 1)).toBe(false);
+    expect(isTickValue(0.5025, 0.5, 0.25)).toBe(false);
+    expect(isTickValue(0.49, 0.5, 1)).toBe(false);
   });
 });
 

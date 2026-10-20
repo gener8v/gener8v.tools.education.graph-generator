@@ -409,41 +409,52 @@ export function axisSpacing(min: number, max: number, spacing?: number): number 
 }
 
 /**
- * An axis's ticks (NLC-REQ-004, NLC-REQ-005): every whole multiple `k × spacing` inside
- * `[min, max]`, endpoints included, anchored at zero, so zero is ticked whenever the range holds
- * it and an endpoint off the grid gets no tick. Each tick is `k × spacing` for an integer `k`,
- * never a running sum, with decimal noise removed (0.1-spaced ticks give 0.3, not
- * 0.30000000000000004); values are not rounded otherwise. Without a spacing, it is 1, 2 or
- * 5 × 10ⁿ, giving 7 to 20 ticks (`AXIS_DEFAULT_INTERVALS`). An axis the validator would refuse
- * (an empty range, a spacing of 0 or less, more than `MAX_VALUE_TICKS` ticks) is a layout bug and
- * throws rather than listing millions.
+ * The tick `k × spacing`, with the noise of decimal arithmetic removed at the spacing's own
+ * precision (three decimals finer), not at 12 significant digits, so a tick far from zero keeps
+ * its value: 3 × 0.1 gives 0.3, and 40000000001 × 0.0025 gives 100000000.0025 (quality review
+ * QR-002). The data graphs' value scale keeps `onGrid`.
  */
-// @spec NLC-REQ-004, NLC-REQ-005
-export function niceTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } {
-  const used = axisSpacing(min, max, spacing);
-  const { first, last } = multiplesIn(min, max, used);
-  const count = tickCount(min, max, used);
-  if (!(used > 0) || !(max > min) || !Number.isSafeInteger(first) || !Number.isSafeInteger(last) || !(count <= MAX_VALUE_TICKS)) {
-    throw new RangeError(`niceTicks(): ${used} does not give a drawable number of ticks from ${min} to ${max}`);
-  }
-  const ticks: number[] = [];
-  // A bounded counter: at most `MAX_VALUE_TICKS` turns.
-  for (let j = 0; j < count; j++) ticks.push(onGrid((first + j) * used, used));
-  return { spacing: used, ticks };
+function axisTick(k: number, spacing: number): number {
+  const tick = Number((k * spacing).toFixed(Math.min(100, decimalPlaces(spacing) + 3)));
+  return tick === 0 ? 0 : tick;
 }
 
 /**
- * An axis's ticks when the axis can be drawn, else undefined: never throws, so a domain check can
- * read the ticks of an axis another check may be reporting (code review CR-006). Checks use this,
- * never `niceTicks`, which throws on such an axis.
+ * An axis's ticks (NLC-REQ-004, NLC-REQ-005) when the axis can be drawn, else undefined: every
+ * whole multiple `k × spacing` inside `[min, max]`, endpoints included, anchored at zero, so zero
+ * is ticked whenever the range holds it and an endpoint off the grid gets no tick. Each tick is
+ * `k × spacing` for an integer `k`, never a running sum (`axisTick`). Without a spacing, it is 1, 2
+ * or 5 × 10ⁿ, giving 7 to 20 ticks (`AXIS_DEFAULT_INTERVALS`). An axis cannot be drawn when its
+ * ends are not finite and increasing, its range is too narrow (`axisTooNarrow`), its spacing is not
+ * a finite number above 0, or it would have more than `MAX_VALUE_TICKS` ticks. Never throws, so a
+ * domain check can read the ticks of an axis another check may be reporting (code review CR-006):
+ * checks use this, layouts `niceTicks`. The one decision on whether an axis can be drawn (quality
+ * review QR-005).
  */
+// @spec NLC-REQ-004, NLC-REQ-005
 export function drawableTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } | undefined {
   if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min) || axisTooNarrow(min, max)) return undefined;
   if (spacing !== undefined && !(spacing > 0 && Number.isFinite(spacing))) return undefined;
   const used = axisSpacing(min, max, spacing);
   const { first, last } = multiplesIn(min, max, used);
-  if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || !(tickCount(min, max, used) <= MAX_VALUE_TICKS)) return undefined;
-  return niceTicks(min, max, spacing);
+  const count = tickCount(min, max, used);
+  if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || !(count <= MAX_VALUE_TICKS)) return undefined;
+  const ticks: number[] = [];
+  // A bounded counter: at most `MAX_VALUE_TICKS` turns.
+  for (let j = 0; j < count; j++) ticks.push(axisTick(first + j, used));
+  return { spacing: used, ticks };
+}
+
+/**
+ * An axis's ticks, as `drawableTicks`, for a layout drawing a validated description. An axis that
+ * cannot be drawn is one the validator refuses, so here it is a layout bug, and throws rather
+ * than drawing nonsense.
+ */
+// @spec NLC-REQ-004, NLC-REQ-005
+export function niceTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } {
+  const result = drawableTicks(min, max, spacing);
+  if (result === undefined) throw new RangeError(`niceTicks(): ${spacing ?? "the default spacing"} does not give a drawable axis from ${min} to ${max}`);
+  return result;
 }
 
 /** The number of decimal places in `spacing` written out in full: 0.25 → 2, 2 → 0, 1e-7 → 7. */

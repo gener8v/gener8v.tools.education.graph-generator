@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AXIS_LIMIT, axisCheck, axisChecks, axisProperties, axisProperty } from "../../src/core/definitions/axis";
+import { AXIS_LIMIT, axisChecks, axisDomainChecks, axisProperties, axisProperty } from "../../src/core/definitions/axis";
 import { type GraphType, type GraphTypeDefinition, defineProperties } from "../../src/core/definitions/types";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
@@ -11,7 +11,7 @@ const twoAxes: GraphTypeDefinition = {
   description: "Two axes, for the axis tests.",
   properties: defineProperties({ xAxis: axisProperty("xAxis", "x"), yAxis: axisProperty("yAxis", "y") }),
   derivations: [],
-  checks: [...axisCheck("xAxis"), ...axisCheck("yAxis")],
+  checks: [...axisDomainChecks("xAxis"), ...axisDomainChecks("yAxis")],
   describe: () => "Two axes.",
 };
 const registry = Object.freeze(Object.assign(Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, { "xy-graph": twoAxes }));
@@ -141,7 +141,7 @@ describe("tick spacing checks (NLC-REQ-008, NLC-REQ-009)", () => {
   });
 
   it("reads only its own axis", () => {
-    expect(axisCheck("yAxis").map((c) => c.inputs)).toEqual([
+    expect(axisDomainChecks("yAxis").map((c) => c.inputs)).toEqual([
       ["yAxis/min", "yAxis/max"],
       ["yAxis/min", "yAxis/max", "yAxis/tickSpacing"],
     ]);
