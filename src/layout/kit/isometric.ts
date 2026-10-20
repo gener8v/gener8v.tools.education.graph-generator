@@ -4,12 +4,16 @@ export type Point3 = readonly [number, number, number];
 /** The drawn length of one unit along any of the three axes: √(2/3) ≈ 0.8165. */
 export const ISO_SCALE = Math.sqrt(2 / 3);
 
+/** The direction from a figure toward the viewer: the unit vector (1, 1, 1) / √3. */
+export const VIEW_DIRECTION: Point3 = Object.freeze([1 / Math.sqrt(3), 1 / Math.sqrt(3), 1 / Math.sqrt(3)] as const);
+
 /**
  * The minor-to-major ratio of a horizontal circle's ellipse: 1/√3 ≈ 0.57735, the sine of the
  * angle between the line of sight and the horizontal plane, atan(1/√2) ≈ 35.264° (equivalently,
- * the cosine of the page's 54.74° tilt from the horizontal; code review CR-002).
+ * the cosine of the page's 54.74° tilt from the horizontal; code review CR-002). That sine is the
+ * view direction's upward component, so the ratio follows from the viewpoint (quality review QR-003).
  */
-export const ELLIPSE_RATIO = 1 / Math.sqrt(3);
+export const ELLIPSE_RATIO = VIEW_DIRECTION[2];
 
 const COS_30 = Math.sqrt(3) / 2;
 
@@ -38,9 +42,6 @@ const COS_30 = Math.sqrt(3) / 2;
 export function isometric(x: number, y: number, z: number): [number, number] {
   return [ISO_SCALE * COS_30 * (y - x), ISO_SCALE * ((x + y) / 2 - z)];
 }
-
-/** The direction from a figure toward the viewer: the unit vector (1, 1, 1) / √3. */
-export const VIEW_DIRECTION: Point3 = Object.freeze([ELLIPSE_RATIO, ELLIPSE_RATIO, ELLIPSE_RATIO] as const);
 
 /** The outward normals of the three faces the viewpoint shows: left front (+x), right front (+y) and top (+z). */
 export const VISIBLE_FACES = Object.freeze({

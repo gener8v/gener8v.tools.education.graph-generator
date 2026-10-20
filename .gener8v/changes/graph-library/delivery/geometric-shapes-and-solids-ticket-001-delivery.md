@@ -158,3 +158,10 @@ GSS-REQ-032 is met only in part here: this ticket supplies the one documented vi
 - **CR-003:** a radius drawn across the page is not foreshortened (`rx = r`), while lengths along the axes are. Deferred to TICKET-007, with Known Hazards on TICKET-007 and TICKET-008: draw a cylinder's radius or diameter along a projected horizontal axis, whose end lies on the same ellipse and shares the height's scale; never divide `rx` or `ry` by `ISO_SCALE`.
 - **CR-004:** a cube's front top corner and its hidden back bottom corner project to the same point, so the cube is a hexagon whose centre joins three solid and three dashed edges. The `isometric` doc comment says so. Deferred to TICKET-006 with a Known Hazard: the hidden edges are label obstacles for the front-corner edge labels.
 - **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,111 tests) exits 0 on three runs.
+
+### Quality review — `graph-library/geometric-shapes-and-solids-ticket-001-quality-review` (2026-10-20, Approved)
+
+- **QR-001:** the ellipse property test failed on correct code in about 2.5% of runs (radii down to 0.001 against centres near 1,000 reach the 1e-9 bound's rounding floor). The radius now starts at 0.1, and the bound is unchanged. With the failing seed, the new range passes 20,000 runs.
+- **QR-002:** a new test pins `VISIBLE_FACES`' normals and where each named face is drawn. The cube-edge test enumerates the 12 edges and asserts that the hidden ones are exactly the three from the origin.
+- **QR-003:** `VIEW_DIRECTION` is declared from 1/√3, and `ELLIPSE_RATIO` is derived from it (its upward component), so the ratio follows from the viewpoint.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,112 tests) exits 0 on three runs. Four deliberate breaks of the fixes each fail a test.

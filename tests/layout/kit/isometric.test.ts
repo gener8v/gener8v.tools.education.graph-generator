@@ -71,20 +71,40 @@ describe("visible faces", () => {
     expect(faceVisible([1, -1, 0])).toBe(false);
   });
 
-  it("hides exactly the 3 cube edges that meet at the back bottom corner, between two hidden faces", () => {
-    // An edge is hidden when both faces it joins are hidden.
-    const faces: Point3[] = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-    let visible = 0;
-    let hidden = 0;
-    for (let i = 0; i < faces.length; i++) {
-      for (let j = i + 1; j < faces.length; j++) {
-        const [a, b] = [faces[i]!, faces[j]!];
-        if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] !== 0) continue; // opposite faces share no edge
-        if (faceVisible(a) || faceVisible(b)) visible++;
-        else hidden++;
+  it("names each visible face for where it is drawn: left front, right front and top (quality review QR-002)", () => {
+    expect(VISIBLE_FACES).toEqual({ left: [1, 0, 0], right: [0, 1, 0], top: [0, 0, 1] });
+    // Each face's centre on a unit cube, relative to the cube's centre on the page.
+    const [mx, my] = isometric(0.5, 0.5, 0.5);
+    const placed = (normal: Point3) => {
+      const [x, y] = isometric(0.5 + normal[0] / 2, 0.5 + normal[1] / 2, 0.5 + normal[2] / 2);
+      return [x - mx, y - my] as const;
+    };
+    const [lx, ly] = placed(VISIBLE_FACES.left);
+    expect(lx < 0 && ly > 0).toBe(true);
+    const [rx, ry] = placed(VISIBLE_FACES.right);
+    expect(rx > 0 && ry > 0).toBe(true);
+    const [tx, ty] = placed(VISIBLE_FACES.top);
+    expect(Math.abs(tx)).toBeLessThan(1e-12);
+    expect(ty).toBeLessThan(0);
+  });
+
+  it("hides exactly the 3 edges of a unit cube that meet at its back bottom corner, the origin", () => {
+    // Each of the 12 edges runs along one axis; the faces it joins are the ones its two fixed
+    // coordinates lie on: −axis at 0, +axis at 1. An edge is hidden when both faces are.
+    const hidden: string[] = [];
+    for (let axis = 0; axis < 3; axis++) {
+      const [p, q] = [0, 1, 2].filter((k) => k !== axis) as [number, number];
+      for (const [vp, vq] of [[0, 0], [0, 1], [1, 0], [1, 1]] as const) {
+        const face = (k: number, v: number): Point3 => [0, 1, 2].map((i) => (i === k ? (v === 1 ? 1 : -1) : 0)) as unknown as Point3;
+        if (!faceVisible(face(p, vp)) && !faceVisible(face(q, vq))) {
+          const start = [0, 0, 0];
+          start[p] = vp;
+          start[q] = vq;
+          hidden.push(`${"xyz"[axis]} from (${start.join(", ")})`);
+        }
       }
     }
-    expect([visible, hidden]).toEqual([9, 3]);
+    expect(hidden).toEqual(["x from (0, 0, 0)", "y from (0, 0, 0)", "z from (0, 0, 0)"]);
   });
 });
 
@@ -102,7 +122,9 @@ describe("horizontal circles", () => {
 
   it("put every point of the circle on the ellipse isoEllipse returns, and reach its four ends", () => {
     fc.assert(
-      fc.property(point, fc.double({ min: 0.001, max: 1e3, noNaN: true }), (center, r) => {
+      fc.property(point, // From 0.1: smaller radii against centres near 1,000 reach the 1e-9 bound's rounding floor
+      // (quality review QR-001).
+      fc.double({ min: 0.1, max: 1e3, noNaN: true }), (center, r) => {
         const { cx, cy, rx, ry } = isoEllipse(center, r);
         expect(isometric(...center)).toEqual([cx, cy]);
         let [widest, tallest] = [0, 0];
