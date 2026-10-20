@@ -2,12 +2,14 @@ import type { Terms } from "../issues";
 import type { Issue, Provenance } from "../result";
 
 /**
- * The graph types of this change (GSV-REQ-003), as `type` values in kebab case (AD-005).
- * TICKET-006 checks that every one of them has a registered definition.
+ * The supported graph types (GSV-REQ-003), as `type` values in kebab case (AD-005): graph-library's
+ * eleven and the `rulers` change's ruler. A listed type is offered only once its definition is
+ * registered (`registeredTypes`). GSV TICKET-006 checks that every one of them has one.
  */
 // @spec GSV-REQ-003
 export const GRAPH_TYPES = Object.freeze([
   "number-line",
+  "ruler",
   "xy-graph",
   "xyz-graph",
   "line-graph",
@@ -139,6 +141,15 @@ export type PropertySpec = ValueSpec & {
   term: string;
   required: boolean;
   presentation?: PresentationOption;
+  /**
+   * When the property applies only while a sibling term has one of given values, as an inch
+   * ruler's `smallestDivision` applies only when `unit` is `inches` (GSV-REQ-051). Given otherwise,
+   * it is `inapplicable_property` at its own path, stating the condition, and its value is not
+   * checked. When the sibling failed or is missing, which is already reported, the property is
+   * left out without an issue (DEL-002). `term` names an `enum` sibling and `values` some of its
+   * values; the definitions test checks both.
+   */
+  appliesWhen?: { readonly term: string; readonly values: Terms };
 };
 
 /** A map of properties by term. Built with `defineProperties`, so it is frozen and has no prototype. */

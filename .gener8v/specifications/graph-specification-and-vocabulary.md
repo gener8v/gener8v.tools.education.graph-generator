@@ -238,3 +238,6 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-015 | `src/core/schema.ts`:buildSchema, buildToolSchema, buildVocabulary, buildDescriptionTypes |
 | GSV-NFR-002 | `tests/core/schema-meta.test.ts` (verification) |
 | GSV-NFR-003 | `tests/core/schema-agreement.test.ts` (verification) |
+| GSV-REQ-049 | `src/core/validate/structure.ts`:checkValue (an `enum` value outside its list, listing every name); `src/core/schema.ts`:termUses (the published list and its descriptions); the unit list with rulers NLC TICKET-002 |
+| GSV-REQ-050 | `src/core/validate/structure.ts`:checkValue; `src/core/schema.ts`:termUses; the division list with rulers NLC TICKET-002 |
+| GSV-REQ-051 | `src/core/definitions/types.ts`:PropertySpec.appliesWhen; `src/core/validate/structure.ts`:checkConditional; `src/core/schema.ts`:termUses; the ruler's `smallestDivision` with rulers NLC TICKET-002 |

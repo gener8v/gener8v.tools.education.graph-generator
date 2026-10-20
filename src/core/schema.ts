@@ -193,6 +193,11 @@ export interface TermUse {
   /** The most characters a text may have, where the definition sets one. */
   maxLength?: number;
   ordered?: Array<[string, string]>;
+  /**
+   * When the term applies only while a sibling term has one of these values (GSV-REQ-051). The
+   * JSON schemas still accept the term there; validation reports it as `inapplicable_property`.
+   */
+  appliesWhen?: { term: string; values: string[] };
   items?: TermUse;
   properties?: Record<string, TermUse>;
 }
@@ -253,12 +258,18 @@ function termUse(spec: ValueSpec, required: boolean | undefined, terms: Terms): 
   return use;
 }
 
+/**
+ * How a map's terms are used, each defined once in `terms`, with every fixed list of values and
+ * its descriptions (GSV-REQ-049, GSV-REQ-050) and every condition on a term (GSV-REQ-051).
+ */
+// @spec GSV-REQ-049, GSV-REQ-050, GSV-REQ-051
 function termUses(properties: PropertyMap, terms: Terms): Record<string, TermUse> {
   const uses: Record<string, TermUse> = {};
   for (const spec of Object.values(properties) as PropertySpec[]) {
     // One entry per term: the definitions test guarantees each term has one definition.
     defineTerm(terms, spec.term, spec.description, spec.kind);
     uses[spec.term] = termUse(spec, spec.required, terms);
+    if (spec.appliesWhen !== undefined) uses[spec.term]!.appliesWhen = { term: spec.appliesWhen.term, values: [...spec.appliesWhen.values] };
   }
   return uses;
 }

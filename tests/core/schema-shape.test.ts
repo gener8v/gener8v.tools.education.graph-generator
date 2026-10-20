@@ -8,6 +8,7 @@ import { PLAIN_TEXT_PATTERN, findUnsafeTextChar } from "../../src/core/format";
 import { getSchema, getToolSchema, getVocabulary } from "../../src/core/index";
 import { COLOR_PATTERN, type JsonSchema, buildDescriptionTypes, buildSchema, buildToolSchema, buildVocabulary } from "../../src/core/schema";
 import { resolveColor } from "../../src/core/style";
+import { conditionalRegistry } from "../fixtures/definitions/conditional-ruler";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions/index";
 import { createAjv } from "../helpers/ajv";
 
@@ -325,5 +326,33 @@ describe("generated files and getters (GSV-REQ-010, GSV-REQ-015)", () => {
       // @ts-expect-error The getters' results are read-only (quality review QR-007).
       getVocabulary().colors["teal"] = "#008080";
     }).toThrow(TypeError);
+  });
+});
+
+describe("terms with fixed lists and conditions in the published vocabulary and schemas (GSV-REQ-049..051, rulers GSV TICKET-001)", () => {
+  it("publishes each fixed list with its value descriptions, and each condition on a term", () => {
+    const ruler = buildVocabulary(conditionalRegistry).graphTypes.ruler!;
+    expect(ruler.properties["unit"]).toMatchObject({
+      kind: "enum",
+      values: ["centimeters", "inches"],
+      valueDescriptions: { centimeters: "Marked in centimetres and millimetres.", inches: "Marked in inches and fractions of an inch." },
+    });
+    expect(ruler.properties["smallestDivision"]).toMatchObject({
+      kind: "enum",
+      values: ["half", "quarter", "eighth", "sixteenth"],
+      appliesWhen: { term: "unit", values: ["inches"] },
+    });
+    expect(ruler.properties["length"]!.appliesWhen).toBeUndefined();
+  });
+
+  it("keeps the conditional term out of the schemas' logic: both accept it, and the tool schema has no conditional keywords (AD-006, prd/IC-001)", () => {
+    const ajv = createAjv();
+    const description = { type: "ruler", unit: "centimeters", length: 6, smallestDivision: "half" };
+    for (const schema of [buildSchema(conditionalRegistry), buildToolSchema(conditionalRegistry)]) {
+      const text = JSON.stringify(schema);
+      for (const keyword of ['"if"', '"then"', '"else"', '"dependentSchemas"', '"dependentRequired"']) expect(text).not.toContain(keyword);
+    }
+    // Validation is stricter than the schema here, never looser (GSV-NFR-003).
+    expect(ajv.validate(buildSchema(conditionalRegistry), description)).toBe(true);
   });
 });

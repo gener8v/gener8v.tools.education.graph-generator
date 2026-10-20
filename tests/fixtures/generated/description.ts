@@ -27,9 +27,9 @@ export interface NumberLineDescription {
   points?: ReadonlyArray<{
     /** Where the point is on the line. */
     value: number;
-    /** A label for this one point or segment, as plain text. */
+    /** A label for this one point, segment or measured object, as plain text. */
     label?: string;
-    /** The color of this one point, segment or bar: a color name or a hex code such as #0072b2. */
+    /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
   }>;
   /** Which ends of the line have arrowheads. */
@@ -80,9 +80,9 @@ export interface XyGraphDescription {
     x: number;
     /** The y coordinate. */
     y: number;
-    /** A label for this one point or segment, as plain text. */
+    /** A label for this one point, segment or measured object, as plain text. */
     label?: string;
-    /** The color of this one point, segment or bar: a color name or a hex code such as #0072b2. */
+    /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
   }>;
   /** Line segments between two points. */
@@ -101,9 +101,9 @@ export interface XyGraphDescription {
       /** The y coordinate. */
       y: number;
     };
-    /** A label for this one point or segment, as plain text. */
+    /** A label for this one point, segment or measured object, as plain text. */
     label?: string;
-    /** The color of this one point, segment or bar: a color name or a hex code such as #0072b2. */
+    /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
   }>;
 }

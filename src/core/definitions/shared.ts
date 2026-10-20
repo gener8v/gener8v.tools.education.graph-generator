@@ -110,18 +110,18 @@ export const sharedProperties = defineProperties({
     kind: "string",
     required: false,
     presentation: "elementLabel",
-    description: "A label for this one point or segment, as plain text.",
+    description: "A label for this one point, segment or measured object, as plain text.",
     appliesTo: [],
-    elementsOf: ["number-line", "xy-graph", "xyz-graph"],
+    elementsOf: ["number-line", "ruler", "xy-graph", "xyz-graph"],
   },
   color: {
     term: "color",
     kind: "color",
     required: false,
     presentation: "elementColor",
-    description: "The color of this one point, segment or bar: a color name or a hex code such as #0072b2.",
+    description: "The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2.",
     appliesTo: [],
-    elementsOf: ["number-line", "xy-graph", "xyz-graph", "bar-graph"],
+    elementsOf: ["number-line", "ruler", "xy-graph", "xyz-graph", "bar-graph"],
   },
 } as const satisfies Readonly<Record<string, ScopedPropertySpec>>);
 

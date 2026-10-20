@@ -62,7 +62,7 @@ export interface BarGraphDescription {
   categories: ReadonlyArray<{
     /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short. */
     name: string;
-    /** The color of this one point, segment or bar: a color name or a hex code such as #0072b2. */
+    /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
   }>;
   /** One value per category, in the same order as the categories. */

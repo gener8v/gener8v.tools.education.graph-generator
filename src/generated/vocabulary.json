@@ -24,7 +24,7 @@
       "kind": "string"
     },
     "color": {
-      "definition": "The color of this one point, segment or bar: a color name or a hex code such as #0072b2.",
+      "definition": "The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2.",
       "kind": "color"
     },
     "diameter": {

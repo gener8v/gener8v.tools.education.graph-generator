@@ -7,6 +7,7 @@ import { DESCRIPTION_VALUE_LIMIT, checkStructure } from "../../src/core/validate
 import { runInNewContext } from "node:vm";
 import { closestTerm, editDistance } from "../../src/core/validate/suggest";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions/index";
+import { conditionalRegistry } from "../fixtures/definitions/conditional-ruler";
 import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
 
 const check = (input: unknown) => validateWith(input, fixtureRegistry);
@@ -574,5 +575,59 @@ describe("suggestions (AD-004)", () => {
     const start = performance.now();
     expect(closestTerm("k".repeat(100_000), ["radius", "diameter"])).toBeUndefined();
     expect(performance.now() - start).toBeLessThan(50);
+  });
+});
+
+describe("a term that applies only while a sibling has given values (GSV-REQ-051, rulers GSV TICKET-001)", () => {
+  const ruler = (extra: Record<string, unknown>) => validateWith({ type: "ruler", length: 6, ...extra }, conditionalRegistry);
+  const issues = (extra: Record<string, unknown>) => {
+    const result = ruler(extra);
+    return result.valid ? [] : result.issues;
+  };
+
+  it("checks the term as usual when the sibling has one of the values", () => {
+    expect(ruler({ unit: "inches", smallestDivision: "eighth" })).toMatchObject({ valid: true, description: { unit: "inches", smallestDivision: "eighth" } });
+    expect(issues({ unit: "inches", smallestDivision: "third" }).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["wrong_kind /smallestDivision"]);
+  });
+
+  it("reports the term as not applying, stating the condition, when the sibling has another value", () => {
+    const [issue, ...rest] = issues({ unit: "centimeters", smallestDivision: "half" });
+    expect(rest).toEqual([]);
+    expect(issue).toMatchObject({ code: "inapplicable_property", path: "/smallestDivision" });
+    expect(issue!.message).toBe('smallestDivision applies for a ruler only when unit is "inches"; remove it.');
+    // Its value is not checked: a bad division on a centimetre ruler is reported once, as not applying.
+    expect(issues({ unit: "centimeters", smallestDivision: "third" }).map((i) => `${i.code} ${i.path}`)).toEqual(["inapplicable_property /smallestDivision"]);
+  });
+
+  it("gives one issue when the sibling itself fails or is missing, and leaves the term out", () => {
+    expect(issues({ unit: "cm", smallestDivision: "half" }).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["wrong_kind /unit"]);
+    expect(issues({ smallestDivision: "half" }).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["missing_property /unit"]);
+  });
+
+  it("skips domain checks that read a term left out, and runs them when it applies", () => {
+    expect(issues({ unit: "inches", smallestDivision: "sixteenth", length: 1 }).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["out_of_range /length"]);
+    expect(issues({ unit: "cm", smallestDivision: "sixteenth", length: 1 }).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["wrong_kind /unit"]);
+  });
+
+  it("marks a nested term it leaves out as failed, so a check reading it is skipped though its parent is present", () => {
+    const spare = (unit: string) => issues({ unit: "inches", spare: { unit, smallestDivision: "half" } }).map((issue) => `${issue.code} ${issue.path}`);
+    expect(spare("inches")).toEqual([]);
+    expect(spare("cm")).toEqual(["wrong_kind /spare/unit"]);
+    expect(spare("centimeters")).toEqual(["inapplicable_property /spare/smallestDivision"]);
+  });
+
+  it("decides the same whichever order the keys are written in", () => {
+    const backwards = validateWith({ smallestDivision: "half", length: 6, unit: "centimeters", type: "ruler" }, conditionalRegistry);
+    expect(backwards.valid ? [] : backwards.issues.map((issue) => `${issue.code} ${issue.path}`)).toEqual(["inapplicable_property /smallestDivision"]);
+    expect(validateWith({ smallestDivision: "half", length: 6, unit: "inches", type: "ruler" }, conditionalRegistry).valid).toBe(true);
+  });
+
+  it("reports a value outside a fixed list with every accepted name (GSV-REQ-049, GSV-REQ-050)", () => {
+    const [issue] = issues({ unit: "cm" });
+    expect(issue).toMatchObject({ code: "wrong_kind", path: "/unit", expected: "one of: centimeters, inches" });
+    expect(issue!.message).toContain("centimeters");
+    expect(issue!.message).toContain("inches");
+    const [division] = issues({ unit: "inches", smallestDivision: "1/8" });
+    expect(division!.message).toContain("half, quarter, eighth, sixteenth");
   });
 });

@@ -13,6 +13,7 @@ import {
   type PropertyMap,
   type ValueSpec,
 } from "../../src/core/definitions/types";
+import { conditionalRuler } from "../fixtures/definitions/conditional-ruler";
 import { fixtureRegistry as validatorFixtures } from "../fixtures/definitions/index";
 
 const CAMEL_CASE = /^[a-z][a-zA-Z0-9]*$/;
@@ -200,10 +201,11 @@ const allDefinitions = (): GraphTypeDefinition[] =>
   );
 
 describe("graph types (GSV-REQ-003)", () => {
-  it("are exactly the eleven types of this change, in kebab case", () => {
+  it("are graph-library's eleven types and the rulers change's ruler, in kebab case", () => {
     expect([...GRAPH_TYPES]).toMatchInlineSnapshot(`
       [
         "number-line",
+        "ruler",
         "xy-graph",
         "xyz-graph",
         "line-graph",
@@ -217,6 +219,41 @@ describe("graph types (GSV-REQ-003)", () => {
       ]
     `);
     expect(Object.isFrozen(GRAPH_TYPES)).toBe(true);
+  });
+});
+
+describe("terms that apply only while a sibling has given values (GSV-REQ-051)", () => {
+  /** Every property map in a definition, the top level and every nested object or list element. */
+  const mapsOf = (properties: PropertyMap): PropertyMap[] => [
+    properties,
+    ...Object.values(properties).flatMap((spec) => {
+      const inner = spec.kind === "array" ? spec.items : spec;
+      return inner.kind === "object" ? mapsOf(inner.properties) : [];
+    }),
+  ];
+
+  /** Each `appliesWhen` that does not name a sibling enum term, or names a value outside its list. */
+  const conditionProblems = (definition: GraphTypeDefinition): string[] =>
+    mapsOf(definition.properties).flatMap((map) =>
+      Object.values(map).flatMap((spec) => {
+        if (spec.appliesWhen === undefined) return [];
+        const sibling = map[spec.appliesWhen.term];
+        const where = `${definition.type}: ${spec.term} applies when ${spec.appliesWhen.term}`;
+        if (sibling?.kind !== "enum") return [`${where}, which is not a sibling enum term`];
+        return spec.appliesWhen.values.filter((value) => !sibling.values.includes(value)).map((value) => `${where} is ${value}, not one of its values`);
+      }),
+    );
+
+  it("name a sibling enum term and only values from its list", () => {
+    for (const definition of [...allDefinitions(), conditionalRuler]) expect(conditionProblems(definition), definition.type).toEqual([]);
+  });
+
+  it("are caught when they name no sibling enum or a value outside its list", () => {
+    const division = conditionalRuler.properties["smallestDivision"]!;
+    const broken = (appliesWhen: { term: string; values: readonly [string, ...string[]] }) =>
+      ({ ...conditionalRuler, properties: { ...conditionalRuler.properties, smallestDivision: { ...division, appliesWhen } } }) as GraphTypeDefinition;
+    expect(conditionProblems(broken({ term: "length", values: ["inches"] }))).toEqual(["ruler: smallestDivision applies when length, which is not a sibling enum term"]);
+    expect(conditionProblems(broken({ term: "unit", values: ["feet"] }))).toEqual(["ruler: smallestDivision applies when unit is feet, not one of its values"]);
   });
 });
 
@@ -485,7 +522,11 @@ describe("where shared presentation options apply (GSV-REQ-040, GSV-REQ-041, GSV
     ]);
     expect([...sharedProperties.title.appliesTo]).toEqual([...GRAPH_TYPES]);
     expect([...sharedProperties.lineColor.appliesTo]).toContain("number-line");
-    expect([...sharedProperties.label.elementsOf]).toEqual(["number-line", "xy-graph", "xyz-graph"]);
+    expect([...sharedProperties.label.elementsOf]).toEqual(["number-line", "ruler", "xy-graph", "xyz-graph"]);
+    // A ruler's measured object carries the element label and color (GSV-REQ-040, rulers).
+    expect([...sharedProperties.color.elementsOf]).toContain("ruler");
+    expect(sharedProperties.label.description).toContain("measured object");
+    expect(sharedProperties.color.description).toContain("measured object");
   });
 
   it("are given to a type by propertiesOf, merged with the type's own terms", () => {

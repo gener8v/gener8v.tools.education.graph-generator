@@ -267,7 +267,7 @@
                       "string",
                       "null"
                     ],
-                    "description": "The color of this one point, segment or bar: a color name or a hex code such as #0072b2.",
+                    "description": "The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2.",
                     "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
                   }
                 },

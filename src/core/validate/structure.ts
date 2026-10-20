@@ -1,5 +1,5 @@
 import { type Registry, propertiesOf, scopedProperty } from "../definitions/index";
-import { type GraphType, type PropertyMap, type ValueSpec, propertySpec } from "../definitions/types";
+import { type GraphType, type PropertyMap, type PropertySpec, type ValueSpec, propertySpec } from "../definitions/types";
 import { findUnsafeTextChar } from "../format";
 import { asTerms, createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
@@ -97,7 +97,7 @@ function charactersOver(text: string, limit: number): number | undefined {
 }
 
 /** Check one value against its spec. */
-// @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043, DGP-REQ-031
+// @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043, GSV-REQ-049, GSV-REQ-050, DGP-REQ-031
 function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, presentation: boolean): Outcome {
   const path = pointer(...place.segments);
   const fail = (issue: Issue): Outcome => {
@@ -215,11 +215,14 @@ function appliesToType(key: string, graphType: GraphType, atTop: boolean): boole
 
 /**
  * Check every key of an object against its property map: unknown and inapplicable keys, each
- * value's kind and range, and every missing required property (GSV-REQ-017).
+ * value's kind and range, and every missing required property (GSV-REQ-017). A property that
+ * applies only while a sibling has given values (`appliesWhen`) is decided last, once its sibling
+ * has passed, failed or been found missing (`checkConditional`).
  */
 // @spec GSV-REQ-017, GSV-REQ-018, GSV-REQ-019, GSV-REQ-020, GSV-REQ-041
 function checkMap(contents: ObjectContents, properties: PropertyMap, place: Place, walk: Walk): Record<string, unknown> {
   const normalized = emptyRecord();
+  const conditional: Array<{ spec: PropertySpec; element: unknown; at: Place }> = [];
   const atTop = place.segments.length === 0;
   count(walk, contents.values.size + contents.opaque.length);
   for (const key of contents.opaque) {
@@ -265,6 +268,10 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
       }
       continue;
     }
+    if (spec.appliesWhen !== undefined) {
+      conditional.push({ spec, element, at });
+      continue;
+    }
     // Keys are only ever vocabulary terms (camel case), so assigning them is safe.
     const outcome = checkValue(spec, element, at, walk, spec.presentation !== undefined);
     if (outcome.kind === "passed") normalized[spec.term] = outcome.value;
@@ -280,7 +287,46 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
       walk.failed.add(path);
     }
   }
+  for (const { spec, element, at } of conditional) checkConditional(spec, element, at, properties, place, normalized, walk);
   return normalized;
+}
+
+/**
+ * A property that applies only while its sibling `appliesWhen.term` has one of `appliesWhen.values`
+ * (GSV-REQ-051), decided after the sibling, so one fault gives one issue (AD-004):
+ * - the sibling passed with one of the values: the property is checked as usual;
+ * - the sibling passed with another value, or is optional and absent: `inapplicable_property` at
+ *   the property's path, stating the condition, and its value is not checked;
+ * - the sibling failed, or is required and missing, which is already reported: the property is
+ *   left out without an issue and marked failed, so checks that read it are skipped (DEL-002).
+ */
+// @spec GSV-REQ-051
+function checkConditional(
+  spec: PropertySpec,
+  element: unknown,
+  at: Place,
+  properties: PropertyMap,
+  place: Place,
+  normalized: Record<string, unknown>,
+  walk: Walk,
+): void {
+  const { term, values } = spec.appliesWhen!;
+  const path = pointer(...at.segments);
+  const siblingPath = pointer(...child(place, term).segments);
+  const sibling = Object.hasOwn(normalized, term) ? normalized[term] : undefined;
+  const siblingSpec = propertySpec(properties, term);
+  if (sibling === undefined && (walk.failed.has(siblingPath) || siblingSpec?.required === true)) {
+    walk.failed.add(path);
+    return;
+  }
+  if (typeof sibling === "string" && (values as readonly string[]).includes(sibling)) {
+    const outcome = checkValue(spec, element, at, walk, spec.presentation !== undefined);
+    if (outcome.kind === "passed") normalized[spec.term] = outcome.value;
+    return;
+  }
+  const condition = `only when ${term} is ${values.map((value) => JSON.stringify(value)).join(" or ")}`;
+  walk.issues.push(createIssue("inapplicable_property", path, { term: at.term, graphType: walk.graphType, condition }));
+  walk.failed.add(path);
 }
 
 /**
