@@ -18,7 +18,7 @@ Measuring length is a core strand of early-grade mathematics, and worksheets ask
 
 | Area | Kind | Requirements |
 |------|------|--------------|
-| Number Lines & Coordinate Graphs | modifies | (pending specification) |
+| Number Lines & Coordinate Graphs | modifies | Adds NLC-REQ-040..056, NLC-NFR-005..008; Modifies NLC-REQ-001; Withdraws — |
 | Graph Specification & Vocabulary | modifies | (pending specification) |
 
 ## Priority Cut
@@ -35,12 +35,13 @@ Measuring length is a core strand of early-grade mathematics, and worksheets ask
 - Any change to the graph-library change's scope or tickets
 
 ## Open Questions
-- [ ] **OQ-001**: Is an inch ruler always marked to sixteenths, or can a description choose a coarser smallest division (halves, quarters, eighths) for younger grades?
-- [ ] **OQ-002**: Can a measured object's ends fall between marks (for example, at 3.25 cm, for estimation questions), or must each end sit on a drawn mark?
-- [ ] **OQ-003**: What does a measured object look like: a plain bar only, or a choice of simple pictures (a pencil, a crayon, a ribbon)? Pictures would reuse the pictograph image set (graph-library DGP OQ-001)
-- [ ] **OQ-004**: Is the object's length ever written on the figure, or always left for the student to read?
+- [x] **OQ-001**: Is an inch ruler always marked to sixteenths, or can a description choose a coarser smallest division (halves, quarters, eighths) for younger grades? — Answered 2026-10-20: choosable (halves, quarters, eighths, sixteenths), sixteenths by default (NLC-REQ-046)
+- [x] **OQ-002**: Can a measured object's ends fall between marks (for example, at 3.25 cm, for estimation questions), or must each end sit on a drawn mark? — Answered 2026-10-20: each end must be a drawn mark (NLC-REQ-053)
+- [x] **OQ-003**: What does a measured object look like: a plain bar only, or a choice of simple pictures (a pencil, a crayon, a ribbon)? Pictures would reuse the pictograph image set (graph-library DGP OQ-001) — Answered 2026-10-20: a plain bar with an optional color and label (NLC-REQ-050, NLC-REQ-054)
+- [x] **OQ-004**: Is the object's length ever written on the figure, or always left for the student to read? — Answered 2026-10-20: never written; the text alternative states the start and end marks (NLC-REQ-055, NLC-REQ-056)
 - [ ] **OQ-005**: Does this change wait for graph-library to finish, or start once the number-line axis and tick foundation (graph-library NLC TICKET-001) is delivered?
 
 ## Change Log
 - 2026-10-19 — opened (Planning)
 - 2026-10-19 — approved by Product Owner (Planning)
+- 2026-10-20 — NLC specification amended: adds NLC-REQ-040..056 and NLC-NFR-005..008, modifies NLC-REQ-001, withdraws none; OQ-001..004 answered by the Product Owner (Specification)
