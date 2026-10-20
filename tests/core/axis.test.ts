@@ -147,4 +147,15 @@ describe("tick spacing checks (NLC-REQ-008, NLC-REQ-009)", () => {
     ]);
     expect(axisChecks("axis", { min: 0, max: 10, tickSpacing: 2 })).toEqual([]);
   });
+
+  it("reads the tick spacing own-key, so a polluted Object.prototype supplies none (security review SEC-002)", () => {
+    const prototype = Object.prototype as Record<string, unknown>;
+    Object.defineProperty(prototype, "tickSpacing", { value: 1e-300, configurable: true, writable: true });
+    try {
+      expect(axisChecks("xAxis", { min: 0, max: 10 })).toEqual([]);
+      expect(issuesOf(check({ min: 0, max: 10 }))).toEqual([]);
+    } finally {
+      delete prototype["tickSpacing"];
+    }
+  });
 });

@@ -118,8 +118,14 @@ function axisRangeIssues(term: string, { min, max }: Axis): Issue[] {
   return axisTooNarrow(min, max) ? [narrowRange(term, min, max)] : [];
 }
 
-/** The tick-spacing part of `axisChecks`: silent on a range too narrow to draw, which the range part reports. */
-function axisSpacingIssues(term: string, { min, max, tickSpacing }: Axis): Issue[] {
+/**
+ * The tick-spacing part of `axisChecks`: silent on a range too narrow to draw, which the range part
+ * reports. The optional spacing is read own-key, so a polluted `Object.prototype` cannot supply one
+ * to an axis given as a plain object (security review SEC-002).
+ */
+function axisSpacingIssues(term: string, axis: Axis): Issue[] {
+  const { min, max } = axis;
+  const tickSpacing = Object.hasOwn(axis, "tickSpacing") ? axis.tickSpacing : undefined;
   if (tickSpacing === undefined) return [];
   const spacingTerm = `${term}.tickSpacing`;
   if (!(tickSpacing > 0)) return [createIssue("tick_spacing_invalid", pointer(term, "tickSpacing"), { term: spacingTerm, got: tickSpacing })];

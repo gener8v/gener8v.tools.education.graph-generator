@@ -103,6 +103,19 @@ describe("tick labels", () => {
     expect(texts(drawAxis(off)).map(textOf)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
   });
 
+  it("are read own-key, so a polluted Object.prototype adds none and breaks no axis (security review SEC-002)", () => {
+    const prototype = Object.prototype as Record<string, unknown>;
+    const plain = texts(drawAxis(axisOf([20, 100], [380, 100], -3, 3, { spacing: 1 }))).map(textOf);
+    for (const polluted of [new Map([[0, "INJECTED"]]), [[0, "INJECTED"]], { notIterable: true }]) {
+      Object.defineProperty(prototype, "labels", { value: polluted, configurable: true, writable: true });
+      try {
+        expect(texts(drawAxis(axisOf([20, 100], [380, 100], -3, 3, { spacing: 1 }))).map(textOf)).toEqual(plain);
+      } finally {
+        delete prototype["labels"];
+      }
+    }
+  });
+
   it.each([
     ["below", [200, 200], [40, 292.4]],
     ["above", [200, 200], [40, 292.4]],
@@ -140,5 +153,28 @@ describe("tick labels", () => {
       if (side === "left") expect(box.x1).toBeLessThanOrEqual(tick.x0);
       if (side === "right") expect(box.x0).toBeGreaterThanOrEqual(tick.x1);
     });
+  });
+});
+
+describe("options no validated axis gives (security review SEC-004)", () => {
+  const sound = () => axisOf([20, 100], [380, 100], 0, 10);
+  it.each<[string, Partial<AxisOptions>]>([
+    ["an end that is not finite", { from: [Number.NaN, 100] }],
+    ["a domain that does not increase", { domain: [0, 0] }],
+    ["a domain that is not finite", { domain: [Number.NaN, 10] }],
+    ["a spacing of 0", { spacing: 0 }],
+    ["an infinite spacing", { spacing: Number.POSITIVE_INFINITY }],
+    ["a tick that is not finite", { ticks: [0, Number.NaN] }],
+    ["more than 100 ticks", { ticks: Array.from({ length: 101 }, (_, i) => i / 10) }],
+    ["labels that are not a Map", { labels: [[0, "a"]] as unknown as ReadonlyMap<number, string> }],
+    ["more than 100 labels", { labels: new Map(Array.from({ length: 101 }, (_, i) => [i, "a"])) }],
+  ])("throw on %s rather than drawing it", (_, extra) => {
+    expect(() => drawAxis({ ...sound(), ...extra })).toThrow(RangeError);
+  });
+
+  it("draw a range near zero that excludes zero with no tick off the axis (security review SEC-001)", () => {
+    const nodes = drawAxis(axisOf([20, 100], [380, 100], 0.001, 0.002, { spacing: 2e9 }));
+    expect(lines(nodes)).toHaveLength(1);
+    expect(texts(nodes)).toEqual([]);
   });
 });

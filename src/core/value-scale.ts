@@ -351,14 +351,19 @@ export const AXIS_DEFAULT_INTERVALS = 19;
 
 /**
  * How close `k × spacing` must come to a value to count as on it, as a share of the larger of the
- * value's size and the spacing. Far below an axis's resolution (`SCALE_RESOLUTION`), so it absorbs
- * only the noise of decimal arithmetic (0.3 / 0.1), whatever the tick's index (code review CR-001).
+ * value's size and the multiple's. Far below an axis's resolution (`SCALE_RESOLUTION`), so it
+ * absorbs only the noise of decimal arithmetic (0.3 / 0.1), whatever the tick's index (code review
+ * CR-001).
  */
 const AXIS_NOISE = 1e-12;
 
-/** Whether `value` is the multiple `k × spacing`, allowing for decimal noise in value terms. */
+/**
+ * Whether `value` is the multiple `k × spacing`, allowing for decimal noise in value terms. The
+ * allowance is measured against the multiple, not the spacing, so `0 × spacing`, which carries no
+ * noise, is on an end only when the end is 0 (security review SEC-001).
+ */
 const isMultiple = (value: number, k: number, spacing: number) =>
-  Math.abs(k * spacing - value) <= AXIS_NOISE * Math.max(Math.abs(value), spacing);
+  Math.abs(k * spacing - value) <= AXIS_NOISE * Math.max(Math.abs(value), Math.abs(k * spacing));
 
 /**
  * Whether the tick `tick` stands for `value`: equal within a millionth of the spacing, so a value
@@ -429,7 +434,9 @@ function axisTick(k: number, spacing: number): number {
  * a finite number above 0, or it would have more than `MAX_VALUE_TICKS` ticks. Never throws, so a
  * domain check can read the ticks of an axis another check may be reporting (code review CR-006):
  * checks use this, layouts `niceTicks`. The one decision on whether an axis can be drawn (quality
- * review QR-005).
+ * review QR-005); the bounds on an axis's ends (±`VALUE_LIMIT`) and spacing are the validator's
+ * (`src/core/definitions/axis.ts`), not this function's. A tick outside `[min, max]` by more than
+ * decimal noise is never listed (security review SEC-001).
  */
 // @spec NLC-REQ-004, NLC-REQ-005
 export function drawableTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } | undefined {
@@ -440,8 +447,12 @@ export function drawableTicks(min: number, max: number, spacing?: number): { spa
   const count = tickCount(min, max, used);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || !(count <= MAX_VALUE_TICKS)) return undefined;
   const ticks: number[] = [];
+  const noise = AXIS_NOISE * Math.max(Math.abs(min), Math.abs(max));
   // A bounded counter: at most `MAX_VALUE_TICKS` turns.
-  for (let j = 0; j < count; j++) ticks.push(axisTick(first + j, used));
+  for (let j = 0; j < count; j++) {
+    const tick = axisTick(first + j, used);
+    if (tick >= min - noise && tick <= max + noise) ticks.push(tick);
+  }
   return { spacing: used, ticks };
 }
 
@@ -467,10 +478,12 @@ function decimalPlaces(spacing: number): number {
 /**
  * A tick's label (NLC-REQ-004, Behaviors & Rules → Ticks): its value with no more decimal places
  * than the spacing needs, and trailing zeros dropped: spacing 0.25 gives "0.75" and "0.5",
- * spacing 2 gives "4". Never in exponent form and never "-0".
+ * spacing 2 gives "4". Never in exponent form and never "-0". A value that is not finite is a
+ * layout bug, and throws rather than printing "NaN" (security review SEC-004).
  */
 // @spec NLC-REQ-004
 export function axisTickLabel(value: number, spacing: number): string {
+  if (!Number.isFinite(value)) throw new RangeError(`axisTickLabel(): ${value} is not a tick value`);
   const rounded = Number(value.toFixed(Math.min(100, decimalPlaces(spacing))));
   return formatSupplied(rounded === 0 ? 0 : rounded);
 }

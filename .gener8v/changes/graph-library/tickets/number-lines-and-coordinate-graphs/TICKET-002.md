@@ -94,6 +94,11 @@
 - Carried from graph-library/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-007 (custom tick labels):
   - Tick values are listed at 12 significant digits, so a custom label's value written in full (⅔ as 0.6666666666666666) is not equal to its tick (0.666666666667). `drawAxis` matches a label to its tick with `isTickValue(value, tick, spacing)`.
   - The `tick_label_not_on_tick` check must use the same rule, `isTickValue`, against `drawableTicks`, so a label the check accepts is always drawn and one it reports never is.
+- Carried from graph-library/number-lines-and-coordinate-graphs-ticket-001-security-review/SEC-003 (custom tick label length):
+  - `drawAxis` draws each custom label whole, on one line, with no length bound, and on a sloping axis moves it out by half its width times the slope. A 1,000,000-character label went into the Scene whole and was moved 3.6 million units below a 30° axis.
+  - Give the custom-label text term a curriculum-sized `maxLength` (tick labels are short: "½", "a", "−¾"; for example 40 characters) and state it in the term's description.
+  - Cut each label to one line before it reaches `drawAxis` (`wrap(text, maxWidth, fontSize, 1)`, so a longer one ends in "…"). Clean it with `cleanText` as well.
+  - Test a label at the length limit and one past it, and keep `maxItems` on the labels array: `drawAxis` throws on more than 100 labels (SEC-004).
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-005

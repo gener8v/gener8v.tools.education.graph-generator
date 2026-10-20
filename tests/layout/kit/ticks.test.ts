@@ -42,9 +42,12 @@ describe("ticks at whole multiples of the spacing (NLC-REQ-004)", () => {
         // No multiple is left out at either end; with none at all, no multiple fits the range, as
         // when one step's spacing rounds up past the span (quality review QR-001).
         if (ticks.length === 0) {
-          // The smallest multiple at or above min, with the same decimal-noise allowance as the rule.
-          const noise = (value: number) => 1e-12 * Math.max(Math.abs(value), spacing);
-          expect(Math.ceil((min - noise(min)) / spacing) * spacing).toBeGreaterThan(max + noise(max));
+          // The smallest multiple on or above min, with the same decimal-noise allowance as the rule,
+          // measured against the multiple (security review SEC-001), lies past max.
+          const near = (value: number, k: number) => Math.abs(k * spacing - value) <= 1e-12 * Math.max(Math.abs(value), Math.abs(k * spacing));
+          const k = Math.ceil(min / spacing);
+          const first = near(min, k - 1) ? k - 1 : k;
+          expect(first * spacing > max && !near(max, first)).toBe(true);
         }
         else {
           expect(ticks[0]!).toBeLessThan(min + spacing + tolerance);
@@ -69,8 +72,12 @@ describe("ticks at whole multiples of the spacing (NLC-REQ-004)", () => {
         const { ticks } = niceTicks(min, max, step);
         expect(ticks).toHaveLength(steps + 1);
         ticks.forEach((tick, i) => {
-          // Each tick is the decimal its label states, within a millionth of the spacing.
-          expect(Math.abs(Number(tickLabel(tick, step)) - (min + i * step))).toBeLessThanOrEqual(step * 1e-6);
+          // Each tick is the decimal its label states, within a millionth of the spacing. The expected
+          // value carries rounding of its own, up to a few ulps at 1e9, which can exceed a millionth
+          // of the spacing (security review, on QR-002's test).
+          const expected = min + i * step;
+          const tolerance = Math.max(step * 1e-6, 4 * Number.EPSILON * Math.abs(expected));
+          expect(Math.abs(Number(tickLabel(tick, step)) - expected)).toBeLessThanOrEqual(tolerance);
         });
       }),
       { numRuns: 300 },
@@ -93,6 +100,36 @@ describe("ticks at whole multiples of the spacing (NLC-REQ-004)", () => {
         for (const tick of niceTicks(min, max, spacing).ticks) {
           expect(tick).toBeGreaterThanOrEqual(min - tolerance);
           expect(tick).toBeLessThanOrEqual(max + tolerance);
+        }
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  it("adds no tick at zero to a range near zero that excludes it, whatever the spacing (security review SEC-001)", () => {
+    for (const [min, max, spacing] of [
+      [0.001, 0.002, 2e9],
+      [0.0019, 0.0019000011, 2e9],
+      [-0.002, -0.0019999989, 2e9],
+      [1e-7, 2e-7, 1e6],
+      [0.0001, 0.002, 2e9],
+    ] as const) {
+      expect(tickCount(min, max, spacing), `${min} to ${max} by ${spacing}`).toBe(0);
+      expect(niceTicks(min, max, spacing).ticks).toEqual([]);
+    }
+    // An end at zero keeps its tick.
+    expect(niceTicks(0, 0.002, 2e9).ticks).toEqual([0]);
+    expect(niceTicks(-0.002, 0, 2e9).ticks).toEqual([0]);
+    fc.assert(
+      fc.property(fc.double({ min: 1e-9, max: 1e-3, noNaN: true }), fc.double({ min: 1, max: 1e6, noNaN: true }), fc.double({ min: 1e3, max: 2e9, noNaN: true }), fc.boolean(), (near, widen, spacing, negative) => {
+        const [low, high] = [near, near * (1 + widen)];
+        fc.pre(high <= 1e9);
+        const [min, max] = negative ? [-high, -low] : [low, high];
+        const result = drawableTicks(min, max, spacing);
+        fc.pre(result !== undefined);
+        for (const tick of result!.ticks) {
+          expect(tick).toBeGreaterThanOrEqual(min);
+          expect(tick).toBeLessThanOrEqual(max);
         }
       }),
       { numRuns: 500 },
@@ -207,6 +244,10 @@ describe("tick labels", () => {
     expect(tickLabel(1000000, 100000)).toBe("1000000");
     expect(tickLabel(0.0003, 0.0001)).toBe("0.0003");
     expect(tickLabel(-0, 1)).toBe("0");
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])("refuse a value of %d, which no axis ticks (security review SEC-004)", (value) => {
+    expect(() => tickLabel(value, 1)).toThrow(RangeError);
   });
 
   it("label every default tick with digits that join back to its value", () => {

@@ -1,4 +1,5 @@
 import { defaultStyle } from "../../core/style";
+import { MAX_VALUE_TICKS } from "../../core/value-scale";
 import type { SceneNode } from "../scene";
 import { fmt } from "./format";
 import { linearScale } from "./scale";
@@ -25,9 +26,10 @@ export interface AxisOptions {
   /** The tick spacing, from `niceTicks`, which sets how many decimals a tick label shows. */
   readonly spacing: number;
   /**
-   * Text to write at a tick in place of its value (NLC-REQ-019), already cleaned by the caller. A
-   * label is matched to the tick its value stands for (`isTickValue`), so ⅔ matches the tick listed
-   * as 0.666666666667 (code review CR-007).
+   * Text to write at a tick in place of its value (NLC-REQ-019), already cleaned by the caller: a
+   * `Map` of at most `MAX_VALUE_TICKS` entries, read only as the options' own key (security review
+   * SEC-002). A label is matched to the tick its value stands for (`isTickValue`), so ⅔ matches the
+   * tick listed as 0.666666666667 (code review CR-007).
    */
   readonly labels?: ReadonlyMap<number, string>;
   readonly showTickLabels: boolean;
@@ -36,6 +38,31 @@ export interface AxisOptions {
 
 /** Space between a tick's end and its label, in drawing units. */
 const LABEL_GAP = 4;
+
+const finite = (...values: readonly number[]) => values.every(Number.isFinite);
+
+/**
+ * The options' custom labels, read own-key, else undefined. Throws on options `niceTicks` and the
+ * validator never give: ends or ticks that are not finite, a domain that does not increase, a
+ * spacing that is not a finite number above 0, more than `MAX_VALUE_TICKS` ticks, or labels that
+ * are not a `Map` of at most that many entries. Such options are a layout bug, which then becomes
+ * the fixed `internal_error` rather than a wrong drawing (security review SEC-004). O(ticks).
+ */
+function checkedLabels(options: AxisOptions): ReadonlyMap<number, string> | undefined {
+  const { from, to, domain, ticks, spacing } = options;
+  const labels = Object.hasOwn(options, "labels") ? options.labels : undefined;
+  const sound =
+    finite(...from, ...to) &&
+    finite(...domain) &&
+    domain[1] > domain[0] &&
+    spacing > 0 &&
+    Number.isFinite(spacing) &&
+    ticks.length <= MAX_VALUE_TICKS &&
+    finite(...ticks) &&
+    (labels === undefined || (labels instanceof Map && labels.size <= MAX_VALUE_TICKS));
+  if (!sound) throw new RangeError("drawAxis(): the options do not describe a drawable axis");
+  return labels;
+}
 
 const line = (x1: number, y1: number, x2: number, y2: number, width: number): SceneNode => ({
   kind: "line",
@@ -57,11 +84,13 @@ const line = (x1: number, y1: number, x2: number, y2: number, width: number): Sc
  * perpendicular to the line and centered on it, so the same call draws a number line, either axis
  * of an x,y graph through its origin, or a diagonal axis of an x,y,z graph. Hidden labels leave the
  * ticks. On a sloping axis each label moves out far enough to clear the line, by its estimated
- * width (`textWidth`, prd/TC-001). Every number passes through `fmt()` (AD-007).
+ * width (`textWidth`, prd/TC-001). Every number passes through `fmt()` (AD-007). Throws on options
+ * no validated axis gives (`checkedLabels`).
  */
 // @spec NLC-REQ-004, NLC-REQ-006, NLC-REQ-007
 export function drawAxis(options: AxisOptions): SceneNode[] {
-  const { from, to, domain, ticks, spacing, labels, showTickLabels, side } = options;
+  const labels = checkedLabels(options);
+  const { from, to, domain, ticks, spacing, showTickLabels, side } = options;
   const [x0, y0] = from;
   const [x1, y1] = to;
   const length = Math.hypot(x1 - x0, y1 - y0);
