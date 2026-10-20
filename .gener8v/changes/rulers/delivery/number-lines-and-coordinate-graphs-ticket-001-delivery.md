@@ -263,3 +263,21 @@ TICKET-002 annotates the definition that uses them.
     - too little depth, and a wrong overhang;
     - unhalved widths;
     - the division read through the prototype.
+
+### Security review — `rulers/number-lines-and-coordinate-graphs-ticket-001-security-review` (2026-10-20, Approved)
+
+- **SEC-001:** `RulerScale.locate` takes `unknown` and puts anything but a number off the ruler before any arithmetic: no `valueOf` runs, and a BigInt or a symbol cannot throw. Tested in `tests/core/ruler.test.ts`.
+- **SEC-002:** `checkedOptions` reads `from` and `to` once by index (`pointOf`) into two numbers, and draws only from those.
+  - Coordinates must be within ±4,000 (`MAX_COORDINATE`, ten drawing widths).
+  - `fontSize` must be from 0.01 to 36 (`MAX_FONT_SIZE`, twice the title size).
+  - `rulerMarksDepth` and `rulerNumberOverhang` check their unit or length and font size, and throw `RangeError`.
+  - A Known Hazard on TICKET-003 states the limits.
+- **SEC-003:** every message describes refused values with `describeValue` (`src/core/issues.ts`), so no caller code runs and no message copies a long string. Points are never printed.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,276 tests) exits 0 on three runs.
+- **Deliberate breaks:** seven, each failing a test:
+  - `locate` converting its input;
+  - points read through the iterator;
+  - no coordinate bound;
+  - no font-size upper bound;
+  - `String()` in a message;
+  - each helper unchecked.

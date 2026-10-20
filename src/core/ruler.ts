@@ -66,8 +66,11 @@ export interface RulerScale {
   readonly marksPerUnit: number;
   /** Every mark from 0 to the length, ends included, in order. */
   readonly marks: readonly RulerMark[];
-  /** Where `value` lies. Two ends are in order when the first's mark `index` is below the second's. */
-  locate(value: number): RulerLocation;
+  /**
+   * Where `value` lies; anything but a number is off the ruler. Two ends are in order when the
+   * first's mark `index` is below the second's.
+   */
+  locate(value: unknown): RulerLocation;
 }
 
 const isOwnKey = <T extends object>(table: T, key: unknown): key is keyof T => typeof key === "string" && Object.hasOwn(table, key);
@@ -125,10 +128,13 @@ function markRank(unit: RulerUnit, index: number, perUnit: number): RulerMarkRan
  * for decimal noise (`MARK_NOISE`, in marks) at the ends and at every mark, so 0.1 + 0.2 cm is the
  * 3 mm mark, 0.1 × 3 × 100 (30.000000000000004) is a 30 cm ruler's end and −2.8e-17 is its 0
  * (code review CR-003). Off the ruler is decided first, so the marks named either side of a value
- * between marks are always on it. A mark's value is `index / perUnit`, never −0.
+ * between marks are always on it. A mark's value is `index / perUnit`, never −0. Anything but a
+ * number is off the ruler, never converted: `null`, `""` and `"2.3"` are not marks, no `valueOf`
+ * runs, and a BigInt cannot throw (security review SEC-001).
  */
 // @spec NLC-REQ-052, NLC-REQ-053
-function locateOnRuler(value: number, length: number, perUnit: number): RulerLocation {
+function locateOnRuler(value: unknown, length: number, perUnit: number): RulerLocation {
+  if (typeof value !== "number") return { kind: "off" };
   const position = value * perUnit;
   if (!Number.isFinite(position) || position < -MARK_NOISE || position > length * perUnit + MARK_NOISE) return { kind: "off" };
   const index = Math.round(position) + 0;
@@ -160,6 +166,6 @@ export function rulerScale(unit: unknown, length: unknown, smallestDivision?: un
     length,
     marksPerUnit: perUnit,
     marks: Object.freeze(marks),
-    locate: (value: number) => locateOnRuler(value, length, perUnit),
+    locate: (value: unknown) => locateOnRuler(value, length, perUnit),
   });
 }

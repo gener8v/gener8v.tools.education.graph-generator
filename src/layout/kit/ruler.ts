@@ -1,6 +1,7 @@
-import { type RulerMarkRank, type RulerScale, type RulerUnit, rulerScale } from "../../core/ruler";
+import { describeValue } from "../../core/issues";
+import { type RulerMarkRank, type RulerScale, type RulerUnit, isRulerLength, rulerScale } from "../../core/ruler";
 import { defaultStyle } from "../../core/style";
-import type { SceneNode } from "../scene";
+import { SCENE_WIDTH, type SceneNode } from "../scene";
 import { fmt } from "./format";
 import { linearScale } from "./scale";
 import { DEFAULT_FONT_STACK, textWidth } from "./text";
@@ -27,11 +28,21 @@ const NUMBER_GAP = 3;
  */
 export const RULER_MIN_MARK_WIDTH = 0.25;
 
+/**
+ * The farthest a ruler's `from` or `to` may lie from the drawing's origin, in drawing units: ten
+ * drawing widths, far past any layout's page and far below `fmt()`'s limit (security review
+ * SEC-002).
+ */
+const MAX_COORDINATE = 10 * SCENE_WIDTH;
+
+/** The largest font size for a ruler's numbers: twice the title size (security review SEC-002). */
+const MAX_FONT_SIZE = 2 * defaultStyle.fontSizes.title;
+
 /** A ruler's marked edge to draw: where it runs on the page, the ruler's unit, length and division. */
 export interface RulerMarksOptions {
-  /** The page point of the ruler's 0. */
+  /** The page point of the ruler's 0, each coordinate within ±4,000. */
   readonly from: readonly [number, number];
-  /** The page point of the ruler's length. */
+  /** The page point of the ruler's length, each coordinate within ±4,000. */
   readonly to: readonly [number, number];
   readonly unit: RulerUnit;
   /** A whole number of units, from 1 to the unit's maximum. */
@@ -44,8 +55,8 @@ export interface RulerMarksOptions {
    */
   readonly side: "left" | "right";
   /**
-   * The numbers' font size, in drawing units; the default tick-label size (12) when absent or
-   * undefined. Read only as the options' own key. Two-digit numbers need about 1.2 × their size per
+   * The numbers' font size, in drawing units, from 0.01 to 36; the default tick-label size (12)
+   * when absent or undefined. Read only as the options' own key. Two-digit numbers need about 1.2 × their size per
    * unit, so a 30 cm ruler across 360 units needs at most about 9.8 (code review CR-005).
    */
   readonly fontSize?: number;
@@ -68,33 +79,60 @@ interface CheckedOptions {
  */
 function checkedOptions(options: RulerMarksOptions): CheckedOptions {
   const refuse = (problem: string) => new RangeError(`drawRulerMarks(): ${problem}`);
-  const { from, to, side, unit, length } = options;
+  const { side, unit, length } = options;
   const smallestDivision = Object.hasOwn(options, "smallestDivision") ? options.smallestDivision : undefined;
   const fontSize = (Object.hasOwn(options, "fontSize") ? options.fontSize : undefined) ?? defaultStyle.fontSizes.tickLabel;
-  if (![...from, ...to].every(Number.isFinite)) throw refuse(`from and to must be finite points, got ${String(from)} and ${String(to)}`);
+  // Each point is read once, into numbers, and only those are measured and drawn (security review SEC-002).
+  const from = pointOf(options.from);
+  const to = pointOf(options.to);
+  if (from === undefined || to === undefined) throw refuse(`from and to must each be two finite numbers within ±${MAX_COORDINATE}`);
   const edge = Math.hypot(to[0] - from[0], to[1] - from[1]);
   if (!(edge > 0)) throw refuse("from and to must be different points");
-  if (side !== "left" && side !== "right") throw refuse(`side must be "left" or "right", got ${String(side)}`);
-  if (!(typeof fontSize === "number" && Number.isFinite(fontSize) && fmt(fontSize) > 0)) throw refuse(`fontSize must be at least 0.01, got ${String(fontSize)}`);
+  if (side !== "left" && side !== "right") throw refuse(`side must be "left" or "right", got ${describeValue(side)}`);
+  checkFontSize(fontSize, refuse);
   const ruler = rulerScale(unit, length, smallestDivision);
-  if (ruler === undefined) throw refuse(`no ruler is ${String(length)} ${String(unit)} long marked to ${String(smallestDivision ?? "its default division")}`);
+  if (ruler === undefined) {
+    throw refuse(`no ruler is ${describeValue(length)} ${describeValue(unit)} long marked to ${smallestDivision === undefined ? "its default division" : describeValue(smallestDivision)}`);
+  }
   return { ruler, from, to, edge, side, fontSize };
+}
+
+/** `point` as two numbers, read once, when it is an array of two finite coordinates within `MAX_COORDINATE`; else undefined. */
+function pointOf(point: unknown): readonly [number, number] | undefined {
+  if (!Array.isArray(point) || point.length !== 2) return undefined;
+  const [x, y]: unknown[] = [point[0], point[1]];
+  const usable = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= MAX_COORDINATE;
+  return usable(x) && usable(y) ? [x, y] : undefined;
+}
+
+/** Throws unless `fontSize` is a number that survives `fmt()` (at least 0.01) and is at most `MAX_FONT_SIZE`. Messages describe values with `describeValue`, which never calls the caller's code (security review SEC-003). */
+function checkFontSize(fontSize: unknown, refuse: (problem: string) => RangeError): asserts fontSize is number {
+  if (!(typeof fontSize === "number" && Number.isFinite(fontSize) && fmt(fontSize) > 0 && fontSize <= MAX_FONT_SIZE)) {
+    throw refuse(`fontSize must be from 0.01 to ${MAX_FONT_SIZE}, got ${describeValue(fontSize)}`);
+  }
 }
 
 /**
  * How far a ruler's marks and numbers reach past its edge, on a horizontal edge, in drawing units:
  * the longest mark, the gap and a line of numbers, so a layout can leave room for them (quality
- * review QR-010).
+ * review QR-010). Throws `RangeError` on a unit or font size `drawRulerMarks` refuses.
  */
 export function rulerMarksDepth(unit: RulerUnit, fontSize: number = defaultStyle.fontSizes.tickLabel): number {
+  const refuse = (problem: string) => new RangeError(`rulerMarksDepth(): ${problem}`);
+  if (!Object.hasOwn(RULER_MARK_LENGTHS, unit)) throw refuse(`no ruler is marked in ${describeValue(unit)}`);
+  checkFontSize(fontSize, refuse);
   return Math.max(...RULER_MARK_LENGTHS[unit]) + NUMBER_GAP + fontSize * LINE_HEIGHT;
 }
 
 /**
  * How far the "0" before a horizontal ruler's start, and its last number past its end, reach
  * beyond the edge, in drawing units: half of each number's estimated width (quality review QR-010).
+ * Throws `RangeError` on a length no ruler has or a font size `drawRulerMarks` refuses.
  */
 export function rulerNumberOverhang(length: number, fontSize: number = defaultStyle.fontSizes.tickLabel): { start: number; end: number } {
+  const refuse = (problem: string) => new RangeError(`rulerNumberOverhang(): ${problem}`);
+  if (!(isRulerLength("centimeters", length) || isRulerLength("inches", length))) throw refuse(`no ruler is ${describeValue(length)} units long`);
+  checkFontSize(fontSize, refuse);
   return { start: textWidth("0", fontSize) / 2, end: textWidth(String(length), fontSize) / 2 };
 }
 

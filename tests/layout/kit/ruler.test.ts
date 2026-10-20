@@ -218,11 +218,11 @@ describe("room for the marks and numbers (quality review QR-010)", () => {
 
 describe("options no validated ruler gives", () => {
   it.each<[string, Partial<RulerMarksOptions>, RegExp]>([
-    ["a length of 0", { length: 0 }, /no ruler is 0 centimeters/],
+    ["a length of 0", { length: 0 }, /no ruler is 0 "centimeters"/],
     ["a length that is not whole", { length: 4.5 }, /no ruler/],
     ["a length past the maximum", { length: 31 }, /no ruler/],
     ["an unknown unit", { unit: "feet" as RulerUnit }, /no ruler/],
-    ["a division on a centimetre ruler", { smallestDivision: "half" }, /no ruler .* marked to half/],
+    ["a division on a centimetre ruler", { smallestDivision: "half" }, /no ruler .* marked to "half"/],
     ["an unknown division", { unit: "inches", smallestDivision: "third" }, /no ruler/],
     ["a null division on an inch ruler (code review CR-001)", { unit: "inches", smallestDivision: null as unknown as string }, /no ruler/],
     ["an end that is not finite", { to: [Number.NaN, 100] }, /from and to/],
@@ -234,6 +234,62 @@ describe("options no validated ruler gives", () => {
   ])("throw on %s, naming the option", (_, extra, message) => {
     expect(() => drawRulerMarks({ ...ruler("centimeters", 10), ...extra })).toThrow(RangeError);
     expect(() => drawRulerMarks({ ...ruler("centimeters", 10), ...extra })).toThrow(message);
+  });
+
+  it("throw on a point that reads one way through its iterator and another by index, rather than drawing it (security review SEC-002)", () => {
+    const twoFaced = Object.assign([Number.NaN, 100], {
+      *[Symbol.iterator]() {
+        yield 20;
+        yield 100;
+      },
+    }) as unknown as [number, number];
+    expect(() => drawRulerMarks({ ...ruler("centimeters", 10), from: twoFaced })).toThrow(/from and to/);
+  });
+
+  it.each<[string, Partial<RulerMarksOptions>]>([
+    ["a point with three coordinates", { to: [380, 100, 5] as unknown as [number, number] }],
+    ["a point that is not an array", { to: { 0: 380, 1: 100, length: 2 } as unknown as [number, number] }],
+    ["a coordinate of 1e20", { to: [1e20, 100] }],
+    ["a coordinate past ten drawing widths", { from: [-4001, 100] }],
+    ["a font size of 1e20", { fontSize: 1e20 }],
+    ["a font size past twice the title size", { fontSize: 37 }],
+  ])("throw on %s (security review SEC-002)", (_, extra) => {
+    expect(() => drawRulerMarks({ ...ruler("centimeters", 10), ...extra })).toThrow(RangeError);
+  });
+
+  it("accept the bounds themselves: coordinates of ±4,000 and a font size of 36", () => {
+    expect(() => drawRulerMarks({ ...ruler("centimeters", 10), from: [-4000, 100], to: [4000, 100], fontSize: 36 })).not.toThrow();
+  });
+
+  it("describe a refused value without running its code or copying all of it (security review SEC-003)", () => {
+    const hostile = {
+      toString() {
+        throw new Error("caller code ran");
+      },
+    };
+    expect(() => drawRulerMarks({ ...ruler("centimeters", 10), side: hostile as unknown as "left" })).toThrow(RangeError);
+    expect(() => drawRulerMarks({ ...ruler("centimeters", 10), unit: hostile as unknown as RulerUnit })).toThrow(RangeError);
+    expect(() => drawRulerMarks({ ...ruler("centimeters", 10), fontSize: hostile as unknown as number })).toThrow(RangeError);
+    let message = "";
+    try {
+      drawRulerMarks({ ...ruler("centimeters", 10), side: "x".repeat(10_000_000) as "left" });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toMatch(/side must be/);
+    expect(message.length).toBeLessThan(200);
+  });
+
+  it("check the room helpers' inputs as drawRulerMarks does (security review SEC-002)", () => {
+    expect(() => rulerMarksDepth("feet" as RulerUnit)).toThrow(RangeError);
+    expect(() => rulerMarksDepth("toString" as RulerUnit)).toThrow(RangeError);
+    expect(() => rulerMarksDepth("inches", Number.NaN)).toThrow(RangeError);
+    expect(() => rulerMarksDepth("inches", 1e20)).toThrow(RangeError);
+    expect(() => rulerNumberOverhang(0)).toThrow(RangeError);
+    expect(() => rulerNumberOverhang(31)).toThrow(RangeError);
+    expect(() => rulerNumberOverhang(4.5)).toThrow(RangeError);
+    expect(() => rulerNumberOverhang(10, 0)).toThrow(RangeError);
+    expect(rulerNumberOverhang(30).end).toBeGreaterThan(rulerNumberOverhang(9).end);
   });
 
   it("draw the two largest rulers cleanly: 301 and 193 marks", () => {

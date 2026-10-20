@@ -194,6 +194,21 @@ describe("where a value lies on a ruler (NLC-REQ-052, NLC-REQ-053)", () => {
     expect(scale("centimeters", 30).locate(value)).toEqual({ kind: "off" });
   });
 
+  it("puts anything but a number off the ruler, never converting it or running its code (security review SEC-001)", () => {
+    const ruler = scale("centimeters", 30);
+    let called = false;
+    const sneaky = {
+      valueOf() {
+        called = true;
+        return 3;
+      },
+    };
+    for (const value of [null, "", [], false, true, "2.3", sneaky, 1n, Symbol("x"), undefined, [3]]) {
+      expect(ruler.locate(value), String(typeof value)).toEqual({ kind: "off" });
+    }
+    expect(called).toBe(false);
+  });
+
   it("puts every mark, written with noise far below the allowance, on that mark, and every index past the ends off the ruler", () => {
     fc.assert(
       fc.property(fc.integer({ min: -10, max: 310 }), fc.double({ min: -1e-11, max: 1e-11, noNaN: true }), (k, noise) => {
