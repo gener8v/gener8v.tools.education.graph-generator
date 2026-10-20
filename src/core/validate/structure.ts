@@ -299,7 +299,7 @@ function checkMap(contents: ObjectContents, properties: PropertyMap, place: Plac
  *    `walk.failed`, already reported): whether the property applies cannot be known, so that is
  *    not reported, but its own value is still checked, so every problem is reported in one pass
  *    (GSV-REQ-017; code review CR-001), as `ordered` checks each value on its own; it is then left
- *    out (`leaveOut`);
+ *    out and marked failed (`checkLeftOut`);
  * 2. the sibling passed with one of the values: the property is checked as usual;
  * 3. the sibling passed with another value, or is optional and absent: `inapplicable_property` at
  *    the property's path, with the condition and, in `conflicts`, the sibling's path; its value is
@@ -312,8 +312,7 @@ function checkConditional(spec: PropertySpec, condition: AppliesWhen, element: u
   const sibling = child(parent, condition.term);
   const siblingPath = pointer(...sibling.segments);
   if (walk.failed.has(siblingPath)) {
-    checkValue(spec, element, at, walk, spec.presentation !== undefined);
-    leaveOut(spec, path, walk);
+    checkLeftOut(spec, element, at, path, walk);
     return;
   }
   const value = Object.hasOwn(normalized, condition.term) ? normalized[condition.term] : undefined;
@@ -329,15 +328,19 @@ function checkConditional(spec: PropertySpec, condition: AppliesWhen, element: u
 }
 
 /**
- * Leave a checked value out of the result, as a failed value, with no provenance. A leaf has one
- * provenance entry, at its path; only an object or list has entries below it, so only then are the
- * entries scanned, which keeps many conditional leaves linear (quality review QR-004).
+ * Check a value that is then left out of the result, as a failed value: its issues and its count
+ * against `DESCRIPTION_VALUE_LIMIT` are kept, but the provenance it would write goes to a scratch
+ * record that is dropped, so nothing it wrote needs finding and removing afterwards, whatever its
+ * kind or the description's size (security review SEC-003; quality review QR-004).
  */
-function leaveOut(spec: PropertySpec, path: string, walk: Walk): void {
+function checkLeftOut(spec: PropertySpec, element: unknown, at: Place, path: string, walk: Walk): void {
+  const scratch: Walk = { ...walk, provenance: Object.create(null) as Provenance };
+  try {
+    checkValue(spec, element, at, scratch, spec.presentation !== undefined);
+  } finally {
+    walk.count = scratch.count;
+  }
   walk.failed.add(path);
-  delete walk.provenance[path];
-  if (spec.kind !== "object" && spec.kind !== "array") return;
-  for (const key of Object.keys(walk.provenance)) if (key.startsWith(`${path}/`)) delete walk.provenance[key];
 }
 
 /**

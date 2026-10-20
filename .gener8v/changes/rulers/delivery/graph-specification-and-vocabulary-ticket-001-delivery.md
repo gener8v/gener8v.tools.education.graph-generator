@@ -271,3 +271,26 @@ The existing rows for GSV-REQ-003 and GSV-REQ-040 already name these locations. 
   - All are in development tooling and Windows-specific. `pnpm audit --prod` reports no known vulnerabilities, and the package has no runtime dependencies.
   - Updating them is a dependency change for its own commit, raised with the user.
 
+### Security review — `rulers/graph-specification-and-vocabulary-ticket-001-security-review` (2026-10-20, Approved)
+
+- **SEC-001, SEC-002 (dependencies):** commit `ad2452f`, a dependency commit of its own, updates development tooling for today's advisories (GHSA-r825-w8mm-5pxw and two related ones).
+  - `vite` is now 8.3.4. It is declared as a direct dev dependency (`^8.3.4`), since it is a peer of `vitest` that an override alone did not move.
+  - `launch-editor` is now 2.14.2, through a `pnpm.overrides` entry, since `@changesets/cli` 3.0.3 pins it.
+  - `postcss` and `nanoid` move by a patch with `vite`.
+  - `pnpm audit` and `pnpm audit --prod` report no known vulnerabilities, and `pnpm changeset status` still runs.
+- **SEC-003 (supersedes QR-004's `leaveOut`):** a term left out because its sibling failed is checked by `checkLeftOut` against a scratch provenance record that is then dropped, so nothing it wrote needs finding and removing, whatever its kind or the description's size.
+  - It shares the issues, the failed set and the value count with the walk, and the count is copied back.
+  - A test shows two list elements, each holding just over half the description limit in a left-out term, still reported as `too_large`.
+- **SEC-004:**
+  - `runDomainChecks` reads a check's `optionalInputs` own-key and only as a list (`optionalInputsOf`).
+  - `createIssue` and `issueMessage` read params own-key from a null-prototype copy (`ownParams`), so a polluted `Object.prototype` can neither add an optional input, rewrite a message nor add an issue field.
+  - Pollution tests cover both.
+- **Re-verification:**
+  - `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0.
+  - `pnpm test` (1,302 tests) exits 0 on three runs, on the new lockfile.
+  - Four deliberate breaks each fail a test:
+    - the scratch record replaced by the walk;
+    - the count not copied back (failed only once the cross-element test was added);
+    - `optionalInputs` read through the prototype;
+    - params read through the prototype.
+

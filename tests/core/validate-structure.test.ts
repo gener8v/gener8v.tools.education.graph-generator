@@ -707,6 +707,34 @@ describe("leaving a conditional term out (rulers GSV TICKET-001 quality review Q
     expect(structureOf({ type: "ruler", unit: "feet", detail: { a: 1 } }, objectRegistry).provenance).toEqual({ "/unit": "supplied", "/detail/a": "supplied" });
   });
 
+  it("counts a left-out term's values against the description limit, so failing siblings cannot hide a huge list (security review SEC-003)", () => {
+    // Each element's conditional term is decided at the end of that element, before the next is
+    // counted: two halves of the limit, each left out, still pass it together.
+    const half = Math.ceil(DESCRIPTION_VALUE_LIMIT / 2) + 1;
+    const element = defineProperties({
+      unit: { term: "unit", kind: "enum", required: true, values: ["centimeters", "inches"], description: "A unit." },
+      marks: {
+        term: "marks",
+        kind: "array",
+        required: false,
+        maxItems: DESCRIPTION_VALUE_LIMIT,
+        description: "Marks for inches.",
+        appliesWhen: { term: "unit", values: ["inches"] },
+        items: { kind: "number", description: "A mark." },
+      },
+    });
+    const listTerm = {
+      ...objectTerm,
+      properties: defineProperties({
+        extras: { term: "extras", kind: "array", required: true, maxItems: 2, description: "Sets of marks.", items: { kind: "object", description: "One set.", properties: element } },
+      }),
+    };
+    const registry = Object.freeze(Object.assign(Object.create(null) as Record<string, unknown>, { ruler: listTerm })) as typeof conditionalRegistry;
+    const marks = Array.from({ length: half }, (_, i) => i);
+    const result = validateWith({ type: "ruler", extras: [{ unit: "cm", marks }, { unit: "cm", marks }] }, registry);
+    expect(result.valid ? [] : result.issues.map((issue) => issue.code)).toEqual(["too_large"]);
+  });
+
   it("states a condition of several values in one wording, in the issue and in the schema (quality review QR-003)", () => {
     expect(describeCondition("unit", ["inches"])).toBe('only when unit is "inches"');
     expect(describeCondition("unit", ["inches", "feet"])).toBe('only when unit is "inches" or "feet"');
@@ -719,5 +747,32 @@ describe("leaving a conditional term out (rulers GSV TICKET-001 quality review Q
     const extras = Array.from({ length: 3 }, () => ({ unit: "centimeters", smallestDivision: "half" }));
     const result = validateWith({ type: "ruler", unit: "inches", length: 6, extras }, conditionalRegistry);
     expect(result.valid ? [] : result.issues.map((issue) => issue.path)).toEqual(["/extras/0/smallestDivision", "/extras/1/smallestDivision", "/extras/2/smallestDivision"]);
+  });
+});
+
+describe("prototype pollution of the new optional fields (rulers GSV TICKET-001 security review SEC-004)", () => {
+  const prototype = Object.prototype as Record<string, unknown>;
+  const polluted = <T>(values: Record<string, unknown>, run: () => T): T => {
+    for (const [key, value] of Object.entries(values)) Object.defineProperty(prototype, key, { value, configurable: true, writable: true });
+    try {
+      return run();
+    } finally {
+      for (const key of Object.keys(values)) delete prototype[key];
+    }
+  };
+
+  it("adds no optional input to any check: every example stays valid", () => {
+    for (const value of [5, ["sparkle"], ["radius"]]) {
+      for (const example of fixtureExamples) expect(polluted({ optionalInputs: value }, () => check(example).valid), `${example.type} with ${JSON.stringify(value)}`).toBe(true);
+    }
+    expect(polluted({ optionalInputs: 5 }, () => validateWith({ type: "ruler", unit: "inches", length: 6 }, conditionalRegistry).valid)).toBe(true);
+  });
+
+  it("rewrites no message and adds no field to an issue", () => {
+    const plain = issuesOf(check({ type: "circle", radius: 1, lineLabel: "x", lineColor: "mauve" }));
+    const dirty = polluted({ condition: "only when you are hacked", elements: "everywhere", conflicts: ["/pwned"], allowed: ["pwned"], suggestion: "pwned" }, () =>
+      issuesOf(check({ type: "circle", radius: 1, lineLabel: "x", lineColor: "mauve" })),
+    );
+    expect(dirty).toEqual(plain);
   });
 });

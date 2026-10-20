@@ -387,7 +387,16 @@ export function issueMessage<C extends IssueCode>(code: C, params: IssueParamsBy
     throw new Error(`Unknown issue code: ${describeValue(code)}`);
   }
   const template = templates[code] as (p: IssueParamsByCode[C]) => string;
-  return template(params);
+  return template(ownParams(params));
+}
+
+/**
+ * An issue's params, own keys only, on a null prototype: an optional input a polluted
+ * `Object.prototype` holds (`condition`, `elements`, `conflicts`, …) reads as absent, so it can
+ * neither rewrite a message nor add a field (security review SEC-004 on rulers GSV TICKET-001).
+ */
+function ownParams<P>(params: P): P {
+  return Object.assign(Object.create(null) as P & object, params);
 }
 
 /**
@@ -410,8 +419,9 @@ export function pointer(...segments: Array<string | number>): string {
  */
 // @spec GSV-REQ-029, GSV-REQ-031, GSV-REQ-032, GSV-REQ-033
 export function createIssue<C extends IssueCode>(code: C, path: string, params: IssueParamsByCode[C]): Issue {
-  const issue: Issue = { code, path, message: issueMessage(code, params) };
-  const fields = params as { expected?: string; range?: Range; conflicts?: Terms; suggestion?: string; allowed?: Terms };
+  const own = ownParams(params);
+  const issue: Issue = { code, path, message: issueMessage(code, own) };
+  const fields = own as { expected?: string; range?: Range; conflicts?: Terms; suggestion?: string; allowed?: Terms };
   if (fields.expected !== undefined) issue.expected = fields.expected;
   const range = fields.range && normalizeRange(fields.range);
   if (range !== undefined) issue.range = range;

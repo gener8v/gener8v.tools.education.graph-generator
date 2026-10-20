@@ -15,6 +15,15 @@ function assertIssue(issue: Issue, check: string): Issue {
 }
 
 /**
+ * A check's optional inputs, read as its own list only: a polluted `Object.prototype` cannot add
+ * any (security review SEC-004 on rulers GSV TICKET-001).
+ */
+function optionalInputsOf(check: GraphTypeDefinition["checks"][number]): readonly string[] {
+  const optional = Object.hasOwn(check, "optionalInputs") ? check.optionalInputs : undefined;
+  return Array.isArray(optional) ? optional : [];
+}
+
+/**
  * Stage 4 (AD-004): run each domain check whose inputs are present and untouched by any earlier
  * failure, and whose optional inputs, present or not, are untouched by any failure (code review
  * CR-002 on rulers GSV TICKET-001), and merge their issues into the one list. A check that would read a failed value is
@@ -27,7 +36,7 @@ export function runDomainChecks(definition: GraphTypeDefinition, state: StageSta
   for (const check of definition.checks) {
     const ready =
       check.inputs.every((input) => Object.hasOwn(state.description, input.split("/")[0]!) && !touchesFailed(input, state.failed)) &&
-      (check.optionalInputs ?? []).every((input) => !touchesFailed(input, state.failed));
+      optionalInputsOf(check).every((input) => !touchesFailed(input, state.failed));
     if (!ready) continue;
     for (const issue of check.check(state.description as DescriptionBase)) state.issues.push(assertIssue(issue, check.name));
   }
