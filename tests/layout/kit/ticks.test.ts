@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { drawableTicks } from "../../../src/core/value-scale";
 import { AXIS_DEFAULT_INTERVALS, niceTicks, tickCount, tickLabel } from "../../../src/layout/kit/ticks";
 
 /** Whether `x` is 1, 2 or 5 times a power of ten. */
@@ -43,6 +44,28 @@ describe("ticks at whole multiples of the spacing (NLC-REQ-004)", () => {
         expect(ticks.at(-1) ?? -Infinity).toBeGreaterThan(max - spacing - tolerance);
       }),
       { numRuns: 300 },
+    );
+  });
+
+  it("adds no tick outside the range far from zero, where a tick's index is large (code review CR-001)", () => {
+    expect(niceTicks(999_999_998.4, 999_999_999.6, 1).ticks).toEqual([999_999_999]);
+    expect(tickCount(999_999_900.4, 999_999_999.6, 1)).toBe(99);
+    expect(niceTicks(-999_999_999.6, -999_999_998.4, 1).ticks).toEqual([-999_999_999]);
+    // An end exactly on a multiple keeps its tick.
+    expect(niceTicks(999_999_998, 999_999_999.5, 0.5).ticks).toEqual([999_999_998, 999_999_998.5, 999_999_999, 999_999_999.5]);
+    fc.assert(
+      fc.property(fc.double({ min: -1e9, max: 1e9, noNaN: true }), fc.double({ min: -2, max: 3, noNaN: true }), fc.integer({ min: 3, max: 90 }), (min, logWidth, steps) => {
+        const max = min + 10 ** logWidth;
+        fc.pre(max <= 1e9 && max - min >= 1e-9 * Math.max(1, Math.abs(min), Math.abs(max)));
+        const spacing = Number(((max - min) / steps).toPrecision(2));
+        fc.pre(spacing > 0 && tickCount(min, max, spacing) <= 100);
+        const tolerance = 1e-12 * Math.max(Math.abs(min), Math.abs(max), spacing);
+        for (const tick of niceTicks(min, max, spacing).ticks) {
+          expect(tick).toBeGreaterThanOrEqual(min - tolerance);
+          expect(tick).toBeLessThanOrEqual(max + tolerance);
+        }
+      }),
+      { numRuns: 500 },
     );
   });
 
@@ -105,6 +128,26 @@ describe("tick counts", () => {
     expect(() => niceTicks(0, 10, 0)).toThrow(RangeError);
     expect(() => niceTicks(0, 100, 0.5)).toThrow(RangeError);
     expect(() => niceTicks(5, 5)).toThrow(RangeError);
+  });
+});
+
+describe("ticks for a check (code review CR-006)", () => {
+  it("are listed for an axis that can be drawn, and undefined, never thrown, for one that cannot", () => {
+    expect(drawableTicks(0, 10, 2)).toEqual(niceTicks(0, 10, 2));
+    expect(drawableTicks(-3.5, 7.25)).toEqual(niceTicks(-3.5, 7.25));
+    for (const [min, max, spacing] of [
+      [0, 10, 0],
+      [0, 10, -1],
+      [0, 100, 0.5],
+      [5, 5, undefined],
+      [5, 1, 1],
+      [0, 1e-10, undefined],
+      [0, 1, 1e-300],
+      [Number.NaN, 1, 1],
+      [0, 1, Number.POSITIVE_INFINITY],
+    ] as const) {
+      expect(drawableTicks(min, max, spacing), `${min} to ${max} by ${spacing}`).toBeUndefined();
+    }
   });
 });
 

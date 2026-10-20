@@ -1,6 +1,6 @@
 import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
-import { MAX_VALUE_TICKS, SCALE_RESOLUTION, VALUE_LIMIT, cleanDecimal, tickCount, tooManyTicks } from "../value-scale";
+import { MAX_VALUE_TICKS, SCALE_RESOLUTION, VALUE_LIMIT, axisTooNarrow, tickCount, tooManyTicks } from "../value-scale";
 import { type DescriptionBase, type DomainCheck, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 /**
@@ -47,7 +47,7 @@ export const axisProperties: PropertyMap = /* @__PURE__ */ defineProperties({
     kind: "number",
     required: false,
     max: 2 * AXIS_LIMIT,
-    description: `The distance between neighbouring ticks on an axis: greater than 0, giving at most ${MAX_VALUE_TICKS} ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks.`,
+    description: `The distance between neighbouring ticks on an axis: greater than 0 and at most ${2 * AXIS_LIMIT}, giving at most ${MAX_VALUE_TICKS} ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one).`,
   },
   showTickLabels: {
     term: "showTickLabels",
@@ -74,40 +74,76 @@ export function axisProperty(term: string, name: string): PropertySpec {
   };
 }
 
+/** `x` rounded up (or down) at 10 significant digits, so a suggested end stays valid once printed. */
+function roundOutward(x: number, up: boolean): number {
+  const step = 10 ** (Math.floor(Math.log10(Math.max(Math.abs(x), 1e-300))) - 9);
+  return Number(((up ? Math.ceil(x / step) : Math.floor(x / step)) * step).toPrecision(10));
+}
+
+/**
+ * `out_of_range` for a range too narrow to draw (`axisTooNarrow`), with an end the caller can use:
+ * the smallest valid `max` for this `min`, or, when that would pass the axis limit, the largest
+ * valid `min` for this `max` (code review CR-003).
+ */
+function narrowRange(path: string, min: number, max: number): Issue {
+  // The width needed grows with the new end, so widen a little past the first estimate.
+  const width = (end: number) => SCALE_RESOLUTION * Math.max(1, Math.abs(min), Math.abs(max), Math.abs(end)) * (1 + 1e-6);
+  const upper = roundOutward(min + width(min + width(min)), true);
+  if (upper <= AXIS_LIMIT && !axisTooNarrow(min, upper)) {
+    return createIssue("out_of_range", pointer(path, "max"), { term: `${path}.max`, got: max, range: { min: upper } });
+  }
+  const lower = roundOutward(max - width(max - width(max)), false);
+  return createIssue("out_of_range", pointer(path, "min"), { term: `${path}.min`, got: min, range: { max: lower } });
+}
+
 /**
  * The domain checks of the axis at `path` (a top-level term such as `xAxis`), once its range has
- * passed the structure stage (AD-004):
- * - a tick spacing of 0 or less: `tick_spacing_invalid` (NLC-REQ-009);
- * - a tick spacing giving more than `MAX_VALUE_TICKS` ticks: `too_many_ticks`, with the limit and a
- *   spacing that fits (NLC-REQ-008), counted arithmetically, never listed;
+ * passed the structure stage (AD-004), each reported on its own:
  * - a range narrower than `SCALE_RESOLUTION` of its larger end (and than `SCALE_RESOLUTION`), whose
- *   ticks a double cannot tell apart: `out_of_range` at `max`, as for a data graph's value scale.
+ *   ticks a double cannot tell apart: `out_of_range`, with an end that fits, as for a data graph's
+ *   value scale;
+ * - a tick spacing of 0 or less: `tick_spacing_invalid` (NLC-REQ-009);
+ * - on a range that can be drawn, a tick spacing giving more than `MAX_VALUE_TICKS` ticks:
+ *   `too_many_ticks`, with the limit and a spacing that fits (NLC-REQ-008), counted
+ *   arithmetically, never listed.
  * Work is constant, whatever the numbers.
  */
 // @spec NLC-REQ-008, NLC-REQ-009
 export function axisChecks(path: string, axis: Axis): Issue[] {
-  const { min, max, tickSpacing } = axis;
-  const spacingTerm = `${path}.tickSpacing`;
-  if (tickSpacing !== undefined && !(tickSpacing > 0)) {
-    return [createIssue("tick_spacing_invalid", pointer(path, "tickSpacing"), { term: spacingTerm, got: tickSpacing })];
-  }
-  const span = max - min;
-  const resolution = SCALE_RESOLUTION * Math.max(1, Math.abs(min), Math.abs(max));
-  if (span < resolution) {
-    return [createIssue("out_of_range", pointer(path, "max"), { term: `${path}.max`, got: max, range: { min: cleanDecimal(min + resolution) } })];
-  }
-  if (tickSpacing !== undefined) {
-    const count = tickCount(min, max, tickSpacing);
-    if (count > MAX_VALUE_TICKS) return [tooManyTicks(pointer(path, "tickSpacing"), spacingTerm, count, span)];
-  }
-  return [];
+  return [...axisRangeIssues(path, axis), ...axisSpacingIssues(path, axis)];
 }
 
-/** `axisChecks` for the axis at the top-level term `path`, as a domain check reading only that axis. */
-export function axisCheck(path: string): DomainCheck {
-  return {
-    name: `the ${path} tick spacing and range can be drawn`,
-    inputs: [`${path}/min`, `${path}/max`, `${path}/tickSpacing`],
-    check: (description: DescriptionBase) => axisChecks(path, description[path] as Axis),
-  };
+/** The range part of `axisChecks`: reads `min` and `max` only. */
+function axisRangeIssues(path: string, { min, max }: Axis): Issue[] {
+  return axisTooNarrow(min, max) ? [narrowRange(path, min, max)] : [];
+}
+
+/** The tick-spacing part of `axisChecks`: silent on a range too narrow to draw, which the range part reports. */
+function axisSpacingIssues(path: string, { min, max, tickSpacing }: Axis): Issue[] {
+  if (tickSpacing === undefined) return [];
+  const spacingTerm = `${path}.tickSpacing`;
+  if (!(tickSpacing > 0)) return [createIssue("tick_spacing_invalid", pointer(path, "tickSpacing"), { term: spacingTerm, got: tickSpacing })];
+  if (axisTooNarrow(min, max)) return [];
+  const count = tickCount(min, max, tickSpacing);
+  return count > MAX_VALUE_TICKS ? [tooManyTicks(pointer(path, "tickSpacing"), spacingTerm, count, max - min)] : [];
+}
+
+/**
+ * `axisChecks` for the axis at the top-level term `path`, as two domain checks: one reading the
+ * range only, so a failed tick spacing never hides a range too narrow to draw (code review CR-002),
+ * and one reading the tick spacing with it. Register both: `checks: [...axisCheck("xAxis")]`.
+ */
+export function axisCheck(path: string): readonly DomainCheck[] {
+  return [
+    {
+      name: `the ${path} range can be drawn`,
+      inputs: [`${path}/min`, `${path}/max`],
+      check: (description: DescriptionBase) => axisRangeIssues(path, description[path] as Axis),
+    },
+    {
+      name: `the ${path} tick spacing is greater than 0 and gives at most ${MAX_VALUE_TICKS} ticks`,
+      inputs: [`${path}/min`, `${path}/max`, `${path}/tickSpacing`],
+      check: (description: DescriptionBase) => axisSpacingIssues(path, description[path] as Axis),
+    },
+  ];
 }

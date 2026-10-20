@@ -80,6 +80,10 @@
 - Carried from graph-library/geometric-shapes-and-solids-ticket-001-security-review/SEC-002 (overflow in the projection):
   - `isometric()` (`src/layout/kit/isometric.ts`) overflows for finite coordinates from about 9e307: `(x + y) / 2` and `y − x` become ±Infinity, and even a point on the line of sight, which projects exactly to (0, 0), comes out as (0, Infinity). `fmt()` then throws, so `createGraph` fails closed with `internal_error`, which is still a bug for a valid description.
   - Scale each axis's values into drawing units first, then project: never pass raw axis values to `isometric()`. Add a `createGraph` test at the axis limits (NLC TICKET-001's bound, both signs) that the result is not `internal_error`.
+- Carried from graph-library/number-lines-and-coordinate-graphs-ticket-001-code-review/CR-006 (ticks in a domain check):
+  - Domain checks do not see one another's issues, so a check that lists an axis's ticks can meet an axis another check is reporting (a spacing giving more than 100 ticks, a range too narrow to draw). `niceTicks` throws on such an axis, which `createGraph` turns into a single `internal_error`.
+  - In a check, get ticks with `drawableTicks(min, max, tickSpacing)` (`src/core/value-scale.ts`), which returns undefined for an axis that cannot be drawn; skip the check then. Use `niceTicks` only in layouts, on validated descriptions.
+  - Register an axis's checks with `checks: [...axisCheck("xAxis"), …]`: `axisCheck` returns two checks, one for the range and one for the spacing (code review CR-002).
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-005

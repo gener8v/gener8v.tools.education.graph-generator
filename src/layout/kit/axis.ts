@@ -3,7 +3,7 @@ import type { SceneNode } from "../scene";
 import { fmt } from "./format";
 import { linearScale } from "./scale";
 import { DEFAULT_FONT_STACK } from "./text";
-import { tickLabel } from "./ticks";
+import { isTickValue, tickLabel } from "./ticks";
 import { TICK_LABEL_DROP } from "./value-scale";
 
 /** Which side of an axis its tick labels are written on, on the page. */
@@ -21,7 +21,11 @@ export interface AxisOptions {
   readonly ticks: readonly number[];
   /** The tick spacing, from `niceTicks`, which sets how many decimals a tick label shows. */
   readonly spacing: number;
-  /** Text to write at a tick in place of its value (NLC-REQ-019), already cleaned by the caller. */
+  /**
+   * Text to write at a tick in place of its value (NLC-REQ-019), already cleaned by the caller. A
+   * label is matched to the tick its value stands for (`isTickValue`), so ⅔ matches the tick listed
+   * as 0.666666666667 (code review CR-007).
+   */
   readonly labels?: ReadonlyMap<number, string>;
   readonly showTickLabels: boolean;
   readonly side: AxisSide;
@@ -66,6 +70,12 @@ export function drawAxis(options: AxisOptions): SceneNode[] {
   // How far a tick reaches toward the label side, so the label clears it on a diagonal axis too.
   const reach = half * (side === "below" || side === "above" ? Math.abs(ny) : Math.abs(nx));
 
+  const custom = labels === undefined ? [] : [...labels];
+  const labelAt = (tick: number) => {
+    for (const [value, text] of custom) if (isTickValue(value, tick, spacing)) return text;
+    return tickLabel(tick, spacing);
+  };
+
   const nodes: SceneNode[] = [line(x0, y0, x1, y1, defaultStyle.lineWidths.axis)];
   const texts: SceneNode[] = [];
   for (const value of ticks) {
@@ -92,7 +102,7 @@ export function drawAxis(options: AxisOptions): SceneNode[] {
         ["font-size", fmt(fontSize)],
         ["text-anchor", anchor],
       ],
-      text: labels?.get(value) ?? tickLabel(value, spacing),
+      text: labelAt(value),
     });
   }
   // Labels after every tick, so no tick is drawn over a label.

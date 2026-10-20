@@ -197,4 +197,13 @@ NLC-REQ-007 is covered here for ticks only; points and segments come with TICKET
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/number-lines-and-coordinate-graphs-ticket-001-code-review` (2026-10-20, Approved)
+
+- **CR-001:** ticks no longer fall outside the range far from zero. `multiplesIn` counts an end as a multiple only when `k × spacing` is within 1e-12 of the larger of the end's size and the spacing (in value terms, not in the tick index). 999,999,998.4 to 999,999,999.6 by 1 now gives one tick, not three; 999,999,900.4 to 999,999,999.6 by 1 counts 99, not 101. The data graphs' rule is unchanged.
+- **CR-002:** `axisCheck(path)` now returns two domain checks, the range and the spacing, so a failed spacing never hides a range too narrow to draw. Definitions register them as `...axisCheck("xAxis")`.
+- **CR-003:** the too-narrow-range issue suggests an end that is itself valid: the smallest valid `max`, or, when that would pass the limit, the largest valid `min`, reported at `/…/min`.
+- **CR-004, CR-005:** `tickSpacing`'s description says 5 to 20 ticks on a range at least 0.001 wide, and states its 2,000,000,000 limit.
+- **CR-006:** `drawableTicks(min, max, spacing?)` in `src/core/value-scale.ts` returns the ticks or undefined, never throwing, for domain checks. Known Hazards on NLC TICKET-002, 003 and 004.
+- **CR-007:** `drawAxis` matches a custom label to its tick with `isTickValue` (within a millionth of the spacing), also re-exported from `src/layout/kit/ticks.ts`. A Known Hazard on NLC TICKET-002 makes its off-tick label check use the same rule.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,161 tests) exits 0 on three runs. Six deliberate breaks of the fixes each fail a test.
+

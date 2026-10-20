@@ -93,6 +93,12 @@ describe("tick labels", () => {
     expect(texts(drawAxis(axisOf([20, 100], [380, 100], 0, 1, { spacing: 0.25, labels }))).map(textOf)).toEqual(["0", "0.25", "½", "0.75", "1"]);
   });
 
+  it("match a custom label to the tick its value stands for, even when the tick is listed at 12 digits (code review CR-007)", () => {
+    const options = axisOf([20, 100], [380, 100], 0, 1, { spacing: 1 / 3, labels: new Map([[2 / 3, "⅔"]]) });
+    expect(options.ticks[2]).not.toBe(2 / 3);
+    expect(texts(drawAxis(options)).map(textOf)).toEqual(["0", "0.333333333333", "⅔", "1"]);
+  });
+
   it.each([
     ["below", [20, 100], [380, 100]],
     ["above", [20, 100], [380, 100]],

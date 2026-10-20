@@ -350,11 +350,44 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
 export const AXIS_DEFAULT_INTERVALS = 19;
 
 /**
- * The index range `first..last` of the multiples `k × spacing` inside `[min, max]`, allowing for
- * decimal noise at the ends (0.3 / 0.1 counts as 3). Arithmetic only: never lists a tick.
+ * How close `k × spacing` must come to a value to count as on it, as a share of the larger of the
+ * value's size and the spacing. Far below an axis's resolution (`SCALE_RESOLUTION`), so it absorbs
+ * only the noise of decimal arithmetic (0.3 / 0.1), whatever the tick's index (code review CR-001).
+ */
+const AXIS_NOISE = 1e-12;
+
+/** Whether `value` is the multiple `k × spacing`, allowing for decimal noise in value terms. */
+const isMultiple = (value: number, k: number, spacing: number) =>
+  Math.abs(k * spacing - value) <= AXIS_NOISE * Math.max(Math.abs(value), spacing);
+
+/**
+ * Whether the tick `tick` stands for `value`: equal within a millionth of the spacing, so a value
+ * written in full (2/3) matches the tick listed at 12 significant digits (0.666666666667). The one
+ * rule for custom tick labels, drawn and checked (code review CR-007).
+ */
+export const isTickValue = (value: number, tick: number, spacing: number): boolean => Math.abs(value - tick) <= spacing * 1e-6;
+
+/**
+ * The index range `first..last` of the multiples `k × spacing` inside `[min, max]`. An end counts as
+ * a multiple when `k × spacing` is within decimal noise of it, measured in value terms rather than
+ * in the index, so an axis far from zero gains no tick outside its range (code review CR-001).
+ * Arithmetic only: never lists a tick.
  */
 function multiplesIn(min: number, max: number, spacing: number): { first: number; last: number } {
-  return { first: ceilWhole(min / spacing), last: floorWhole(max / spacing) };
+  const [low, high] = [min / spacing, max / spacing];
+  const [nearLow, nearHigh] = [Math.round(low), Math.round(high)];
+  return {
+    first: isMultiple(min, nearLow, spacing) ? nearLow : Math.ceil(low),
+    last: isMultiple(max, nearHigh, spacing) ? nearHigh : Math.floor(high),
+  };
+}
+
+/**
+ * Whether an axis's range is too narrow to draw: narrower than `SCALE_RESOLUTION` of its larger
+ * end, and than `SCALE_RESOLUTION`, so a double cannot tell its ticks apart.
+ */
+export function axisTooNarrow(min: number, max: number): boolean {
+  return max - min < SCALE_RESOLUTION * Math.max(1, Math.abs(min), Math.abs(max));
 }
 
 /**
@@ -397,6 +430,20 @@ export function niceTicks(min: number, max: number, spacing?: number): { spacing
   // A bounded counter: at most `MAX_VALUE_TICKS` turns.
   for (let j = 0; j < count; j++) ticks.push(onGrid((first + j) * used, used));
   return { spacing: used, ticks };
+}
+
+/**
+ * An axis's ticks when the axis can be drawn, else undefined: never throws, so a domain check can
+ * read the ticks of an axis another check may be reporting (code review CR-006). Checks use this,
+ * never `niceTicks`, which throws on such an axis.
+ */
+export function drawableTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } | undefined {
+  if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min) || axisTooNarrow(min, max)) return undefined;
+  if (spacing !== undefined && !(spacing > 0 && Number.isFinite(spacing))) return undefined;
+  const used = axisSpacing(min, max, spacing);
+  const { first, last } = multiplesIn(min, max, used);
+  if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || !(tickCount(min, max, used) <= MAX_VALUE_TICKS)) return undefined;
+  return niceTicks(min, max, spacing);
 }
 
 /** The number of decimal places in `spacing` written out in full: 0.25 → 2, 2 → 0, 1e-7 → 7. */

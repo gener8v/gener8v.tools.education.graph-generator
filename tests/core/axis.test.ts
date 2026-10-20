@@ -11,7 +11,7 @@ const twoAxes: GraphTypeDefinition = {
   description: "Two axes, for the axis tests.",
   properties: defineProperties({ xAxis: axisProperty("xAxis", "x"), yAxis: axisProperty("yAxis", "y") }),
   derivations: [],
-  checks: [axisCheck("xAxis"), axisCheck("yAxis")],
+  checks: [...axisCheck("xAxis"), ...axisCheck("yAxis")],
   describe: () => "Two axes.",
 };
 const registry = Object.freeze(Object.assign(Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, { "xy-graph": twoAxes }));
@@ -104,6 +104,35 @@ describe("tick spacing checks (NLC-REQ-008, NLC-REQ-009)", () => {
     expect(issuesOf(check({ min: 0, max: 1e-9 }))).toEqual([]);
   });
 
+  it("reports a range too narrow to draw even when its tick spacing fails too (code review CR-002)", () => {
+    expect(codesAndPaths({ min: 0, max: 1e-10, tickSpacing: 0 })).toEqual(["out_of_range /xAxis/max", "tick_spacing_invalid /xAxis/tickSpacing"]);
+    // Structure reports the spacing first; the range check still runs, as it does not read it.
+    expect(codesAndPaths({ min: 0, max: 1e-10, tickSpacing: 3e9 })).toEqual(["out_of_range /xAxis/tickSpacing", "out_of_range /xAxis/max"]);
+    // A narrow range is reported once: no too_many_ticks on top of it.
+    expect(codesAndPaths({ min: 0, max: 1e-10, tickSpacing: 1e-15 })).toEqual(["out_of_range /xAxis/max"]);
+  });
+
+  it("suggests an end that is itself valid, at max, or at min when max would pass the limit (code review CR-003)", () => {
+    const suggested = (min: number, max: number) => {
+      const [issue] = issuesOf(check({ min, max }));
+      const range = (issue as { range?: { min?: number; max?: number } }).range ?? {};
+      return { path: issue!.path, end: range.min ?? range.max! };
+    };
+    for (const [min, max] of [
+      [0, 1e-10],
+      [1e6, 1e6 + 1e-6],
+      [-5e8, -5e8 + 0.1],
+      [999_999_999.5, 999_999_999.6],
+      [AXIS_LIMIT - 1e-3, AXIS_LIMIT],
+      [-AXIS_LIMIT, -AXIS_LIMIT + 1e-3],
+    ] as const) {
+      const { path, end } = suggested(min, max);
+      const fixed = path === "/xAxis/max" ? { min, max: end } : { min: end, max };
+      expect(issuesOf(check(fixed)), `${min} to ${max}: ${path} ${end}`).toEqual([]);
+    }
+    expect(suggested(AXIS_LIMIT - 1e-3, AXIS_LIMIT).path).toBe("/xAxis/min");
+  });
+
   it("checks each axis on its own", () => {
     expect(codesAndPaths({ min: 0, max: 10, tickSpacing: 0 }, { min: 0, max: 10, tickSpacing: 0.01 })).toEqual([
       "tick_spacing_invalid /xAxis/tickSpacing",
@@ -112,7 +141,10 @@ describe("tick spacing checks (NLC-REQ-008, NLC-REQ-009)", () => {
   });
 
   it("reads only its own axis", () => {
-    expect(axisCheck("yAxis").inputs).toEqual(["yAxis/min", "yAxis/max", "yAxis/tickSpacing"]);
+    expect(axisCheck("yAxis").map((c) => c.inputs)).toEqual([
+      ["yAxis/min", "yAxis/max"],
+      ["yAxis/min", "yAxis/max", "yAxis/tickSpacing"],
+    ]);
     expect(axisChecks("axis", { min: 0, max: 10, tickSpacing: 2 })).toEqual([]);
   });
 });
