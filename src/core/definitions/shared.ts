@@ -21,15 +21,21 @@ export type SharedPropertySpec = ScopedPropertySpec;
 const FIGURES = ["circle", "square", "triangle", "cube", "cylinder"] as const;
 
 /**
- * The most characters (code points) a title, label or other caller-written text may have, and a
- * unit written after a measurement (GSV-REQ-052, GSV-REQ-053; GSV OQ-009, Product Owner
- * 2026-10-21). A drawn title shows at most 3 lines and a label 2 to 4, about 200 characters at
- * most, so longer text was already cut on the figure while it still reached the text alternative,
- * the tool summary and the render cost whole. Published as `maxLength` (GSV-REQ-054); a longer text
- * is reported as `too_large`, never cut.
+ * The most characters (code points) a title, label or other caller-written text may have
+ * (GSV-REQ-052; GSV OQ-009, Product Owner 2026-10-21). A drawn title shows at most 3 lines and a
+ * label 2 to 4, about 200 characters at most, so longer text was already cut on the figure while it
+ * still reached the text alternative, the tool summary and the render cost whole. Published as
+ * `maxLength` (GSV-REQ-054); a longer text is reported as `too_large`, never cut.
  */
 // @spec GSV-REQ-052
 export const CALLER_TEXT_LIMIT = 200;
+
+/**
+ * The most characters (code points) a unit written after a measurement may have, such as "cm" or
+ * "square centimetres" (GSV-REQ-053; GSV OQ-009). A unit is repeated after every stated value, in
+ * the drawing and the text alternative, so it is held far below a label's limit. Published as
+ * `maxLength`; a longer unit is reported as `too_large`.
+ */
 // @spec GSV-REQ-053
 export const UNIT_TEXT_LIMIT = 20;
 

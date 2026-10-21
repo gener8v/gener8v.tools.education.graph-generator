@@ -1,12 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
-import { wordsOf } from "../fixtures/plain-text";
 import { PICTOGRAPH_IMAGE_LIMIT, imageCount, pictograph, type Pictograph } from "../../src/core/definitions/pictograph";
 import { describe as describeGraph, validate } from "../../src/core/index";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { getImageNames, imageDescriptions } from "../../src/images/index";
-import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT } from "../fixtures/plain-text";
+import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, wordsOf } from "../fixtures/plain-text";
 import { findUnsafeTextChar } from "../../src/core/format";
 
 function valid(result: ValidationResult<unknown>) {

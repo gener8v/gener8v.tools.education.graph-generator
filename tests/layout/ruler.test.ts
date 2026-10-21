@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { validate } from "../../src/core/index";
 import { type Ruler, ruler as rulerDefinition } from "../../src/core/definitions/ruler";
 import { INCH_DIVISIONS, RULER_MAX_LENGTH, type RulerUnit, rulerScale } from "../../src/core/ruler";
-import { sharedProperties } from "../../src/core/definitions/shared";
-import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
+import { CALLER_TEXT_LIMIT, sharedProperties } from "../../src/core/definitions/shared";
 import { defaultStyle } from "../../src/core/style";
 import { checkScene } from "../../src/layout/kit/check";
 import { fmt } from "../../src/layout/kit/format";
@@ -12,6 +11,7 @@ import { MAX_CLUSTER_LENGTH, MAX_STACKED_MARKS } from "../../src/layout/kit/text
 import { titleBlock } from "../../src/layout/kit/title";
 import { BAR_HEIGHT, LABEL_MAX_LINES, RULER_EDGE, rulerFontSize, rulerLayout } from "../../src/layout/ruler";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
+import { oneClusterTexts } from "../fixtures/plain-text";
 import { type Bounds, attr, boundsOf, nameOf, overlap } from "../fixtures/scene-geometry";
 
 type Text = Extract<SceneNode, { kind: "text" }>;
@@ -251,11 +251,7 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
   });
 
   it("draws a one-cluster label at the limit inside its box, clear of the bar, the end marks and the numbers (security review SEC-001)", () => {
-    const marked = `x${Array.from({ length: CALLER_TEXT_LIMIT - 1 }, (_, i) => String.fromCodePoint(0x316 + (i % 36))).join("")}`;
-    const chain = Array.from({ length: 66 }, () => "👩").join("\u200d");
-    const thai = `x${"\u0e38".repeat(CALLER_TEXT_LIMIT - 1)}`;
-    const split = `x${"\u0301\u0302\u200d".repeat(66)}`;
-    for (const label of [marked, chain, thai, split]) {
+    for (const label of Object.values(oneClusterTexts(CALLER_TEXT_LIMIT))) {
       const scene = sceneOf(centimeters(10, { measuredObject: { start: 4.9, end: 5.1, label } }));
       const [line, ...rest] = labelLines(scene);
       expect(rest).toEqual([]);

@@ -179,3 +179,14 @@
 - **CR-004:** the category `name` description drops "it is never cut short"; regenerated. The comment at `src/layout/kit/value-scale.ts:130` matches.
 - **CR-005:** the Verification Run's test evidence should read 49 test files, not 50; the test count and exit codes were right.
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. `pnpm test` passes 49 files and 1,389 tests on three runs. Two mutations, counting marks from the width table and letting a joiner reset the run, each fail 2 tests.
+
+### Quality review — `graph-library/graph-specification-and-vocabulary-ticket-007-quality-review` (2026-10-21, Approved)
+
+- **QR-002:** `src/layout/kit/text.ts` has one test for a mark, `isMark`: any nonspacing or enclosing combining mark (`\p{Mn}`, `\p{Me}`), and the skin-tone modifiers. `advance` gives a mark no width, `clusters` keeps it with its letter, and `drawnWord` bounds the run. Thai and Arabic widths are now estimated correctly, and a wrapped Thai title never starts a line with a mark.
+- **QR-003:** `wrap` bounds each word inside its loop, so it stops early again.
+- **QR-004:** `MAX_STACKED_MARKS` is 4, so pointed Hebrew with a cantillation mark is drawn whole. U+200C and U+200D are joiners: neither counts as a mark nor restarts a run. Comments corrected. DEL-002's "3 marks" now reads 4.
+- **QR-001:** `REAL_STACKED_TEXT` (`tests/fixtures/plain-text.ts`) pins the lower bound (real words drawn whole), and exact cuts pin the upper (199 marks draw 4; a joined chain draws 16 code points).
+- **QR-005:** `oneClusterTexts(n)`, built from code points, replaces inline texts in `tests/layout/kit/text.test.ts` and `tests/layout/ruler.test.ts`; duplicate imports merged.
+- **QR-006:** `UNIT_TEXT_LIMIT` documented on its own.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. `pnpm test` passes 49 files and 1,391 tests on three runs. Mutations: marks at 9 or 3, clusters at 48, and U+200C restarting the run each fail a test. Removing the `clusters` use of `isMark` alone fails none; it is equivalent while marks have no width.
+

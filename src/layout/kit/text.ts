@@ -81,10 +81,26 @@ const WIDE: ReadonlyArray<readonly [number, number]> = [
 const within = (ranges: ReadonlyArray<readonly [number, number]>, code: number) =>
   ranges.some(([low, high]) => code >= low && code <= high);
 
+const COMBINING_MARK = /[\p{Mn}\p{Me}]/u;
+
+/**
+ * Whether `code` is a mark drawn on the character before it: any nonspacing or enclosing combining
+ * mark in any script (Thai, Arabic and Hebrew marks as well as the Latin ones `ZERO_WIDTH` lists),
+ * including the variation selectors, or an emoji skin-tone modifier. The one test for a mark: the
+ * width estimate gives a mark no advance, `clusters` keeps it with its character, and `drawnWord`
+ * bounds how many stack (graph-library GSV TICKET-007 quality review QR-002). Joiners (U+200C,
+ * U+200D) are not marks.
+ */
+function isMark(code: number): boolean {
+  if (code < 0x300) return false;
+  if (code >= 0x1f3fb && code <= 0x1f3ff) return true;
+  return COMBINING_MARK.test(String.fromCodePoint(code));
+}
+
 /** The estimated advance of one code point, in thousandths of an em. */
 function advance(code: number): number {
   if (code >= 0x20 && code <= 0x7e) return ASCII_WIDTHS[code - 0x20]!;
-  if (within(ZERO_WIDTH, code)) return 0;
+  if (within(ZERO_WIDTH, code) || isMark(code)) return 0;
   if (within(SPACING_MARKS, code)) return SPACING_MARK_WIDTH;
   const noBreak = NO_BREAK_SPACE_WIDTHS.get(code);
   if (noBreak !== undefined) return noBreak;
@@ -139,6 +155,7 @@ function clusters(word: string): string[] {
     const attaches =
       result.length > 0 &&
       (within(ZERO_WIDTH, code) ||
+        isMark(code) ||
         within(SPACING_MARKS, code) ||
         previous === ZWJ ||
         (isRegionalIndicator(code) && isRegionalIndicator(previous) && flagHalves % 2 === 1));
@@ -152,10 +169,11 @@ function clusters(word: string): string[] {
 
 /**
  * The most marks drawn stacked on one character, in a row: enough for real scripts (Vietnamese
- * stacks two, Devanagari signs up to three), while a run of hundreds would draw a column over the
- * figure that no estimated box allows for (rulers NLC TICKET-003 security review SEC-001).
+ * stacks two, Hindi such as "बढ़ें" three, pointed Hebrew with a cantillation mark four), while a
+ * run of hundreds would draw a column over the figure that no estimated box allows for (rulers NLC
+ * TICKET-003 security review SEC-001; quality review QR-004).
  */
-export const MAX_STACKED_MARKS = 3;
+export const MAX_STACKED_MARKS = 4;
 
 /**
  * The most code points one unbreakable cluster keeps when drawn: past the longest emoji sequences
@@ -164,31 +182,30 @@ export const MAX_STACKED_MARKS = 3;
  */
 export const MAX_CLUSTER_LENGTH = 16;
 
-/**
- * A mark drawn on the character before it: any nonspacing or enclosing combining mark, in every
- * script (Thai, Arabic and Hebrew marks too, not only those `ZERO_WIDTH` lists), or a zero-width
- * modifier such as a variation selector or a skin tone. A joiner (U+200D) links two characters and
- * is not a mark (code review CR-001).
- */
-const STACKING_MARK = /[\p{Mn}\p{Me}]/u;
-const isStackingMark = (code: number, char: string) => code !== ZWJ && (STACKING_MARK.test(char) || within(ZERO_WIDTH, code));
+const ZWNJ = 0x200c;
 
 /**
- * `word` as drawn: at most `MAX_STACKED_MARKS` marks in a row on one character, counted along the
- * whole word, so marks the width table does not know (each its own cluster) and marks split by
- * joiners still count; a joiner neither counts nor ends the run (code review CR-001, CR-002). Then
- * each cluster keeps at most `MAX_CLUSTER_LENGTH` code points. The drawing leaves the rest out; the
- * text alternative still states the text whole. Unchanged for ordinary text.
+ * `word` as drawn: at most `MAX_STACKED_MARKS` marks (`isMark`) in a row, counted along the whole
+ * word. A joiner (U+200C or U+200D) neither counts as a mark nor ends a run, so marks split by
+ * joiners still count (code review CR-002). Then each cluster keeps at most `MAX_CLUSTER_LENGTH`
+ * code points. The drawing leaves the rest out; the text alternative still states the text whole.
+ * Real text is drawn as written: a script needs no more marks on one character, nor a cluster
+ * longer.
  */
 function drawnWord(word: string): string {
   let marked = "";
   let marks = 0;
   forEachCodePoint(word, (code, char) => {
-    if (code !== ZWJ) marks = isStackingMark(code, char) ? marks + 1 : 0;
+    const joiner = code === ZWJ || code === ZWNJ;
+    if (!joiner) marks = isMark(code) ? marks + 1 : 0;
     if (marks <= MAX_STACKED_MARKS) marked += char;
   });
   let drawn = "";
-  for (const cluster of clusters(marked)) drawn += cluster.length <= MAX_CLUSTER_LENGTH ? cluster : [...cluster].slice(0, MAX_CLUSTER_LENGTH).join("");
+  for (const cluster of clusters(marked)) {
+    // A cluster of at most MAX_CLUSTER_LENGTH UTF-16 units has at most that many code points, so
+    // only a longer one needs counting.
+    drawn += cluster.length <= MAX_CLUSTER_LENGTH ? cluster : [...cluster].slice(0, MAX_CLUSTER_LENGTH).join("");
+  }
   return drawn;
 }
 
@@ -218,11 +235,7 @@ export function wrap(text: string, maxWidth: number, fontSize: number, maxLines 
   if (maxLines !== Infinity && (!Number.isInteger(maxLines) || maxLines < 1)) {
     throw new RangeError(`wrap(): maxLines must be a positive integer, got ${maxLines}`);
   }
-  // Each word as drawn, so no cluster draws a column of marks or a joiner chain off the page (SEC-001).
-  const words = text
-    .split(BREAKING_SPACE)
-    .filter((word) => word !== "")
-    .map(drawnWord);
+  const words = text.split(BREAKING_SPACE).filter((word) => word !== "");
   const scale = (fontSize * TEXT_WIDTH_SAFETY) / 1000;
   const spaceWidth = advance(0x20) * scale;
   const lines: string[] = [];
@@ -246,8 +259,11 @@ export function wrap(text: string, maxWidth: number, fontSize: number, maxLines 
     lineWidth = width;
   };
 
-  for (const word of words) {
+  for (const written of words) {
     if (cut) break;
+    // Each word as drawn, bounded only once it is reached, so wrapping still stops early (SEC-001;
+    // quality review QR-003).
+    const word = drawnWord(written);
     const width = rawWidth(word) * scale;
     if (width <= maxWidth) {
       push(word, width);

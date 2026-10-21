@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultStyle } from "../../../src/core/style";
 import { DEFAULT_FONT_STACK, MAX_CLUSTER_LENGTH, MAX_STACKED_MARKS, TEXT_WIDTH_SAFETY, textWidth, widestWord, wrap } from "../../../src/layout/kit/text";
-import { BENIGN_TEXT, HOSTILE_TEXT } from "../../fixtures/plain-text";
+import { BENIGN_TEXT, HOSTILE_TEXT, REAL_STACKED_TEXT, oneClusterTexts } from "../../fixtures/plain-text";
 
 describe("textWidth (AD-010)", () => {
   it("uses the system font stack from the default style", () => {
@@ -154,46 +154,55 @@ describe("wrap with maxLines (GSS TICKET-002 security review SEC-001)", () => {
 });
 
 describe("one-cluster text is drawn bounded (rulers NLC TICKET-003 security review SEC-001; graph-library GSV TICKET-007)", () => {
-  const codePoints = (text: string) => [...text].length;
-  const belowMarks = (count: number) => Array.from({ length: count }, (_, i) => String.fromCodePoint(0x316 + (i % 36))).join("");
+  const texts = oneClusterTexts(200);
+  const marksIn = (line: string) => [...line].filter((char) => /\p{M}/u.test(char)).length;
 
-  it("draws at most MAX_STACKED_MARKS marks in a row on one letter", () => {
-    const lines = wrap(`x${belowMarks(199)}`, 240, 14, 2);
-    expect(lines).toEqual([`x${belowMarks(MAX_STACKED_MARKS)}`]);
-    // Marks after each of several letters are bounded one letter at a time.
-    expect(wrap(`a${belowMarks(9)}b${belowMarks(9)}`, 240, 14)).toEqual([`a${belowMarks(MAX_STACKED_MARKS)}b${belowMarks(MAX_STACKED_MARKS)}`]);
-  });
-
-  it("draws at most MAX_CLUSTER_LENGTH code points of one joined cluster", () => {
-    const chain = Array.from({ length: 66 }, () => "👩").join("‍");
-    const [line, ...rest] = wrap(chain, 240, 14, 2);
-    expect(rest).toEqual([]);
-    expect(codePoints(line!)).toBe(MAX_CLUSTER_LENGTH);
-    expect(codePoints(wrap(`❤${"️".repeat(199)}`, 240, 14)[0]!)).toBeLessThanOrEqual(1 + MAX_STACKED_MARKS);
-  });
-
-  it("counts marks of every script, not only those the width table lists, and marks split by joiners (code review CR-001, CR-002)", () => {
-    const thai = `x${"\u0e38".repeat(199)}`;
-    const arabic = `x${Array.from({ length: 199 }, (_, i) => String.fromCodePoint(0x610 + (i % 11))).join("")}`;
-    for (const text of [thai, arabic]) {
+  it("draws four marks in a row on one letter, never a fifth, in every script (code review CR-001, quality review QR-001)", () => {
+    for (const [name, text] of Object.entries({ latin: texts.latinMarks, thai: texts.thaiMarks, arabic: texts.arabicMarks })) {
       const lines = wrap(text, 240, 14, 2);
-      expect(lines, text.slice(0, 3)).toHaveLength(1);
-      expect([...lines[0]!]).toHaveLength(1 + MAX_STACKED_MARKS);
+      expect(lines, name).toHaveLength(1);
+      expect([...lines[0]!], name).toHaveLength(5);
     }
-    // A joiner neither counts as a mark nor ends a run of them.
-    const split = `x${"\u0301\u0302\u200d".repeat(66)}`;
-    const drawn = [...wrap(split, 240, 14)[0]!];
-    expect(drawn.filter((char) => /\p{M}/u.test(char))).toHaveLength(MAX_STACKED_MARKS);
+    expect(MAX_STACKED_MARKS).toBe(4);
+    // Marks after each of several letters are bounded one letter at a time.
+    const five = oneClusterTexts(6).latinMarks.slice(1);
+    expect(wrap(`a${five}b${five}`, 240, 14)).toEqual([`a${[...five].slice(0, 4).join("")}b${[...five].slice(0, 4).join("")}`]);
   });
 
-  it("leaves real text whole: stacked accents, Thai and Arabic marks, skin tones, emoji families and a kiss", () => {
-    for (const text of ["Tiếng Việt ệ", "ภาษาไทย ผู้ใหญ่ กิ๊ก", "مَرْحَبًا بِكُمْ", "👍🏽 👋🏿", "👨‍👩‍👧‍👦", "👩‍❤️‍💋‍👨", "क्षत्रिय", "naïve café"]) {
-      expect(wrap(text, 400, 14)).toEqual([text]);
-    }
+  it("counts marks split by joiners, which neither count nor end a run (code review CR-002)", () => {
+    expect(marksIn(wrap(texts.joinerSplitMarks, 240, 14)[0]!)).toBe(4);
+    // A non-joiner (U+200C, as in Persian "می‌خواهم") is kept, and neither counts as a mark nor
+    // restarts the run: marks after it on the same letter are still the fifth and later.
+    const four = oneClusterTexts(5).latinMarks;
+    const nonJoiner = String.fromCodePoint(0x200c);
+    expect(wrap(`${four}${nonJoiner}b`, 240, 14)).toEqual([`${four}${nonJoiner}b`]);
+    expect(wrap(`${four}${nonJoiner}${four.slice(1)}`, 240, 14)).toEqual([`${four}${nonJoiner}`]);
+  });
+
+  it("draws 16 code points of one joined cluster, never a seventeenth", () => {
+    const [line, ...rest] = wrap(texts.joinedWomen, 240, 14, 2);
+    expect(rest).toEqual([]);
+    expect([...line!]).toHaveLength(16);
+    expect(MAX_CLUSTER_LENGTH).toBe(16);
+  });
+
+  it("draws real text as written: the most marks and the longest clusters real scripts use (quality review QR-001)", () => {
+    for (const text of REAL_STACKED_TEXT) expect(wrap(text, 400, 14), text).toEqual([text]);
+  });
+
+  it("never starts a wrapped line with a mark torn off its letter (quality review QR-002)", () => {
+    const thai = "ภาษาไทยที่ผู้ใหญ่และเด็กใช้กันทุกวันในโรงเรียน".repeat(4);
+    const lines = wrap(thai, 120, 14, 6);
+    expect(lines.length).toBeGreaterThan(1);
+    for (const line of lines) expect(/^\p{M}/u.test(line), line).toBe(false);
+  });
+
+  it("gives every combining mark no width, in every script", () => {
+    expect(textWidth(texts.thaiMarks, 14)).toBe(textWidth("x", 14));
+    expect(textWidth(texts.arabicMarks, 14)).toBe(textWidth("x", 14));
   });
 
   it("measures the widest word as it is drawn", () => {
-    const chain = Array.from({ length: 66 }, () => "👩").join("‍");
-    expect(widestWord(chain, 14)).toBe(textWidth([...chain].slice(0, MAX_CLUSTER_LENGTH).join(""), 14));
+    expect(widestWord(texts.joinedWomen, 14)).toBe(textWidth([...texts.joinedWomen].slice(0, 16).join(""), 14));
   });
 });
