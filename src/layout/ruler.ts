@@ -1,7 +1,7 @@
 import { type Ruler, ruler as rulerDefinition } from "../core/definitions/ruler";
 import { cleanText } from "../core/format";
 import type { Provenance } from "../core/result";
-import { rulerScale } from "../core/ruler";
+import { locatedValue, rulerScale } from "../core/ruler";
 import { defaultStyle } from "../core/style";
 import { fmt } from "./kit/format";
 import { type Box, type Obstacle, placeLabel } from "./kit/labels";
@@ -123,10 +123,7 @@ export const rulerLayout: Layout<Ruler> = (normalized: Ruler, provenance: Proven
   if (object !== undefined) {
     // The kit's own mapping: a fraction of the edge, then a point along it.
     const along = linearScale([0, normalized.length], [0, 1]);
-    const xOf = (value: number) => {
-      const location = scale.locate(value);
-      return edgeStart + along(location.kind === "mark" ? location.value : value) * (edgeEnd - edgeStart);
-    };
+    const xOf = (value: number) => edgeStart + along(locatedValue(scale, value)) * (edgeEnd - edgeStart);
     const [x1, x2] = [xOf(object.start), xOf(object.end)];
     nodes.push(rect(x1, barTop, x2 - x1, BAR_HEIGHT, object.color ?? defaultStyle.colors.accent));
 

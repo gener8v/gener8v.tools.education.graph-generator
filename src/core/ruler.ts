@@ -169,3 +169,16 @@ export function rulerScale(unit: unknown, length: unknown, smallestDivision?: un
     locate: (value: unknown) => locateOnRuler(value, length, perUnit),
   });
 }
+
+/**
+ * Where a value is drawn and stated on `scale`: the value of the mark it locates to, or the value
+ * itself when it is between marks or off the ruler. A computed 0.1 + 0.2 cm is the 3 mm mark's
+ * exact 0.3. The one rule the ruler's layout and its text alternative share, so the figure and its
+ * description agree (NLC TICKET-002 code review CR-003; rulers NLC TICKET-003 quality review
+ * QR-003).
+ */
+// @spec NLC-REQ-050, NLC-REQ-056
+export function locatedValue(scale: RulerScale, value: number): number {
+  const location = scale.locate(value);
+  return location.kind === "mark" ? location.value : value;
+}

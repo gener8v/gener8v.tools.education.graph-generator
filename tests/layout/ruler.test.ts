@@ -7,11 +7,10 @@ import { sharedProperties } from "../../src/core/definitions/shared";
 import { defaultStyle } from "../../src/core/style";
 import { checkScene } from "../../src/layout/kit/check";
 import { fmt } from "../../src/layout/kit/format";
-import { type Box, placeLabel } from "../../src/layout/kit/labels";
-import { textWidth } from "../../src/layout/kit/text";
-import { LINE_HEIGHT, titleBlock } from "../../src/layout/kit/title";
+import { titleBlock } from "../../src/layout/kit/title";
 import { BAR_HEIGHT, LABEL_MAX_LINES, RULER_EDGE, rulerFontSize, rulerLayout } from "../../src/layout/ruler";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
+import { type Bounds, attr, boundsOf, nameOf, overlap } from "../fixtures/scene-geometry";
 
 type Text = Extract<SceneNode, { kind: "text" }>;
 
@@ -27,7 +26,6 @@ function sceneOf(description: unknown): Scene {
   return scene;
 }
 
-const attr = (node: SceneNode, name: string) => node.attrs.find(([key]) => key === name)?.[1];
 const num = (node: SceneNode, name: string) => Number(attr(node, name));
 const marks = (scene: Scene) => scene.nodes.filter((node) => node.kind === "line");
 const texts = (scene: Scene) => scene.nodes.filter((node): node is Text => node.kind === "text");
@@ -42,20 +40,77 @@ const distinctLengths = (scene: Scene) => new Set(marks(scene).map(markLength)).
 /** Where the mark for `value` belongs on the page: the edge's start plus its share of the edge. */
 const expectedX = (value: number, length: number) => (SCENE_WIDTH - RULER_EDGE) / 2 + (RULER_EDGE * value) / length;
 
-/** A text line's estimated box, as the layout reserved it, shrunk by `fmt()`'s step on every side. */
-function boxOf(node: Text): Box {
-  const size = num(node, "font-size");
-  const lineHeight = size * LINE_HEIGHT;
-  const width = textWidth(node.text, size);
-  const top = num(node, "y") - size * 0.8 - (lineHeight - size) / 2;
-  return { x: num(node, "x") - width / 2 + 0.01, y: top + 0.01, width: width - 0.02, height: lineHeight - 0.02 };
-}
+const labelLines = (scene: Scene) => texts(scene).filter((node) => num(node, "font-size") === defaultStyle.fontSizes.label);
+const titleLines = (scene: Scene) => texts(scene).filter((node) => num(node, "font-size") === defaultStyle.fontSizes.title);
 
-const rectBox = (node: SceneNode): Box => ({ x: num(node, "x"), y: num(node, "y"), width: num(node, "width"), height: num(node, "height") });
-const overlap = (a: Box, b: Box) => placeLabel(a, [a], [b]) === undefined;
+/** Every node outside the drawing, by name: nothing may reach past its width or its height. */
+const outside = (scene: Scene): string[] =>
+  scene.nodes
+    .map(boundsOf)
+    .filter((b) => b.x0 < 0 || b.y0 < 0 || b.x1 > SCENE_WIDTH || b.y1 > scene.height)
+    .map(nameOf);
+
+/**
+ * Every pair of drawn things that must not overlap and does (AD-010): each title and label line
+ * against the bar, the body, every number and every other text line, and each number against
+ * every other number. The numbers lie inside the body by design, so the body is not their obstacle.
+ */
+function collisions(scene: Scene, length: number): string[] {
+  const lines = [...titleLines(scene), ...labelLines(scene)].map(boundsOf);
+  const numberBoxes = numbers(scene, length).map(boundsOf);
+  const shapes = rects(scene).map(boundsOf);
+  const found: string[] = [];
+  const check = (a: Bounds, b: Bounds) => {
+    if (overlap(a, b)) found.push(`${nameOf(a)} overlaps ${nameOf(b)}`);
+  };
+  lines.forEach((line, i) => {
+    for (const other of [...lines.slice(i + 1), ...numberBoxes, ...shapes]) check(line, other);
+  });
+  numberBoxes.forEach((box, i) => {
+    for (const other of numberBoxes.slice(i + 1)) check(box, other);
+  });
+  return found;
+}
 
 const centimeters = (length: number, extra: object = {}) => ({ type: "ruler", rulerUnit: "centimeters", length, ...extra });
 const inches = (length: number, extra: object = {}) => ({ type: "ruler", rulerUnit: "inches", length, ...extra });
+
+const DIVISIONS = Object.keys(INCH_DIVISIONS) as Array<keyof typeof INCH_DIVISIONS>;
+const LABELS = [undefined, "pencil", "a long piece of string to measure", "a very long label for the object ".repeat(20), "@".repeat(400)];
+const TITLES = [undefined, "How long is it?", "A title long enough to wrap onto three lines ".repeat(6)];
+
+/**
+ * A ruler of either unit with every length of that unit equally likely, any division an inch ruler
+ * takes, and a title or none (quality review QR-004: lengths drawn per unit, not cut from 1 to 30).
+ */
+const rulerBase = fc.constantFrom<RulerUnit>("centimeters", "inches").chain((unit) =>
+  fc.record({
+    type: fc.constant("ruler" as const),
+    rulerUnit: fc.constant(unit),
+    length: fc.integer({ min: 1, max: RULER_MAX_LENGTH[unit] }),
+    smallestDivision: unit === "inches" ? fc.constantFrom(undefined, ...DIVISIONS) : fc.constant(undefined),
+    title: fc.constantFrom(...TITLES),
+  }),
+);
+
+/** Drops the keys whose value is undefined, as a caller leaves an option out. */
+const given = <T extends object>(value: T): T => Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
+
+const plainRuler = rulerBase.map(given);
+
+/**
+ * A ruler with an object from one mark to a later one. Each end is often the ruler's first or last
+ * mark, as well as any mark between (quality review QR-004).
+ */
+const rulerWithObject = rulerBase.chain((ruler) => {
+  const scale = rulerScale(ruler.rulerUnit, ruler.length, ruler.smallestDivision)!;
+  const last = scale.marks.length - 1;
+  const index = fc.oneof(fc.constant(0), fc.constant(last), fc.integer({ min: 0, max: last }));
+  return fc.record({ a: index, b: index, label: fc.constantFrom(...LABELS) }).map(({ a, b, label }) => {
+    const [i, j] = a === b ? (a === last ? [a - 1, a] : [a, a + 1]) : [Math.min(a, b), Math.max(a, b)];
+    return given({ ...ruler, measuredObject: given({ start: scale.marks[i]!.value, end: scale.marks[j]!.value, label }) });
+  });
+});
 
 describe("marks and numbers (NLC-REQ-043, NLC-REQ-044, NLC-REQ-045, NLC-REQ-047, NLC-REQ-048)", () => {
   it("draws a 15 cm ruler with 151 marks, three lengths of mark and the numbers 0 to 15", () => {
@@ -121,12 +176,11 @@ describe("drawn to scale with itself (AD-007, NLC-NFR-005)", () => {
   it("keeps every number clear of its neighbours and inside the body at both maximum lengths (NLC TICKET-001 CR-005)", () => {
     for (const description of [centimeters(RULER_MAX_LENGTH.centimeters), inches(RULER_MAX_LENGTH.inches)]) {
       const scene = sceneOf(description);
-      const boxes = numbers(scene, description.length).map(boxOf);
-      const outline = rectBox(body(scene));
-      boxes.forEach((box, i) => {
-        if (i > 0) expect(overlap(box, boxes[i - 1]!), `${description.rulerUnit} ${i}`).toBe(false);
-        expect(box.x >= outline.x && box.x + box.width <= outline.x + outline.width && box.y + box.height <= outline.y + outline.height).toBe(true);
-      });
+      expect(collisions(scene, description.length)).toEqual([]);
+      const outline = boundsOf(body(scene));
+      for (const box of numbers(scene, description.length).map(boundsOf)) {
+        expect(box.x0 >= outline.x0 && box.x1 <= outline.x1 && box.y1 <= outline.y1, nameOf(box)).toBe(true);
+      }
     }
   });
 
@@ -139,7 +193,7 @@ describe("drawn to scale with itself (AD-007, NLC-NFR-005)", () => {
 });
 
 describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
-  /** The bar's two ends, for a ruler `description` whose object runs from `start` to `end`. */
+  /** The x of the object's bar's two ends, start first. */
   const barEnds = (scene: Scene) => {
     const [bar] = bars(scene);
     return [num(bar!, "x"), num(bar!, "x") + num(bar!, "width")];
@@ -163,11 +217,11 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
 
   it("lies just above the marked edge, covering no mark or number", () => {
     const scene = sceneOf(centimeters(10, { measuredObject: { start: 0, end: 10, label: "string" } }));
-    const bar = rectBox(bars(scene)[0]!);
+    const bar = boundsOf(bars(scene)[0]!);
     const edge = Math.min(...marks(scene).map((node) => num(node, "y1")));
-    expect(bar.y + bar.height).toBeLessThan(edge);
-    expect(bar.height).toBe(BAR_HEIGHT);
-    for (const number of numbers(scene, 10)) expect(overlap(boxOf(number), bar)).toBe(false);
+    expect(bar.y1).toBeLessThan(edge);
+    expect(bar.y1 - bar.y0).toBe(BAR_HEIGHT);
+    expect(collisions(scene, 10)).toEqual([]);
   });
 
   it("applies its color to the bar only, and the style's accent when none is given (GSV-REQ-045)", () => {
@@ -183,16 +237,11 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
   it("places its label above the bar, clear of the bar and every number, wrapped and cut to its line limit", () => {
     const label = "a very long label for the object ".repeat(20);
     const scene = sceneOf(centimeters(30, { title: "Measure it", measuredObject: { start: 0, end: 0.5, label } }));
-    const lines = texts(scene).filter((node) => num(node, "font-size") === defaultStyle.fontSizes.label);
+    const lines = labelLines(scene);
     expect(lines).toHaveLength(LABEL_MAX_LINES);
     expect(lines.at(-1)!.text.endsWith("…")).toBe(true);
-    const bar = rectBox(bars(scene)[0]!);
-    const title = texts(scene).filter((node) => num(node, "font-size") === defaultStyle.fontSizes.title);
-    for (const line of lines) {
-      const box = boxOf(line);
-      expect(box.x >= 0 && box.x + box.width <= SCENE_WIDTH).toBe(true);
-      for (const other of [bar, ...numbers(scene, 30).map(boxOf), ...title.map(boxOf)]) expect(overlap(box, other)).toBe(false);
-    }
+    expect(outside(scene)).toEqual([]);
+    expect(collisions(scene, 30)).toEqual([]);
   });
 
   it("says in the published label term that a long label is cut in the drawing (code review CR-001)", () => {
@@ -201,48 +250,23 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
 
   it("draws no label for a blank one, and the bar still", () => {
     const scene = sceneOf(centimeters(5, { measuredObject: { start: 1, end: 2, label: "   " } }));
-    expect(texts(scene).filter((node) => num(node, "font-size") === defaultStyle.fontSizes.label)).toEqual([]);
+    expect(labelLines(scene)).toEqual([]);
     expect(bars(scene)).toHaveLength(1);
   });
 
   it("writes no text but the whole-unit numbers, the title and the label, whatever the ruler and object", () => {
-    const description = fc
-      .record({
-        unit: fc.constantFrom<RulerUnit>("centimeters", "inches"),
-        division: fc.constantFrom(undefined, ...(Object.keys(INCH_DIVISIONS) as Array<keyof typeof INCH_DIVISIONS>)),
-        length: fc.integer({ min: 1, max: 30 }),
-        a: fc.nat(),
-        b: fc.nat(),
-        label: fc.constantFrom(undefined, "pencil", "a long piece of string to measure"),
-        title: fc.constantFrom(undefined, "How long is it?"),
-      })
-      .map(({ unit, division, length, a, b, label, title }) => {
-        const fitted = unit === "inches" ? Math.min(length, RULER_MAX_LENGTH.inches) : length;
-        const scale = rulerScale(unit, fitted, unit === "inches" ? division : undefined)!;
-        const count = scale.marks.length;
-        const [i, j] = [a % (count - 1), b % (count - 1)].sort((x, y) => x - y);
-        const start = scale.marks[i!]!.value;
-        const end = scale.marks[i === j ? j! + 1 : j!]!.value;
-        return {
-          type: "ruler",
-          rulerUnit: unit,
-          length: fitted,
-          ...(unit === "inches" && division !== undefined && { smallestDivision: division }),
-          ...(title !== undefined && { title }),
-          measuredObject: { start, end, ...(label !== undefined && { label }) },
-        };
-      });
     fc.assert(
-      fc.property(description, (d) => {
+      fc.property(rulerWithObject, (d) => {
         const scene = sceneOf(d);
         const allowed = new Set(Array.from({ length: d.length + 1 }, (_, i) => String(i)));
         const titled = new Set(titleBlock(d.title).nodes.map((node) => (node as Text).text));
-        const labelWords = new Set((d.measuredObject.label ?? "").split(" "));
+        const label = d.measuredObject.label ?? "";
         for (const node of texts(scene)) {
           const size = num(node, "font-size");
           if (size === fmt(rulerFontSize(d.length))) expect(allowed.has(node.text), node.text).toBe(true);
           else if (size === defaultStyle.fontSizes.title) expect(titled.has(node.text)).toBe(true);
-          else expect(node.text.split(" ").every((word) => labelWords.has(word))).toBe(true);
+          // A label line is a piece of the label: wrapped at a space or inside a long word, the last cut with "…".
+          else expect(label.includes(node.text.replace(/…$/, "")), node.text).toBe(true);
         }
         // The object's length, as the text alternative would write a mark, appears nowhere.
         const measured = String(Math.round((d.measuredObject.end - d.measuredObject.start) * 10_000) / 10_000);
@@ -273,14 +297,28 @@ describe("the ruler's parts (NLC-REQ-040)", () => {
     expect(num(body(scene), "y")).toBeGreaterThan(block.height);
   });
 
-  it("keeps everything inside the drawing, which is as tall as the ruler needs", () => {
+  it("keeps every node inside the drawing, which is as tall as the ruler needs", () => {
     for (const description of [centimeters(1), centimeters(30, { measuredObject: { start: 0, end: 30, label: "x" } }), inches(12, { title: "T" })]) {
       const scene = sceneOf(description);
-      const outline = rectBox(body(scene));
-      expect(outline.x).toBeGreaterThanOrEqual(0);
-      expect(outline.x + outline.width).toBeLessThanOrEqual(SCENE_WIDTH);
-      expect(outline.y + outline.height).toBeLessThan(scene.height);
+      expect(outside(scene)).toEqual([]);
+      expect(boundsOf(body(scene)).y1).toBeLessThan(scene.height);
     }
+  });
+
+  it("keeps every node inside the drawing and every label, title line and number clear of the others, whatever the ruler (quality review QR-001)", () => {
+    fc.assert(
+      fc.property(fc.oneof(rulerWithObject, plainRuler), (d) => {
+        const scene = sceneOf(d);
+        expect(outside(scene)).toEqual([]);
+        expect(collisions(scene, d.length)).toEqual([]);
+      }),
+      { numRuns: 300 },
+    );
+  });
+
+  it("fails closed on a ruler no validation gives, so createGraph reports internal_error", () => {
+    const tooLong = { type: "ruler", rulerUnit: "centimeters", length: RULER_MAX_LENGTH.centimeters + 1 } as Ruler;
+    expect(() => rulerLayout(tooLong, {})).toThrow(new RangeError("rulerLayout(): the description is not a validated ruler"));
   });
 
   it("states the definition's text alternative as its own (NLC-REQ-056)", () => {

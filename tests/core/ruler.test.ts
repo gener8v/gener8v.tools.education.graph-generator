@@ -7,6 +7,7 @@ import {
   RULER_UNITS,
   type RulerUnit,
   isRulerLength,
+  locatedValue,
   marksPerUnit,
   rulerScale,
 } from "../../src/core/ruler";
@@ -225,5 +226,23 @@ describe("where a value lies on a ruler (NLC-REQ-052, NLC-REQ-053)", () => {
         expect(scale("inches", 12).locate((k + offset) / 16)).toEqual({ kind: "between", below: k / 16, above: (k + 1) / 16 });
       }),
     );
+  });
+});
+
+describe("the value an end is drawn and stated at (NLC-REQ-050, NLC-REQ-056; quality review QR-003)", () => {
+  it("is the located mark's exact value, at full precision, for an end within the noise allowance", () => {
+    const cm = scale("centimeters", 30);
+    expect(locatedValue(cm, 0.1 + 0.2)).toBe(0.3);
+    expect(0.1 + 0.2).not.toBe(0.3);
+    expect(locatedValue(cm, 0.1 * 3 * 100)).toBe(30);
+    expect(Object.is(locatedValue(cm, -2.8e-17), 0)).toBe(true);
+    expect(locatedValue(scale("inches", 3), 2.0625 + 1e-12)).toBe(2.0625);
+  });
+
+  it("is the value itself between marks or off the ruler", () => {
+    const cm = scale("centimeters", 15);
+    expect(locatedValue(cm, 3.25)).toBe(3.25);
+    expect(locatedValue(cm, 20)).toBe(20);
+    expect(locatedValue(cm, -1)).toBe(-1);
   });
 });

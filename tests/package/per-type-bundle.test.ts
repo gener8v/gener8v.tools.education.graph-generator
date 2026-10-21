@@ -73,6 +73,25 @@ async function bundle(entry: string, graphsModule = ""): Promise<string> {
   return result.outputFiles[0]!.text;
 }
 
+/**
+ * `entry`, a module importing the built package (`dist/`, which the global setup builds), bundled
+ * as a consumer's bundler would bundle it, as `pnpm size` measures it (quality review QR-005).
+ */
+async function consumerBundle(entry: string): Promise<string> {
+  const result = await build({
+    stdin: { contents: entry, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "neutral",
+    treeShaking: true,
+    minify: true,
+    external: ["react", "react-dom", "react/jsx-runtime"],
+    logLevel: "silent",
+  });
+  return result.outputFiles[0]!.text;
+}
+
 describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)", () => {
   it("leaves another type's layout out of a per-type component's bundle", async () => {
     const code = await bundle(`
@@ -110,18 +129,7 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     // The built package splits shared code into chunks, and the circle's shared chunk holds the
     // drawings too; a consumer's bundler then drops what the circle never reads. This bundles the
     // built entry as a consumer would (the global setup builds it), as \`pnpm size\` measures it.
-    const result = await build({
-      stdin: { contents: `export { CircleGraph } from "./dist/circle.js";`, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
-      bundle: true,
-      write: false,
-      format: "esm",
-      platform: "neutral",
-      treeShaking: true,
-      minify: true,
-      external: ["react", "react-dom", "react/jsx-runtime"],
-      logLevel: "silent",
-    });
-    const code = result.outputFiles[0]!.text;
+    const code = await consumerBundle(`export { CircleGraph } from "./dist/circle.js";`);
     expect(code).toContain("A circle");
     expect(code).not.toContain("A red apple");
     expect(code).not.toContain("A pictograph");
@@ -164,18 +172,7 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       expect(await bundle(entry)).not.toContain("A line graph");
     }
     for (const built of ["circle", "pictograph"]) {
-      const result = await build({
-        stdin: { contents: `export * from "./dist/${built}.js";`, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
-        bundle: true,
-        write: false,
-        format: "esm",
-        platform: "neutral",
-        treeShaking: true,
-        minify: true,
-        external: ["react", "react-dom", "react/jsx-runtime"],
-        logLevel: "silent",
-      });
-      expect(result.outputFiles[0]!.text, built).not.toContain("A line graph");
+      expect(await consumerBundle(`export * from "./dist/${built}.js";`), built).not.toContain("A line graph");
     }
   });
 
@@ -215,18 +212,7 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     // others' chunks; marked pure, a consumer's bundler drops them. Text that survives minifying,
     // including the kit's mark lengths (code review CR-002).
     for (const built of ["circle", "pictograph", "line-graph", "bar-graph"]) {
-      const result = await build({
-        stdin: { contents: `export * from "./dist/${built}.js";`, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
-        bundle: true,
-        write: false,
-        format: "esm",
-        platform: "neutral",
-        treeShaking: true,
-        minify: true,
-        external: ["react", "react-dom", "react/jsx-runtime"],
-        logLevel: "silent",
-      });
-      const code = result.outputFiles[0]!.text;
+      const code = await consumerBundle(`export * from "./dist/${built}.js";`);
       for (const ruler of ["A ruler", "sixteenth", "drawRulerMarks()", "rulerLayout()", "9.5,6.5"]) expect(code, `${built}: ${ruler}`).not.toContain(ruler);
     }
   });

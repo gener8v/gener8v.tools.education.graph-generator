@@ -219,3 +219,18 @@ Engineer decisions:
 - **CR-003:** deferred. Known Hazards carry the 330 px minimum (DEL-002) to rulers NLC TICKET-004 and graph-library CPSE TICKET-008.
 - **Trivial fix alongside:** the `RULER_MAX_LENGTH` comment in `src/core/ruler.ts` no longer calls the maximums provisional (NLC OQ-009, answered 2026-10-21).
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. `pnpm test` passes 1,371 tests on three runs.
+
+### Quality review — `rulers/number-lines-and-coordinate-graphs-ticket-003-quality-review` (2026-10-21, Approved)
+
+- **QR-001:** `tests/layout/ruler.test.ts` gains a property over 300 generated rulers: every node inside the drawing, and no title or label line overlapping the bar, the body, a number or another line, and no two numbers overlapping. Removing either of the label's clamps now fails it.
+- **QR-002:** the ruler test uses the shared `tests/fixtures/scene-geometry.ts` helpers (`attr`, `boundsOf`, `overlap`, `nameOf`) instead of its own.
+- **QR-003:** `locatedValue(scale, value)` in `src/core/ruler.ts` is the one "draw and state each end at its located mark" rule, used by `rulerLayout` and the definition's `describe`. `tests/core/ruler.test.ts` tests it at full precision, where the difference shows; returning the raw value fails it.
+- **QR-004:**
+  - the generators draw each unit's lengths evenly and pick ends at the first mark, the last mark or any mark;
+  - labels include a 2-line cut and a 400-character word, and titles a 3-line one;
+  - `barEnds`' comment is corrected;
+  - the inside test checks every node;
+  - a test covers the layout's `RangeError`.
+- **QR-005:** `consumerBundle(entry)` in `tests/package/per-type-bundle.test.ts` holds the built-entry bundling options once.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. The state lint's only error is the expected GSV-REQ-052..054, pending their ticket. `pnpm test` passes 1,375 tests on three runs.
+

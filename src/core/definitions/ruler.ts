@@ -1,6 +1,6 @@
 import { cleanText, formatSupplied, quoteText } from "../format";
 import { createIssue, pointer } from "../issues";
-import { DEFAULT_INCH_DIVISION, INCH_DIVISIONS, type InchDivision, RULER_MAX_LENGTH, RULER_UNITS, type RulerScale, type RulerUnit, isRulerLength, rulerScale } from "../ruler";
+import { DEFAULT_INCH_DIVISION, INCH_DIVISIONS, type InchDivision, RULER_MAX_LENGTH, RULER_UNITS, type RulerScale, type RulerUnit, isRulerLength, locatedValue, rulerScale } from "../ruler";
 import { sharedProperties } from "./shared";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, defineProperties } from "./types";
 
@@ -233,10 +233,7 @@ function defineRuler(): GraphTypeDefinition<Ruler> {
       const object = ruler.measuredObject;
       if (object !== undefined) {
         const scale = scaleOf(ruler);
-        const mark = (value: number) => {
-          const location = scale?.locate(value);
-          return markValue(location?.kind === "mark" ? location.value : value);
-        };
+        const mark = (value: number) => markValue(scale === undefined ? value : locatedValue(scale, value));
         const label = object.label === undefined ? "" : cleanText(object.label);
         const named = label === "" ? "An object" : `An object labeled ${quoteText(label)}`;
         sentences.push(`${named} lies along it from the ${mark(object.start)} ${words.short} mark to the ${mark(object.end)} ${words.short} mark.`);
