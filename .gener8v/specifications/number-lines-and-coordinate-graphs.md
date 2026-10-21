@@ -218,6 +218,6 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-001 | `src/core/definitions/ruler.ts`:ruler, defineRulerProperties (ruler part; registered with rulers NLC TICKET-003) |
 | NLC-REQ-041 | `src/core/definitions/ruler.ts`:defineRulerProperties (`rulerUnit`, an enum of `RULER_UNITS`) |
 | NLC-REQ-049 | `src/core/definitions/ruler.ts`:defineRulerProperties (`measuredObject` with `start` and `end`) |
-| NLC-REQ-051 | `src/core/definitions/ruler.ts`:defineRulerProperties (`ordered` start and end), objectInOrder (ends ordered by mark index) |
+| NLC-REQ-051 | `src/core/definitions/ruler.ts`:objectInOrder (ends ordered by mark index) |
 | NLC-REQ-054 | `src/core/definitions/ruler.ts`:defineRulerProperties (the shared `label` and `color` on `measuredObject`) |
 | NLC-REQ-056 | `src/core/definitions/ruler.ts`:ruler.describe (each end stated as its located mark) |

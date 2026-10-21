@@ -51,9 +51,12 @@ const scaleOf = (ruler: Ruler): RulerScale | undefined => rulerScale(ruler.ruler
  * Built by a function free of side effects, so a bundle that never reads the ruler drops it
  * (quality review QR-002).
  * `length` has no structural bounds, so a length outside 1 to its unit's maximum is reported by
- * `lengthFitsUnit` with that unit's range, never the longer unit's (code review CR-002).
+ * `lengthFitsUnit` with that unit's range, never the longer unit's (code review CR-002). The
+ * object's ends declare no `ordered` pair: their order is `objectInOrder`'s alone, decided by mark
+ * index once both ends are marks, so an end is never compared with a start off the ruler (rulers
+ * NLC TICKET-002 security review).
  */
-// @spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-042, NLC-REQ-046, NLC-REQ-049, NLC-REQ-051, NLC-REQ-054, GSV-REQ-040, GSV-REQ-049, GSV-REQ-050, GSV-REQ-051
+// @spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-042, NLC-REQ-046, NLC-REQ-049, NLC-REQ-054, GSV-REQ-040, GSV-REQ-049, GSV-REQ-050, GSV-REQ-051
 /* @__NO_SIDE_EFFECTS__ */
 function defineRulerProperties() {
   return defineProperties({
@@ -114,7 +117,6 @@ function defineRulerProperties() {
         label: sharedProperties.label,
         color: sharedProperties.color,
       }),
-      ordered: [["start", "end"]],
     },
   });
 }
@@ -162,9 +164,8 @@ function endOnMark(term: "start" | "end"): DomainCheck<Ruler> {
 }
 
 /**
- * An object whose ends are marks in the wrong order by mark index, which `ordered` lets through
- * when the same mark is written two ways (0.3 and 0.1 + 0.2): `out_of_range` at its end, once,
- * asking for a mark from the one after the start to the ruler's end (code review CR-005). When the
+ * An object whose ends are marks in the wrong order by mark index (5 and 3, 2 and 2, or the same
+ * mark written two ways, 0.3 and 0.1 + 0.2): `out_of_range` at its end, once, asking for a mark from the one after the start to the ruler's end (code review CR-005). When the
  * start is the ruler's last mark, no end can follow it, so the start is reported instead, asking
  * for a mark before the end (quality review QR-003, as the axis's `narrowRange` does). Only two
  * marks are compared, so an end off the ruler or between marks is its own check's alone (AD-004).

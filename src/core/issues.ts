@@ -254,26 +254,45 @@ function describeNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(4)));
 }
 
+/** A range's four fields, every key present, so reading or destructuring it never reaches the prototype. */
+export interface OwnRange {
+  readonly min: number | undefined;
+  readonly max: number | undefined;
+  readonly exclusiveMin: boolean | undefined;
+  readonly exclusiveMax: boolean | undefined;
+}
+
+/**
+ * A range's bounds and flags, each read own-key, so a polluted `Object.prototype.min` or `.max`
+ * is never a bound and its text never reaches a message (rulers NLC TICKET-002 security review
+ * SEC-001). Every reader of a range, or of a number spec's bounds, goes through this.
+ */
+export function ownRange(range: Range): OwnRange {
+  const read = <K extends keyof Range>(key: K): Range[K] => (Object.hasOwn(range, key) ? range[key] : undefined);
+  return { min: read("min"), max: read("max"), exclusiveMin: read("exclusiveMin"), exclusiveMax: read("exclusiveMax") };
+}
+
 /**
  * The range with only finite bounds, and only the exclusive flags whose bound remains;
  * `undefined` when no bound remains.
  */
 export function normalizeRange(range: Range): Range | undefined {
+  const { min, max, exclusiveMin, exclusiveMax } = ownRange(range);
   const result: Range = {};
-  if (Number.isFinite(range.min)) {
-    result.min = range.min;
-    if (range.exclusiveMin) result.exclusiveMin = true;
+  if (Number.isFinite(min)) {
+    result.min = min;
+    if (exclusiveMin === true) result.exclusiveMin = true;
   }
-  if (Number.isFinite(range.max)) {
-    result.max = range.max;
-    if (range.exclusiveMax) result.exclusiveMax = true;
+  if (Number.isFinite(max)) {
+    result.max = max;
+    if (exclusiveMax === true) result.exclusiveMax = true;
   }
   return result.min === undefined && result.max === undefined ? undefined : result;
 }
 
 /** "between 1 and 100", "greater than 0 and at most 5", … ; "" for no bounds. */
 function describeBounds(range: Range): string {
-  const { min, max, exclusiveMin, exclusiveMax } = normalizeRange(range) ?? {};
+  const { min, max, exclusiveMin, exclusiveMax } = ownRange(normalizeRange(range) ?? {});
   if (min !== undefined && max !== undefined && !exclusiveMin && !exclusiveMax) {
     return `between ${min} and ${max}`;
   }
@@ -289,9 +308,9 @@ export function describeRange(range: Range, kind = "a number"): string {
 
 /** An interval such as an axis range: "from -10 to 10", or its bounds when it is open. */
 export function describeInterval(range: Range): string {
-  const normalized = normalizeRange(range);
-  if (normalized?.min !== undefined && normalized.max !== undefined && !normalized.exclusiveMin && !normalized.exclusiveMax) {
-    return `from ${normalized.min} to ${normalized.max}`;
+  const { min, max, exclusiveMin, exclusiveMax } = ownRange(normalizeRange(range) ?? {});
+  if (min !== undefined && max !== undefined && !exclusiveMin && !exclusiveMax) {
+    return `from ${min} to ${max}`;
   }
   return describeBounds(range) || "unbounded";
 }

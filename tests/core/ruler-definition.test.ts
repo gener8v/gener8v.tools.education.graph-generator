@@ -122,19 +122,19 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
   });
 
   it("reports an object whose start is not before its end, once, at its end (NLC-REQ-051)", () => {
-    // The structure stage's order check reports an ordinary reversal (quality review QR-001).
+    // Order is decided by mark index alone, asking for a mark after the start (quality review QR-001).
     expect(issuesOf(check(cm(object(2, 2))))).toEqual([
       {
         code: "out_of_range",
         path: "/measuredObject/end",
-        range: { min: 2, exclusiveMin: true },
-        message: "measuredObject.end must be a number greater than 2; got 2.",
+        range: { min: 2.1, max: 15 },
+        message: "measuredObject.end must be a number between 2.1 and 15; got 2.",
       },
     ]);
     expect(found(cm(object(5, 3)))).toEqual(["out_of_range /measuredObject/end"]);
-    // An end before its start and between marks is reported for its order alone.
-    expect(found(cm(object(5, 3.25)))).toEqual(["out_of_range /measuredObject/end"]);
-    // The same mark written two ways passes the structure stage's order check, and is still reported.
+    // An end before its start and between marks is reported for not being a mark; its order waits for a mark.
+    expect(found(cm(object(5, 3.25)))).toEqual(["not_on_mark /measuredObject/end"]);
+    // The same mark written two ways is reported too.
     expect(0.3 > 0.1 + 0.2).toBe(false);
     const [issue, ...rest] = issuesOf(check(cm(object(0.3, 0.1 + 0.2))));
     expect(rest).toEqual([]);
@@ -154,6 +154,12 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
       expect(issue).toMatchObject({ code: "out_of_range", path: "/measuredObject/start", range: { min: 0, max: 14.9 } });
       expect(issue!.message).toMatch(/^measuredObject\.start must be a number between 0 and 14\.9; got /);
     }
+  });
+
+  it("never compares an end with a start off the ruler: each end's own fault, and nothing more (rulers NLC TICKET-002 security review)", () => {
+    expect(found(cm(object(20, 7.25)))).toEqual(["out_of_range /measuredObject/start", "not_on_mark /measuredObject/end"]);
+    expect(found(cm(object(20, 7)))).toEqual(["out_of_range /measuredObject/start"]);
+    expect(found(cm(object(-1, -2)))).toEqual(["out_of_range /measuredObject/start", "out_of_range /measuredObject/end"]);
   });
 
   it("reports an end off the ruler at its path, naming the ruler's range, and not also between marks (NLC-REQ-052)", () => {
@@ -198,6 +204,27 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
     expect(found(cm({ smallestDivision: "eighth", ...object(0.3, 0.1 + 0.2) }))).toEqual(["inapplicable_property /smallestDivision"]);
     // And an inch ruler too long for its unit reports the length only.
     expect(found(inches({ length: 20, ...object(1.3, 19) }))).toEqual(["out_of_range /length"]);
+  });
+
+  it("is not misled by a polluted prototype: no inherited bound refuses a valid ruler or reaches a message (security review SEC-001)", () => {
+    const prototype = Object.prototype as Record<string, unknown>;
+    const polluted = <T>(values: Record<string, unknown>, run: () => T): T => {
+      for (const [key, value] of Object.entries(values)) Object.defineProperty(prototype, key, { value, configurable: true, writable: true });
+      try {
+        return run();
+      } finally {
+        for (const key of Object.keys(values)) delete prototype[key];
+      }
+    };
+    const valid = [example("examples/ruler.json"), cm(object(2, 7.5)), inches({ length: 12 })];
+    for (const bounds of [{ max: 7 }, { min: 7 }, { min: 7, max: 7, exclusiveMin: true, exclusiveMax: true }]) {
+      for (const input of valid) expect(polluted(bounds, () => check(input).valid), JSON.stringify(bounds)).toBe(true);
+    }
+    const faults = [cm(object(2, 2)), inches({ length: 13 }), cm(object(2, 7.25)), cm({ length: 4.5 })];
+    for (const input of faults) {
+      const plain = issuesOf(check(input));
+      expect(polluted({ max: "PWN \u202e", min: "PWN", exclusiveMin: true, exclusiveMax: true }, () => issuesOf(check(input)))).toEqual(plain);
+    }
   });
 
   it("reports both ends when both are wrong, each once", () => {

@@ -77,6 +77,7 @@
 - Carried from rulers/number-lines-and-coordinate-graphs-ticket-002-quality-review/QR-002 (per-type bundles): the ruler definition is built by a side-effect-free factory (`/* @__PURE__ */ defineRuler()`), so a bundle that never reads it drops it. Two pieces are left for this ticket:
   - mark the `Object.freeze(…)` tables in `src/core/ruler.ts` (`INCH_DIVISIONS`, `RULER_MAX_LENGTH`, `RULER_UNITS`, `INCH_RANKS`) `/* @__PURE__ */`, so the circle's bundle does not keep them, about 470 B gzip;
   - when registering the ruler, add "A ruler" to the exclusions in `tests/package/per-type-bundle.test.ts`, so a ruler that leaks into another type's bundle fails a test. Build the layout (`src/layout/ruler.ts`) the same way.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-002-security-review/SEC-002 (caller-text length): the measured object's `label` (the shared `label`) and the ruler's `title` have no length bound, and `describe` states them whole. The bound waits on the Product Owner decision pending from graph-library geometric-shapes-and-solids-ticket-002-security-review/SEC-002; a `maxLength` on the shared `label` then reaches the ruler with no change. Until then, add a caller-sized label test here, for example a 500 KB label that draws a bounded number of text nodes without throwing, as GSS TICKET-002 SEC-001's hazard asks.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-004

@@ -217,9 +217,9 @@ Ten deliberate breaks, each made against a passing baseline and restored from me
 
 | Requirement | Code Location | Annotation |
 |-------------|---------------|------------|
-| NLC-REQ-001, 041, 046, 049, 054 | `src/core/definitions/ruler.ts`:ruler, defineRulerProperties | `@spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-046, NLC-REQ-049, NLC-REQ-054` (and on `defineRulerProperties` with GSV-REQ-040, 049..051, NLC-REQ-042 and NLC-REQ-051) |
+| NLC-REQ-001, 041, 046, 049, 054 | `src/core/definitions/ruler.ts`:ruler, defineRulerProperties | `@spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-046, NLC-REQ-049, NLC-REQ-054` (and on `defineRulerProperties` with GSV-REQ-040, 049..051 and NLC-REQ-042) |
 | NLC-REQ-042 | `src/core/definitions/ruler.ts`:lengthFitsUnit, defineRulerProperties | `@spec NLC-REQ-042` |
-| NLC-REQ-051 | `src/core/definitions/ruler.ts`:defineRulerProperties (`ordered`), objectInOrder | `@spec NLC-REQ-051` |
+| NLC-REQ-051 | `src/core/definitions/ruler.ts`:objectInOrder | `@spec NLC-REQ-051` |
 | NLC-REQ-052, 053 | `src/core/definitions/ruler.ts`:endOnMark | `@spec NLC-REQ-052, NLC-REQ-053` |
 | NLC-REQ-046, 056 | `src/core/definitions/ruler.ts`:ruler.describe | `@spec NLC-REQ-046, NLC-REQ-056` |
 | GSV-REQ-040, 049, 050, 051 | `src/core/definitions/ruler.ts`:defineRulerProperties | `@spec … GSV-REQ-040, GSV-REQ-049, GSV-REQ-050, GSV-REQ-051` |
@@ -279,3 +279,19 @@ Ten deliberate breaks, each made against a passing baseline and restored from me
   - no `max` on the order range;
   - no fall-back to the start at the ruler's end;
   - the unit's plural in "numbered every".
+
+### Security review — `rulers/number-lines-and-coordinate-graphs-ticket-002-security-review` (2026-10-21, Approved)
+
+- **SEC-001:** every reader of a range now reads its fields own-key, through the new `ownRange` in `src/core/issues.ts`:
+  - `rangeOf` and `rangeBroken` in `src/core/validate/numbers.ts`;
+  - `normalizeRange`, `describeBounds` and `describeInterval` in `src/core/issues.ts`.
+  - A polluted `Object.prototype.min`, `.max` or exclusive flag no longer refuses a valid ruler, and its text never reaches a message. Tested on `examples/ruler.json`, a centimetre object and a 12 in ruler (valid), and on four faults (issues unchanged).
+  - This closes the GSV `rangeOf`/`rangeBroken` pollution follow-up noted earlier, for every type.
+- **SEC-002:** the label and title join the pending Product Owner decision on caller-text length (graph-library GSS TICKET-002 SEC-002). A Known Hazard on TICKET-003 asks for a caller-sized label test.
+- **Order check (raised by the security reviewer, not a finding):** the measured object no longer declares `ordered: [["start", "end"]]`. Since DEL-004 removed the ends' bounds, it compared an end with a start off the ruler: a start of 20 on a 15 cm ruler also told the end "greater than 20", and hid the end's `not_on_mark`.
+  - `objectInOrder` decides every object's order by mark index, once both ends are marks. 2→2 now reads "between 2.1 and 15", and 5→3.25 is reported as `not_on_mark` first.
+  - The `end` description still states "after its start" for the schema.
+  - `@spec NLC-REQ-051` moves off `defineRulerProperties`, and the coverage row names `objectInOrder` alone. Tested with starts off the ruler.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,343 tests) exits 0 on three runs. One full run first failed one pictograph layout timing test under load ("does the same in columns…, up to 25 categories"); it passed alone three times, and is the known graph-library timing flake.
+  - Four deliberate breaks each fail a test: `rangeBroken`, `normalizeRange` or `describeBounds` reading the range through the prototype, and `ordered` restored.
+  - A fifth, `rangeOf` reading the spec directly, fails none. Specs built by `defineProperties` have no prototype, so that read is defence in depth.
