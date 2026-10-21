@@ -110,7 +110,8 @@ export const sharedProperties = defineProperties({
     kind: "string",
     required: false,
     presentation: "elementLabel",
-    description: "A label for this one point, segment or measured object, as plain text.",
+    description:
+      "A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
     appliesTo: [],
     elementsOf: ["number-line", "ruler", "xy-graph", "xyz-graph"],
   },

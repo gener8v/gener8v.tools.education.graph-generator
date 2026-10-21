@@ -38,6 +38,7 @@
 **Known Hazards:**
 - Tolerances: graph-library NLC TICKET-001's reviews found property tests that failed on correct code because their tolerance was below one ulp of their own expected value. Compute expected positions independently of the layout, with the same `linearScale` domain, and allow for their rounding. Then run each property test many times (for example 50) before calling it stable.
 - Cross-change ordering: `graph-library/number-lines-and-coordinate-graphs/TICKET-005` (the same checks for number lines and coordinate graphs) may or may not be delivered first. Do not edit that change's ticket. Extend its tests if they exist, otherwise write ruler tests that it can later absorb, and record which in the delivery record.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-003-code-review/CR-003 (mark contrast, CC-002 1.4.11): rulers NLC TICKET-003 DEL-002 left the marks unchanged. A 30 cm ruler's millimetre marks (0.59 drawing units wide) keep 3:1 contrast only when the ruler is shown at least 330 px wide; a 12 in ruler in sixteenths down to about 210 px. The note is in `<RulerGraph>`'s documentation only (`src/react/graphs/RulerGraph.tsx`). Run the accessibility test at the default size, and state the 330 px minimum wherever this ticket documents the ruler's accessibility results.
 
 **Depends On:** TICKET-003
 **Blocks:** None

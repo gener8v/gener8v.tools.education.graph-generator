@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { validate } from "../../src/core/index";
 import { type Ruler, ruler as rulerDefinition } from "../../src/core/definitions/ruler";
 import { INCH_DIVISIONS, RULER_MAX_LENGTH, type RulerUnit, rulerScale } from "../../src/core/ruler";
+import { sharedProperties } from "../../src/core/definitions/shared";
 import { defaultStyle } from "../../src/core/style";
 import { checkScene } from "../../src/layout/kit/check";
 import { fmt } from "../../src/layout/kit/format";
@@ -192,6 +193,10 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
       expect(box.x >= 0 && box.x + box.width <= SCENE_WIDTH).toBe(true);
       for (const other of [bar, ...numbers(scene, 30).map(boxOf), ...title.map(boxOf)]) expect(overlap(box, other)).toBe(false);
     }
+  });
+
+  it("says in the published label term that a long label is cut in the drawing (code review CR-001)", () => {
+    expect(sharedProperties.label.description).toContain("a long label is cut short with “…”; the text alternative states it whole");
   });
 
   it("draws no label for a blank one, and the bar still", () => {

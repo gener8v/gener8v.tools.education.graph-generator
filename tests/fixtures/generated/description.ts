@@ -27,7 +27,7 @@ export interface NumberLineDescription {
   points?: ReadonlyArray<{
     /** Where the point is on the line. */
     value: number;
-    /** A label for this one point, segment or measured object, as plain text. */
+    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
@@ -80,7 +80,7 @@ export interface XyGraphDescription {
     x: number;
     /** The y coordinate. */
     y: number;
-    /** A label for this one point, segment or measured object, as plain text. */
+    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
@@ -101,7 +101,7 @@ export interface XyGraphDescription {
       /** The y coordinate. */
       y: number;
     };
-    /** A label for this one point, segment or measured object, as plain text. */
+    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;

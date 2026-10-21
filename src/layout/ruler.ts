@@ -19,10 +19,6 @@ import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
  */
 export const RULER_EDGE = 352;
 
-/** Where the marked edge starts and ends, centered in the drawing. */
-const EDGE_START = (SCENE_WIDTH - RULER_EDGE) / 2;
-const EDGE_END = EDGE_START + RULER_EDGE;
-
 /** The least room between the body's end and a number past the edge's end. */
 const BODY_END_CLEARANCE = 2;
 /** The least distance from the body's end to the edge's end, whatever the numbers. */
@@ -88,6 +84,10 @@ export const rulerLayout: Layout<Ruler> = (normalized: Ruler, provenance: Proven
   const scale = rulerScale(normalized.rulerUnit, normalized.length, normalized.smallestDivision);
   // Validation accepts no other ruler; a layout bug fails closed as `internal_error`.
   if (scale === undefined) throw new RangeError("rulerLayout(): the description is not a validated ruler");
+  // Where the marked edge starts and ends, centered in the drawing. Worked out here, not as
+  // module constants, so a bundle that never draws a ruler keeps none of it (code review CR-002).
+  const edgeStart = (SCENE_WIDTH - RULER_EDGE) / 2;
+  const edgeEnd = edgeStart + RULER_EDGE;
   const title = titleBlock(normalized.title);
   const nodes: SceneNode[] = [...title.nodes];
   const top = title.height + SCENE_MARGIN;
@@ -105,13 +105,13 @@ export const rulerLayout: Layout<Ruler> = (normalized: Ruler, provenance: Proven
 
   const fontSize = rulerFontSize(normalized.length);
   const overhang = rulerNumberOverhang(normalized.length, fontSize);
-  const bodyStart = EDGE_START - Math.max(BODY_END_INSET, overhang.start + BODY_END_CLEARANCE);
-  const bodyEnd = EDGE_END + Math.max(BODY_END_INSET, overhang.end + BODY_END_CLEARANCE);
+  const bodyStart = edgeStart - Math.max(BODY_END_INSET, overhang.start + BODY_END_CLEARANCE);
+  const bodyEnd = edgeEnd + Math.max(BODY_END_INSET, overhang.end + BODY_END_CLEARANCE);
   const bodyHeight = rulerMarksDepth(normalized.rulerUnit, fontSize) + BODY_BOTTOM_PAD;
   nodes.push(rect(bodyStart, edgeY, bodyEnd - bodyStart, bodyHeight, "none", defaultStyle.colors.line));
   const marks = drawRulerMarks({
-    from: [EDGE_START, edgeY],
-    to: [EDGE_END, edgeY],
+    from: [edgeStart, edgeY],
+    to: [edgeEnd, edgeY],
     unit: normalized.rulerUnit,
     length: normalized.length,
     ...(normalized.smallestDivision === undefined ? {} : { smallestDivision: normalized.smallestDivision }),
@@ -125,7 +125,7 @@ export const rulerLayout: Layout<Ruler> = (normalized: Ruler, provenance: Proven
     const along = linearScale([0, normalized.length], [0, 1]);
     const xOf = (value: number) => {
       const location = scale.locate(value);
-      return EDGE_START + along(location.kind === "mark" ? location.value : value) * (EDGE_END - EDGE_START);
+      return edgeStart + along(location.kind === "mark" ? location.value : value) * (edgeEnd - edgeStart);
     };
     const [x1, x2] = [xOf(object.start), xOf(object.end)];
     nodes.push(rect(x1, barTop, x2 - x1, BAR_HEIGHT, object.color ?? defaultStyle.colors.accent));

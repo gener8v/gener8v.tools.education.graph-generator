@@ -13,9 +13,9 @@ import { TICK_LABEL_DROP } from "./value-scale";
  * centimetre ruler whole 20, half 14 and millimetre 8; on an inch ruler whole 22, half 17, quarter
  * 13, eighth 9.5 and sixteenth 6.5. Strictly decreasing, so every rank is told apart by length.
  */
-export const RULER_MARK_LENGTHS: Readonly<Record<RulerUnit, readonly number[]>> = Object.freeze({
-  centimeters: Object.freeze([20, 14, 8]),
-  inches: Object.freeze([22, 17, 13, 9.5, 6.5]),
+export const RULER_MARK_LENGTHS: Readonly<Record<RulerUnit, readonly number[]>> = /* @__PURE__ */ Object.freeze({
+  centimeters: /* @__PURE__ */ Object.freeze([20, 14, 8]),
+  inches: /* @__PURE__ */ Object.freeze([22, 17, 13, 9.5, 6.5]),
 });
 
 /** Space between a whole mark's end and its number, in drawing units. */
@@ -31,12 +31,14 @@ export const RULER_MIN_MARK_WIDTH = 0.25;
 /**
  * The farthest a ruler's `from` or `to` may lie from the drawing's origin, in drawing units: ten
  * drawing widths, far past any layout's page and far below `fmt()`'s limit (security review
- * SEC-002).
+ * SEC-002). This limit and the next are functions, not constants: a bundler keeps arithmetic on an
+ * imported value, so as constants they stayed in every other graph type's bundle (rulers NLC
+ * TICKET-003 code review CR-002).
  */
-const MAX_COORDINATE = 10 * SCENE_WIDTH;
+const maxCoordinate = (): number => 10 * SCENE_WIDTH;
 
 /** The largest font size for a ruler's numbers: twice the title size (security review SEC-002). */
-const MAX_FONT_SIZE = 2 * defaultStyle.fontSizes.title;
+const maxFontSize = (): number => 2 * defaultStyle.fontSizes.title;
 
 /** A ruler's marked edge to draw: where it runs on the page, the ruler's unit, length and division. */
 export interface RulerMarksOptions {
@@ -85,7 +87,7 @@ function checkedOptions(options: RulerMarksOptions): CheckedOptions {
   // Each point is read once, into numbers, and only those are measured and drawn (security review SEC-002).
   const from = pointOf(options.from);
   const to = pointOf(options.to);
-  if (from === undefined || to === undefined) throw refuse(`from and to must each be two finite numbers within ±${MAX_COORDINATE}`);
+  if (from === undefined || to === undefined) throw refuse(`from and to must each be two finite numbers within ±${maxCoordinate()}`);
   const edge = Math.hypot(to[0] - from[0], to[1] - from[1]);
   if (!(edge > 0)) throw refuse("from and to must be different points");
   if (side !== "left" && side !== "right") throw refuse(`side must be "left" or "right", got ${describeValue(side)}`);
@@ -97,18 +99,18 @@ function checkedOptions(options: RulerMarksOptions): CheckedOptions {
   return { ruler, from, to, edge, side, fontSize };
 }
 
-/** `point` as two numbers, read once, when it is an array of two finite coordinates within `MAX_COORDINATE`; else undefined. */
+/** `point` as two numbers, read once, when it is an array of two finite coordinates within `maxCoordinate()`; else undefined. */
 function pointOf(point: unknown): readonly [number, number] | undefined {
   if (!Array.isArray(point) || point.length !== 2) return undefined;
   const [x, y]: unknown[] = [point[0], point[1]];
-  const usable = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= MAX_COORDINATE;
+  const usable = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= maxCoordinate();
   return usable(x) && usable(y) ? [x, y] : undefined;
 }
 
-/** Throws unless `fontSize` is a number that survives `fmt()` (at least 0.01) and is at most `MAX_FONT_SIZE`. Messages describe values with `describeValue`, which never calls the caller's code (security review SEC-003). */
+/** Throws unless `fontSize` is a number that survives `fmt()` (at least 0.01) and is at most `maxFontSize()`. Messages describe values with `describeValue`, which never calls the caller's code (security review SEC-003). */
 function checkFontSize(fontSize: unknown, refuse: (problem: string) => RangeError): asserts fontSize is number {
-  if (!(typeof fontSize === "number" && Number.isFinite(fontSize) && fmt(fontSize) > 0 && fontSize <= MAX_FONT_SIZE)) {
-    throw refuse(`fontSize must be from 0.01 to ${MAX_FONT_SIZE}, got ${describeValue(fontSize)}`);
+  if (!(typeof fontSize === "number" && Number.isFinite(fontSize) && fmt(fontSize) > 0 && fontSize <= maxFontSize())) {
+    throw refuse(`fontSize must be from 0.01 to ${maxFontSize()}, got ${describeValue(fontSize)}`);
   }
 }
 

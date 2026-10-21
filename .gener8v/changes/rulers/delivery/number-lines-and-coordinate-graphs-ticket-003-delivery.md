@@ -207,4 +207,15 @@ Engineer decisions:
 
 ## Post-Review Amendments
 
-None
+### Code review — `rulers/number-lines-and-coordinate-graphs-ticket-003-code-review` (2026-10-21, Approved)
+
+- **CR-001:** the shared `label` term's description (`src/core/definitions/shared.ts`) now says "In the drawing, a long label is cut short with “…”; the text alternative states it whole." Regenerated (`src/generated/*`, `tests/fixtures/generated/description.ts`). `tests/layout/ruler.test.ts` checks the sentence.
+- **CR-002:** no ruler code stays in the other types' consumer bundles.
+  - `RULER_MARK_LENGTHS` and its arrays are `/* @__PURE__ */` (`src/layout/kit/ruler.ts`).
+  - The kit's coordinate and font-size limits are functions, `maxCoordinate()` and `maxFontSize()`, since a bundler keeps arithmetic on an imported value as a module statement.
+  - `rulerLayout` works out the edge's ends itself; `EDGE_START` and `EDGE_END` are gone (`src/layout/ruler.ts`).
+  - The built-entry bundle test also looks for the mark lengths ("9.5,6.5"). Unmarking the table fails it. `./circle` went from 16.45 to 16.39 kB.
+  - Files Produced said the kit was left out of the other bundles; until this fix that was true of the source bundles only.
+- **CR-003:** deferred. Known Hazards carry the 330 px minimum (DEL-002) to rulers NLC TICKET-004 and graph-library CPSE TICKET-008.
+- **Trivial fix alongside:** the `RULER_MAX_LENGTH` comment in `src/core/ruler.ts` no longer calls the maximums provisional (NLC OQ-009, answered 2026-10-21).
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. `pnpm test` passes 1,371 tests on three runs.

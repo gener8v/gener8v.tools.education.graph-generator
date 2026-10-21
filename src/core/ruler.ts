@@ -19,7 +19,7 @@ export const DEFAULT_INCH_DIVISION: InchDivision = "sixteenth";
 
 /**
  * The longest ruler of each unit, in whole units (NLC-REQ-042): 30 cm (301 millimetre marks) and
- * 12 in (193 sixteenth marks). Provisional until the Product Owner settles NLC OQ-009.
+ * 12 in (193 sixteenth marks): the standard classroom rulers (NLC OQ-009, answered 2026-10-21).
  */
 export const RULER_MAX_LENGTH: Readonly<Record<RulerUnit, number>> = /* @__PURE__ */ Object.freeze({ centimeters: 30, inches: 12 });
 

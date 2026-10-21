@@ -20,7 +20,7 @@ export interface RulerDescription {
     start: number;
     /** The ruler mark the object ends at, after its start, given as the start is. */
     end: number;
-    /** A label for this one point, segment or measured object, as plain text. */
+    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;

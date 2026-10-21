@@ -212,7 +212,8 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
 
   it("leaves the ruler, its mark rule's tables and its kit out of a consumer's bundle of every other built entry (rulers NLC TICKET-002 quality review QR-002)", async () => {
     // The built package shares chunks between entries, so the mark rule's frozen tables reach the
-    // others' chunks; marked pure, a consumer's bundler drops them. Text that survives minifying.
+    // others' chunks; marked pure, a consumer's bundler drops them. Text that survives minifying,
+    // including the kit's mark lengths (code review CR-002).
     for (const built of ["circle", "pictograph", "line-graph", "bar-graph"]) {
       const result = await build({
         stdin: { contents: `export * from "./dist/${built}.js";`, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
@@ -226,7 +227,7 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
         logLevel: "silent",
       });
       const code = result.outputFiles[0]!.text;
-      for (const ruler of ["A ruler", "sixteenth", "drawRulerMarks()", "rulerLayout()"]) expect(code, `${built}: ${ruler}`).not.toContain(ruler);
+      for (const ruler of ["A ruler", "sixteenth", "drawRulerMarks()", "rulerLayout()", "9.5,6.5"]) expect(code, `${built}: ${ruler}`).not.toContain(ruler);
     }
   });
 

@@ -45,6 +45,7 @@
   - An issue's `path` is the caller's keys verbatim and may hold line breaks and direction controls. Every fallback, logging or error-display example on the site prints issues with `formatIssue` from `./core`, never `issue.path` raw.
   - State on the site, next to the component props, that the validator reads the whole input object, so a server rendering descriptions from requests must keep its own request-body size limit. The same note is on `GraphProps.description`.
   - Also state that components validate on every render (CPSE TICKET-003 DEL-001, SEC-005). Show memoizing the element, or calling `createGraph` once, for pages that re-render often with large descriptions.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-003-code-review/CR-003 (ruler mark contrast): a ruler keeps 3:1 contrast on its finest marks only when shown at least 330 px wide (rulers NLC TICKET-003 DEL-002). Today it is said only in `<RulerGraph>`'s documentation comment. State it on the ruler's documentation page and beside its working example, for `<RulerGraph>` and for `<Graph>` drawing a ruler.
 
 **Depends On:** TICKET-003
 **Blocks:** None
