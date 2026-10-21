@@ -6,7 +6,7 @@ export interface RulerDescription {
   type: "ruler";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** The unit a ruler is marked in: centimeters or inches. */
   rulerUnit: "centimeters" | "inches";
@@ -20,7 +20,7 @@ export interface RulerDescription {
     start: number;
     /** The ruler mark the object ends at, after its start, given as the start is. */
     end: number;
-    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
+    /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
@@ -33,11 +33,11 @@ export interface LineGraphDescription {
   type: "line-graph";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
-  /** A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+  /** A label for the axis that lists the categories, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   categoryAxisLabel?: string;
-  /** A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+  /** A label for the axis that shows the values, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   valueAxisLabel?: string;
   /** The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick. */
   valueScale?: {
@@ -57,7 +57,7 @@ export interface LineGraphDescription {
   series: ReadonlyArray<{
     /** One value per category, in the same order as the categories. */
     values: ReadonlyArray<number>;
-    /** A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+    /** A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
     lineLabel?: string;
     /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
     lineColor?: string;
@@ -70,11 +70,11 @@ export interface BarGraphDescription {
   type: "bar-graph";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
-  /** A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+  /** A label for the axis that lists the categories, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   categoryAxisLabel?: string;
-  /** A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+  /** A label for the axis that shows the values, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   valueAxisLabel?: string;
   /** The value axis's scale: its minimum, maximum and tick interval, each optional. A part that is given is used exactly and never extended, and must include every value; a part left out is chosen to fit the data: the minimum is zero, or lower for a line graph's negative values, and the axis ends on a tick. */
   valueScale?: {
@@ -108,9 +108,9 @@ export interface PictographDescription {
   type: "pictograph";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
-  /** What one unit of value counts, as plain text, such as "students"; the key names the picture, as in "each apple = 2 students". Left out, empty or blank, it says "units". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole. */
+  /** What one unit of value counts, as plain text, at most 200 characters, such as "students"; the key names the picture, as in "each apple = 2 students". Left out, empty or blank, it says "units". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole. */
   valueUnitLabel?: string;
   /** The categories, drawn in the order given: at least 1 and at most 100, each with a different name. */
   categories: ReadonlyArray<{
@@ -133,7 +133,7 @@ export interface CircleDescription {
   type: "circle";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;
@@ -155,13 +155,13 @@ export interface CircleDescription {
   labelDiameter?: boolean;
   /** Whether the circumference is labeled with its measurement, next to the circle. */
   labelCircumference?: boolean;
-  /** Text shown in place of the radius label, such as "r" or "?"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  /** Text shown in place of the radius label, at most 200 characters, such as "r" or "?"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   radiusLabelText?: string;
-  /** Text shown in place of the diameter label, such as "r" or "?"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  /** Text shown in place of the diameter label, at most 200 characters, such as "r" or "?"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   diameterLabelText?: string;
-  /** Text shown in place of the circumference label, such as "r" or "?"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  /** Text shown in place of the circumference label, at most 200 characters, such as "r" or "?"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   circumferenceLabelText?: string;
-  /** The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative. */
+  /** The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative. */
   unit?: string;
 }
 

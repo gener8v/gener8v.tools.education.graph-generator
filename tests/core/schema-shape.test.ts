@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { generatedFiles } from "../../scripts/generated-files";
 import { type Registry, definitions, propertiesOf, registeredTypes } from "../../src/core/definitions/index";
 import type { PropertyMap } from "../../src/core/definitions/types";
+import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { PLAIN_TEXT_PATTERN, findUnsafeTextChar } from "../../src/core/format";
 import { getSchema, getToolSchema, getVocabulary } from "../../src/core/index";
 import { COLOR_PATTERN, type JsonSchema, buildDescriptionTypes, buildSchema, buildToolSchema, buildVocabulary } from "../../src/core/schema";
@@ -370,5 +371,35 @@ describe("terms with fixed lists and conditions in the published vocabulary and 
     const ajv = createAjv();
     const graph = { type: "ruler", version: null, title: null, unit: "centimeters", length: 6, smallestDivision: "half", spare: null, extras: null };
     expect(ajv.validate(buildToolSchema(conditionalRegistry), { graph }), JSON.stringify(ajv.errors)).toBe(true);
+  });
+});
+
+describe("caller text limits in the published schemas (GSV-REQ-054; graph-library GSV TICKET-007)", () => {
+  /** Every string schema that is not a color, by path, with its `maxLength`. */
+  function textSchemas(node: unknown, path = ""): Array<{ path: string; maxLength: unknown }> {
+    if (Array.isArray(node)) return node.flatMap((child, i) => textSchemas(child, `${path}/${i}`));
+    if (typeof node !== "object" || node === null) return [];
+    const schema = node as Record<string, unknown>;
+    const type = schema["type"];
+    const isString = type === "string" || (Array.isArray(type) && type.includes("string"));
+    const own = isString && !("enum" in schema) && !("const" in schema) && schema["pattern"] !== COLOR_PATTERN ? [{ path, maxLength: schema["maxLength"] }] : [];
+    return [...own, ...Object.entries(schema).flatMap(([key, child]) => textSchemas(child, `${path}/${key}`))];
+  }
+
+  it("publishes every text's limit as maxLength, in the schema and the tool schema: 20 for a unit, 200 for the rest", () => {
+    for (const [name, schema] of [
+      ["schema", getSchema()],
+      ["tool schema", getToolSchema()],
+    ] as const) {
+      const texts = textSchemas(schema);
+      expect(texts.length, name).toBeGreaterThan(10);
+      for (const { path, maxLength } of texts) expect(maxLength, `${name} ${path}`).toBe(path.endsWith("/unit") ? UNIT_TEXT_LIMIT : CALLER_TEXT_LIMIT);
+    }
+  });
+
+  it("states each limit in the vocabulary's term uses", () => {
+    const circle = getVocabulary().graphTypes.circle!;
+    expect(circle.properties["unit"]).toMatchObject({ maxLength: UNIT_TEXT_LIMIT });
+    expect(circle.properties["title"]).toMatchObject({ maxLength: CALLER_TEXT_LIMIT });
   });
 });

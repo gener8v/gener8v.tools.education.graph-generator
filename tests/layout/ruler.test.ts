@@ -4,9 +4,11 @@ import { validate } from "../../src/core/index";
 import { type Ruler, ruler as rulerDefinition } from "../../src/core/definitions/ruler";
 import { INCH_DIVISIONS, RULER_MAX_LENGTH, type RulerUnit, rulerScale } from "../../src/core/ruler";
 import { sharedProperties } from "../../src/core/definitions/shared";
+import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { defaultStyle } from "../../src/core/style";
 import { checkScene } from "../../src/layout/kit/check";
 import { fmt } from "../../src/layout/kit/format";
+import { MAX_CLUSTER_LENGTH } from "../../src/layout/kit/text";
 import { titleBlock } from "../../src/layout/kit/title";
 import { BAR_HEIGHT, LABEL_MAX_LINES, RULER_EDGE, rulerFontSize, rulerLayout } from "../../src/layout/ruler";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
@@ -76,8 +78,8 @@ const centimeters = (length: number, extra: object = {}) => ({ type: "ruler", ru
 const inches = (length: number, extra: object = {}) => ({ type: "ruler", rulerUnit: "inches", length, ...extra });
 
 const DIVISIONS = Object.keys(INCH_DIVISIONS) as Array<keyof typeof INCH_DIVISIONS>;
-const LABELS = [undefined, "pencil", "a long piece of string to measure", "a very long label for the object ".repeat(20), "@".repeat(400)];
-const TITLES = [undefined, "How long is it?", "A title long enough to wrap onto three lines ".repeat(6)];
+const LABELS = [undefined, "pencil", "a long piece of string to measure", "a very long label for the object ".repeat(6), "@".repeat(CALLER_TEXT_LIMIT)];
+const TITLES = [undefined, "How long is it?", "A title long enough to wrap onto three lines ".repeat(4)];
 
 /**
  * A ruler of either unit with every length of that unit equally likely, any division an inch ruler
@@ -235,7 +237,7 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
   });
 
   it("places its label above the bar, clear of the bar and every number, wrapped and cut to its line limit", () => {
-    const label = "a very long label for the object ".repeat(20);
+    const label = "a very long label for the object ".repeat(6);
     const scene = sceneOf(centimeters(30, { title: "Measure it", measuredObject: { start: 0, end: 0.5, label } }));
     const lines = labelLines(scene);
     expect(lines).toHaveLength(LABEL_MAX_LINES);
@@ -246,6 +248,21 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
 
   it("says in the published label term that a long label is cut in the drawing (code review CR-001)", () => {
     expect(sharedProperties.label.description).toContain("a long label is cut short with “…”; the text alternative states it whole");
+  });
+
+  it("draws a one-cluster label at the limit inside its box, clear of the bar, the end marks and the numbers (security review SEC-001)", () => {
+    const marked = `x${Array.from({ length: CALLER_TEXT_LIMIT - 1 }, (_, i) => String.fromCodePoint(0x316 + (i % 36))).join("")}`;
+    const chain = Array.from({ length: 66 }, () => "👩").join("\u200d");
+    for (const label of [marked, chain]) {
+      const scene = sceneOf(centimeters(10, { measuredObject: { start: 4.9, end: 5.1, label } }));
+      const [line, ...rest] = labelLines(scene);
+      expect(rest).toEqual([]);
+      expect([...line!.text].length).toBeLessThanOrEqual(MAX_CLUSTER_LENGTH);
+      expect(outside(scene)).toEqual([]);
+      expect(collisions(scene, 10)).toEqual([]);
+      // The text alternative still states the label whole.
+      expect(scene.textAlternative).toContain(label);
+    }
   });
 
   it("draws no label for a blank one, and the bar still", () => {

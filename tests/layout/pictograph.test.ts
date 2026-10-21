@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
+import { wordsOf } from "../fixtures/plain-text";
 import { PICTOGRAPH_IMAGE_LIMIT, type Pictograph } from "../../src/core/definitions/pictograph";
 import { validate } from "../../src/core/index";
 import { createGraph } from "../../src/graph";
@@ -165,7 +167,7 @@ describe("the key (DGP-REQ-027)", () => {
 
   it("shows the unit value as written and caps a long label's lines", () => {
     expect(keyText({ unitImage: "book", unitValue: 1e-7, valueUnitLabel: "pages" } as Pictograph)).toBe("each book = 0.0000001 pages");
-    const scene = sceneOf({ valueUnitLabel: "word ".repeat(2_000) });
+    const scene = sceneOf({ valueUnitLabel: wordsOf(CALLER_TEXT_LIMIT) });
     const keyLines = texts(scene).filter((line) => line.startsWith("each") || line.includes("word"));
     expect(keyLines.length).toBeLessThanOrEqual(KEY_MAX_LINES);
     expect(keyLines.at(-1)!.endsWith("…")).toBe(true);
@@ -390,8 +392,8 @@ describe("the whole pictograph through createGraph", () => {
     );
   });
 
-  it("keeps title and key lines bounded for half a megabyte of caller text (GSS TICKET-002 SEC-001)", () => {
-    const scene = sceneOf({ title: "word ".repeat(200_000), valueUnitLabel: "@".repeat(500_000) });
+  it("keeps title and key lines bounded for caller text at the limit (GSS TICKET-002 SEC-001; GSV-REQ-052)", () => {
+    const scene = sceneOf({ title: wordsOf(CALLER_TEXT_LIMIT), valueUnitLabel: "@".repeat(CALLER_TEXT_LIMIT) });
     // Title at most 3 lines, key at most 2, plus the one category name.
     expect(texts(scene).length).toBeLessThanOrEqual(3 + KEY_MAX_LINES + 1);
   });

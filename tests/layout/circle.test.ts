@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
+import { wordsOf } from "../fixtures/plain-text";
 import { validate } from "../../src/core/index";
 import type { Circle } from "../../src/core/definitions/circle";
 import { createGraph } from "../../src/graph";
@@ -240,21 +242,22 @@ describe("circle labels (GSS-REQ-006, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
   });
 
   it("cuts a label longer than LABEL_MAX_LINES lines with an ellipsis (security review SEC-001, DEL-008)", () => {
-    const scene = sceneOf({ type: "circle", radius: 5, circumferenceLabelText: "around the circle ".repeat(50) });
+    // 198 characters, inside the limit (GSV-REQ-052), and still more than four lines.
+    const scene = sceneOf({ type: "circle", radius: 5, circumferenceLabelText: "around the circle ".repeat(11) });
     const parts = labelTexts(scene);
     expect(parts).toHaveLength(LABEL_MAX_LINES);
     expect(parts[LABEL_MAX_LINES - 1]!.text.endsWith("…")).toBe(true);
-    expect(scene.textAlternative).toContain("around the circle ".repeat(50).trim());
+    expect(scene.textAlternative).toContain("around the circle ".repeat(11).trim());
   });
 
   // The bound is on the work (node counts), not on wall-clock time, which machine load made flaky
   // (DGP TICKET-004 code review resolution, 2026-10-14).
-  it("keeps the Scene small for caller-sized text (security review SEC-001, SEC-002)", () => {
+  it("keeps the Scene small for caller text at the limits (security review SEC-001, SEC-002; GSV-REQ-052, GSV-REQ-053)", () => {
     const scene = sceneOf({
       type: "circle",
       radius: 5,
-      title: "word ".repeat(200_000),
-      unit: "@".repeat(500_000),
+      title: wordsOf(CALLER_TEXT_LIMIT),
+      unit: "@".repeat(UNIT_TEXT_LIMIT),
       labelRadius: true,
       labelDiameter: true,
       labelCircumference: true,

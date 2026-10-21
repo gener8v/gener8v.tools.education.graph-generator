@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
+import { wordsOf } from "../fixtures/plain-text";
 import { SERIES_LIMIT, type LineGraph } from "../../src/core/definitions/line-graph";
 import { validate } from "../../src/core/index";
 import { seriesStyles } from "../../src/core/style";
@@ -172,7 +174,7 @@ describe("the legend (DGP-REQ-013)", () => {
   });
 
   it("caps a long label's lines, ending in an ellipsis; the text alternative states it whole", () => {
-    const label = "word ".repeat(500).trim();
+    const label = wordsOf(CALLER_TEXT_LIMIT);
     const scene = sceneOf({ series: [{ values: [3, 5, 2], lineLabel: label }, { values: [1, 2, 3] }] });
     const legendLines = texts(scene).filter((line) => line.startsWith("word"));
     expect(legendLines.length).toBeLessThanOrEqual(LEGEND_MAX_LINES);
@@ -217,7 +219,7 @@ describe("axis labels (DGP-REQ-002)", () => {
   });
 
   it("caps each axis label at two lines", () => {
-    const long = "word ".repeat(500).trim();
+    const long = wordsOf(CALLER_TEXT_LIMIT);
     const scene = sceneOf({ categoryAxisLabel: long, valueAxisLabel: long });
     expect(texts(scene).filter((line) => line.startsWith("word")).length).toBeLessThanOrEqual(4);
   });
@@ -367,13 +369,13 @@ describe("the whole line graph through createGraph", () => {
     expect(result.scene.textAlternative.startsWith("A line graph titled “Morning temperatures over one week”.")).toBe(true);
   });
 
-  it("keeps the drawing bounded for caller text of any length", () => {
-    const long = "word ".repeat(100_000).trim();
+  it("keeps the drawing bounded for caller text at the limit (GSV-REQ-052)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
     const scene = sceneOf({
       title: long,
       categoryAxisLabel: long,
       valueAxisLabel: long,
-      series: Array.from({ length: SERIES_LIMIT }, (_, s) => ({ values: [3, 5, 2], lineLabel: `${s} ${long}` })),
+      series: Array.from({ length: SERIES_LIMIT }, (_, s) => ({ values: [3, 5, 2], lineLabel: `${s} ${wordsOf(CALLER_TEXT_LIMIT - 2)}` })),
     });
     // Title 3 lines, two axis labels of 2, six legend labels of 2, three names, tick labels.
     expect(texts(scene).length).toBeLessThan(3 + 4 + 12 + 3 + 20);

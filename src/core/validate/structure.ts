@@ -97,7 +97,7 @@ function charactersOver(text: string, limit: number): number | undefined {
 }
 
 /** Check one value against its spec. */
-// @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043, GSV-REQ-049, GSV-REQ-050, DGP-REQ-031
+// @spec GSV-REQ-005, GSV-REQ-021, GSV-REQ-022, GSV-REQ-043, GSV-REQ-049, GSV-REQ-050, DGP-REQ-031, GSV-REQ-052, GSV-REQ-053
 function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, presentation: boolean): Outcome {
   const path = pointer(...place.segments);
   const fail = (issue: Issue): Outcome => {

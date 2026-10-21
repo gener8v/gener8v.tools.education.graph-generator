@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
+import { wordsOf } from "../fixtures/plain-text";
 import type { BarGraph } from "../../src/core/definitions/bar-graph";
 import { validate } from "../../src/core/index";
 import { defaultStyle } from "../../src/core/style";
@@ -384,8 +386,8 @@ describe("the whole bar graph through createGraph", () => {
     expect(result.scene.textAlternative.startsWith("A bar graph titled “How we get to school”.")).toBe(true);
   });
 
-  it("keeps the drawing bounded for caller text of any length", () => {
-    const long = "word ".repeat(100_000).trim();
+  it("keeps the drawing bounded for caller text at the limit (GSV-REQ-052)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
     for (const orientation of ["vertical", "horizontal"] as const) {
       const scene = sceneOf({ orientation, title: long, categoryAxisLabel: long, valueAxisLabel: long });
       // Title 3 lines, two axis labels of 2, three names, tick labels.

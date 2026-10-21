@@ -2,7 +2,7 @@ import { cleanText, quoteText } from "../format";
 import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
 import { MAX_VALUE_TICKS, VALUE_LIMIT } from "../value-scale";
-import type { ScopedPropertySpec } from "./shared";
+import { CALLER_TEXT_LIMIT, type ScopedPropertySpec } from "./shared";
 import { ALWAYS_RUNS, type DescriptionBase, type DomainCheck, type GraphType, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 // The value scale's arithmetic and checks live in `src/core/value-scale.ts` (quality review QR-005);
@@ -26,12 +26,11 @@ export {
 export const CATEGORY_LIMIT = 100;
 
 /**
- * The most characters a category name may have. Provisional, pending the Product Owner's
- * caller-text length decision (GSS TICKET-002 SEC-002): names are drawn whole, so an unbounded
- * name let a valid description render millions of text nodes (DGP TICKET-005 security review
- * SEC-001). Curriculum category names are a few words.
+ * The most characters a category name may have: the shared caller-text limit (GSV-REQ-052). Names
+ * are drawn whole, so an unbounded name let a valid description render millions of text nodes (DGP
+ * TICKET-005 security review SEC-001).
  */
-export const CATEGORY_NAME_LIMIT = 200;
+export const CATEGORY_NAME_LIMIT = CALLER_TEXT_LIMIT;
 
 /**
  * The one definition of the `values` term, which the pictograph, each line-graph series and the bar
@@ -71,7 +70,7 @@ export const ORIENTATION_DESCRIPTION =
  * per-category color applies to bars only and is reported as not applying on a pictograph (DGP
  * TICKET-001 DEL-001). Every graph type lists the result in its own properties.
  */
-// @spec DGP-REQ-001, DGP-REQ-003
+// @spec DGP-REQ-001, DGP-REQ-003, GSV-REQ-052
 export function categoriesProperty(elementProperties: PropertyMap = {}): PropertySpec {
   // Returned defined (frozen, no prototypes), so a definition can list it as it is and an unused
   // call can be dropped by a bundler (quality review QR-008).
@@ -112,7 +111,7 @@ const scaleEnd = (term: "minimum" | "maximum", description: string) =>
  * names, and the validator reports it as not applying anywhere else (DGP-REQ-002, DGP-REQ-005).
  * The category-axis and value-axis labels are shared presentation options (`shared.ts`).
  */
-// @spec DGP-REQ-002, DGP-REQ-005
+// @spec DGP-REQ-002, DGP-REQ-005, GSV-REQ-052
 export const dataGraphProperties = defineProperties({
   valueUnitLabel: {
     term: "valueUnitLabel",
@@ -120,8 +119,9 @@ export const dataGraphProperties = defineProperties({
     required: false,
     // DGP TICKET-001 DEL-002: an empty label is no label, so the key says "units".
     emptyIsAbsent: true,
+    maxLength: CALLER_TEXT_LIMIT,
     description:
-      'What one unit of value counts, as plain text, such as "students"; the key names the picture, as in "each apple = 2 students". Left out, empty or blank, it says "units". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole.',
+      `What one unit of value counts, as plain text, at most ${CALLER_TEXT_LIMIT} characters, such as "students"; the key names the picture, as in "each apple = 2 students". Left out, empty or blank, it says "units". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole.`,
     appliesTo: ["pictograph"],
     elementsOf: [],
   },

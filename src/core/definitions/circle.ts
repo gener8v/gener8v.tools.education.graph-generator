@@ -1,6 +1,7 @@
 import { createIssue, pointer } from "../issues";
 import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
 import type { Provenance } from "../result";
+import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "./shared";
 import { defineProperties, type DescriptionBase, type DomainCheck, type GraphTypeDefinition } from "./types";
 
 /** A normalized circle description: all three measurements are present once validated. */
@@ -69,7 +70,8 @@ const labelText = (term: string, measured: string) =>
     term,
     kind: "string",
     required: false,
-    description: `Text shown in place of the ${measured} label, such as "r" or "?"; it also labels the ${measured}. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.`,
+    maxLength: CALLER_TEXT_LIMIT,
+    description: `Text shown in place of the ${measured} label, at most ${CALLER_TEXT_LIMIT} characters, such as "r" or "?"; it also labels the ${measured}. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.`,
   }) as const;
 
 /** A switch that custom text, or a label, turns on: giving both with the switch `false` disagrees. */
@@ -98,7 +100,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
  * the others derived, with an optional drawn radius, diameter and center, and a label on each
  * measurement with its value and unit or custom text.
  */
-// @spec GSS-REQ-001, GSS-REQ-002, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005, GSS-REQ-006, GSS-REQ-035
+// @spec GSS-REQ-001, GSS-REQ-002, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005, GSS-REQ-006, GSS-REQ-035, GSV-REQ-052, GSV-REQ-053
 export const circle: GraphTypeDefinition<Circle> = {
   type: "circle",
   title: "Circle",
@@ -131,8 +133,8 @@ export const circle: GraphTypeDefinition<Circle> = {
       term: "unit",
       kind: "string",
       required: false,
-      description:
-        "The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative.",
+      maxLength: UNIT_TEXT_LIMIT,
+      description: `The unit of length shown after each measurement, such as cm, at most ${UNIT_TEXT_LIMIT} characters. A unit with sentence punctuation is quoted in the text alternative.`,
     },
   }),
   derivations: [

@@ -120,7 +120,7 @@ const BREAKING_SPACE = /[\t\n\v\f\r \u1680\u2000-\u2006\u2008-\u200a\u2028\u2029
  */
 export function widestWord(text: string, fontSize: number): number {
   let widest = 0;
-  for (const word of text.split(BREAKING_SPACE)) widest = Math.max(widest, textWidth(word, fontSize));
+  for (const word of text.split(BREAKING_SPACE)) widest = Math.max(widest, textWidth(drawnWord(word), fontSize));
   return widest;
 }
 
@@ -150,6 +150,47 @@ function clusters(word: string): string[] {
   return result;
 }
 
+/**
+ * The most marks drawn stacked on one character, in a row: enough for real scripts (Vietnamese
+ * stacks two, Devanagari signs up to three), while a run of hundreds would draw a column over the
+ * figure that no estimated box allows for (rulers NLC TICKET-003 security review SEC-001).
+ */
+export const MAX_STACKED_MARKS = 3;
+
+/**
+ * The most code points one unbreakable cluster keeps when drawn: past the longest emoji sequences
+ * (a family of four with its joiners is 7, a kiss with variation selectors 10), so a joiner chain of
+ * thousands is never drawn whole (rulers NLC TICKET-003 security review SEC-001).
+ */
+export const MAX_CLUSTER_LENGTH = 16;
+
+/**
+ * `cluster` as drawn: at most `MAX_STACKED_MARKS` zero-width marks in a row (a joiner, which links
+ * two characters, does not count as a mark) and at most `MAX_CLUSTER_LENGTH` code points. The
+ * drawing leaves the rest out; the text alternative still states the text whole.
+ */
+function drawnCluster(cluster: string): string {
+  let kept = "";
+  let length = 0;
+  let marks = 0;
+  forEachCodePoint(cluster, (code, char) => {
+    if (length === MAX_CLUSTER_LENGTH) return;
+    const mark = code !== ZWJ && within(ZERO_WIDTH, code);
+    marks = mark ? marks + 1 : 0;
+    if (marks > MAX_STACKED_MARKS) return;
+    kept += char;
+    length++;
+  });
+  return kept;
+}
+
+/** A word as drawn: each of its clusters bounded by `drawnCluster`. Unchanged for ordinary text. */
+function drawnWord(word: string): string {
+  let drawn = "";
+  for (const cluster of clusters(word)) drawn += cluster.length <= MAX_STACKED_MARKS + 1 ? cluster : drawnCluster(cluster);
+  return drawn;
+}
+
 function requirePositive(name: string, value: number): void {
   if (!Number.isFinite(value) || value <= 0) throw new RangeError(`wrap(): ${name} must be a positive number, got ${value}`);
 }
@@ -164,15 +205,23 @@ function requirePositive(name: string, value: number): void {
  * With `maxLines`, at most that many lines are returned: when the text needs more, the rest is cut
  * and the last line ends in "…", shortened to fit. Wrapping stops once the lines are full, so a
  * caller-sized text yields a bounded number of lines (GSS TICKET-002 security review SEC-001).
+ *
+ * Each cluster is drawn with at most `MAX_STACKED_MARKS` marks in a row and `MAX_CLUSTER_LENGTH`
+ * code points, so a line's text stays inside the box its width and line height estimate (rulers NLC
+ * TICKET-003 security review SEC-001).
  */
-// @spec CPSE-REQ-011
+// @spec CPSE-REQ-011, GSV-REQ-052
 export function wrap(text: string, maxWidth: number, fontSize: number, maxLines = Infinity): string[] {
   requirePositive("maxWidth", maxWidth);
   requirePositive("fontSize", fontSize);
   if (maxLines !== Infinity && (!Number.isInteger(maxLines) || maxLines < 1)) {
     throw new RangeError(`wrap(): maxLines must be a positive integer, got ${maxLines}`);
   }
-  const words = text.split(BREAKING_SPACE).filter((word) => word !== "");
+  // Each word as drawn, so no cluster draws a column of marks or a joiner chain off the page (SEC-001).
+  const words = text
+    .split(BREAKING_SPACE)
+    .filter((word) => word !== "")
+    .map(drawnWord);
   const scale = (fontSize * TEXT_WIDTH_SAFETY) / 1000;
   const spaceWidth = advance(0x20) * scale;
   const lines: string[] = [];

@@ -32,7 +32,8 @@ import { type Circle, circle as circleFixture } from "../fixtures/definitions/ci
 import type { DescriptionBase, GraphType } from "../../src/core/definitions/types";
 import type { Layout } from "../../src/layout/registry";
 import { circleLayout, fixtureLayouts, malformedLayouts, throwingLayouts } from "../fixtures/layouts";
-import { HOSTILE_TEXT } from "../fixtures/plain-text";
+import { HOSTILE_TEXT, wordsOf } from "../fixtures/plain-text";
+import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 
 const fixtures: Registries = { definitions: fixtureRegistry, layouts: fixtureLayouts };
 // `Graph` with the test-only definitions and layouts: the same render routine `Graph` calls.
@@ -383,8 +384,8 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("draws a valid circle with half a megabyte of unit text in <Graph> and <CircleGraph>, never throwing (GSS TICKET-002 security review SEC-001)", () => {
-    const description = { type: "circle", radius: 5, unit: "@".repeat(500_000), labelRadius: true, labelDiameter: true, labelCircumference: true };
+  it("draws a valid circle with its unit at the limit in <Graph> and <CircleGraph>, never throwing (GSS TICKET-002 security review SEC-001; GSV-REQ-053)", () => {
+    const description = { type: "circle", radius: 5, unit: "@".repeat(UNIT_TEXT_LIMIT), labelRadius: true, labelDiameter: true, labelCircumference: true };
     for (const Component of [Graph, PackageCircleGraph]) {
       const received: Issue[][] = [];
       const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
@@ -394,11 +395,11 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("draws a valid pictograph with half a megabyte of label and title text in <Graph> and <Pictograph>, never throwing (GSS TICKET-002 security review SEC-001)", () => {
+  it("draws a valid pictograph with its label and title at the limit in <Graph> and <Pictograph>, never throwing (GSS TICKET-002 security review SEC-001; GSV-REQ-052)", () => {
     const description = {
       type: "pictograph",
-      title: "word ".repeat(200_000),
-      valueUnitLabel: "@".repeat(500_000),
+      title: wordsOf(CALLER_TEXT_LIMIT),
+      valueUnitLabel: "@".repeat(CALLER_TEXT_LIMIT),
       categories: [{ name: "Cats" }, { name: "Dogs" }],
       values: [7, 4],
       unitImage: "apple",
@@ -413,16 +414,16 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("draws a valid line graph with half a megabyte of title, axis-label and series-label text in <Graph> and <LineGraph>, never throwing (GSS TICKET-002 SEC-001)", () => {
-    const long = "word ".repeat(100_000).trim();
+  it("draws a valid line graph with its title, axis labels and series labels at the limit in <Graph> and <LineGraph>, never throwing (GSS TICKET-002 SEC-001; GSV-REQ-052)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
     const description = {
       type: "line-graph",
       title: long,
       categoryAxisLabel: long,
-      valueAxisLabel: "@".repeat(500_000),
+      valueAxisLabel: "@".repeat(CALLER_TEXT_LIMIT),
       categories: [{ name: "Mon" }, { name: "Tue" }],
       // Labels differ at the start, so none repeats another (DGP TICKET-002 SEC-003).
-      series: Array.from({ length: 6 }, (_, s) => ({ values: [7, -4], lineLabel: `${s} ${long}` })),
+      series: Array.from({ length: 6 }, (_, s) => ({ values: [7, -4], lineLabel: `${s} ${wordsOf(CALLER_TEXT_LIMIT - 2)}` })),
     };
     for (const Component of [Graph, PackageLineGraph]) {
       const received: Issue[][] = [];
@@ -433,15 +434,15 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("draws a valid bar graph with half a megabyte of title and axis-label text in <Graph> and <BarGraph>, in both orientations, never throwing (GSS TICKET-002 SEC-001)", () => {
-    const long = "word ".repeat(100_000).trim();
+  it("draws a valid bar graph with its title and axis labels at the limit in <Graph> and <BarGraph>, in both orientations, never throwing (GSS TICKET-002 SEC-001; GSV-REQ-052)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
     for (const orientation of ["vertical", "horizontal"]) {
       const description = {
         type: "bar-graph",
         orientation,
         title: long,
         categoryAxisLabel: long,
-        valueAxisLabel: "@".repeat(500_000),
+        valueAxisLabel: "@".repeat(CALLER_TEXT_LIMIT),
         categories: [{ name: "Walk" }, { name: "Bus" }],
         values: [7, 0.000123456789],
         showValues: true,
@@ -456,13 +457,13 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("draws a valid ruler with half a megabyte of label and title text in <Graph> and <RulerGraph>, never throwing (rulers NLC TICKET-002 SEC-002)", () => {
+  it("draws a valid ruler with its label and title at the limit in <Graph> and <RulerGraph>, never throwing (rulers NLC TICKET-002 SEC-002; GSV-REQ-052)", () => {
     const description = {
       type: "ruler",
       rulerUnit: "centimeters",
       length: 30,
-      title: "word ".repeat(100_000).trim(),
-      measuredObject: { start: 0.1, end: 29.9, label: "@".repeat(500_000) },
+      title: wordsOf(CALLER_TEXT_LIMIT),
+      measuredObject: { start: 0.1, end: 29.9, label: "@".repeat(CALLER_TEXT_LIMIT) },
     };
     for (const Component of [Graph, PackageRulerGraph]) {
       const received: Issue[][] = [];
@@ -470,6 +471,27 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       expect(received).toEqual([]);
       // Title 3 lines, label 2, and the 31 numbers.
       expect(markup.match(/<text /g)!.length).toBe(3 + 2 + 31);
+    }
+  });
+
+  it("refuses every caller text one character over its limit, with too_large naming the limit, in <Graph> and each component (GSV-REQ-052, GSV-REQ-053)", () => {
+    const over = "@".repeat(CALLER_TEXT_LIMIT + 1);
+    const cases: Array<[GraphComponent, object, string]> = [
+      [PackageCircleGraph, { type: "circle", radius: 5, unit: "@".repeat(UNIT_TEXT_LIMIT + 1) }, "/unit"],
+      [PackageCircleGraph, { type: "circle", radius: 5, radiusLabelText: over }, "/radiusLabelText"],
+      [PackagePictograph, { type: "pictograph", categories: [{ name: "Cats" }], values: [2], unitImage: "apple", unitValue: 2, valueUnitLabel: over }, "/valueUnitLabel"],
+      [PackageLineGraph, { type: "line-graph", categories: [{ name: "Mon" }, { name: "Tue" }], series: [{ values: [1, 2], lineLabel: over }] }, "/series/0/lineLabel"],
+      [PackageBarGraph, { type: "bar-graph", title: over, categories: [{ name: "Walk" }], values: [7] }, "/title"],
+      [PackageBarGraph, { type: "bar-graph", valueAxisLabel: over, categories: [{ name: "Walk" }], values: [7] }, "/valueAxisLabel"],
+      [PackageRulerGraph, { type: "ruler", rulerUnit: "centimeters", length: 5, measuredObject: { start: 1, end: 2, label: over } }, "/measuredObject/label"],
+    ];
+    for (const [Component, description, path] of cases) {
+      for (const Drawn of [Graph, Component]) {
+        const received: Issue[][] = [];
+        expect(html(<Drawn description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />)).toBe("");
+        expect(received.flat().map((issue) => `${issue.code} ${issue.path}`), path).toEqual([`too_large ${path}`]);
+        expect(received.flat()[0]!.message).toMatch(/has \d+ characters, more than the limit of (200|20);/);
+      }
     }
   });
 

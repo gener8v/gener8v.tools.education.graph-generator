@@ -6,11 +6,11 @@ export interface NumberLineDescription {
   type: "number-line";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;
-  /** A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
+  /** A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole. */
   lineLabel?: string;
   /** The number line's axis: its range and tick spacing. */
   axis: {
@@ -27,7 +27,7 @@ export interface NumberLineDescription {
   points?: ReadonlyArray<{
     /** Where the point is on the line. */
     value: number;
-    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
+    /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
@@ -44,11 +44,11 @@ export interface XyGraphDescription {
   type: "xy-graph";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
-  /** A label for the x-axis, as plain text. */
+  /** A label for the x-axis, as plain text, at most 200 characters. */
   xAxisLabel?: string;
-  /** A label for the y-axis, as plain text. */
+  /** A label for the y-axis, as plain text, at most 200 characters. */
   yAxisLabel?: string;
   /** The x axis: its range and tick spacing. */
   xAxis: {
@@ -80,7 +80,7 @@ export interface XyGraphDescription {
     x: number;
     /** The y coordinate. */
     y: number;
-    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
+    /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
@@ -101,7 +101,7 @@ export interface XyGraphDescription {
       /** The y coordinate. */
       y: number;
     };
-    /** A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
+    /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
@@ -114,7 +114,7 @@ export interface CircleDescription {
   type: "circle";
   /** The schema version the description is written for. Leave it out for the current version, 1. */
   version?: 1;
-  /** A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;

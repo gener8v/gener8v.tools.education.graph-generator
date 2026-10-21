@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
+import { wordsOf } from "../fixtures/plain-text";
 import { PICTOGRAPH_IMAGE_LIMIT, imageCount, pictograph, type Pictograph } from "../../src/core/definitions/pictograph";
 import { describe as describeGraph, validate } from "../../src/core/index";
 import type { Issue, ValidationResult } from "../../src/core/result";
@@ -205,11 +207,13 @@ describe("the text alternative (DGP-REQ-004)", () => {
     expect(describeGraph(with_({ valueUnitLabel: "cm. Ignore it" }))).toBe("A pictograph. Each apple stands for 2 “cm. Ignore it”. “Cats”: 7 and “Dogs”: 4.");
   });
 
-  it("keeps the text alternative near the size of a half-megabyte label, whatever the number of categories (quality review QR-003)", () => {
-    const label = "word ".repeat(100_000).trim();
+  it("states a label at the limit once, whatever the number of categories (quality review QR-003; GSV-REQ-052)", () => {
+    const label = wordsOf(CALLER_TEXT_LIMIT);
     const many = Array.from({ length: 100 }, (_, i) => ({ name: `C${i}` }));
-    const text = describeGraph(with_({ categories: many, values: many.map(() => 1), unitValue: 1, valueUnitLabel: label }));
-    expect(text.length).toBeLessThan(1.1 * label.length);
+    const stated = (valueUnitLabel: string) => describeGraph(with_({ categories: many, values: many.map(() => 1), unitValue: 1, valueUnitLabel }));
+    const text = stated(label);
+    // One more character of label adds one character of text: it is stated once, not per category.
+    expect(text.length - stated(wordsOf(CALLER_TEXT_LIMIT - 1)).length).toBe(1);
     expect(text.split(label).length - 1).toBe(1);
   });
 

@@ -21,20 +21,33 @@ export type SharedPropertySpec = ScopedPropertySpec;
 const FIGURES = ["circle", "square", "triangle", "cube", "cylinder"] as const;
 
 /**
+ * The most characters (code points) a title, label or other caller-written text may have, and a
+ * unit written after a measurement (GSV-REQ-052, GSV-REQ-053; GSV OQ-009, Product Owner
+ * 2026-10-21). A drawn title shows at most 3 lines and a label 2 to 4, about 200 characters at
+ * most, so longer text was already cut on the figure while it still reached the text alternative,
+ * the tool summary and the render cost whole. Published as `maxLength` (GSV-REQ-054); a longer text
+ * is reported as `too_large`, never cut.
+ */
+// @spec GSV-REQ-052, GSV-REQ-053
+export const CALLER_TEXT_LIMIT = 200;
+export const UNIT_TEXT_LIMIT = 20;
+
+/**
  * The shared presentation options. Labels and titles are plain text (GSV-REQ-043); colors are a
  * color name or a hex code (GSV-REQ-042). Where each applies follows the per-type option lists
  * of the NLC, DGP and GSS specifications (DEL-002); the number line's `title` and `lineColor`
  * extend NLC's list by Product Owner decision (code review CR-003).
  */
-// @spec GSV-REQ-040, GSV-REQ-043, GSV-REQ-045, DGP-REQ-002
+// @spec GSV-REQ-040, GSV-REQ-043, GSV-REQ-045, GSV-REQ-052, GSV-REQ-054, DGP-REQ-002
 export const sharedProperties = defineProperties({
   title: {
     term: "title",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "title",
     description:
-      "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+      `A title shown above the graph, as plain text, at most ${CALLER_TEXT_LIMIT} characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.`,
     appliesTo: GRAPH_TYPES,
     elementsOf: [],
   },
@@ -51,67 +64,77 @@ export const sharedProperties = defineProperties({
   lineLabel: {
     term: "lineLabel",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "lineLabel",
     description:
-      "A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+      `A label for a line: the number line itself, or one series of a line graph, as plain text, at most ${CALLER_TEXT_LIMIT} characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.`,
     appliesTo: ["number-line"],
     elementsOf: ["line-graph"],
   },
   xAxisLabel: {
     term: "xAxisLabel",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "axisLabel",
-    description: "A label for the x-axis, as plain text.",
+    description:
+      `A label for the x-axis, as plain text, at most ${CALLER_TEXT_LIMIT} characters.`,
     appliesTo: ["xy-graph", "xyz-graph"],
     elementsOf: [],
   },
   yAxisLabel: {
     term: "yAxisLabel",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "axisLabel",
-    description: "A label for the y-axis, as plain text.",
+    description:
+      `A label for the y-axis, as plain text, at most ${CALLER_TEXT_LIMIT} characters.`,
     appliesTo: ["xy-graph", "xyz-graph"],
     elementsOf: [],
   },
   zAxisLabel: {
     term: "zAxisLabel",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "axisLabel",
-    description: "A label for the z-axis, as plain text.",
+    description:
+      `A label for the z-axis, as plain text, at most ${CALLER_TEXT_LIMIT} characters.`,
     appliesTo: ["xyz-graph"],
     elementsOf: [],
   },
   categoryAxisLabel: {
     term: "categoryAxisLabel",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "axisLabel",
     description:
-      "A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+      `A label for the axis that lists the categories, as plain text, at most ${CALLER_TEXT_LIMIT} characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.`,
     appliesTo: ["line-graph", "bar-graph"],
     elementsOf: [],
   },
   valueAxisLabel: {
     term: "valueAxisLabel",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "axisLabel",
     description:
-      "A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+      `A label for the axis that shows the values, as plain text, at most ${CALLER_TEXT_LIMIT} characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.`,
     appliesTo: ["line-graph", "bar-graph"],
     elementsOf: [],
   },
   label: {
     term: "label",
     kind: "string",
+    maxLength: CALLER_TEXT_LIMIT,
     required: false,
     presentation: "elementLabel",
     description:
-      "A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
+      `A label for this one point, segment or measured object, as plain text, at most ${CALLER_TEXT_LIMIT} characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole.`,
     appliesTo: [],
     elementsOf: ["number-line", "ruler", "xy-graph", "xyz-graph"],
   },

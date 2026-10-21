@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { GraphType, GraphTypeDefinition } from "../../src/core/definitions/types";
+import type { GraphType, GraphTypeDefinition, PropertyMap, StringValue } from "../../src/core/definitions/types";
+import { definitions, registeredTypes, scopedPropertyMaps } from "../../src/core/definitions/index";
+import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
+import { validate } from "../../src/core/index";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
 import { checkEnvelope } from "../../src/core/validate/envelope";
@@ -774,5 +777,58 @@ describe("prototype pollution of the new optional fields (rulers GSV TICKET-001 
       issuesOf(check({ type: "circle", radius: 1, lineLabel: "x", lineColor: "mauve" })),
     );
     expect(dirty).toEqual(plain);
+  });
+});
+
+describe("caller text limits (GSV-REQ-052, GSV-REQ-053; graph-library GSV TICKET-007)", () => {
+  /** Every `kind: "string"` term in `properties`, nested objects and lists included, by path. */
+  const stringTerms = (properties: PropertyMap, path = ""): Array<{ at: string; term: string; spec: StringValue }> =>
+    Object.values(properties).flatMap((spec) => {
+      const at = `${path}/${spec.term}`;
+      if (spec.kind === "string") return [{ at, term: spec.term, spec }];
+      if (spec.kind === "object") return stringTerms(spec.properties, at);
+      if (spec.kind === "array") {
+        if (spec.items.kind === "string") return [{ at: `${at}/items`, term: spec.term, spec: spec.items }];
+        if (spec.items.kind === "object") return stringTerms(spec.items.properties, `${at}/items`);
+      }
+      return [];
+    });
+
+  it("gives every caller-written text term in every registered type and shared map a length limit: 20 for a unit, 200 for the rest", () => {
+    const maps = [...scopedPropertyMaps, ...registeredTypes(definitions).map((type) => definitions[type]!.properties)];
+    const terms = maps.flatMap((map) => stringTerms(map));
+    expect(terms.length).toBeGreaterThan(10);
+    for (const { at, term, spec } of terms) {
+      expect(spec.maxLength, at).toBe(term === "unit" ? UNIT_TEXT_LIMIT : CALLER_TEXT_LIMIT);
+      expect(spec.description, at).toContain(`at most ${spec.maxLength} characters`);
+    }
+  });
+
+  const issues = (description: unknown) => {
+    const result = validate(description);
+    return result.valid ? [] : result.issues;
+  };
+
+  it("accepts text of exactly the limit and reports one character more as too_large, stating both", () => {
+    const circle = (extra: object) => ({ type: "circle", radius: 5, ...extra });
+    expect(issues(circle({ title: "x".repeat(CALLER_TEXT_LIMIT) }))).toEqual([]);
+    expect(issues(circle({ title: "x".repeat(CALLER_TEXT_LIMIT + 1) }))).toEqual([
+      { code: "too_large", path: "/title", message: `title has ${CALLER_TEXT_LIMIT + 1} characters, more than the limit of ${CALLER_TEXT_LIMIT}; use fewer.` },
+    ]);
+    expect(issues(circle({ unit: "x".repeat(UNIT_TEXT_LIMIT) }))).toEqual([]);
+    expect(issues(circle({ unit: "x".repeat(UNIT_TEXT_LIMIT + 1) }))).toEqual([
+      { code: "too_large", path: "/unit", message: `unit has ${UNIT_TEXT_LIMIT + 1} characters, more than the limit of ${UNIT_TEXT_LIMIT}; use fewer.` },
+    ]);
+    const ruler = (label: string) => ({ type: "ruler", rulerUnit: "centimeters", length: 5, measuredObject: { start: 1, end: 2, label } });
+    expect(issues(ruler("x".repeat(CALLER_TEXT_LIMIT)))).toEqual([]);
+    expect(issues(ruler("x".repeat(CALLER_TEXT_LIMIT + 1))).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["too_large /measuredObject/label"]);
+  });
+
+  it("counts characters as code points, as JSON Schema does: 200 emoji are accepted and 201 are not", () => {
+    const title = (count: number) => ({ type: "circle", radius: 5, title: "🍎".repeat(count) });
+    expect(issues(title(CALLER_TEXT_LIMIT))).toEqual([]);
+    expect(issues(title(CALLER_TEXT_LIMIT + 1)).map((issue) => issue.message)).toEqual([
+      `title has ${CALLER_TEXT_LIMIT + 1} characters, more than the limit of ${CALLER_TEXT_LIMIT}; use fewer.`,
+    ]);
   });
 });

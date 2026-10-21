@@ -12,7 +12,7 @@
       "kind": "array"
     },
     "categoryAxisLabel": {
-      "definition": "A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+      "definition": "A label for the axis that lists the categories, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
     },
     "circumference": {
@@ -20,7 +20,7 @@
       "kind": "number"
     },
     "circumferenceLabelText": {
-      "definition": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+      "definition": "Text shown in place of the circumference label, at most 200 characters, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
     "color": {
@@ -32,7 +32,7 @@
       "kind": "number"
     },
     "diameterLabelText": {
-      "definition": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+      "definition": "Text shown in place of the diameter label, at most 200 characters, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
     "end": {
@@ -40,7 +40,7 @@
       "kind": "number"
     },
     "label": {
-      "definition": "A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
+      "definition": "A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
     },
     "labelCircumference": {
@@ -64,7 +64,7 @@
       "kind": "color"
     },
     "lineLabel": {
-      "definition": "A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+      "definition": "A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
     },
     "maximum": {
@@ -92,7 +92,7 @@
       "kind": "number"
     },
     "radiusLabelText": {
-      "definition": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+      "definition": "Text shown in place of the radius label, at most 200 characters, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
     "rulerUnit": {
@@ -132,7 +132,7 @@
       "kind": "number"
     },
     "title": {
-      "definition": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+      "definition": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
     },
     "type": {
@@ -140,7 +140,7 @@
       "kind": "enum"
     },
     "unit": {
-      "definition": "The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative.",
+      "definition": "The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative.",
       "kind": "string"
     },
     "unitImage": {
@@ -152,7 +152,7 @@
       "kind": "number"
     },
     "valueAxisLabel": {
-      "definition": "A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+      "definition": "A label for the axis that shows the values, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
     },
     "valueScale": {
@@ -160,7 +160,7 @@
       "kind": "object"
     },
     "valueUnitLabel": {
-      "definition": "What one unit of value counts, as plain text, such as \"students\"; the key names the picture, as in \"each apple = 2 students\". Left out, empty or blank, it says \"units\". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole.",
+      "definition": "What one unit of value counts, as plain text, at most 200 characters, such as \"students\"; the key names the picture, as in \"each apple = 2 students\". Left out, empty or blank, it says \"units\". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole.",
       "kind": "string"
     },
     "values": {
@@ -194,7 +194,8 @@
         },
         "title": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "rulerUnit": {
           "kind": "enum",
@@ -248,7 +249,8 @@
             },
             "label": {
               "kind": "string",
-              "required": false
+              "required": false,
+              "maxLength": 200
             },
             "color": {
               "kind": "color",
@@ -286,15 +288,18 @@
         },
         "title": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "categoryAxisLabel": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "valueAxisLabel": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "valueScale": {
           "kind": "object",
@@ -367,7 +372,8 @@
               },
               "lineLabel": {
                 "kind": "string",
-                "required": false
+                "required": false,
+                "maxLength": 200
               },
               "lineColor": {
                 "kind": "color",
@@ -407,15 +413,18 @@
         },
         "title": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "categoryAxisLabel": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "valueAxisLabel": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "valueScale": {
           "kind": "object",
@@ -534,11 +543,13 @@
         },
         "title": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "valueUnitLabel": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "categories": {
           "kind": "array",
@@ -641,7 +652,8 @@
         },
         "title": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "lineColor": {
           "kind": "color",
@@ -697,19 +709,23 @@
         },
         "radiusLabelText": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "diameterLabelText": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "circumferenceLabelText": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 200
         },
         "unit": {
           "kind": "string",
-          "required": false
+          "required": false,
+          "maxLength": 20
         }
       },
       "derivations": [

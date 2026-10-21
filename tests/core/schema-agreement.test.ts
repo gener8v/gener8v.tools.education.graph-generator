@@ -41,8 +41,12 @@ function value(spec: ValueSpec): fc.Arbitrary<unknown> {
           : fc.double({ min, max, minExcluded: spec.exclusiveMin === true, maxExcluded: spec.exclusiveMax === true, noNaN: true });
       return fc.oneof({ weight: 6, arbitrary: inside }, fc.double({ noNaN: true, noDefaultInfinity: true }), fc.constantFrom(min, max, 0, -1), anything);
     }
-    case "string":
-      return fc.oneof({ weight: 4, arbitrary: fc.string({ maxLength: 12, unit: "binary" }) }, fc.constantFrom("", "A title", "x < 5"), anything);
+    case "string": {
+      // Texts on both sides of the limit, in letters and in emoji, so schema and validator are
+      // seen to count characters the same way (GSV-REQ-054; graph-library GSV TICKET-007).
+      const limit = spec.maxLength === undefined ? [] : [spec.maxLength, spec.maxLength + 1].flatMap((n) => ["x".repeat(n), "🍎".repeat(n)]);
+      return fc.oneof({ weight: 4, arbitrary: fc.string({ maxLength: 12, unit: "binary" }) }, fc.constantFrom("", "A title", "x < 5", ...limit), anything);
+    }
     case "boolean":
       return fc.oneof({ weight: 4, arbitrary: fc.boolean() }, anything);
     case "color":

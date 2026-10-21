@@ -79,6 +79,7 @@ function describeProperty(spec: PropertySpec): string {
 }
 
 /** The schema of one value. In the tool profile, an optional value also accepts `null`. */
+// @spec GSV-REQ-054
 function valueSchema(spec: ValueSpec, profile: Profile, nullable: boolean): JsonSchema {
   const jsonType = JSON_TYPE[spec.kind];
   const schema: JsonSchema = { type: nullable ? [jsonType, "null"] : jsonType, description: describeValue(spec) };
@@ -243,6 +244,7 @@ function defineTerm(terms: Terms, term: string, definition: string, kind: Proper
   if (!Object.hasOwn(terms, term)) terms[term] = { definition, kind };
 }
 
+// @spec GSV-REQ-054
 function termUse(spec: ValueSpec, required: boolean | undefined, terms: Terms): TermUse {
   const use: TermUse = { kind: spec.kind };
   if (required !== undefined) use.required = required;

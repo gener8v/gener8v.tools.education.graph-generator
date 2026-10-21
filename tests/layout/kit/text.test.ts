@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultStyle } from "../../../src/core/style";
-import { DEFAULT_FONT_STACK, TEXT_WIDTH_SAFETY, textWidth, wrap } from "../../../src/layout/kit/text";
+import { DEFAULT_FONT_STACK, MAX_CLUSTER_LENGTH, MAX_STACKED_MARKS, TEXT_WIDTH_SAFETY, textWidth, widestWord, wrap } from "../../../src/layout/kit/text";
 import { BENIGN_TEXT, HOSTILE_TEXT } from "../../fixtures/plain-text";
 
 describe("textWidth (AD-010)", () => {
@@ -150,5 +150,34 @@ describe("wrap with maxLines (GSS TICKET-002 security review SEC-001)", () => {
 
   it.each([0, -1, 1.5, Number.NaN])("rejects maxLines %d", (bad) => {
     expect(() => wrap("a b", 100, 14, bad)).toThrow(RangeError);
+  });
+});
+
+describe("one-cluster text is drawn bounded (rulers NLC TICKET-003 security review SEC-001; graph-library GSV TICKET-007)", () => {
+  const codePoints = (text: string) => [...text].length;
+  const belowMarks = (count: number) => Array.from({ length: count }, (_, i) => String.fromCodePoint(0x316 + (i % 36))).join("");
+
+  it("draws at most MAX_STACKED_MARKS marks in a row on one letter", () => {
+    const lines = wrap(`x${belowMarks(199)}`, 240, 14, 2);
+    expect(lines).toEqual([`x${belowMarks(MAX_STACKED_MARKS)}`]);
+    // Marks after each of several letters are bounded one letter at a time.
+    expect(wrap(`a${belowMarks(9)}b${belowMarks(9)}`, 240, 14)).toEqual([`a${belowMarks(MAX_STACKED_MARKS)}b${belowMarks(MAX_STACKED_MARKS)}`]);
+  });
+
+  it("draws at most MAX_CLUSTER_LENGTH code points of one joined cluster", () => {
+    const chain = Array.from({ length: 66 }, () => "👩").join("‍");
+    const [line, ...rest] = wrap(chain, 240, 14, 2);
+    expect(rest).toEqual([]);
+    expect(codePoints(line!)).toBe(MAX_CLUSTER_LENGTH);
+    expect(codePoints(wrap(`❤${"️".repeat(199)}`, 240, 14)[0]!)).toBeLessThanOrEqual(1 + MAX_STACKED_MARKS);
+  });
+
+  it("leaves real text whole: two stacked accents, skin tones, emoji families and a kiss", () => {
+    for (const text of ["Tiếng Việt ệ", "👍🏽 👋🏿", "👨‍👩‍👧‍👦", "👩‍❤️‍💋‍👨", "क्षत्रिय", "naïve café"]) expect(wrap(text, 400, 14)).toEqual([text]);
+  });
+
+  it("measures the widest word as it is drawn", () => {
+    const chain = Array.from({ length: 66 }, () => "👩").join("‍");
+    expect(widestWord(chain, 14)).toBe(textWidth([...chain].slice(0, MAX_CLUSTER_LENGTH).join(""), 14));
   });
 });

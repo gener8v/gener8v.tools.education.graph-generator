@@ -32,7 +32,8 @@
                 "string",
                 "null"
               ],
-              "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole."
+              "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "rulerUnit": {
               "type": "string",
@@ -80,7 +81,8 @@
                     "string",
                     "null"
                   ],
-                  "description": "A label for this one point, segment or measured object, as plain text. In the drawing, a long label is cut short with “…”; the text alternative states it whole."
+                  "description": "A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
+                  "maxLength": 200
                 },
                 "color": {
                   "type": [
@@ -139,21 +141,24 @@
                 "string",
                 "null"
               ],
-              "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole."
+              "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "categoryAxisLabel": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole."
+              "description": "A label for the axis that lists the categories, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "valueAxisLabel": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole."
+              "description": "A label for the axis that shows the values, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "valueScale": {
               "type": [
@@ -239,7 +244,8 @@
                       "string",
                       "null"
                     ],
-                    "description": "A label for a line: the number line itself, or one series of a line graph, as plain text. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole."
+                    "description": "A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+                    "maxLength": 200
                   },
                   "lineColor": {
                     "type": [
@@ -300,21 +306,24 @@
                 "string",
                 "null"
               ],
-              "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole."
+              "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "categoryAxisLabel": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "A label for the axis that lists the categories, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole."
+              "description": "A label for the axis that lists the categories, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "valueAxisLabel": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "A label for the axis that shows the values, as plain text. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole."
+              "description": "A label for the axis that shows the values, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "valueScale": {
               "type": [
@@ -468,14 +477,16 @@
                 "string",
                 "null"
               ],
-              "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole."
+              "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "valueUnitLabel": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "What one unit of value counts, as plain text, such as \"students\"; the key names the picture, as in \"each apple = 2 students\". Left out, empty or blank, it says \"units\". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole."
+              "description": "What one unit of value counts, as plain text, at most 200 characters, such as \"students\"; the key names the picture, as in \"each apple = 2 students\". Left out, empty or blank, it says \"units\". In the drawing, a key longer than two lines is cut short with “…”; the text alternative states the label whole.",
+              "maxLength": 200
             },
             "categories": {
               "type": "array",
@@ -582,7 +593,8 @@
                 "string",
                 "null"
               ],
-              "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole."
+              "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
             },
             "lineColor": {
               "type": [
@@ -666,28 +678,32 @@
                 "string",
                 "null"
               ],
-              "description": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value."
+              "description": "Text shown in place of the radius label, at most 200 characters, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+              "maxLength": 200
             },
             "diameterLabelText": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value."
+              "description": "Text shown in place of the diameter label, at most 200 characters, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+              "maxLength": 200
             },
             "circumferenceLabelText": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "Text shown in place of the circumference label, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value."
+              "description": "Text shown in place of the circumference label, at most 200 characters, such as \"r\" or \"?\"; it also labels the circumference. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+              "maxLength": 200
             },
             "unit": {
               "type": [
                 "string",
                 "null"
               ],
-              "description": "The unit of length shown after each measurement, such as cm. A unit longer than 20 characters, or with sentence punctuation, is quoted in the text alternative."
+              "description": "The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative.",
+              "maxLength": 20
             }
           },
           "required": [

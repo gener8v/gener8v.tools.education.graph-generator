@@ -80,7 +80,7 @@ export const issueDocs: Readonly<Record<IssueCode, string>> = Object.freeze(
     invalid_json: "The model tool's input is text that is not valid JSON. Emitted only by the tool handler.",
     internal_error:
       "A defect in the package stopped the check. It is not a problem with the description; report it.",
-    too_large: "A list, or the whole description, holds more values than its documented limit.",
+    too_large: "A list, or the whole description, holds more values than its documented limit, or a text has more characters than its limit.",
     duplicate_name: "Two entries of a list that must be told apart by name, such as two categories, have the same name.",
     not_on_mark: "A value that must be one of a ruler's drawn marks lies between two of them; the issue names both.",
   } satisfies Record<IssueCode, string>),

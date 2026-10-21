@@ -55,3 +55,9 @@ export const HOSTILE_TEXT = [
   `abc${UNSAFE_CHARS.rightToLeftOverride}def`,
   `${UNSAFE_CHARS.escape}]0;pwned${char(0x07)}`,
 ] as const;
+
+/**
+ * Words, exactly `characters` long and ending in a letter: caller text at a length limit (GSV-REQ-052;
+ * graph-library GSV TICKET-007). At 200 it still needs every drawn line cap.
+ */
+export const wordsOf = (characters: number): string => "word ".repeat(Math.ceil(characters / 5)).slice(0, characters - 1) + "s";
