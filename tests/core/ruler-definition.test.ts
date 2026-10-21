@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ruler } from "../../src/core/definitions/ruler";
+import { type Ruler, ruler } from "../../src/core/definitions/ruler";
 import { sharedProperties } from "../../src/core/definitions/shared";
 import type { GraphType, GraphTypeDefinition } from "../../src/core/definitions/types";
 import type { Issue, ValidationResult } from "../../src/core/result";
@@ -21,7 +21,7 @@ const example = (path: string) => JSON.parse(readFileSync(path, "utf8")) as Reco
 const textOf = (input: Record<string, unknown>) => {
   const result = check(input);
   if (!result.valid) throw new Error(`expected a valid ruler: ${JSON.stringify(result.issues)}`);
-  return ruler.describe(result.description as never, result.provenance);
+  return ruler.describe(result.description as Ruler, result.provenance);
 };
 
 describe("the ruler's terms (NLC-REQ-001, NLC-REQ-041, NLC-REQ-046, NLC-REQ-049; DEL-001)", () => {
@@ -50,7 +50,7 @@ describe("the ruler's terms (NLC-REQ-001, NLC-REQ-041, NLC-REQ-046, NLC-REQ-049;
 });
 
 describe("validating a ruler (NLC-REQ-041, NLC-REQ-042)", () => {
-  it("accepts both units, the examples, and every length up to each unit's maximum", () => {
+  it("accepts both units, the examples, and each unit's shortest and longest lengths", () => {
     expect(check(example("examples/ruler.json")).valid).toBe(true);
     expect(check(cm()).valid).toBe(true);
     expect(check(cm({ length: 30 })).valid).toBe(true);
@@ -66,14 +66,14 @@ describe("validating a ruler (NLC-REQ-041, NLC-REQ-042)", () => {
   });
 
   it.each([
-    ["centimeters", 0, 30],
-    ["centimeters", -3, 30],
-    ["centimeters", 31, 30],
-    ["inches", 0, 12],
-    ["inches", -3, 12],
-    ["inches", 13, 12],
-    ["inches", 31, 12],
-  ])("reports a %s ruler's length %d with that unit's whole lengths, 1 to %d (code review CR-002)", (rulerUnit, length, max) => {
+    ["a centimeter", "centimeters", 0, 30],
+    ["a centimeter", "centimeters", -3, 30],
+    ["a centimeter", "centimeters", 31, 30],
+    ["an inch", "inches", 0, 12],
+    ["an inch", "inches", -3, 12],
+    ["an inch", "inches", 13, 12],
+    ["an inch", "inches", 31, 12],
+  ])("reports %s ruler's length %d with that unit's whole lengths, 1 to %d (code review CR-002)", (_name, rulerUnit, length, max) => {
     const [issue, ...rest] = issuesOf(check({ type: "ruler", rulerUnit, length }));
     expect(rest).toEqual([]);
     expect(issue).toMatchObject({ code: "out_of_range", path: "/length", range: { min: 1, max } });
@@ -81,8 +81,8 @@ describe("validating a ruler (NLC-REQ-041, NLC-REQ-042)", () => {
   });
 
   it("reports a length that is not whole as needing a whole number, on either unit", () => {
-    for (const ruler of [cm({ length: 4.5 }), inches({ length: 4.5 })]) {
-      const [issue, ...rest] = issuesOf(check(ruler));
+    for (const input of [cm({ length: 4.5 }), inches({ length: 4.5 })]) {
+      const [issue, ...rest] = issuesOf(check(input));
       expect(rest).toEqual([]);
       expect(issue).toMatchObject({ code: "wrong_kind", path: "/length" });
       expect(issue!.message).toBe("length must be a whole number; got 4.5.");
@@ -98,9 +98,12 @@ describe("validating a ruler (NLC-REQ-041, NLC-REQ-042)", () => {
   });
 
   it("reports a label or color given for the whole ruler as belonging on the measured object", () => {
-    const [issue] = issuesOf(check(cm({ label: "pencil" })));
-    expect(issue).toMatchObject({ code: "inapplicable_property", path: "/label" });
-    expect(issue!.message).toContain("the measuredObject");
+    for (const [term, value] of [["label", "pencil"], ["color", "red"]] as const) {
+      const [issue, ...rest] = issuesOf(check(cm({ [term]: value })));
+      expect(rest).toEqual([]);
+      expect(issue).toMatchObject({ code: "inapplicable_property", path: `/${term}` });
+      expect(issue!.message).toContain("the measuredObject");
+    }
   });
 });
 
@@ -119,8 +122,18 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
   });
 
   it("reports an object whose start is not before its end, once, at its end (NLC-REQ-051)", () => {
-    expect(found(cm(object(2, 2)))).toEqual(["out_of_range /measuredObject/end"]);
+    // The structure stage's order check reports an ordinary reversal (quality review QR-001).
+    expect(issuesOf(check(cm(object(2, 2))))).toEqual([
+      {
+        code: "out_of_range",
+        path: "/measuredObject/end",
+        range: { min: 2, exclusiveMin: true },
+        message: "measuredObject.end must be a number greater than 2; got 2.",
+      },
+    ]);
     expect(found(cm(object(5, 3)))).toEqual(["out_of_range /measuredObject/end"]);
+    // An end before its start and between marks is reported for its order alone.
+    expect(found(cm(object(5, 3.25)))).toEqual(["out_of_range /measuredObject/end"]);
     // The same mark written two ways passes the structure stage's order check, and is still reported.
     expect(0.3 > 0.1 + 0.2).toBe(false);
     const [issue, ...rest] = issuesOf(check(cm(object(0.3, 0.1 + 0.2))));
@@ -129,9 +142,18 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
     expect(issue).toEqual({
       code: "out_of_range",
       path: "/measuredObject/end",
-      range: { min: 0.4 },
-      message: "measuredObject.end must be a number at least 0.4; got 0.30000000000000004.",
+      range: { min: 0.4, max: 15 },
+      message: "measuredObject.end must be a number between 0.4 and 15; got 0.30000000000000004.",
     });
+  });
+
+  it("reports the start, not the end, when the same mark is the ruler's last, since no end can follow it (quality review QR-003)", () => {
+    for (const ends of [object(15, 15.000000000000002), object(14.999999999999998, 15)]) {
+      const [issue, ...rest] = issuesOf(check(cm(ends)));
+      expect(rest).toEqual([]);
+      expect(issue).toMatchObject({ code: "out_of_range", path: "/measuredObject/start", range: { min: 0, max: 14.9 } });
+      expect(issue!.message).toMatch(/^measuredObject\.start must be a number between 0 and 14\.9; got /);
+    }
   });
 
   it("reports an end off the ruler at its path, naming the ruler's range, and not also between marks (NLC-REQ-052)", () => {
@@ -171,6 +193,9 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
   it("checks no end against the wrong marks: a refused or inapplicable division skips the check (NLC TICKET-001 code review CR-001)", () => {
     expect(found(inches({ smallestDivision: "eighths", ...object(2.0625, 3) }))).toEqual(["wrong_kind /smallestDivision"]);
     expect(found(cm({ smallestDivision: "eighth", ...object(2.05, 3) }))).toEqual(["inapplicable_property /smallestDivision"]);
+    // The order check reads the marks too, so the same mark written two ways is skipped with them (quality review QR-001).
+    expect(found(inches({ smallestDivision: "eighths", ...object(2.0625, 2.0625 + 1e-12) }))).toEqual(["wrong_kind /smallestDivision"]);
+    expect(found(cm({ smallestDivision: "eighth", ...object(0.3, 0.1 + 0.2) }))).toEqual(["inapplicable_property /smallestDivision"]);
     // And an inch ruler too long for its unit reports the length only.
     expect(found(inches({ length: 20, ...object(1.3, 19) }))).toEqual(["out_of_range /length"]);
   });

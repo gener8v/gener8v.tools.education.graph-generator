@@ -217,12 +217,12 @@ Ten deliberate breaks, each made against a passing baseline and restored from me
 
 | Requirement | Code Location | Annotation |
 |-------------|---------------|------------|
-| NLC-REQ-001, 041, 046, 049, 054 | `src/core/definitions/ruler.ts`:ruler, rulerProperties | `@spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-046, NLC-REQ-049, NLC-REQ-054` (and on `rulerProperties` with GSV-REQ-040, 049..051, NLC-REQ-042 and NLC-REQ-051) |
-| NLC-REQ-042 | `src/core/definitions/ruler.ts`:lengthFitsUnit, rulerProperties | `@spec NLC-REQ-042` |
-| NLC-REQ-051 | `src/core/definitions/ruler.ts`:rulerProperties (`ordered`), objectInOrder | `@spec NLC-REQ-051` |
+| NLC-REQ-001, 041, 046, 049, 054 | `src/core/definitions/ruler.ts`:ruler, defineRulerProperties | `@spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-046, NLC-REQ-049, NLC-REQ-054` (and on `defineRulerProperties` with GSV-REQ-040, 049..051, NLC-REQ-042 and NLC-REQ-051) |
+| NLC-REQ-042 | `src/core/definitions/ruler.ts`:lengthFitsUnit, defineRulerProperties | `@spec NLC-REQ-042` |
+| NLC-REQ-051 | `src/core/definitions/ruler.ts`:defineRulerProperties (`ordered`), objectInOrder | `@spec NLC-REQ-051` |
 | NLC-REQ-052, 053 | `src/core/definitions/ruler.ts`:endOnMark | `@spec NLC-REQ-052, NLC-REQ-053` |
 | NLC-REQ-046, 056 | `src/core/definitions/ruler.ts`:ruler.describe | `@spec NLC-REQ-046, NLC-REQ-056` |
-| GSV-REQ-040, 049, 050, 051 | `src/core/definitions/ruler.ts`:rulerProperties | `@spec … GSV-REQ-040, GSV-REQ-049, GSV-REQ-050, GSV-REQ-051` |
+| GSV-REQ-040, 049, 050, 051 | `src/core/definitions/ruler.ts`:defineRulerProperties | `@spec … GSV-REQ-040, GSV-REQ-049, GSV-REQ-050, GSV-REQ-051` |
 
 ## Notes
 
@@ -254,3 +254,28 @@ Ten deliberate breaks, each made against a passing baseline and restored from me
   - the old order range;
   - one end check reading both ends;
   - no order check.
+
+### Quality review — `rulers/number-lines-and-coordinate-graphs-ticket-002-quality-review` (2026-10-21, Approved)
+
+- **QR-001:** the two unpinned order guards are pinned.
+  - 2→2 is tested with the structure stage's full issue ("greater than 2", `exclusiveMin`).
+  - 5→3.25 gives only `out_of_range` at the end.
+  - The wrong-marks test covers the same mark written two ways with a refused division (inches, "eighths") and an inapplicable one (centimeters, "eighth"). Each gives only its division issue.
+- **QR-002:** the ruler is built as `/* @__PURE__ */ defineRuler()`. `defineRuler`, `defineRulerProperties` (was the module-level `rulerProperties`) and `endOnMark` are `/* @__NO_SIDE_EFFECTS__ */` functions, and the two word tables are `/* @__PURE__ */`.
+  - In the reviewer's shared-chunk simulation, a circle-only consumer is now 7,791 B gzip with no ruler definition, against 9,603 B before and 7,335 B with no ruler at all.
+  - The remainder is `src/core/ruler.ts`'s unannotated tables. A Known Hazard on TICKET-003 covers those and adding "A ruler" to `tests/package/per-type-bundle.test.ts`.
+  - The coverage rows and the `@spec` table name `defineRulerProperties`.
+- **QR-003:** the order issue's range is `{ min: next mark, max: length }`, for example "between 0.4 and 15". When the start is the ruler's last mark, the start is reported instead, with `{ min: 0, max: the mark before the end }` ("between 0 and 14.9" on a 15 cm ruler), as the axis's `narrowRange` does. Tested at a 15 cm ruler's end.
+- **QR-004:** `UNIT_WORDS` has no `smallest` placeholder. `describe` builds "numbered every <unit> and marked to <division>" in one place. `MeasuredObject.color` is documented as a resolved `#rrggbb`.
+- **QR-005:** test fixes:
+  - `textOf` casts to `Ruler`;
+  - a top-level `color` is tested beside `label`;
+  - the lengths test is retitled;
+  - the generated names read "a centimeter ruler" and "an inch ruler";
+  - the loop variable no longer shadows `ruler`.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit` and `gener8v-state lint` exit 0. `pnpm test` (1,341 tests) exits 0 on three runs. Five deliberate breaks each fail a test:
+  - no `ordered` pair;
+  - no `optionalInputs` on the order check;
+  - no `max` on the order range;
+  - no fall-back to the start at the ruler's end;
+  - the unit's plural in "numbered every".

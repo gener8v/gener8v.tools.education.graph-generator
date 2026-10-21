@@ -74,6 +74,9 @@
   - NLC-REQ-013 (a caller's `textAlternative` replaces the generated one) is applied when the Scene is printed (`textAlternativeFor`), so the ruler's case is tested here, through `<RulerGraph>` and `<Graph>`.
 - Carried from rulers/number-lines-and-coordinate-graphs-ticket-002 DEL-001 (term names): the unit term is `rulerUnit` (`unit` is the circle's), and the object is `measuredObject` with `start`, `end`, `label` and `color`. Read the division as `ruler.smallestDivision` and build the marks with `rulerScale(ruler.rulerUnit, ruler.length, ruler.smallestDivision)`, as `describe` does, so the drawing and the text alternative use the same division.
 - Carried from rulers/number-lines-and-coordinate-graphs-ticket-002-code-review/CR-003 (computed ends): validation accepts an end within the mark rule's noise allowance as that mark, so 0.1 + 0.2 is the 3 mm mark and 30.000000000000004 is a 30 cm ruler's end, and `describe` states each end as `scale.locate(end).value`. Draw the object's bar from and to the located marks' values too, never the raw ends, so the figure and its text alternative agree, and test it with computed ends.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-002-quality-review/QR-002 (per-type bundles): the ruler definition is built by a side-effect-free factory (`/* @__PURE__ */ defineRuler()`), so a bundle that never reads it drops it. Two pieces are left for this ticket:
+  - mark the `Object.freeze(…)` tables in `src/core/ruler.ts` (`INCH_DIVISIONS`, `RULER_MAX_LENGTH`, `RULER_UNITS`, `INCH_RANKS`) `/* @__PURE__ */`, so the circle's bundle does not keep them, about 470 B gzip;
+  - when registering the ruler, add "A ruler" to the exclusions in `tests/package/per-type-bundle.test.ts`, so a ruler that leaks into another type's bundle fails a test. Build the layout (`src/layout/ruler.ts`) the same way.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-004

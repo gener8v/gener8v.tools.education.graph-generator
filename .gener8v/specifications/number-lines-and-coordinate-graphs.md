@@ -209,15 +209,15 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-043 | `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
 | NLC-REQ-044 | `src/core/ruler.ts`:marksPerUnit, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
 | NLC-REQ-045 | `src/core/ruler.ts`:markRank, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
-| NLC-REQ-046 | `src/core/ruler.ts`:marksPerUnit, rulerScale (the divisions and their default); `src/core/definitions/ruler.ts`:rulerProperties (`smallestDivision`), ruler.describe (the default stated) |
+| NLC-REQ-046 | `src/core/ruler.ts`:marksPerUnit, rulerScale (the divisions and their default); `src/core/definitions/ruler.ts`:defineRulerProperties (`smallestDivision`), ruler.describe (the default stated) |
 | NLC-REQ-047 | `src/core/ruler.ts`:marksPerUnit, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
 | NLC-REQ-048 | `src/core/ruler.ts`:markRank, rulerScale; `src/layout/kit/ruler.ts`:drawRulerMarks (kit; drawn with rulers NLC TICKET-003) |
 | NLC-REQ-053 | `src/core/ruler.ts`:locateOnRuler (`rulerScale(…).locate`); `src/core/definitions/ruler.ts`:endOnMark (`not_on_mark`, naming the marks either side) |
-| NLC-REQ-042 | `src/core/ruler.ts`:isRulerLength; `src/core/definitions/ruler.ts`:rulerProperties (`length`, whole), lengthFitsUnit (1 to the unit's maximum, with that unit's range) |
+| NLC-REQ-042 | `src/core/ruler.ts`:isRulerLength; `src/core/definitions/ruler.ts`:defineRulerProperties (`length`, whole), lengthFitsUnit (1 to the unit's maximum, with that unit's range) |
 | NLC-REQ-052 | `src/core/ruler.ts`:locateOnRuler (`rulerScale(…).locate`); `src/core/definitions/ruler.ts`:endOnMark |
-| NLC-REQ-001 | `src/core/definitions/ruler.ts`:ruler, rulerProperties (ruler part; registered with rulers NLC TICKET-003) |
-| NLC-REQ-041 | `src/core/definitions/ruler.ts`:rulerProperties (`rulerUnit`, an enum of `RULER_UNITS`) |
-| NLC-REQ-049 | `src/core/definitions/ruler.ts`:rulerProperties (`measuredObject` with `start` and `end`) |
-| NLC-REQ-051 | `src/core/definitions/ruler.ts`:rulerProperties (`ordered` start and end), objectInOrder (ends ordered by mark index) |
-| NLC-REQ-054 | `src/core/definitions/ruler.ts`:rulerProperties (the shared `label` and `color` on `measuredObject`) |
+| NLC-REQ-001 | `src/core/definitions/ruler.ts`:ruler, defineRulerProperties (ruler part; registered with rulers NLC TICKET-003) |
+| NLC-REQ-041 | `src/core/definitions/ruler.ts`:defineRulerProperties (`rulerUnit`, an enum of `RULER_UNITS`) |
+| NLC-REQ-049 | `src/core/definitions/ruler.ts`:defineRulerProperties (`measuredObject` with `start` and `end`) |
+| NLC-REQ-051 | `src/core/definitions/ruler.ts`:defineRulerProperties (`ordered` start and end), objectInOrder (ends ordered by mark index) |
+| NLC-REQ-054 | `src/core/definitions/ruler.ts`:defineRulerProperties (the shared `label` and `color` on `measuredObject`) |
 | NLC-REQ-056 | `src/core/definitions/ruler.ts`:ruler.describe (each end stated as its located mark) |
