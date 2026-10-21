@@ -9,7 +9,7 @@ Defines the one way every graph is described: a single unified JSON description 
 **Parent PRD:** Curricular Graph Generator
 **Requirement prefix:** GSV
 **Status:** Approved
-**Approved by:** Product Owner — Thomas Eaves, 2026-10-20 (`rulers` amendment; previously Product Owner — Thomas, 2026-10-04)
+**Approved by:** Product Owner — Thomas Eaves, 2026-10-21 (`graph-library` caller-text amendment; previously Product Owner — Thomas Eaves, 2026-10-20, `rulers` amendment, and Product Owner — Thomas, 2026-10-04)
 **Related Capabilities:** Number Lines & Coordinate Graphs (including rulers), Data Graphs & Pictographs, Geometric Shapes & Solids (each defines the type-specific parameters this area's description carries); Component Packaging & Source Export (exposes the single entry point, the schema and the model tool built on this area)
 
 ## Functional Requirements
@@ -80,6 +80,12 @@ Defines the one way every graph is described: a single unified JSON description 
 - **GSV-REQ-044** *(must · change: graph-library)*: The system should apply one published default style (colors, line widths, text size, font) to every graph type when presentation options are omitted
 - **GSV-REQ-045** *(must · change: graph-library)*: The system should apply a presentation option only to the element it names, leaving every other element at its default
 
+### Caller Text Length
+
+- **GSV-REQ-052** *(must · change: graph-library)*: The system should report a title, label or other caller-written text longer than 200 characters, stating the limit and the text's length (OQ-009)
+- **GSV-REQ-053** *(must · change: graph-library)*: The system should report a unit text, the unit written after a measurement, longer than 20 characters, stating the limit and the text's length (OQ-009)
+- **GSV-REQ-054** *(must · change: graph-library)*: The system should publish each caller-written text's length limit in the published schema, so that a schema-only caller, such as a language model, can see it
+
 ### Ruler Vocabulary
 
 - **GSV-REQ-046** *(must · change: rulers)*: The system should define vocabulary terms, each with a plain-English definition, for a ruler's unit and a ruler's length
@@ -136,7 +142,8 @@ Defines the one way every graph is described: a single unified JSON description 
 | Description contains many problems | The system should report all of them, each with its own path |
 | Very large numbers (for example, a radius of 10¹²) | The system should accept them if finite and positive; proportional drawing is the rendering area's concern |
 | Label text is empty | The system should treat an empty label as no label |
-| Label text is very long | The system should accept it; how it is laid out is the rendering area's concern |
+| Label text is very long | The system should accept it up to 200 characters and report longer text per GSV-REQ-052; how accepted text is laid out is the rendering area's concern *(amended 2026-10-21 by graph-library, OQ-009)* |
+| Text is exactly 200 characters (a unit exactly 20) | The system should accept it; the limits count characters as the validator's existing `maxLength` does |
 | Supplied dependent value differs by just over 1% | The system should report a contradiction stating the derived value |
 | Ruler unit written as an abbreviation or another spelling ("cm", "centimetres") | The system should report it per GSV-REQ-049, listing the accepted unit names |
 | Ruler length written with its unit ("5 cm") | The system should report a wrong-kind issue: a length is a number |
@@ -175,6 +182,7 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 - [ ] **OQ-006**: Which named colors are in the published list?
 - [ ] **OQ-007**: Some model providers support only a subset of JSON Schema in tool definitions; must the published schema stay within a stated subset? (Carried from PRD)
 - [ ] **OQ-008**: What is the policy when the schema version changes: does the system keep accepting older versions, and for how long? (Carried from PRD)
+- [x] **OQ-009**: How long may a caller's text be (titles, labels, units)? Raised by graph-library/geometric-shapes-and-solids-ticket-002-security-review/SEC-002 and rulers/number-lines-and-coordinate-graphs-ticket-002-security-review/SEC-002 — Answered 2026-10-21 by the Product Owner (decision delegated to Claude): the validator reports caller text over a published limit. Every title and label text is at most 200 characters, the limit category names already have (`CATEGORY_NAME_LIMIT`); a `unit` is at most 20. Each limit is published in the schema as `maxLength`. Rationale: a drawn title shows at most 3 lines and a label 2 to 4, about 200 characters at most, so longer text is already cut on the figure, yet it reaches the text alternative, the tool summary and server render cost whole. Specified by GSV-REQ-052..054 (amended 2026-10-21 by graph-library), which replace the Edge Case "Label text is very long: accept it"
 
 ## Assumptions
 

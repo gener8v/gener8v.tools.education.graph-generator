@@ -125,7 +125,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 - Only whole units are numbered; half-centimetre and fractional-inch marks are unlabeled
 - An object is drawn beside the ruler's marked edge, so that the marks at its ends can be read; it carries no number
 - An object's start and end are given as decimals in the ruler's unit: 3.4 for 3 cm 4 mm, 2.0625 for 2 1⁄16 in
-- The documented maximum length is provisionally 30 cm for a centimetre ruler (301 millimetre marks) and 12 in for an inch ruler (193 sixteenth marks) (see OQ-009)
+- The documented maximum length is 30 cm for a centimetre ruler (301 millimetre marks) and 12 in for an inch ruler (193 sixteenth marks) (OQ-009, answered 2026-10-21)
 
 ### Projection
 
@@ -179,7 +179,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 - [ ] **OQ-006**: Should x,y graphs support full lines (through two points, or from slope and intercept) beyond segments? (Carried from PRD)
 - [ ] **OQ-007**: Should x,y,z graphs support segments as well as points?
 - [ ] **OQ-008**: Should an axis that excludes zero show an axis-break symbol?
-- [ ] **OQ-009**: Are 30 cm and 12 in the right maximum ruler lengths? (Provisional, set by the `rulers` specification)
+- [x] **OQ-009**: Are 30 cm and 12 in the right maximum ruler lengths? — Answered 2026-10-21 by the Product Owner (decision delegated to Claude): yes. They are the standard classroom rulers, and every elementary measuring task fits on them. A metre stick or yardstick would put millimetre marks 0.35 units apart on the fixed 352-unit edge, too close to read, so longer lengths stay out of scope (NLC-REQ-042)
 - [x] **OQ-010**: Is an inch ruler always marked to sixteenths? — Answered 2026-10-20 by the Product Owner (`rulers` OQ-001): a description may choose halves, quarters, eighths or sixteenths, sixteenths by default (NLC-REQ-046)
 - [x] **OQ-011**: Can a measured object's ends fall between marks? — Answered 2026-10-20 by the Product Owner (`rulers` OQ-002): no, each end must be a drawn mark (NLC-REQ-053)
 - [x] **OQ-012**: What does a measured object look like? — Answered 2026-10-20 by the Product Owner (`rulers` OQ-003): a plain bar with an optional color and label; pictures are not in this change (NLC-REQ-050, NLC-REQ-054)

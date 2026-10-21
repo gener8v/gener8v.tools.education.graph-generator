@@ -22,7 +22,7 @@ Curricular materials need many small mathematical figures, and producing them by
 
 | Area | Kind | Requirements |
 |------|------|--------------|
-| Graph Specification & Vocabulary | adds area | Adds GSV-REQ-001..045, GSV-NFR-001..005; Modifies —; Withdraws — |
+| Graph Specification & Vocabulary | adds area | Adds GSV-REQ-001..045, GSV-REQ-052..054, GSV-NFR-001..005; Modifies —; Withdraws — |
 | Number Lines & Coordinate Graphs | adds area | Adds NLC-REQ-001..039, NLC-NFR-001..004; Modifies —; Withdraws — |
 | Data Graphs & Pictographs | adds area | Adds DGP-REQ-001..037, DGP-NFR-001..005; Modifies —; Withdraws — |
 | Geometric Shapes & Solids | adds area | Adds GSS-REQ-001..036, GSS-NFR-001..004; Modifies —; Withdraws — |
@@ -57,3 +57,4 @@ Curricular materials need many small mathematical figures, and producing them by
 - 2026-10-04 — DGP specification amended: adds DGP-REQ-001..037, DGP-NFR-001..005, modifies —, withdraws — (Specification)
 - 2026-10-04 — GSS specification amended: adds GSS-REQ-001..036, GSS-NFR-001..004, modifies —, withdraws — (Specification)
 - 2026-10-04 — CPSE specification amended: adds CPSE-REQ-001..046, CPSE-NFR-001..008, modifies —, withdraws — (Specification)
+- 2026-10-21 — GSV specification amended: adds GSV-REQ-052..054 (caller text length limits, GSV OQ-009), modifies —, withdraws — (Specification)
