@@ -198,7 +198,7 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-034 | `src/core/issues.ts`:ISSUE_CODES |
 | GSV-REQ-003 | `src/core/definitions/types.ts`:GRAPH_TYPES; `src/core/definitions/index.ts`:definitions |
 | GSV-REQ-012 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/index.ts`:definitions, propertiesOf; `src/core/schema.ts`:buildVocabulary |
-| GSV-REQ-040 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties; `src/core/definitions/index.ts`:propertiesOf; `src/core/definitions/ruler.ts`:defineRulerProperties (the measured object's label and color; ruler part; published once registered with rulers NLC TICKET-003) |
+| GSV-REQ-040 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties; `src/core/definitions/index.ts`:propertiesOf; `src/core/definitions/ruler.ts`:defineRulerProperties (the measured object's label and color; ruler part; published since rulers NLC TICKET-003 registered it) |
 | GSV-REQ-042 | `src/core/style.ts`:namedColors, resolveColor |
 | GSV-REQ-043 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/shared.ts`:sharedProperties; `src/core/format.ts`:findUnsafeTextChar, PLAIN_TEXT_PATTERN; `src/core/validate/structure.ts`:checkValue |
 | GSV-REQ-044 | `src/core/style.ts`:defaultStyle, seriesStyles |
@@ -238,6 +238,6 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-015 | `src/core/schema.ts`:buildSchema, buildToolSchema, buildVocabulary, buildDescriptionTypes |
 | GSV-NFR-002 | `tests/core/schema-meta.test.ts` (verification) |
 | GSV-NFR-003 | `tests/core/schema-agreement.test.ts` (verification) |
-| GSV-REQ-049 | `src/core/validate/structure.ts`:checkValue (an `enum` value outside its list, listing every name); `src/core/schema.ts`:termUses (the published list and its descriptions); `src/core/definitions/ruler.ts`:defineRulerProperties (`rulerUnit`, from `RULER_UNITS`; ruler part; published once registered with rulers NLC TICKET-003) |
-| GSV-REQ-050 | `src/core/validate/structure.ts`:checkValue; `src/core/schema.ts`:termUses; `src/core/definitions/ruler.ts`:defineRulerProperties (`smallestDivision`, from `INCH_DIVISIONS`; ruler part; published once registered with rulers NLC TICKET-003) |
-| GSV-REQ-051 | `src/core/definitions/types.ts`:PropertySpec.appliesWhen; `src/core/validate/structure.ts`:checkConditional; `src/core/schema.ts`:termUses; `src/core/definitions/ruler.ts`:defineRulerProperties (`smallestDivision` applies when `rulerUnit` is `inches`; ruler part; published once registered with rulers NLC TICKET-003) |
+| GSV-REQ-049 | `src/core/validate/structure.ts`:checkValue (an `enum` value outside its list, listing every name); `src/core/schema.ts`:termUses (the published list and its descriptions); `src/core/definitions/ruler.ts`:defineRulerProperties (`rulerUnit`, from `RULER_UNITS`; ruler part; published since rulers NLC TICKET-003 registered it) |
+| GSV-REQ-050 | `src/core/validate/structure.ts`:checkValue; `src/core/schema.ts`:termUses; `src/core/definitions/ruler.ts`:defineRulerProperties (`smallestDivision`, from `INCH_DIVISIONS`; ruler part; published since rulers NLC TICKET-003 registered it) |
+| GSV-REQ-051 | `src/core/definitions/types.ts`:PropertySpec.appliesWhen; `src/core/validate/structure.ts`:checkConditional; `src/core/schema.ts`:termUses; `src/core/definitions/ruler.ts`:defineRulerProperties (`smallestDivision` applies when `rulerUnit` is `inches`; ruler part; published since rulers NLC TICKET-003 registered it) |

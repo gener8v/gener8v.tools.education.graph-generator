@@ -64,6 +64,10 @@
       "types": "./dist/bar-graph.d.ts",
       "default": "./dist/bar-graph.js"
     },
+    "./ruler": {
+      "types": "./dist/ruler.d.ts",
+      "default": "./dist/ruler.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./vocabulary.json": "./dist/vocabulary.json",
     "./package.json": "./package.json"

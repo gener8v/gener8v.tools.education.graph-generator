@@ -194,6 +194,42 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     }
   });
 
+  it("leaves every other type out of the ruler's entry and component, and the ruler out of theirs (rulers NLC TICKET-003)", async () => {
+    for (const entry of [`export { RulerGraph } from "./src/entries/ruler";`, `export { RulerGraph } from "./src/react/graphs/RulerGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A ruler");
+      for (const other of ["A circle", "A pictograph", "A line graph", "A bar graph", "A red apple", OTHER, OTHER_DEFINITION]) expect(code, other).not.toContain(other);
+    }
+    for (const entry of [
+      `export { CircleGraph } from "./src/entries/circle";`,
+      `export { Pictograph } from "./src/entries/pictograph";`,
+      `export { LineGraph } from "./src/entries/line-graph";`,
+      `export { BarGraph } from "./src/entries/bar-graph";`,
+    ]) {
+      expect(await bundle(entry), entry).not.toContain("A ruler");
+    }
+  });
+
+  it("leaves the ruler, its mark rule's tables and its kit out of a consumer's bundle of every other built entry (rulers NLC TICKET-002 quality review QR-002)", async () => {
+    // The built package shares chunks between entries, so the mark rule's frozen tables reach the
+    // others' chunks; marked pure, a consumer's bundler drops them. Text that survives minifying.
+    for (const built of ["circle", "pictograph", "line-graph", "bar-graph"]) {
+      const result = await build({
+        stdin: { contents: `export * from "./dist/${built}.js";`, resolveDir: root, loader: "js", sourcefile: "consumer.js" },
+        bundle: true,
+        write: false,
+        format: "esm",
+        platform: "neutral",
+        treeShaking: true,
+        minify: true,
+        external: ["react", "react-dom", "react/jsx-runtime"],
+        logLevel: "silent",
+      });
+      const code = result.outputFiles[0]!.text;
+      for (const ruler of ["A ruler", "sixteenth", "drawRulerMarks()", "rulerLayout()"]) expect(code, `${built}: ${ruler}`).not.toContain(ruler);
+    }
+  });
+
   it("keeps every type's layout and definition in the entry component's bundle", async () => {
     const code = await bundle(`export { Graph } from "./src/react/Graph";`);
     expect(code).toContain(OTHER);

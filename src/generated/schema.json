@@ -5,6 +5,85 @@
   "anyOf": [
     {
       "type": "object",
+      "title": "Ruler",
+      "description": "A ruler in centimeters or inches, drawn to scale with itself (not at true physical size), with whole units numbered from 0, and optionally an object lying along it from one mark to another, for \"how long is it?\" questions. A centimeter ruler is up to 30 cm long and an inch ruler up to 12 in.",
+      "properties": {
+        "type": {
+          "const": "ruler",
+          "description": "The graph type: which kind of graph the description draws."
+        },
+        "version": {
+          "enum": [
+            1
+          ],
+          "description": "The schema version the description is written for. Leave it out for the current version, 1."
+        },
+        "title": {
+          "type": "string",
+          "description": "A title shown above the graph, as plain text. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
+        },
+        "rulerUnit": {
+          "type": "string",
+          "description": "The unit a ruler is marked in: centimeters or inches.",
+          "enum": [
+            "centimeters",
+            "inches"
+          ]
+        },
+        "length": {
+          "type": "integer",
+          "description": "How many whole units a ruler is long: 1 to 30 for centimeters, 1 to 12 for inches."
+        },
+        "smallestDivision": {
+          "type": "string",
+          "description": "The smallest division an inch ruler is marked to; sixteenth when left out. Give it only when rulerUnit is \"inches\".",
+          "enum": [
+            "half",
+            "quarter",
+            "eighth",
+            "sixteenth"
+          ]
+        },
+        "measuredObject": {
+          "type": "object",
+          "description": "An object lying along the ruler, to be measured, drawn as a bar from its start mark to its end mark; its length is never written on the figure.",
+          "properties": {
+            "start": {
+              "type": "number",
+              "description": "The ruler mark the object starts at, in the ruler's unit, as a decimal: a whole millimeter on a centimeter ruler (3.4), a multiple of the smallest division on an inch ruler (2.0625 for 2 1/16). Any mark from 0 to the ruler's length."
+            },
+            "end": {
+              "type": "number",
+              "description": "The ruler mark the object ends at, after its start, given as the start is."
+            },
+            "label": {
+              "type": "string",
+              "description": "A label for this one point, segment or measured object, as plain text.",
+              "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$"
+            },
+            "color": {
+              "type": "string",
+              "description": "The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2.",
+              "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
+            }
+          },
+          "required": [
+            "start",
+            "end"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "type",
+        "rulerUnit",
+        "length"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
       "title": "Line graph",
       "description": "A line graph: one or more series of values over the categories, each value a point and each series a line joining its points, with a legend when there is more than one series. Each series has its own color, point shape and dash pattern. Values may be negative. At most 100 categories and 6 series.",
       "properties": {

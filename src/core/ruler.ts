@@ -5,12 +5,12 @@
 // review QR-001).
 
 /** A ruler's units, as `unit` values in the vocabulary's spelling (GSV-REQ-049). */
-export const RULER_UNITS = Object.freeze(["centimeters", "inches"] as const);
+export const RULER_UNITS = /* @__PURE__ */ Object.freeze(["centimeters", "inches"] as const);
 
 export type RulerUnit = (typeof RULER_UNITS)[number];
 
 /** An inch ruler's smallest divisions, and how many of each make an inch (NLC-REQ-046, GSV-REQ-050). */
-export const INCH_DIVISIONS = Object.freeze({ half: 2, quarter: 4, eighth: 8, sixteenth: 16 } as const);
+export const INCH_DIVISIONS = /* @__PURE__ */ Object.freeze({ half: 2, quarter: 4, eighth: 8, sixteenth: 16 } as const);
 
 export type InchDivision = keyof typeof INCH_DIVISIONS;
 
@@ -21,7 +21,7 @@ export const DEFAULT_INCH_DIVISION: InchDivision = "sixteenth";
  * The longest ruler of each unit, in whole units (NLC-REQ-042): 30 cm (301 millimetre marks) and
  * 12 in (193 sixteenth marks). Provisional until the Product Owner settles NLC OQ-009.
  */
-export const RULER_MAX_LENGTH: Readonly<Record<RulerUnit, number>> = Object.freeze({ centimeters: 30, inches: 12 });
+export const RULER_MAX_LENGTH: Readonly<Record<RulerUnit, number>> = /* @__PURE__ */ Object.freeze({ centimeters: 30, inches: 12 });
 
 /** Millimetres in a centimetre: a centimetre ruler's marks per unit. */
 const MILLIMETERS_PER_CENTIMETER = 10;
@@ -96,7 +96,7 @@ export function isRulerLength(unit: unknown, length: unknown): length is number 
 }
 
 /** An inch mark's rank, by its index's reduced denominator: 1 a whole inch, 2 a half, … 16 a sixteenth. */
-const INCH_RANKS: Readonly<Record<number, RulerMarkRank>> = Object.freeze({ 1: 0, 2: 1, 4: 2, 8: 3, 16: 4 });
+const INCH_RANKS: Readonly<Record<number, RulerMarkRank>> = /* @__PURE__ */ Object.freeze({ 1: 0, 2: 1, 4: 2, 8: 3, 16: 4 });
 
 /** `a` and `b`'s greatest common divisor, for whole numbers at least 0. */
 function gcd(a: number, b: number): number {

@@ -46,5 +46,11 @@
     "path": "dist/bar-graph.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./ruler",
+    "path": "dist/ruler.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

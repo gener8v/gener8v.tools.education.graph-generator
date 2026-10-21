@@ -12,6 +12,7 @@ import { CircleGraph as PackageCircleGraph } from "../../src/react/graphs/Circle
 import { Pictograph as PackagePictograph } from "../../src/react/graphs/PictographGraph";
 import { LineGraph as PackageLineGraph } from "../../src/react/graphs/LineGraphGraph";
 import { BarGraph as PackageBarGraph } from "../../src/react/graphs/BarGraphGraph";
+import { RulerGraph as PackageRulerGraph } from "../../src/react/graphs/RulerGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -116,6 +117,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     ]);
     expect(PackageLineGraph.displayName).toBe("LineGraph");
     expect(PackageBarGraph.displayName).toBe("BarGraph");
+    expect(PackageRulerGraph.displayName).toBe("RulerGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -135,6 +137,29 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
   it("passes textAlternative to SceneSvg unchanged (CPSE TICKET-002 DEL-005)", () => {
     expect(html(<TestGraph description={circle} textAlternative="Radius five" />)).toContain('aria-label="Radius five"');
     expect(html(<TestGraph description={circle} textAlternative={"\u200b "} />)).toContain('aria-label="A circle with radius 5."');
+  });
+});
+
+describe("the ruler's accessible name (NLC-REQ-013, NLC-REQ-056; rulers NLC TICKET-003)", () => {
+  const example: unknown = JSON.parse(readFileSync(new URL("../../examples/ruler.json", import.meta.url), "utf8"));
+  const generated =
+    "A ruler titled “How long is the pencil?”, 6 inches long, numbered every inch and marked to eighths of an inch. An object labeled “pencil” lies along it from the 1.5 in mark to the 4.25 in mark.";
+
+  it("names the ruler with its generated text alternative, as aria-label and <title>, through <RulerGraph> and <Graph>", () => {
+    const markup = html(<PackageRulerGraph description={example} />);
+    expect(markup).toBe(html(<Graph description={example} />));
+    expect(markup).toContain(`aria-label="${generated}"`);
+    expect(markup).toContain(`<title>${generated}</title>`);
+  });
+
+  it("replaces it with the caller's text alternative, and keeps it for a blank one", () => {
+    for (const Component of [Graph, PackageRulerGraph]) {
+      const supplied = html(<Component description={example} textAlternative="A ruler with a pencil on it." />);
+      expect(supplied).toContain('aria-label="A ruler with a pencil on it."');
+      expect(supplied).toContain("<title>A ruler with a pencil on it.</title>");
+      expect(supplied).not.toContain(generated);
+      expect(html(<Component description={example} textAlternative={"\u200b "} />)).toContain(`aria-label="${generated}"`);
+    }
   });
 });
 
@@ -389,6 +414,23 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
         // Title 3 lines, two axis labels of 2, two names, two value labels, at most 12 tick labels.
         expect(markup.match(/<text /g)!.length, orientation).toBeLessThanOrEqual(3 + 4 + 2 + 4 + 12);
       }
+    }
+  });
+
+  it("draws a valid ruler with half a megabyte of label and title text in <Graph> and <RulerGraph>, never throwing (rulers NLC TICKET-002 SEC-002)", () => {
+    const description = {
+      type: "ruler",
+      rulerUnit: "centimeters",
+      length: 30,
+      title: "word ".repeat(100_000).trim(),
+      measuredObject: { start: 0.1, end: 29.9, label: "@".repeat(500_000) },
+    };
+    for (const Component of [Graph, PackageRulerGraph]) {
+      const received: Issue[][] = [];
+      const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toEqual([]);
+      // Title 3 lines, label 2, and the 31 numbers.
+      expect(markup.match(/<text /g)!.length).toBe(3 + 2 + 31);
     }
   });
 

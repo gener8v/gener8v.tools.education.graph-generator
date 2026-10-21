@@ -6,6 +6,7 @@ export { CircleGraph } from "./react/graphs/CircleGraph";
 export { BarGraph } from "./react/graphs/BarGraphGraph";
 export { LineGraph } from "./react/graphs/LineGraphGraph";
 export { Pictograph } from "./react/graphs/PictographGraph";
+export { RulerGraph } from "./react/graphs/RulerGraph";
 export type { Fallback, GraphComponent, GraphProps } from "./react/createGraphComponent";
 export { createGraph } from "./graph";
 export type { CreateGraphResult } from "./graph";

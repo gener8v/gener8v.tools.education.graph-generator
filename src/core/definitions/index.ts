@@ -3,6 +3,7 @@ import { barGraph } from "./bar-graph";
 import { circle } from "./circle";
 import { lineGraph } from "./line-graph";
 import { pictograph } from "./pictograph";
+import { ruler } from "./ruler";
 import { type ScopedPropertySpec, sharedProperties } from "./shared";
 import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
@@ -25,6 +26,7 @@ export const definitions: Registry = /* @__PURE__ */ Object.freeze(
     "bar-graph": barGraph,
     pictograph,
     circle,
+    ruler,
   } satisfies Partial<Record<GraphType, GraphTypeDefinition>>),
 );
 

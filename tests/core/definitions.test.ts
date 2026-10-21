@@ -13,7 +13,6 @@ import {
   type PropertyMap,
   type ValueSpec,
 } from "../../src/core/definitions/types";
-import { ruler } from "../../src/core/definitions/ruler";
 import { conditionalRuler } from "../fixtures/definitions/conditional-ruler";
 import { fixtureRegistry as validatorFixtures } from "../fixtures/definitions/index";
 
@@ -250,8 +249,7 @@ describe("terms that apply only while a sibling has given values (GSV-REQ-051)",
     );
 
   it("name a sibling enum term and only values from its list", () => {
-    // The ruler is not registered until rulers NLC TICKET-003, so it is listed here explicitly.
-    for (const definition of [...allDefinitions(), conditionalRuler, ruler as GraphTypeDefinition]) expect(conditionProblems(definition), definition.type).toEqual([]);
+    for (const definition of [...allDefinitions(), conditionalRuler]) expect(conditionProblems(definition), definition.type).toEqual([]);
   });
 
   it("hold the test-only conditional ruler to the other definition rules too (quality review QR-005)", () => {
@@ -665,22 +663,6 @@ describe("definitions cannot be changed or reached through inherited keys (secur
       expect(propertySpec(propertiesOf("circle", fixtureRegistry), key), key).toBeUndefined();
     }
     expect(propertySpec(sharedProperties, "title")).toBe(sharedProperties.title);
-  });
-});
-
-describe("the ruler, defined but not yet registered (rulers NLC TICKET-002 DEL-002)", () => {
-  // TICKET-003 registers it with its layout; until then it is held to every rule here explicitly.
-  const definition = ruler as GraphTypeDefinition;
-
-  it("follows the vocabulary, stage and applicability rules", () => {
-    expect(vocabularyProblems(definition.properties)).toEqual([]);
-    expect(stageProblems(definition)).toEqual([]);
-    expect(applicabilityProblems(definition)).toEqual([]);
-  });
-
-  it("defines each of its terms once alongside the registered types, and clashes with none (DEL-001)", () => {
-    const maps = [...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties), definition.properties];
-    expect(consistencyProblems(maps)).toEqual([]);
   });
 });
 

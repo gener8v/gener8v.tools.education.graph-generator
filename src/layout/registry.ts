@@ -4,6 +4,7 @@ import { barGraphLayout } from "./bar-graph";
 import { circleLayout } from "./circle";
 import { lineGraphLayout } from "./line-graph";
 import { pictographLayout } from "./pictograph";
+import { rulerLayout } from "./ruler";
 import type { Scene } from "./scene";
 
 /**
@@ -36,6 +37,7 @@ export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
     "bar-graph": barGraphLayout,
     pictograph: pictographLayout,
     circle: circleLayout,
+    ruler: rulerLayout,
   } satisfies Partial<Record<GraphType, Layout>>),
 );
 

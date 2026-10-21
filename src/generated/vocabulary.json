@@ -35,6 +35,14 @@
       "definition": "Text shown in place of the diameter label, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
+    "end": {
+      "definition": "The ruler mark the object ends at, after its start, given as the start is.",
+      "kind": "number"
+    },
+    "label": {
+      "definition": "A label for this one point, segment or measured object, as plain text.",
+      "kind": "string"
+    },
     "labelCircumference": {
       "definition": "Whether the circumference is labeled with its measurement, next to the circle.",
       "kind": "boolean"
@@ -47,6 +55,10 @@
       "definition": "Whether the radius is labeled with its measurement; a labeled radius is drawn.",
       "kind": "boolean"
     },
+    "length": {
+      "definition": "How many whole units a ruler is long: 1 to 30 for centimeters, 1 to 12 for inches.",
+      "kind": "integer"
+    },
     "lineColor": {
       "definition": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
       "kind": "color"
@@ -58,6 +70,10 @@
     "maximum": {
       "definition": "The highest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size; above the minimum by at least a billionth of the larger end's size.",
       "kind": "number"
+    },
+    "measuredObject": {
+      "definition": "An object lying along the ruler, to be measured, drawn as a bar from its start mark to its end mark; its length is never written on the figure.",
+      "kind": "object"
     },
     "minimum": {
       "definition": "The lowest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size.",
@@ -79,6 +95,10 @@
       "definition": "Text shown in place of the radius label, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
+    "rulerUnit": {
+      "definition": "The unit a ruler is marked in: centimeters or inches.",
+      "kind": "enum"
+    },
     "series": {
       "definition": "The series, at least 1 and at most 6, each drawn as a line through one point per category. Without a lineColor, a series takes the default color for its position (the first series the first color, and so on); every series also has its own point shape and dash pattern, so series differ without color.",
       "kind": "array"
@@ -98,6 +118,14 @@
     "showValues": {
       "definition": "Whether to write each bar's value beside it, exactly as given; a zero bar shows 0.",
       "kind": "boolean"
+    },
+    "smallestDivision": {
+      "definition": "The smallest division an inch ruler is marked to; sixteenth when left out.",
+      "kind": "enum"
+    },
+    "start": {
+      "definition": "The ruler mark the object starts at, in the ruler's unit, as a decimal: a whole millimeter on a centimeter ruler (3.4), a multiple of the smallest division on an inch ruler (2.0625 for 2 1/16). Any mark from 0 to the ruler's length.",
+      "kind": "number"
     },
     "tickInterval": {
       "definition": "The distance between neighbouring ticks on the value axis: greater than 0, dividing the scale into whole intervals, with at most 100 ticks.",
@@ -145,6 +173,98 @@
     }
   },
   "graphTypes": {
+    "ruler": {
+      "title": "Ruler",
+      "description": "A ruler in centimeters or inches, drawn to scale with itself (not at true physical size), with whole units numbered from 0, and optionally an object lying along it from one mark to another, for \"how long is it?\" questions. A centimeter ruler is up to 30 cm long and an inch ruler up to 12 in.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "ruler"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false
+        },
+        "rulerUnit": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "centimeters",
+            "inches"
+          ],
+          "valueDescriptions": {
+            "centimeters": "Numbered every centimeter, with a mark at every millimeter and longer marks at each half centimeter.",
+            "inches": "Numbered every inch, with a mark at every multiple of the smallest division, graded by fraction."
+          }
+        },
+        "length": {
+          "kind": "integer",
+          "required": true
+        },
+        "smallestDivision": {
+          "kind": "enum",
+          "required": false,
+          "values": [
+            "half",
+            "quarter",
+            "eighth",
+            "sixteenth"
+          ],
+          "valueDescriptions": {
+            "half": "Marks at every half inch.",
+            "quarter": "Marks at every quarter inch.",
+            "eighth": "Marks at every eighth of an inch.",
+            "sixteenth": "Marks at every sixteenth of an inch."
+          },
+          "appliesWhen": {
+            "term": "rulerUnit",
+            "values": [
+              "inches"
+            ]
+          }
+        },
+        "measuredObject": {
+          "kind": "object",
+          "required": false,
+          "properties": {
+            "start": {
+              "kind": "number",
+              "required": true
+            },
+            "end": {
+              "kind": "number",
+              "required": true
+            },
+            "label": {
+              "kind": "string",
+              "required": false
+            },
+            "color": {
+              "kind": "color",
+              "required": false
+            }
+          }
+        }
+      },
+      "derivations": [],
+      "checks": [
+        "the length fits the ruler's unit",
+        "the measured object's start is a mark of the ruler",
+        "the measured object's end is a mark of the ruler",
+        "the measured object's start mark is before its end mark"
+      ]
+    },
     "line-graph": {
       "title": "Line graph",
       "description": "A line graph: one or more series of values over the categories, each value a point and each series a line joining its points, with a legend when there is more than one series. Each series has its own color, point shape and dash pattern. Values may be negative. At most 100 categories and 6 series.",
