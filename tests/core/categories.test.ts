@@ -122,8 +122,10 @@ describe("categories (DGP-REQ-001, DGP-REQ-003)", () => {
     expect(codesAndPaths(at("🍎".repeat(CATEGORY_NAME_LIMIT + 1)))).toEqual(["too_large /categories/1/name"]);
     // A megabyte is counted and reported, not drawn.
     expect(codesAndPaths(at("i ".repeat(500_000)))).toEqual(["too_large /categories/1/name"]);
-    // An unsafe character is reported as such, whatever the length.
-    expect(codesAndPaths(at("\u202e".repeat(300)))).toEqual(["wrong_kind /categories/1/name"]);
+    // An unsafe character is reported as such within the limit; past it, the length is reported
+    // first, without scanning the text (graph-library GSV TICKET-007 security review SEC-004).
+    expect(codesAndPaths(at("\u202e".repeat(CATEGORY_NAME_LIMIT)))).toEqual(["wrong_kind /categories/1/name"]);
+    expect(codesAndPaths(at("\u202e".repeat(CATEGORY_NAME_LIMIT + 1)))).toEqual(["too_large /categories/1/name"]);
   });
 
   it("each need a plain-text name", () => {

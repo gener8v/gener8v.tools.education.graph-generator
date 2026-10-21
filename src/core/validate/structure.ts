@@ -123,11 +123,13 @@ function checkValue(spec: ValueSpec, value: unknown, place: Place, walk: Walk, p
     }
     case "string": {
       if (typeof value !== "string") return wrongKind("plain text");
-      if (findUnsafeTextChar(value) !== -1) return wrongKind(PLAIN_TEXT);
+      // The length first, so a text far over its limit is refused without scanning it all for
+      // unsafe characters (graph-library GSV TICKET-007 security review SEC-004).
       const characters = spec.maxLength === undefined ? undefined : charactersOver(value, spec.maxLength);
       if (characters !== undefined) {
         return fail(createIssue("too_large", path, { term: place.term, limit: spec.maxLength!, unit: "characters", count: characters }));
       }
+      if (findUnsafeTextChar(value) !== -1) return wrongKind(PLAIN_TEXT);
       // An empty label or title is no label (GSV Edge Cases): for shared presentation options,
       // and for a term that says so (code review CR-007; DGP TICKET-001 DEL-002).
       if (value === "" && (presentation || spec.emptyIsAbsent === true)) return OMITTED;

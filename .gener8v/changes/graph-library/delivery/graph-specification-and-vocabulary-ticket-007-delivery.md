@@ -190,3 +190,11 @@
 - **QR-006:** `UNIT_TEXT_LIMIT` documented on its own.
 - **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. `pnpm test` passes 49 files and 1,391 tests on three runs. Mutations: marks at 9 or 3, clusters at 48, and U+200C restarting the run each fail a test. Removing the `clusters` use of `isMark` alone fails none; it is equivalent while marks have no width.
 
+### Security review — `graph-library/graph-specification-and-vocabulary-ticket-007-security-review` (2026-10-21, Approved with Notes)
+
+- **SEC-001:** in `drawnWord` (`src/layout/kit/text.ts`), a run of marks ends only at a drawn character (`DRAWN_BASE`: `\p{L}`, `\p{N}`, `\p{P}`, `\p{S}`, `\p{Mc}`, `\p{Zs}`). Joiners, invisible formatting characters and unassigned code points neither count nor end it, so the explicit joiner check is gone. `oneClusterTexts(n).invisibleSplitMarks` in `tests/fixtures/plain-text.ts`; tests in `tests/layout/kit/text.test.ts` and `tests/layout/ruler.test.ts`. The Notes' claim that rulers NLC TICKET-003 SEC-001 is fixed holds from here on; before this, it held for runs of marks and joiner chains only.
+- **SEC-004:** `checkValue` (`src/core/validate/structure.ts`) checks `maxLength` before the unsafe-character scan. A text both too long and unsafe is now reported as `too_large` rather than `wrong_kind`; `tests/core/categories.test.ts` updated, and a 10 MB title test added in `tests/core/validate-structure.test.ts`.
+- **SEC-002, SEC-003, SEC-005:** accepted risks (Security — Thomas Eaves, 2026-10-21).
+- **Flaky test fixed:** the pictograph geometry property (`tests/layout/pictograph.test.ts`) generated names up to 232 characters, over the new limit; names are now cut to fit.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` (2026-10-21, clean) and `gener8v-state lint` exit 0. `pnpm test` passes 49 files and 1,393 tests on three runs. Mutations: letting any character end the run fails 3 tests; scanning before the length check fails 1.
+

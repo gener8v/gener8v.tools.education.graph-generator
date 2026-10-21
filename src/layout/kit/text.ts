@@ -182,22 +182,25 @@ export const MAX_STACKED_MARKS = 4;
  */
 export const MAX_CLUSTER_LENGTH = 16;
 
-const ZWNJ = 0x200c;
+/** A character that is drawn and ends a run of marks: a letter, digit, punctuation, symbol, spacing mark or space. */
+const DRAWN_BASE = /[\p{L}\p{N}\p{P}\p{S}\p{Mc}\p{Zs}]/u;
 
 /**
  * `word` as drawn: at most `MAX_STACKED_MARKS` marks (`isMark`) in a row, counted along the whole
- * word. A joiner (U+200C or U+200D) neither counts as a mark nor ends a run, so marks split by
- * joiners still count (code review CR-002). Then each cluster keeps at most `MAX_CLUSTER_LENGTH`
- * code points. The drawing leaves the rest out; the text alternative still states the text whole.
- * Real text is drawn as written: a script needs no more marks on one character, nor a cluster
- * longer.
+ * word. Only a drawn character (`DRAWN_BASE`) ends a run. Anything else a description may hold,
+ * such as a joiner (U+200C, U+200D), an invisible formatting character or an unassigned code
+ * point, neither counts as a mark nor ends the run, so no invisible character lets marks pile up on
+ * one letter (code review CR-002; security review SEC-001). Then each cluster keeps at most
+ * `MAX_CLUSTER_LENGTH` code points. The drawing leaves the rest out; the text alternative still
+ * states the text whole. Real text is drawn as written: a script needs no more marks on one
+ * character, nor a cluster longer.
  */
 function drawnWord(word: string): string {
   let marked = "";
   let marks = 0;
   forEachCodePoint(word, (code, char) => {
-    const joiner = code === ZWJ || code === ZWNJ;
-    if (!joiner) marks = isMark(code) ? marks + 1 : 0;
+    if (isMark(code)) marks++;
+    else if (code < 0x300 || DRAWN_BASE.test(char)) marks = 0;
     if (marks <= MAX_STACKED_MARKS) marked += char;
   });
   let drawn = "";

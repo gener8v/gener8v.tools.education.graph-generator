@@ -81,6 +81,8 @@ export const oneClusterTexts = (characters: number) => ({
   arabicMarks: `x${runOf(characters - 1, 0x610, 11)}`,
   /** "x" and pairs of marks split by joiners. */
   joinerSplitMarks: `x${`${codePoints(0x301, 0x302)}${ZWJ}`.repeat(Math.floor((characters - 1) / 3))}`,
+  /** "x" and pairs of marks split by invisible characters the plain-text policy accepts (security review SEC-001). */
+  invisibleSplitMarks: `x${[0xfff0, 0x1d173, 0xe0080].map((code) => `${codePoints(0x301, 0x302)}${codePoints(code)}`).join("").repeat(Math.floor((characters - 1) / 9))}`,
   /** Women joined by joiners: one cluster of `characters` code points, give or take one. */
   joinedWomen: Array.from({ length: Math.ceil(characters / 2) }, () => codePoints(0x1f469)).join(ZWJ),
 });

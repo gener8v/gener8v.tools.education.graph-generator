@@ -179,6 +179,12 @@ describe("one-cluster text is drawn bounded (rulers NLC TICKET-003 security revi
     expect(wrap(`${four}${nonJoiner}${four.slice(1)}`, 240, 14)).toEqual([`${four}${nonJoiner}`]);
   });
 
+  it("ends a run of marks only at a drawn character, never at an invisible one (security review SEC-001)", () => {
+    expect(marksIn(wrap(texts.invisibleSplitMarks, 240, 14, 2).join(""))).toBe(4);
+    // Each drawn letter starts its own run.
+    expect(marksIn(wrap(`a${"\u0301".repeat(4)}b${"\u0301".repeat(4)}`, 240, 14)[0]!)).toBe(8);
+  });
+
   it("draws 16 code points of one joined cluster, never a seventeenth", () => {
     const [line, ...rest] = wrap(texts.joinedWomen, 240, 14, 2);
     expect(rest).toEqual([]);

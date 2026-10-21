@@ -824,6 +824,13 @@ describe("caller text limits (GSV-REQ-052, GSV-REQ-053; graph-library GSV TICKET
     expect(issues(ruler("x".repeat(CALLER_TEXT_LIMIT + 1))).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["too_large /measuredObject/label"]);
   });
 
+  it("checks a text's length before scanning it, so a huge text is refused as too large (security review SEC-004)", () => {
+    const huge = `${"x".repeat(10_000_000)}\u202e`;
+    expect(issues({ type: "circle", radius: 5, title: huge }).map((issue) => `${issue.code} ${issue.path}`)).toEqual(["too_large /title"]);
+    // Within the limit, an unsafe character is still refused as not plain text.
+    expect(issues({ type: "circle", radius: 5, title: "x\u202e" }).map((issue) => issue.code)).toEqual(["wrong_kind"]);
+  });
+
   it("counts characters as code points, as JSON Schema does: 200 emoji are accepted and 201 are not", () => {
     const title = (count: number) => ({ type: "circle", radius: 5, title: "🍎".repeat(count) });
     expect(issues(title(CALLER_TEXT_LIMIT))).toEqual([]);

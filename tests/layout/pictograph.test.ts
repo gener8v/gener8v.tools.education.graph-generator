@@ -259,7 +259,9 @@ describe("the drawing's geometry (quality review QR-001)", () => {
       }).map(({ names, counts, fraction, unitValue, title, label }) => ({
         orientation,
         // Names are made distinct, as validation requires.
-        categories: names.map((words, i) => ({ name: `${words.join(" ")} ${i + 1}` })),
+        // Cut to fit the 200-character limit (GSV-REQ-052): five of the longest word reach 232
+        // (graph-library GSV TICKET-007 security review).
+        categories: names.map((words, i) => ({ name: `${words.join(" ").slice(0, CALLER_TEXT_LIMIT - 4)} ${i + 1}` })),
         values: counts.map((count, i) => (count + (i % 2 === 0 ? fraction : 0)) * unitValue),
         unitValue,
         ...(title === null ? {} : { title }),
