@@ -73,6 +73,17 @@
   - Wrap every label with `wrap(text, maxWidth, fontSize, maxLines)`, as the circle does with `LABEL_MAX_LINES` (4), and draw titles with `titleBlock`, which caps them at `TITLE_MAX_LINES` (3). The cut line ends in "…" (DEL-008), so the Scene stays small however long the description's text. Say so in the label-text descriptions, and keep the full text in the text alternative.
   - In `describe`, state measurements with `stateMeasurement(value, source, unit)` (`src/core/format.ts`), not `formatMeasurement`. It quotes a unit that is not unit-shaped, so the unit cannot read as the package's own sentence. Drawn labels keep `measurementLabel` / `formatMeasurement`.
   - Add a test that a valid description with half a megabyte of unit or label text renders in `<Graph>` and the type's component without throwing, with a bounded number of text nodes.
+- Carried from graph-library/graph-specification-and-vocabulary/TICKET-007 (GSV-REQ-052..054, GSV OQ-009, Product Owner 2026-10-21) (ready-tickets reconciliation, 2026-10-21): caller text is capped. Every title, label, name and label text is at most 200 characters (`CALLER_TEXT_LIMIT`) and `unit` at most 20 (`UNIT_TEXT_LIMIT`), both from `src/core/definitions/shared.ts`. Longer text is reported as `too_large` and never drawn. **This supersedes any bullet above asking for a test that half a megabyte of unit or label text renders**, and the Edge Case "Label text is very long: accept it".
+  - Add this type to the at-the-limit tests in `tests/react/Graph.test.tsx`: a valid description with every text at its limit renders in `<Graph>` and the type's component without throwing, with a bounded number of text nodes. Use `wordsOf(CALLER_TEXT_LIMIT)`, `"@".repeat(UNIT_TEXT_LIMIT)` and `oneClusterTexts(CALLER_TEXT_LIMIT)` from `tests/fixtures/plain-text.ts`.
+  - Add one over-limit case per text term to "refuses every caller text one character over its limit".
+  - The line caps stay. `wrap` and `titleBlock` still cut, and `wrap` now also bounds stacked marks (`MAX_STACKED_MARKS`) and cluster length (`MAX_CLUSTER_LENGTH`) in `src/layout/kit/text.ts`. Draw every caller text through `wrap`, never as a raw `text` node, and measure boxes from `wrap`'s lines.
+  - For this ticket: the at-the-limit render test belongs to TICKET-005, which draws the triangle; this ticket keeps the validation half (`too_large` at 201 characters).
+- Carried from graph-library/graph-specification-and-vocabulary/TICKET-007 (ready-tickets reconciliation, 2026-10-21): every `kind: "string"` term this definition adds sets `maxLength`, including label texts, names and the string items of a list.
+  - The term named exactly `unit` takes `UNIT_TEXT_LIMIT`; every other string term takes `CALLER_TEXT_LIMIT`. Its description states "at most N characters".
+  - `tests/core/validate-structure.test.ts` ("caller text limits") checks every registered type and decides the 20-character limit by the term name `unit` alone, so a unit-like term with another name gets 200.
+  - Follow `src/core/definitions/circle.ts` (`labelText`, `unit`). Nest the shared `label` spec object itself, which already carries its limit; never copy it.
+  - `vertexNames` items take `CALLER_TEXT_LIMIT`, and the list takes `maxItems: 3`.
+- Build the triangle definition with `/* @__PURE__ */ defineTriangle()`, never a plain object, so it stays out of every other type's bundle (the circle's plain object reaches them all). (ready-tickets reconciliation, 2026-10-21)
 
 **Depends On:** None
 **Blocks:** TICKET-005

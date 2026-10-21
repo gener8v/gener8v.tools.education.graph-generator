@@ -34,6 +34,7 @@
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-002-security-review/SEC-002: one description can produce tens of thousands of issues, and GSV-REQ-029 requires the validator to return them all (Product Owner decision 2026-10-05: no cap in the validator). The CLI prints at most the first 20 issues, then "…and N more", and add a test that 10,000 unknown keys produce output under a fixed size. Keep the structured `issues` array complete.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-002-security-review/SEC-003: never put exception text, `error.message` or `error.stack` into an issue or a message. An unexpected exception becomes `createIssue("internal_error", "", {})`, whose message is fixed; for `invalid_json`, pass only the JSON parser's message as `detail`. Add a test that a thrown internal exception yields no `file:`, `/node_modules/` or `    at ` frame in the output.
 - Carried from graph-library/graph-specification-and-vocabulary-ticket-001-security-review/SEC-001: the CLI writes `exportSource` output unchanged; its encoding rules live in CPSE TICKET-005. Test one hostile title from `tests/fixtures/plain-text.ts` end to end through the command.
+- `formatIssue` has landed (`src/core/issues.ts`, exported from `./core`), added by CPSE TICKET-003: print issues with it, and never print `issue.path` raw. This settles the "whichever lands first" hazard above. (ready-tickets reconciliation, 2026-10-21)
 
 **Depends On:** TICKET-005
 **Blocks:** None

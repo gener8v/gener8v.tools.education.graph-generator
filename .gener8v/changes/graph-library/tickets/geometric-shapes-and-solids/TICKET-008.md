@@ -39,6 +39,8 @@
 - GSS-NFR-003 is verified on estimated text boxes with the default font (AD-010, TR-003); do not attempt DOM measurement in tests to "prove" it — that would test something layout never sees.
 - If a figure fails, fix its layout ticket's code here only if trivial; otherwise record the failure as a finding against that type rather than loosening the 1% tolerance.
 - Carried from graph-library/geometric-shapes-and-solids-ticket-001-code-review/CR-003: measure a cylinder's radius along the projected horizontal axis it is drawn on (see TICKET-007's hazard), never as `rx / ISO_SCALE`; `isoEllipse`'s `rx` is the radius at full length, not foreshortened.
+- Extend `tests/fixtures/scene-geometry.ts` (which has `Bounds`, `boundsOf`, `overlap` and `nameOf`) with segment-length helpers rather than adding `tests/helpers/scene-geometry.ts`. (ready-tickets reconciliation, 2026-10-21)
+- Besides the examples, run the overlap check on each figure with every label at `CALLER_TEXT_LIMIT` and at `oneClusterTexts(CALLER_TEXT_LIMIT)`. (ready-tickets reconciliation, 2026-10-21)
 
 **Depends On:** TICKET-003, TICKET-005, TICKET-006, TICKET-007
 **Blocks:** None

@@ -46,6 +46,9 @@
   - State on the site, next to the component props, that the validator reads the whole input object, so a server rendering descriptions from requests must keep its own request-body size limit. The same note is on `GraphProps.description`.
   - Also state that components validate on every render (CPSE TICKET-003 DEL-001, SEC-005). Show memoizing the element, or calling `createGraph` once, for pages that re-render often with large descriptions.
 - Carried from rulers/number-lines-and-coordinate-graphs-ticket-003-code-review/CR-003 (ruler mark contrast): a ruler keeps 3:1 contrast on its finest marks only when shown at least 330 px wide (rulers NLC TICKET-003 DEL-002). Today it is said only in `<RulerGraph>`'s documentation comment. State it on the ruler's documentation page and beside its working example, for `<RulerGraph>` and for `<Graph>` drawing a ruler.
+- Carried from graph-library/graph-specification-and-vocabulary/TICKET-007 (GSV-REQ-052..054): document the text limits on the vocabulary and issue-code pages and in each type's input table (a `maxLength` column from `vocabulary.json`). Titles, labels and names are at most 200 characters and `unit` at most 20, counted as code points. Longer text is `too_large`, never cut; the drawing still cuts long text at its line caps while the text alternative states it whole. (ready-tickets reconciliation, 2026-10-21)
+- There are twelve graph types, not eleven: the ruler has `./ruler` and `examples/ruler.json`. (ready-tickets reconciliation, 2026-10-21)
+- Until the circle definition is a pure factory, do not claim that per-type entries contain no other type (see CPSE TICKET-004). (ready-tickets reconciliation, 2026-10-21)
 
 **Depends On:** TICKET-003
 **Blocks:** None

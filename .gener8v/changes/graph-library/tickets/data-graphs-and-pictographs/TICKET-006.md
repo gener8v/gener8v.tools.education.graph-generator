@@ -37,6 +37,8 @@
 **Known Hazards:**
 - Values in the text alternative must appear as supplied (no rounding), while drawn positions are rounded — compare text against the description's values, and coordinates against computed positions with the 0.5 px tolerance
 - Pictograph positions are not covered by DGP-NFR-001 (bars and points only); pictograph width accuracy is DGP-NFR-002 in TICKET-005 — do not duplicate it here
+- Carried from GSV TICKET-007: generated names and labels are plain text of at most `CALLER_TEXT_LIMIT` characters. Include names at the limit and `REAL_STACKED_TEXT` (`tests/fixtures/plain-text.ts`), and filter through `validate()`. Compare the text alternative with each name as `describe` states it (through `cleanText` and `quoteText`, `src/core/format.ts`), not with the raw string. (ready-tickets reconciliation, 2026-10-21)
+- Put generators in `tests/fixtures/data-graphs.ts`, not `tests/generators/` (which does not exist), and reuse `boundsOf`, `ticksOf` and `positionOf` from `tests/fixtures/scene-geometry.ts`. Read `src/core/format.ts` with the Prior Art: text helpers live there. (ready-tickets reconciliation, 2026-10-21)
 
 **Depends On:** TICKET-002, TICKET-003, TICKET-005
 **Blocks:** None

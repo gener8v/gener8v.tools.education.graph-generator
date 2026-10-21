@@ -47,6 +47,9 @@
 - The spec says "0.5 px at the default size"; the design draws in a 400-unit coordinate space scaled by `viewBox`. Treat one Scene unit as one pixel at the default size (400 px wide) and assert in Scene units — do not render in a browser to measure pixels (prd/TC-001).
 - Generators must produce only valid descriptions (points inside ranges, spacing giving ≤ 100 ticks), otherwise the accuracy test exercises the validator rather than layout. Filter through `validate()` and discard invalid samples.
 - A benchmark on shared CI runners is noisy: use p95 over ≥ 100 iterations after warm-up, not a single run, and keep the target exactly as stated (≤ 50 ms) — do not loosen it in the test.
+- Supersedes the benchmark path in the Output: Vitest runs benchmarks only from `tests/**/*.bench.ts` (`vitest.config.ts`), so put it at `tests/layout/nlc-render.bench.ts`, following `tests/core/validate.bench.ts` (`retainSamples`, a p95 assertion). At `bench/` it would never run, and criterion 5 could not be met. (ready-tickets reconciliation, 2026-10-21)
+- axe-core is not yet a devDependency (ready-tickets reconciliation, 2026-10-21): add it (and record it in the delivery record), or share the setup with whichever of rulers NLC TICKET-004 and graph-library NLC TICKET-005 lands first.
+- Generated labels stay within `CALLER_TEXT_LIMIT`. Vitest's default environment is already `node`; jsdom is opt-in per file. (ready-tickets reconciliation, 2026-10-21)
 
 **Depends On:** TICKET-002, TICKET-003, TICKET-004
 **Blocks:** None

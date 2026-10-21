@@ -54,6 +54,9 @@
   - An exported file that inlines a drawing must print, in its header comment, the notice for that image's license: `IMAGE_LICENSE_NOTICES[image.license]` (`src/images/types.ts`). For MIT that is the package's `LICENSE` text; a test keeps the two identical. Name each embedded image and its author too.
   - Naming the license alone does not satisfy MIT (prd/CC-001).
   - Add a test that an exported pictograph contains the full notice.
+- Default component names come from `componentName(type)` (`src/react/createGraphComponent.tsx`), so an exported line graph is `LineGraph`, like the package's, not `LineGraphGraph`. Import it rather than re-deriving it, and test `line-graph` → `LineGraph`. (ready-tickets reconciliation, 2026-10-21)
+- Read `exportSource`'s options own-key only (`Object.hasOwn(options, "componentName")`), as `renderGraph` reads its props, so a polluted `Object.prototype` cannot name the component. Take the Scene from `createGraph`, which has already passed `checkScene`, and print `text` and `children` by node kind exactly as `SceneSvg` does. (ready-tickets reconciliation, 2026-10-21)
+- There are twelve graph types with examples, not eleven (the ruler). (ready-tickets reconciliation, 2026-10-21)
 
 **Depends On:** TICKET-002, TICKET-003
 **Blocks:** TICKET-006
