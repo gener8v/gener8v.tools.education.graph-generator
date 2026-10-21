@@ -54,12 +54,16 @@ function renderFallback(issues: Issues, fallback: unknown): ReactNode {
 /**
  * What a component renders, drawing with the given definitions and layouts: the graph, or the
  * fallback. Pure: no hooks, state or effects (AD-014, prd/IC-002). Never throws because of the
- * description (CPSE-REQ-018). The registries are always passed, never defaulted, so a per-type
+ * description (CPSE-REQ-018). Reads only the props the consumer passed. The registries are always passed, never defaulted, so a per-type
  * component reaches no other type's code (AD-001, CPSE-REQ-004; code review CR-002).
  */
 // @spec CPSE-REQ-008, CPSE-REQ-014, CPSE-REQ-018
 export function renderGraph(props: GraphProps, registries: Registries): ReactNode {
-  const { description, textAlternative, fallback } = props ?? ({} as GraphProps);
+  // Own props only: a prop the consumer did not pass is never read from a polluted
+  // `Object.prototype`, so it cannot rename every graph or hide its fallback (rulers NLC TICKET-003
+  // security review SEC-002).
+  const own = (key: keyof GraphProps): unknown => (typeof props === "object" && props !== null && Object.hasOwn(props, key) ? props[key] : undefined);
+  const [description, textAlternative, fallback] = [own("description"), own("textAlternative"), own("fallback")];
   const result = createGraphWith(description, registries.definitions, registries.layouts);
   if (!result.ok) return renderFallback(result.issues, fallback);
   return <SceneSvg scene={result.scene} textAlternative={textAlternative as string | undefined} />;

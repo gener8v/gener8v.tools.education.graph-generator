@@ -163,6 +163,45 @@ describe("the ruler's accessible name (NLC-REQ-013, NLC-REQ-056; rulers NLC TICK
   });
 });
 
+describe("props and Scene nodes are read as own keys (rulers NLC TICKET-003 security review SEC-002)", () => {
+  const example: unknown = JSON.parse(readFileSync(new URL("../../examples/ruler.json", import.meta.url), "utf8"));
+  const prototype = Object.prototype as Record<string, unknown>;
+  const polluted = <T,>(values: Record<string, unknown>, run: () => T): T => {
+    for (const [key, value] of Object.entries(values)) Object.defineProperty(prototype, key, { value, configurable: true, writable: true });
+    try {
+      return run();
+    } finally {
+      for (const key of Object.keys(values)) delete prototype[key];
+    }
+  };
+  const injected = { type: "ruler", rulerUnit: "centimeters", length: 3, title: "Injected" };
+
+  it("draws the same ruler, with its own accessible name, whatever a polluted Object.prototype holds", () => {
+    for (const Component of [Graph, PackageRulerGraph]) {
+      const plain = html(<Component description={example} />);
+      for (const values of [
+        { textAlternative: "PWN: this ruler is 3 cm" },
+        { fallback: "none" },
+        { description: injected },
+        { text: "x" },
+        { children: [] },
+      ]) {
+        expect(polluted(values, () => html(<Component description={example} />)), JSON.stringify(values)).toBe(plain);
+      }
+    }
+  });
+
+  it("still renders the placeholder for an invalid ruler, and nothing injected for a missing description", () => {
+    for (const Component of [Graph, PackageRulerGraph]) {
+      const invalid = polluted({ fallback: "none" }, () => html(<Component description={{ type: "ruler", rulerUnit: "centimeters", length: 0 }} />));
+      expect(invalid).toContain("This graph could not be drawn.");
+      const missing = polluted({ description: injected }, () => html(<Component {...({} as GraphProps)} />));
+      expect(missing).not.toContain("Injected");
+      expect(missing).toContain("This graph could not be drawn.");
+    }
+  });
+});
+
 describe("invalid descriptions (CPSE-REQ-014, CPSE-REQ-015, CPSE-REQ-016, CPSE-REQ-017)", () => {
   const invalid = { type: "circle", radius: -1 };
 

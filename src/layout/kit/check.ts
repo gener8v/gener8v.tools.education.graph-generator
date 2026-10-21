@@ -40,11 +40,13 @@ function checkNode(node: SceneNode, path: string, problems: string[]): void {
     problems.push(`${path}: unknown kind ${JSON.stringify(node.kind)}`);
     return;
   }
-  const hasText = "text" in node;
-  const hasChildren = "children" in node;
-  if (shape === "text" && (!hasText || typeof node.text !== "string")) problems.push(`${path}: a text node needs text`);
+  // Own fields only, so a polluted `Object.prototype` cannot fail every Scene (rulers NLC TICKET-003 security review SEC-002).
+  const hasText = Object.hasOwn(node, "text");
+  const hasChildren = Object.hasOwn(node, "children");
+  const fields = node as { readonly text?: unknown; readonly children?: unknown };
+  if (shape === "text" && (!hasText || typeof fields.text !== "string")) problems.push(`${path}: a text node needs text`);
   if (shape !== "text" && hasText) problems.push(`${path}: only a text node may have text`);
-  if (shape === "container" && (!hasChildren || !Array.isArray(node.children))) problems.push(`${path}: a ${node.kind} node needs children`);
+  if (shape === "container" && (!hasChildren || !Array.isArray(fields.children))) problems.push(`${path}: a ${node.kind} node needs children`);
   if (shape !== "container" && hasChildren) problems.push(`${path}: only a group or svg node may have children`);
 
   const seen = new Set<string>();

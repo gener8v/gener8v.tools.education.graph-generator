@@ -234,3 +234,9 @@ Engineer decisions:
 - **QR-005:** `consumerBundle(entry)` in `tests/package/per-type-bundle.test.ts` holds the built-entry bundling options once.
 - **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. The state lint's only error is the expected GSV-REQ-052..054, pending their ticket. `pnpm test` passes 1,375 tests on three runs.
 
+### Security review — `rulers/number-lines-and-coordinate-graphs-ticket-003-security-review` (2026-10-21, Approved)
+
+- **SEC-001:** deferred. A label made of one character with many combining marks passes the 2-line cap and can draw over the bar and a number. It is carried as a Known Hazard to the graph-library GSV ticket implementing GSV-REQ-052..054, when Ticket Breakdown writes it.
+- **SEC-002:** fixed in shared code, for every type. `renderGraph` (`src/react/createGraphComponent.tsx`) reads `description`, `textAlternative` and `fallback` as own props. `checkNode` (`src/layout/kit/check.ts`) tests a node's `text` and `children` with `Object.hasOwn`. A polluted `Object.prototype` no longer renames a graph, hides its placeholder, draws an injected description, or turns every graph into `internal_error`. Pollution tests are in `tests/react/Graph.test.tsx`.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` (2026-10-21, clean) and `gener8v-state lint` exit 0, apart from the expected GSV-REQ-052..054 coverage error. `pnpm test` passes 1,377 tests on three runs.
+
