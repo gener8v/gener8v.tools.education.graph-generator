@@ -73,6 +73,7 @@
   - `tests/core/schema-agreement.test.ts` then mutates `examples/ruler.json` (an inch ruler at eighths).
   - NLC-REQ-013 (a caller's `textAlternative` replaces the generated one) is applied when the Scene is printed (`textAlternativeFor`), so the ruler's case is tested here, through `<RulerGraph>` and `<Graph>`.
 - Carried from rulers/number-lines-and-coordinate-graphs-ticket-002 DEL-001 (term names): the unit term is `rulerUnit` (`unit` is the circle's), and the object is `measuredObject` with `start`, `end`, `label` and `color`. Read the division as `ruler.smallestDivision` and build the marks with `rulerScale(ruler.rulerUnit, ruler.length, ruler.smallestDivision)`, as `describe` does, so the drawing and the text alternative use the same division.
+- Carried from rulers/number-lines-and-coordinate-graphs-ticket-002-code-review/CR-003 (computed ends): validation accepts an end within the mark rule's noise allowance as that mark, so 0.1 + 0.2 is the 3 mm mark and 30.000000000000004 is a 30 cm ruler's end, and `describe` states each end as `scale.locate(end).value`. Draw the object's bar from and to the located marks' values too, never the raw ends, so the figure and its text alternative agree, and test it with computed ends.
 
 **Depends On:** TICKET-001, TICKET-002
 **Blocks:** TICKET-004

@@ -65,14 +65,28 @@ describe("validating a ruler (NLC-REQ-041, NLC-REQ-042)", () => {
     expect(issue!.message).toContain("centimeters, inches");
   });
 
-  it("reports a length that is not whole, not positive, or past its unit's maximum, with the lengths allowed", () => {
-    expect(found(cm({ length: 4.5 }))).toEqual(["wrong_kind /length"]);
-    expect(found(cm({ length: 0 }))).toEqual(["out_of_range /length"]);
-    expect(found(cm({ length: -3 }))).toEqual(["out_of_range /length"]);
-    expect(found(cm({ length: 31 }))).toEqual(["out_of_range /length"]);
-    const [inch] = issuesOf(check(inches({ length: 13 })));
-    expect(inch).toMatchObject({ code: "out_of_range", path: "/length", range: { min: 1, max: 12 } });
-    expect(inch!.message).toBe("length must be a number between 1 and 12; got 13.");
+  it.each([
+    ["centimeters", 0, 30],
+    ["centimeters", -3, 30],
+    ["centimeters", 31, 30],
+    ["inches", 0, 12],
+    ["inches", -3, 12],
+    ["inches", 13, 12],
+    ["inches", 31, 12],
+  ])("reports a %s ruler's length %d with that unit's whole lengths, 1 to %d (code review CR-002)", (rulerUnit, length, max) => {
+    const [issue, ...rest] = issuesOf(check({ type: "ruler", rulerUnit, length }));
+    expect(rest).toEqual([]);
+    expect(issue).toMatchObject({ code: "out_of_range", path: "/length", range: { min: 1, max } });
+    expect(issue!.message).toBe(`length must be a number between 1 and ${max}; got ${length}.`);
+  });
+
+  it("reports a length that is not whole as needing a whole number, on either unit", () => {
+    for (const ruler of [cm({ length: 4.5 }), inches({ length: 4.5 })]) {
+      const [issue, ...rest] = issuesOf(check(ruler));
+      expect(rest).toEqual([]);
+      expect(issue).toMatchObject({ code: "wrong_kind", path: "/length" });
+      expect(issue!.message).toBe("length must be a whole number; got 4.5.");
+    }
   });
 
   it("reports a smallest division on a centimeter ruler as not applying (GSV-REQ-051)", () => {
@@ -111,7 +125,13 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
     expect(0.3 > 0.1 + 0.2).toBe(false);
     const [issue, ...rest] = issuesOf(check(cm(object(0.3, 0.1 + 0.2))));
     expect(rest).toEqual([]);
-    expect(issue).toMatchObject({ code: "out_of_range", path: "/measuredObject/end", range: { min: 0.3, exclusiveMin: true } });
+    // It asks for the next mark, which the value does not meet (code review CR-005).
+    expect(issue).toEqual({
+      code: "out_of_range",
+      path: "/measuredObject/end",
+      range: { min: 0.4 },
+      message: "measuredObject.end must be a number at least 0.4; got 0.30000000000000004.",
+    });
   });
 
   it("reports an end off the ruler at its path, naming the ruler's range, and not also between marks (NLC-REQ-052)", () => {
@@ -138,6 +158,16 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
     expect(found(inches({ smallestDivision: "eighth", ...object(2.0625, 3) }))).toEqual(["not_on_mark /measuredObject/start"]);
   });
 
+  it.each([
+    [inches(object(1, 2.1)), "2.0625 and 2.125"],
+    [inches({ length: 12, smallestDivision: "eighth", ...object(1, 10.2) }), "10.125 and 10.25"],
+    [inches({ length: 12, ...object(1, 11.95) }), "11.9375 and 12"],
+  ])("names the neighbouring marks exactly, never rounded: %j (code review CR-001)", (input, marks) => {
+    const [issue, ...rest] = issuesOf(check(input));
+    expect(rest).toEqual([]);
+    expect(issue!.message).toContain(`between the marks at ${marks}.`);
+  });
+
   it("checks no end against the wrong marks: a refused or inapplicable division skips the check (NLC TICKET-001 code review CR-001)", () => {
     expect(found(inches({ smallestDivision: "eighths", ...object(2.0625, 3) }))).toEqual(["wrong_kind /smallestDivision"]);
     expect(found(cm({ smallestDivision: "eighth", ...object(2.05, 3) }))).toEqual(["inapplicable_property /smallestDivision"]);
@@ -147,6 +177,12 @@ describe("the measured object (NLC-REQ-049, NLC-REQ-051..054)", () => {
 
   it("reports both ends when both are wrong, each once", () => {
     expect(found(cm(object(-1, 7.25)))).toEqual(["out_of_range /measuredObject/start", "not_on_mark /measuredObject/end"]);
+  });
+
+  it("reports an end's fault in the same pass when the other end failed on its own (GSV-REQ-017; code review CR-008)", () => {
+    expect(found(cm(object("2", 7.25)))).toEqual(["wrong_kind /measuredObject/start", "not_on_mark /measuredObject/end"]);
+    expect(found(cm(object(3.25, null)))).toEqual(["wrong_kind /measuredObject/end", "not_on_mark /measuredObject/start"]);
+    expect(found(cm(object(16, "7")))).toEqual(["wrong_kind /measuredObject/end", "out_of_range /measuredObject/start"]);
   });
 });
 
@@ -162,6 +198,12 @@ describe("the text alternative (NLC-REQ-056, NLC-REQ-055)", () => {
 
   it("states the default division when none is given, and a one-unit ruler in the singular", () => {
     expect(textOf(inches({ length: 1 }))).toBe("A ruler, 1 inch long, numbered every inch and marked to sixteenths of an inch.");
+  });
+
+  it("states a computed end as the mark it lies on, never its raw digits (code review CR-003)", () => {
+    expect(textOf(cm(object(0.1 + 0.2, 1.1 + 2.2)))).toContain("from the 0.3 cm mark to the 3.3 cm mark.");
+    expect(textOf(cm({ length: 30, ...object(0.3 - 0.1 - 0.2, 0.1 * 3 * 100) }))).toContain("from the 0 cm mark to the 30 cm mark.");
+    expect(textOf(inches(object(1 / 3 + 2 / 3, 2.0625 + 1e-12)))).toContain("from the 1 in mark to the 2.0625 in mark.");
   });
 
   it("never states the object's length", () => {

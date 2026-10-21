@@ -1,4 +1,4 @@
-import { forEachCodePoint, isUnsafeCodePoint } from "./format";
+import { forEachCodePoint, formatSupplied, isUnsafeCodePoint } from "./format";
 import type { Issue, Range } from "./result";
 
 /**
@@ -178,7 +178,10 @@ export interface IssueParamsByCode {
    * name, for the issue, and `conflictTerms` names it for the message (DGP TICKET-001 DEL-003).
    */
   duplicate_name: { term: Term; got: unknown; conflicts: Terms; conflictTerms: Terms };
-  /** `below` and `above` are the drawn marks on either side of `got` (rulers NLC TICKET-002 DEL-003). */
+  /**
+   * `below` and `above` are the drawn marks on either side of `got` (rulers NLC TICKET-002 DEL-003),
+   * stated exactly, never rounded: 2.0625 is a mark and 2.063 is not (code review CR-001).
+   */
   not_on_mark: { term: Term; got: unknown; below: number; above: number };
 }
 
@@ -380,7 +383,7 @@ const templates: Templates = {
   duplicate_name: (p) =>
     `${describeTerm(p.term)} (${describeValue(p.got)}) repeats ${list(p.conflictTerms)}; give each one a different name.`,
   not_on_mark: (p) =>
-    `${describeTerm(p.term)} must be on a mark of the ruler; got ${describeValue(p.got)}, between the marks at ${describeNumber(p.below)} and ${describeNumber(p.above)}.`,
+    `${describeTerm(p.term)} must be on a mark of the ruler; got ${describeValue(p.got)}, between the marks at ${formatSupplied(p.below)} and ${formatSupplied(p.above)}.`,
 };
 
 /**
