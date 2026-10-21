@@ -324,7 +324,7 @@ Why it matters for the ruler:
 5. **Or accept it** as GSS TICKET-002 did, with a `**Risk accepted by:**` line. The rationale would be that the author controls the figure and the effect stays inside the `<svg>`. The ticket's "without hiding a number" would then be recorded as holding for the estimated box only.
 
 **Compliance Impact:** None. prd/CC-002's criteria still hold: the text alternative states the ends, and the package's colors meet contrast. It is the caller's own text that covers the figure.
-**Status:** Deferred → the graph-library Graph Specification & Vocabulary ticket implementing GSV-REQ-052..054 (caller text limits), to be cut next by Ticket Breakdown
+**Status:** Deferred → graph-library/graph-specification-and-vocabulary/TICKET-007 (caller text limits, GSV-REQ-052..054)
 **Resolution:** Deferred (approved by Thomas, 2026-10-21). That ticket already changes how caller text is bounded for every type. Its breakdown carries this finding as a Known Hazard: bound stacked marks per character in the shared text kit, or count them in a label's estimated box, and test the limit with one-cluster text (combining marks, a ZWJ chain) as well as words.
 
 ---
@@ -384,7 +384,7 @@ Earlier reviews made the validator's and the registries' reads own-key: rulers G
 
 | Finding | Decision | Action Taken | Risk Accepted | File Updated |
 |---------|----------|-------------|---------------|--------------|
-| SEC-001 | Deferred | Carried to the GSV-REQ-052..054 ticket as a Known Hazard at its breakdown | No | — (the ticket does not exist yet) |
+| SEC-001 | Deferred | Known Hazard on graph-library/graph-specification-and-vocabulary/TICKET-007, written 2026-10-21 | No | `.gener8v/changes/graph-library/tickets/graph-specification-and-vocabulary/TICKET-007.md` |
 | SEC-002 | Fixed | Own-key reads of props and Scene node fields; pollution tests | No | `src/react/createGraphComponent.tsx`, `src/layout/kit/check.ts`, `tests/react/Graph.test.tsx` |
 
 ## Verdict
