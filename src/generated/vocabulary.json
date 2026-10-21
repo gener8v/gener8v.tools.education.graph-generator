@@ -80,7 +80,7 @@
       "kind": "number"
     },
     "name": {
-      "definition": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+      "definition": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines.",
       "kind": "string"
     },
     "orientation": {

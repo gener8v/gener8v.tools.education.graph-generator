@@ -165,29 +165,30 @@ export const MAX_STACKED_MARKS = 3;
 export const MAX_CLUSTER_LENGTH = 16;
 
 /**
- * `cluster` as drawn: at most `MAX_STACKED_MARKS` zero-width marks in a row (a joiner, which links
- * two characters, does not count as a mark) and at most `MAX_CLUSTER_LENGTH` code points. The
- * drawing leaves the rest out; the text alternative still states the text whole.
+ * A mark drawn on the character before it: any nonspacing or enclosing combining mark, in every
+ * script (Thai, Arabic and Hebrew marks too, not only those `ZERO_WIDTH` lists), or a zero-width
+ * modifier such as a variation selector or a skin tone. A joiner (U+200D) links two characters and
+ * is not a mark (code review CR-001).
  */
-function drawnCluster(cluster: string): string {
-  let kept = "";
-  let length = 0;
-  let marks = 0;
-  forEachCodePoint(cluster, (code, char) => {
-    if (length === MAX_CLUSTER_LENGTH) return;
-    const mark = code !== ZWJ && within(ZERO_WIDTH, code);
-    marks = mark ? marks + 1 : 0;
-    if (marks > MAX_STACKED_MARKS) return;
-    kept += char;
-    length++;
-  });
-  return kept;
-}
+const STACKING_MARK = /[\p{Mn}\p{Me}]/u;
+const isStackingMark = (code: number, char: string) => code !== ZWJ && (STACKING_MARK.test(char) || within(ZERO_WIDTH, code));
 
-/** A word as drawn: each of its clusters bounded by `drawnCluster`. Unchanged for ordinary text. */
+/**
+ * `word` as drawn: at most `MAX_STACKED_MARKS` marks in a row on one character, counted along the
+ * whole word, so marks the width table does not know (each its own cluster) and marks split by
+ * joiners still count; a joiner neither counts nor ends the run (code review CR-001, CR-002). Then
+ * each cluster keeps at most `MAX_CLUSTER_LENGTH` code points. The drawing leaves the rest out; the
+ * text alternative still states the text whole. Unchanged for ordinary text.
+ */
 function drawnWord(word: string): string {
+  let marked = "";
+  let marks = 0;
+  forEachCodePoint(word, (code, char) => {
+    if (code !== ZWJ) marks = isStackingMark(code, char) ? marks + 1 : 0;
+    if (marks <= MAX_STACKED_MARKS) marked += char;
+  });
   let drawn = "";
-  for (const cluster of clusters(word)) drawn += cluster.length <= MAX_STACKED_MARKS + 1 ? cluster : drawnCluster(cluster);
+  for (const cluster of clusters(marked)) drawn += cluster.length <= MAX_CLUSTER_LENGTH ? cluster : [...cluster].slice(0, MAX_CLUSTER_LENGTH).join("");
   return drawn;
 }
 

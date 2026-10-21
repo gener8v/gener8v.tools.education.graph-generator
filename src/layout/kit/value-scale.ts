@@ -127,7 +127,7 @@ export interface CategorySlot {
   readonly start: number;
   readonly end: number;
   readonly center: number;
-  /** The name broken into lines, every word kept: a long name wraps, it is never cut short. */
+  /** The name broken into lines, every word kept: a long name wraps, and only stacked marks past `wrap`'s bound are left out. */
   readonly lines: readonly string[];
   /** The width the name's lines are wrapped to. */
   readonly labelWidth: number;

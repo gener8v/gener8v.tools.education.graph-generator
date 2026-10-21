@@ -172,8 +172,24 @@ describe("one-cluster text is drawn bounded (rulers NLC TICKET-003 security revi
     expect(codePoints(wrap(`❤${"️".repeat(199)}`, 240, 14)[0]!)).toBeLessThanOrEqual(1 + MAX_STACKED_MARKS);
   });
 
-  it("leaves real text whole: two stacked accents, skin tones, emoji families and a kiss", () => {
-    for (const text of ["Tiếng Việt ệ", "👍🏽 👋🏿", "👨‍👩‍👧‍👦", "👩‍❤️‍💋‍👨", "क्षत्रिय", "naïve café"]) expect(wrap(text, 400, 14)).toEqual([text]);
+  it("counts marks of every script, not only those the width table lists, and marks split by joiners (code review CR-001, CR-002)", () => {
+    const thai = `x${"\u0e38".repeat(199)}`;
+    const arabic = `x${Array.from({ length: 199 }, (_, i) => String.fromCodePoint(0x610 + (i % 11))).join("")}`;
+    for (const text of [thai, arabic]) {
+      const lines = wrap(text, 240, 14, 2);
+      expect(lines, text.slice(0, 3)).toHaveLength(1);
+      expect([...lines[0]!]).toHaveLength(1 + MAX_STACKED_MARKS);
+    }
+    // A joiner neither counts as a mark nor ends a run of them.
+    const split = `x${"\u0301\u0302\u200d".repeat(66)}`;
+    const drawn = [...wrap(split, 240, 14)[0]!];
+    expect(drawn.filter((char) => /\p{M}/u.test(char))).toHaveLength(MAX_STACKED_MARKS);
+  });
+
+  it("leaves real text whole: stacked accents, Thai and Arabic marks, skin tones, emoji families and a kiss", () => {
+    for (const text of ["Tiếng Việt ệ", "ภาษาไทย ผู้ใหญ่ กิ๊ก", "مَرْحَبًا بِكُمْ", "👍🏽 👋🏿", "👨‍👩‍👧‍👦", "👩‍❤️‍💋‍👨", "क्षत्रिय", "naïve café"]) {
+      expect(wrap(text, 400, 14)).toEqual([text]);
+    }
   });
 
   it("measures the widest word as it is drawn", () => {

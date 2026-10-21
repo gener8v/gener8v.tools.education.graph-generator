@@ -151,7 +151,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines.",
                 "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
                 "maxLength": 200
               }
@@ -275,7 +275,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines.",
                 "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
                 "maxLength": 200
               },
@@ -364,7 +364,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines.",
                 "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
                 "maxLength": 200
               }

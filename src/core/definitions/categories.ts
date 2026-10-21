@@ -90,7 +90,7 @@ export function categoriesProperty(elementProperties: PropertyMap = {}): Propert
             kind: "string",
             required: true,
             maxLength: CATEGORY_NAME_LIMIT,
-            description: `The category's name, as plain text, at most ${CATEGORY_NAME_LIMIT} characters. A long name wraps onto more lines; it is never cut short.`,
+            description: `The category's name, as plain text, at most ${CATEGORY_NAME_LIMIT} characters. A long name wraps onto more lines.`,
           },
           ...elementProperties,
         },

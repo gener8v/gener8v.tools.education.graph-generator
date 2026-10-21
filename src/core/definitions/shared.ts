@@ -28,8 +28,9 @@ const FIGURES = ["circle", "square", "triangle", "cube", "cylinder"] as const;
  * the tool summary and the render cost whole. Published as `maxLength` (GSV-REQ-054); a longer text
  * is reported as `too_large`, never cut.
  */
-// @spec GSV-REQ-052, GSV-REQ-053
+// @spec GSV-REQ-052
 export const CALLER_TEXT_LIMIT = 200;
+// @spec GSV-REQ-053
 export const UNIT_TEXT_LIMIT = 20;
 
 /**

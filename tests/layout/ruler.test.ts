@@ -8,7 +8,7 @@ import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { defaultStyle } from "../../src/core/style";
 import { checkScene } from "../../src/layout/kit/check";
 import { fmt } from "../../src/layout/kit/format";
-import { MAX_CLUSTER_LENGTH } from "../../src/layout/kit/text";
+import { MAX_CLUSTER_LENGTH, MAX_STACKED_MARKS } from "../../src/layout/kit/text";
 import { titleBlock } from "../../src/layout/kit/title";
 import { BAR_HEIGHT, LABEL_MAX_LINES, RULER_EDGE, rulerFontSize, rulerLayout } from "../../src/layout/ruler";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
@@ -253,11 +253,14 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
   it("draws a one-cluster label at the limit inside its box, clear of the bar, the end marks and the numbers (security review SEC-001)", () => {
     const marked = `x${Array.from({ length: CALLER_TEXT_LIMIT - 1 }, (_, i) => String.fromCodePoint(0x316 + (i % 36))).join("")}`;
     const chain = Array.from({ length: 66 }, () => "👩").join("\u200d");
-    for (const label of [marked, chain]) {
+    const thai = `x${"\u0e38".repeat(CALLER_TEXT_LIMIT - 1)}`;
+    const split = `x${"\u0301\u0302\u200d".repeat(66)}`;
+    for (const label of [marked, chain, thai, split]) {
       const scene = sceneOf(centimeters(10, { measuredObject: { start: 4.9, end: 5.1, label } }));
       const [line, ...rest] = labelLines(scene);
       expect(rest).toEqual([]);
       expect([...line!.text].length).toBeLessThanOrEqual(MAX_CLUSTER_LENGTH);
+      expect([...line!.text].filter((char) => /\p{M}/u.test(char)).length).toBeLessThanOrEqual(MAX_STACKED_MARKS);
       expect(outside(scene)).toEqual([]);
       expect(collisions(scene, 10)).toEqual([]);
       // The text alternative still states the label whole.

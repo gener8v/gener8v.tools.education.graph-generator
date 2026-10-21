@@ -172,4 +172,10 @@
 
 ## Post-Review Amendments
 
-None
+### Code review — `graph-library/graph-specification-and-vocabulary-ticket-007-code-review` (2026-10-21, Approved)
+
+- **CR-001, CR-002:** `drawnWord` (`src/layout/kit/text.ts`) now bounds stacked marks along the whole word, before clusters are cut. A mark is any nonspacing or enclosing combining mark (`\p{Mn}`, `\p{Me}`) or a `ZERO_WIDTH` modifier, so Thai, Arabic, Hebrew and other marks the width table does not list are counted. A joiner neither counts nor ends a run. `drawnCluster` is gone; each cluster is still cut at 16 code points. Tests: Thai, Arabic and joiner-split runs in `tests/layout/kit/text.test.ts` and on the ruler in `tests/layout/ruler.test.ts`; real Thai and Arabic text stays whole. DEL-002's bound now holds in every script.
+- **CR-003:** `// @spec GSV-REQ-053` above `UNIT_TEXT_LIMIT`; the GSV-REQ-054 coverage row names `sharedProperties`.
+- **CR-004:** the category `name` description drops "it is never cut short"; regenerated. The comment at `src/layout/kit/value-scale.ts:130` matches.
+- **CR-005:** the Verification Run's test evidence should read 49 test files, not 50; the test count and exit codes were right.
+- **Re-verification:** `pnpm generate`, `lint`, `typecheck`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `bench`, `audit` and `gener8v-state lint` exit 0. `pnpm test` passes 49 files and 1,389 tests on three runs. Two mutations, counting marks from the width table and letting a joiner reset the run, each fail 2 tests.

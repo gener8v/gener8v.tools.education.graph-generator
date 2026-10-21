@@ -50,7 +50,7 @@ export interface LineGraphDescription {
   };
   /** The categories, drawn in the order given: at least 1 and at most 100, each with a different name. */
   categories: ReadonlyArray<{
-    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short. */
+    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines. */
     name: string;
   }>;
   /** The series, at least 1 and at most 6, each drawn as a line through one point per category. Without a lineColor, a series takes the default color for its position (the first series the first color, and so on); every series also has its own point shape and dash pattern, so series differ without color. */
@@ -87,7 +87,7 @@ export interface BarGraphDescription {
   };
   /** The categories, drawn in the order given: at least 1 and at most 100, each with a different name. */
   categories: ReadonlyArray<{
-    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short. */
+    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines. */
     name: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
     color?: string;
@@ -114,7 +114,7 @@ export interface PictographDescription {
   valueUnitLabel?: string;
   /** The categories, drawn in the order given: at least 1 and at most 100, each with a different name. */
   categories: ReadonlyArray<{
-    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short. */
+    /** The category's name, as plain text, at most 200 characters. A long name wraps onto more lines. */
     name: string;
   }>;
   /** One value per category, in the same order as the categories. */

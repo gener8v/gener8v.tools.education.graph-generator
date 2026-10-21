@@ -210,7 +210,7 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                    "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines.",
                     "maxLength": 200
                   }
                 },
@@ -375,7 +375,7 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                    "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines.",
                     "maxLength": 200
                   },
                   "color": {
@@ -497,7 +497,7 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines; it is never cut short.",
+                    "description": "The category's name, as plain text, at most 200 characters. A long name wraps onto more lines.",
                     "maxLength": 200
                   }
                 },
