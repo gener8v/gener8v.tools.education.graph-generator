@@ -34,6 +34,12 @@ export interface AxisOptions {
   readonly labels?: ReadonlyMap<number, string>;
   readonly showTickLabels: boolean;
   readonly side: AxisSide;
+  /**
+   * The color of the axis line and its ticks, a resolved `#rrggbb`; the default line color when
+   * absent or undefined. Read only as the options' own key. Tick labels keep the text color
+   * (graph-library NLC TICKET-002 DEL-001).
+   */
+  readonly lineColor?: string;
 }
 
 /** Space between a tick's end and its label, in drawing units. */
@@ -64,14 +70,14 @@ function checkedLabels(options: AxisOptions): ReadonlyMap<number, string> | unde
   return labels;
 }
 
-const line = (x1: number, y1: number, x2: number, y2: number, width: number): SceneNode => ({
+const line = (x1: number, y1: number, x2: number, y2: number, width: number, color: string): SceneNode => ({
   kind: "line",
   attrs: [
     ["x1", fmt(x1)],
     ["y1", fmt(y1)],
     ["x2", fmt(x2)],
     ["y2", fmt(y2)],
-    ["stroke", defaultStyle.colors.line],
+    ["stroke", color],
     ["stroke-width", fmt(width)],
   ],
 });
@@ -79,7 +85,7 @@ const line = (x1: number, y1: number, x2: number, y2: number, width: number): Sc
 /**
  * An axis (NLC-REQ-004, NLC-REQ-006, NLC-REQ-007): its line from `from` to `to`, a tick across the
  * line at each value of `ticks`, at its proportional place along the line (`linearScale` of the
- * domain), and, when `showTickLabels`, each tick's label on `side`: the caller's text for that
+ * domain), in `lineColor` or the default line color, and, when `showTickLabels`, each tick's label on `side`: the caller's text for that
  * value, else the value with the decimals the spacing needs (`tickLabel`). Ticks are
  * perpendicular to the line and centered on it, so the same call draws a number line, either axis
  * of an x,y graph through its origin, or a diagonal axis of an x,y,z graph. Hidden labels leave the
@@ -91,6 +97,7 @@ const line = (x1: number, y1: number, x2: number, y2: number, width: number): Sc
 export function drawAxis(options: AxisOptions): SceneNode[] {
   const labels = checkedLabels(options);
   const { from, to, domain, ticks, spacing, showTickLabels, side } = options;
+  const color = (Object.hasOwn(options, "lineColor") ? options.lineColor : undefined) ?? defaultStyle.colors.line;
   const [x0, y0] = from;
   const [x1, y1] = to;
   const length = Math.hypot(x1 - x0, y1 - y0);
@@ -114,13 +121,13 @@ export function drawAxis(options: AxisOptions): SceneNode[] {
     return tickLabel(tick, spacing);
   };
 
-  const nodes: SceneNode[] = [line(x0, y0, x1, y1, defaultStyle.lineWidths.axis)];
+  const nodes: SceneNode[] = [line(x0, y0, x1, y1, defaultStyle.lineWidths.axis, color)];
   const texts: SceneNode[] = [];
   for (const value of ticks) {
     const t = at(value);
     const x = x0 + t * (x1 - x0);
     const y = y0 + t * (y1 - y0);
-    nodes.push(line(x - nx * half, y - ny * half, x + nx * half, y + ny * half, defaultStyle.lineWidths.tick));
+    nodes.push(line(x - nx * half, y - ny * half, x + nx * half, y + ny * half, defaultStyle.lineWidths.tick, color));
     if (!showTickLabels) continue;
     const text = labelAt(value);
     const clear = reach + LABEL_GAP + climb(textWidth(text, fontSize));

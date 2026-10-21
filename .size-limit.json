@@ -52,5 +52,11 @@
     "path": "dist/ruler.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./number-line",
+    "path": "dist/number-line.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

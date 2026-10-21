@@ -1,0 +1,5 @@
+{
+  "type": "number-line",
+  "axis": { "min": 0, "max": 10, "tickSpacing": 1 },
+  "tickLabels": [{ "value": 0.5, "text": "half" }]
+}

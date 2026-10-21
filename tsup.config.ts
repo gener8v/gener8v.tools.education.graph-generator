@@ -15,6 +15,7 @@ export default defineConfig({
     "line-graph": "src/entries/line-graph.ts",
     "bar-graph": "src/entries/bar-graph.ts",
     ruler: "src/entries/ruler.ts",
+    "number-line": "src/entries/number-line.ts",
   },
   format: ["esm"],
   // tsup sets the `baseUrl` option for declaration builds, which TypeScript 6 reports as deprecated.

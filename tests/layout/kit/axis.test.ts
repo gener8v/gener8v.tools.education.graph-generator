@@ -178,3 +178,20 @@ describe("options no validated axis gives (security review SEC-004)", () => {
     expect(texts(nodes)).toEqual([]);
   });
 });
+
+describe("the axis's line color (graph-library NLC TICKET-002 DEL-001)", () => {
+  it("draws the line and every tick in lineColor, leaving the labels in the text color", () => {
+    const nodes = drawAxis(axisOf([20, 100], [380, 100], -10, 10, { lineColor: "#2e7d32" }));
+    const strokes = nodes.filter((node) => node.kind === "line").map((node) => attr(node, "stroke"));
+    expect(new Set(strokes)).toEqual(new Set(["#2e7d32"]));
+    expect(nodes.filter((node) => node.kind === "text").every((node) => attr(node, "fill") === defaultStyle.colors.text)).toBe(true);
+  });
+
+  it("draws exactly as before when lineColor is absent or undefined, and ignores an inherited one", () => {
+    const plain = drawAxis(axisOf([20, 100], [380, 100], -10, 10));
+    expect(plain.filter((node) => node.kind === "line").every((node) => attr(node, "stroke") === defaultStyle.colors.line)).toBe(true);
+    expect(drawAxis(axisOf([20, 100], [380, 100], -10, 10, { lineColor: undefined }))).toEqual(plain);
+    const inherited = Object.assign(Object.create({ lineColor: "#c62828" }) as AxisOptions, axisOf([20, 100], [380, 100], -10, 10));
+    expect(drawAxis(inherited)).toEqual(plain);
+  });
+});

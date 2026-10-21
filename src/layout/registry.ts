@@ -3,6 +3,7 @@ import type { Provenance } from "../core/result";
 import { barGraphLayout } from "./bar-graph";
 import { circleLayout } from "./circle";
 import { lineGraphLayout } from "./line-graph";
+import { numberLineLayout } from "./number-line";
 import { pictographLayout } from "./pictograph";
 import { rulerLayout } from "./ruler";
 import type { Scene } from "./scene";
@@ -33,6 +34,7 @@ export type LayoutRegistry = Readonly<Partial<Record<GraphType, Layout>>>;
 // @spec CPSE-REQ-007, CPSE-REQ-008
 export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, Layout>>, {
+    "number-line": numberLineLayout,
     "line-graph": lineGraphLayout,
     "bar-graph": barGraphLayout,
     pictograph: pictographLayout,

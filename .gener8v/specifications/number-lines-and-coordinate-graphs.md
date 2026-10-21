@@ -203,7 +203,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-004 | `src/core/definitions/axis.ts`:axisProperties; `src/core/value-scale.ts`:tickCount, niceTicks, axisTickLabel; `src/layout/kit/axis.ts`:drawAxis |
 | NLC-REQ-005 | `src/core/definitions/axis.ts`:axisProperties; `src/core/value-scale.ts`:axisSpacing, niceTicks |
 | NLC-REQ-006 | `src/core/definitions/axis.ts`:axisProperties; `src/layout/kit/axis.ts`:drawAxis |
-| NLC-REQ-007 | `src/layout/kit/axis.ts`:drawAxis (ticks; points and segments with NLC TICKET-002..004) |
+| NLC-REQ-007 | `src/layout/kit/axis.ts`:drawAxis (ticks); `src/layout/number-line.ts`:numberLineLayout (points; segments with NLC TICKET-003, TICKET-004) |
 | NLC-REQ-008 | `src/core/value-scale.ts`:tickCount; `src/core/definitions/axis.ts`:axisChecks |
 | NLC-REQ-009 | `src/core/definitions/axis.ts`:axisChecks |
 | NLC-REQ-043 | `src/layout/kit/ruler.ts`:drawRulerMarks; `src/layout/ruler.ts`:rulerLayout |
@@ -216,6 +216,19 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-042 | `src/core/ruler.ts`:isRulerLength; `src/core/definitions/ruler.ts`:defineRulerProperties (`length`, whole), lengthFitsUnit (1 to the unit's maximum, with that unit's range) |
 | NLC-REQ-052 | `src/core/ruler.ts`:locateOnRuler (`rulerScale(…).locate`); `src/core/definitions/ruler.ts`:endOnMark |
 | NLC-REQ-001 | `src/core/definitions/ruler.ts`:ruler, defineRulerProperties (ruler part; registered in `src/core/definitions/index.ts`:definitions) |
+| NLC-REQ-001 | `src/core/definitions/number-line.ts`:numberLine, defineNumberLineProperties (number-line part) |
+| NLC-REQ-010 | `src/core/definitions/number-line.ts`:pointsInRange (number-line part) |
+| NLC-REQ-011 | `src/core/definitions/number-line.ts`:defineNumberLineProperties (the shared `label` and `color` nested per point); `src/layout/number-line.ts`:numberLineLayout |
+| NLC-REQ-012 | `src/core/definitions/number-line.ts`:numberLine.describe (number-line part) |
+| NLC-REQ-013 | `src/layout/scene.ts`:textAlternativeFor (the component prop, for every type) |
+| NLC-REQ-014 | `src/core/definitions/number-line.ts`:numberLine; `src/layout/number-line.ts`:numberLineLayout; `src/react/graphs/NumberLineGraph.tsx`:NumberLineGraph |
+| NLC-REQ-015 | `src/core/definitions/number-line.ts`:defineNumberLineProperties (`leftArrow`, `rightArrow`) |
+| NLC-REQ-016 | `src/layout/number-line.ts`:numberLineLayout (an arrowhead polygon per end that is on); `src/core/definitions/number-line.ts`:numberLine.describe |
+| NLC-REQ-017 | `src/core/definitions/number-line.ts`:defineNumberLineProperties, hasArrow (on unless `false`) |
+| NLC-REQ-018 | `src/layout/number-line.ts`:numberLineLayout (a marker at each point) |
+| NLC-REQ-019 | `src/core/definitions/number-line.ts`:defineNumberLineProperties (`tickLabels`), numberLine.describe; `src/layout/number-line.ts`:numberLineLayout; `src/layout/kit/axis.ts`:drawAxis |
+| NLC-REQ-020 | `src/core/definitions/number-line.ts`:tickLabelsOnTicks |
+| NLC-REQ-021 | `src/core/definitions/number-line.ts`:defineNumberLineProperties, numberLine.describe; `src/layout/number-line.ts`:numberLineLayout (the shared `lineLabel`) |
 | NLC-REQ-041 | `src/core/definitions/ruler.ts`:defineRulerProperties (`rulerUnit`, an enum of `RULER_UNITS`) |
 | NLC-REQ-049 | `src/core/definitions/ruler.ts`:defineRulerProperties (`measuredObject` with `start` and `end`) |
 | NLC-REQ-051 | `src/core/definitions/ruler.ts`:objectInOrder (ends ordered by mark index) |

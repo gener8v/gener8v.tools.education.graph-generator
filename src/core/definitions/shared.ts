@@ -75,7 +75,7 @@ export const sharedProperties = defineProperties({
     required: false,
     presentation: "lineLabel",
     description:
-      `A label for a line: the number line itself, or one series of a line graph, as plain text, at most ${CALLER_TEXT_LIMIT} characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.`,
+      `A label for a line: the number line itself, or one series of a line graph, as plain text, at most ${CALLER_TEXT_LIMIT} characters. In the drawing, a label longer than two lines is cut short with “…”: below a number line, or in a line graph's legend. The text alternative states it whole.`,
     appliesTo: ["number-line"],
     elementsOf: ["line-graph"],
   },

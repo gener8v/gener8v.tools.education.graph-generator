@@ -144,7 +144,7 @@ const VISIBLE = /[^\s\p{Cc}\p{Cf}\p{M}\p{Z}\u2800\u115f\u1160\u3164\uffa0]/u;
  * (control and hidden characters removed), when anything visible is left; otherwise the Scene's
  * generated one (prd/CC-002). Never throws, whatever the caller passed.
  */
-// @spec CPSE-REQ-012
+// @spec CPSE-REQ-012, NLC-REQ-013
 export function textAlternativeFor(scene: Scene, supplied: unknown): string {
   if (typeof supplied !== "string") return scene.textAlternative;
   const cleaned = cleanText(supplied);

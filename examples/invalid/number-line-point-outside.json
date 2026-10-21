@@ -1,0 +1,5 @@
+{
+  "type": "number-line",
+  "axis": { "min": -10, "max": 10 },
+  "points": [{ "value": 12, "label": "A" }]
+}

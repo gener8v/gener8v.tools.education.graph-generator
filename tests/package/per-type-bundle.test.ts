@@ -207,6 +207,31 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     }
   });
 
+  it("leaves every other type out of the number line's entry and component, and the number line out of theirs (graph-library NLC TICKET-002)", async () => {
+    for (const entry of [`export { NumberLineGraph } from "./src/entries/number-line";`, `export { NumberLineGraph } from "./src/react/graphs/NumberLineGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A number line");
+      for (const other of ["A circle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A red apple", OTHER, OTHER_DEFINITION]) expect(code, other).not.toContain(other);
+    }
+    for (const entry of [
+      `export { CircleGraph } from "./src/entries/circle";`,
+      `export { Pictograph } from "./src/entries/pictograph";`,
+      `export { LineGraph } from "./src/entries/line-graph";`,
+      `export { BarGraph } from "./src/entries/bar-graph";`,
+      `export { RulerGraph } from "./src/entries/ruler";`,
+    ]) {
+      expect(await bundle(entry), entry).not.toContain("A number line");
+    }
+  });
+
+  it("leaves the number line and the axis kit out of a consumer's bundle of every other built entry", async () => {
+    // Text that survives minifying: the definition's description, the layout's and the axis kit's errors.
+    for (const built of ["circle", "pictograph", "line-graph", "bar-graph", "ruler"]) {
+      const code = await consumerBundle(`export * from "./dist/${built}.js";`);
+      for (const text of ["A number line", "numberLineLayout()", "drawAxis()"]) expect(code, `${built}: ${text}`).not.toContain(text);
+    }
+  });
+
   it("leaves the ruler, its mark rule's tables and its kit out of a consumer's bundle of every other built entry (rulers NLC TICKET-002 quality review QR-002)", async () => {
     // The built package shares chunks between entries, so the mark rule's frozen tables reach the
     // others' chunks; marked pure, a consumer's bundler drops them. Text that survives minifying,

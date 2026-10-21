@@ -1,0 +1,31 @@
+{
+  "type": "number-line",
+  "title": "Temperatures at noon",
+  "axis": {
+    "min": -10,
+    "max": 10,
+    "tickSpacing": 2,
+    "showTickLabels": true
+  },
+  "leftArrow": true,
+  "rightArrow": true,
+  "points": [
+    {
+      "value": -3,
+      "label": "Monday",
+      "color": "red"
+    },
+    {
+      "value": 4,
+      "label": "Tuesday"
+    }
+  ],
+  "tickLabels": [
+    {
+      "value": 0,
+      "text": "zero"
+    }
+  ],
+  "lineLabel": "Degrees Celsius",
+  "lineColor": "blue"
+}

@@ -3,6 +3,10 @@
     1
   ],
   "terms": {
+    "axis": {
+      "definition": "The number line's axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
+      "kind": "object"
+    },
     "barColor": {
       "definition": "The color of every bar, unless a category gives its own: a color name or a hex code such as #0072b2.",
       "kind": "color"
@@ -55,6 +59,10 @@
       "definition": "Whether the radius is labeled with its measurement; a labeled radius is drawn.",
       "kind": "boolean"
     },
+    "leftArrow": {
+      "definition": "Whether the number line's left end has an arrowhead, showing the line goes on; shown unless false. Without one, the line stops at its min.",
+      "kind": "boolean"
+    },
     "length": {
       "definition": "How many whole units a ruler is long: 1 to 30 for centimeters, 1 to 12 for inches.",
       "kind": "integer"
@@ -64,8 +72,12 @@
       "kind": "color"
     },
     "lineLabel": {
-      "definition": "A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+      "definition": "A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”: below a number line, or in a line graph's legend. The text alternative states it whole.",
       "kind": "string"
+    },
+    "max": {
+      "definition": "The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001).",
+      "kind": "number"
     },
     "maximum": {
       "definition": "The highest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size; above the minimum by at least a billionth of the larger end's size.",
@@ -74,6 +86,10 @@
     "measuredObject": {
       "definition": "An object lying along the ruler, to be measured, drawn as a bar from its start mark to its end mark; its length is never written on the figure.",
       "kind": "object"
+    },
+    "min": {
+      "definition": "The lowest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and below the axis's max.",
+      "kind": "number"
     },
     "minimum": {
       "definition": "The lowest value on the value axis, from -1000000000 to 1000000000: 0, or at least 0.000000001 in size.",
@@ -87,6 +103,10 @@
       "definition": "Which way the categories' rows, columns or bars run: horizontal or vertical. The default is horizontal for a pictograph and vertical for a bar graph.",
       "kind": "enum"
     },
+    "points": {
+      "definition": "The points marked on the number line, at most 100, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart.",
+      "kind": "array"
+    },
     "radius": {
       "definition": "The distance from the center to the circle, from 0.001 to 1,000,000.",
       "kind": "number"
@@ -94,6 +114,10 @@
     "radiusLabelText": {
       "definition": "Text shown in place of the radius label, at most 200 characters, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
+    },
+    "rightArrow": {
+      "definition": "Whether the number line's right end has an arrowhead, showing the line goes on; shown unless false. Without one, the line stops at its max.",
+      "kind": "boolean"
     },
     "rulerUnit": {
       "definition": "The unit a ruler is marked in: centimeters or inches.",
@@ -115,6 +139,10 @@
       "definition": "Whether the radius is drawn, from the center horizontally to the right.",
       "kind": "boolean"
     },
+    "showTickLabels": {
+      "definition": "Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs.",
+      "kind": "boolean"
+    },
     "showValues": {
       "definition": "Whether to write each bar's value beside it, exactly as given; a zero bar shows 0.",
       "kind": "boolean"
@@ -127,8 +155,20 @@
       "definition": "The ruler mark the object starts at, in the ruler's unit, as a decimal: a whole millimeter on a centimeter ruler (3.4), a multiple of the smallest division on an inch ruler (2.0625 for 2 1/16). Any mark from 0 to the ruler's length.",
       "kind": "number"
     },
+    "text": {
+      "definition": "The text written at a tick in place of its value, as plain text, at most 200 characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”; the text alternative states it whole.",
+      "kind": "string"
+    },
     "tickInterval": {
       "definition": "The distance between neighbouring ticks on the value axis: greater than 0, dividing the scale into whole intervals, with at most 100 ticks.",
+      "kind": "number"
+    },
+    "tickLabels": {
+      "definition": "Custom labels written at ticks in place of their values, at most 100: for example \"start\" at 0, or a blank at a tick to fill in. When two labels share a tick, the first is written. Hidden with the other tick labels when the axis's showTickLabels is false.",
+      "kind": "array"
+    },
+    "tickSpacing": {
+      "definition": "The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one).",
       "kind": "number"
     },
     "title": {
@@ -149,6 +189,10 @@
     },
     "unitValue": {
       "definition": "How many units one picture stands for: greater than 0, at most 1000000000.",
+      "kind": "number"
+    },
+    "value": {
+      "definition": "A position on the number line, in the line's own numbers: where a point is marked, or the tick a custom label is written at. It must lie on the line's range, ends included; a custom label's value must be a tick.",
       "kind": "number"
     },
     "valueAxisLabel": {
@@ -173,6 +217,137 @@
     }
   },
   "graphTypes": {
+    "number-line": {
+      "title": "Number line",
+      "description": "A number line: one axis from its min to its max, negative, positive or across zero, with ticks, an arrowhead at each end unless turned off, and optionally marked points (at most 100), custom tick labels and a label for the line.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "number-line"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "lineColor": {
+          "kind": "color",
+          "required": false
+        },
+        "lineLabel": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "axis": {
+          "kind": "object",
+          "required": true,
+          "properties": {
+            "min": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "max": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickSpacing": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            },
+            "showTickLabels": {
+              "kind": "boolean",
+              "required": false
+            }
+          },
+          "ordered": [
+            [
+              "min",
+              "max"
+            ]
+          ]
+        },
+        "leftArrow": {
+          "kind": "boolean",
+          "required": false
+        },
+        "rightArrow": {
+          "kind": "boolean",
+          "required": false
+        },
+        "points": {
+          "kind": "array",
+          "required": false,
+          "maxItems": 100,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "value": {
+                "kind": "number",
+                "required": true
+              },
+              "label": {
+                "kind": "string",
+                "required": false,
+                "maxLength": 200
+              },
+              "color": {
+                "kind": "color",
+                "required": false
+              }
+            }
+          }
+        },
+        "tickLabels": {
+          "kind": "array",
+          "required": false,
+          "maxItems": 100,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "value": {
+                "kind": "number",
+                "required": true
+              },
+              "text": {
+                "kind": "string",
+                "required": true,
+                "maxLength": 200
+              }
+            }
+          }
+        }
+      },
+      "derivations": [],
+      "checks": [
+        "the axis range can be drawn",
+        "the axis tick spacing is greater than 0 and gives at most 100 ticks",
+        "every point lies on the number line's range",
+        "every custom tick label is at a tick"
+      ]
+    },
     "ruler": {
       "title": "Ruler",
       "description": "A ruler in centimeters or inches, drawn to scale with itself (not at true physical size), with whole units numbered from 0, and optionally an object lying along it from one mark to another, for \"how long is it?\" questions. A centimeter ruler is up to 30 cm long and an inch ruler up to 12 in.",

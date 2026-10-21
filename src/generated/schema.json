@@ -5,6 +5,141 @@
   "anyOf": [
     {
       "type": "object",
+      "title": "Number line",
+      "description": "A number line: one axis from its min to its max, negative, positive or across zero, with ticks, an arrowhead at each end unless turned off, and optionally marked points (at most 100), custom tick labels and a label for the line.",
+      "properties": {
+        "type": {
+          "const": "number-line",
+          "description": "The graph type: which kind of graph the description draws."
+        },
+        "version": {
+          "enum": [
+            1
+          ],
+          "description": "The schema version the description is written for. Leave it out for the current version, 1."
+        },
+        "title": {
+          "type": "string",
+          "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+          "maxLength": 200
+        },
+        "lineColor": {
+          "type": "string",
+          "description": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
+          "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
+        },
+        "lineLabel": {
+          "type": "string",
+          "description": "A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”: below a number line, or in a line graph's legend. The text alternative states it whole.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+          "maxLength": 200
+        },
+        "axis": {
+          "type": "object",
+          "description": "The number line's axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. max must be greater than min.",
+          "properties": {
+            "min": {
+              "type": "number",
+              "description": "The lowest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and below the axis's max.",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            },
+            "max": {
+              "type": "number",
+              "description": "The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001).",
+              "minimum": -1000000000,
+              "maximum": 1000000000
+            },
+            "tickSpacing": {
+              "type": "number",
+              "description": "The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one).",
+              "maximum": 2000000000
+            },
+            "showTickLabels": {
+              "type": "boolean",
+              "description": "Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs."
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false
+        },
+        "leftArrow": {
+          "type": "boolean",
+          "description": "Whether the number line's left end has an arrowhead, showing the line goes on; shown unless false. Without one, the line stops at its min."
+        },
+        "rightArrow": {
+          "type": "boolean",
+          "description": "Whether the number line's right end has an arrowhead, showing the line goes on; shown unless false. Without one, the line stops at its max."
+        },
+        "points": {
+          "type": "array",
+          "description": "The points marked on the number line, at most 100, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart.",
+          "items": {
+            "type": "object",
+            "description": "One marked point: its value, and optionally its label and color.",
+            "properties": {
+              "value": {
+                "type": "number",
+                "description": "A position on the number line, in the line's own numbers: where a point is marked, or the tick a custom label is written at. It must lie on the line's range, ends included; a custom label's value must be a tick."
+              },
+              "label": {
+                "type": "string",
+                "description": "A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
+                "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+                "maxLength": 200
+              },
+              "color": {
+                "type": "string",
+                "description": "The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2.",
+                "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        },
+        "tickLabels": {
+          "type": "array",
+          "description": "Custom labels written at ticks in place of their values, at most 100: for example \"start\" at 0, or a blank at a tick to fill in. When two labels share a tick, the first is written. Hidden with the other tick labels when the axis's showTickLabels is false.",
+          "items": {
+            "type": "object",
+            "description": "One custom tick label: the tick's value and the text written there.",
+            "properties": {
+              "value": {
+                "type": "number",
+                "description": "A position on the number line, in the line's own numbers: where a point is marked, or the tick a custom label is written at. It must lie on the line's range, ends included; a custom label's value must be a tick."
+              },
+              "text": {
+                "type": "string",
+                "description": "The text written at a tick in place of its value, as plain text, at most 200 characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”; the text alternative states it whole.",
+                "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "value",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "type",
+        "axis"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
       "title": "Ruler",
       "description": "A ruler in centimeters or inches, drawn to scale with itself (not at true physical size), with whole units numbered from 0, and optionally an object lying along it from one mark to another, for \"how long is it?\" questions. A centimeter ruler is up to 30 cm long and an inch ruler up to 12 in.",
       "properties": {
@@ -183,7 +318,7 @@
               },
               "lineLabel": {
                 "type": "string",
-                "description": "A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In a line graph's legend, a label longer than two lines is cut short with “…”; the text alternative states it whole.",
+                "description": "A label for a line: the number line itself, or one series of a line graph, as plain text, at most 200 characters. In the drawing, a label longer than two lines is cut short with “…”: below a number line, or in a line graph's legend. The text alternative states it whole.",
                 "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
                 "maxLength": 200
               },

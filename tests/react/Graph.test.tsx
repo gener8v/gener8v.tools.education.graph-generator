@@ -13,6 +13,7 @@ import { Pictograph as PackagePictograph } from "../../src/react/graphs/Pictogra
 import { LineGraph as PackageLineGraph } from "../../src/react/graphs/LineGraphGraph";
 import { BarGraph as PackageBarGraph } from "../../src/react/graphs/BarGraphGraph";
 import { RulerGraph as PackageRulerGraph } from "../../src/react/graphs/RulerGraph";
+import { NumberLineGraph as PackageNumberLineGraph } from "../../src/react/graphs/NumberLineGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -119,6 +120,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     expect(PackageLineGraph.displayName).toBe("LineGraph");
     expect(PackageBarGraph.displayName).toBe("BarGraph");
     expect(PackageRulerGraph.displayName).toBe("RulerGraph");
+    expect(PackageNumberLineGraph.displayName).toBe("NumberLineGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -199,6 +201,29 @@ describe("props and Scene nodes are read as own keys (rulers NLC TICKET-003 secu
       const missing = polluted({ description: injected }, () => html(<Component {...({} as GraphProps)} />));
       expect(missing).not.toContain("Injected");
       expect(missing).toContain("This graph could not be drawn.");
+    }
+  });
+});
+
+describe("the number line's accessible name (NLC-REQ-012, NLC-REQ-013; graph-library NLC TICKET-002)", () => {
+  const example: unknown = JSON.parse(readFileSync(new URL("../../examples/number-line.json", import.meta.url), "utf8"));
+  const generated =
+    "A number line titled “Temperatures at noon”, labeled “Degrees Celsius”, from -10 to 10, ticked every 2, with arrowheads at both ends. Ticks labeled: 0 as “zero”. 2 points are marked: -3 labeled “Monday” and 4 labeled “Tuesday”.";
+
+  it("names the number line with its generated text alternative, as aria-label and <title>, through <NumberLineGraph> and <Graph>", () => {
+    const markup = html(<PackageNumberLineGraph description={example} />);
+    expect(markup).toBe(html(<Graph description={example} />));
+    expect(markup).toContain(`aria-label="${generated}"`);
+    expect(markup).toContain(`<title>${generated}</title>`);
+  });
+
+  it("replaces it with the caller's text alternative in both places, and keeps it for a blank one", () => {
+    for (const Component of [Graph, PackageNumberLineGraph]) {
+      const supplied = html(<Component description={example} textAlternative="A number line with two days marked." />);
+      expect(supplied).toContain('aria-label="A number line with two days marked."');
+      expect(supplied).toContain("<title>A number line with two days marked.</title>");
+      expect(supplied).not.toContain(generated);
+      expect(html(<Component description={example} textAlternative="  " />)).toContain(`aria-label="${generated}"`);
     }
   });
 });
@@ -474,6 +499,25 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("draws a valid number line with every text at its limit in <Graph> and <NumberLineGraph>, never throwing (GSV-REQ-052)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const description = {
+      type: "number-line",
+      title: long,
+      lineLabel: long,
+      axis: { min: 0, max: 10, tickSpacing: 1 },
+      points: Array.from({ length: 4 }, (_, i) => ({ value: i, label: `${i}${long.slice(1)}` })),
+      tickLabels: [{ value: 5, text: long }],
+    };
+    for (const Component of [Graph, PackageNumberLineGraph]) {
+      const received: Issue[][] = [];
+      const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toEqual([]);
+      // Title 3 lines, line label 2, four point labels of 2, eleven tick labels.
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 2 + 8 + 11);
+    }
+  });
+
   it("refuses every caller text one character over its limit, with too_large naming the limit, in <Graph> and each component (GSV-REQ-052, GSV-REQ-053)", () => {
     const over = "@".repeat(CALLER_TEXT_LIMIT + 1);
     const cases: Array<[GraphComponent, object, string]> = [
@@ -484,6 +528,9 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       [PackageBarGraph, { type: "bar-graph", title: over, categories: [{ name: "Walk" }], values: [7] }, "/title"],
       [PackageBarGraph, { type: "bar-graph", valueAxisLabel: over, categories: [{ name: "Walk" }], values: [7] }, "/valueAxisLabel"],
       [PackageRulerGraph, { type: "ruler", rulerUnit: "centimeters", length: 5, measuredObject: { start: 1, end: 2, label: over } }, "/measuredObject/label"],
+      [PackageNumberLineGraph, { type: "number-line", axis: { min: 0, max: 10 }, points: [{ value: 1, label: over }] }, "/points/0/label"],
+      [PackageNumberLineGraph, { type: "number-line", axis: { min: 0, max: 10 }, tickLabels: [{ value: 2, text: over }] }, "/tickLabels/0/text"],
+      [PackageNumberLineGraph, { type: "number-line", axis: { min: 0, max: 10 }, lineLabel: over }, "/lineLabel"],
     ];
     for (const [Component, description, path] of cases) {
       for (const Drawn of [Graph, Component]) {
