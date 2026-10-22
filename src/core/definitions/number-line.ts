@@ -43,6 +43,7 @@ export interface NumberLine extends DescriptionBase {
 export const NUMBER_LINE_POINT_LIMIT = 100;
 
 /** Whether an end has an arrowhead: on unless the description sets it `false` (NLC-REQ-017). */
+// @spec NLC-REQ-017
 export const hasArrow = (setting: boolean | undefined): boolean => setting !== false;
 
 /**
@@ -114,7 +115,7 @@ function defineNumberLineProperties() {
       kind: "array",
       required: false,
       maxItems: NUMBER_LINE_POINT_LIMIT,
-      description: `The points marked on the number line, at most ${NUMBER_LINE_POINT_LIMIT}, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart.`,
+      description: `The points marked on the number line, at most ${NUMBER_LINE_POINT_LIMIT}, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart where the drawing has room.`,
       items: {
         kind: "object",
         description: "One marked point: its value, and optionally its label and color.",
@@ -142,7 +143,7 @@ function defineNumberLineProperties() {
             kind: "string",
             required: true,
             maxLength: CALLER_TEXT_LIMIT,
-            description: `The text written at a tick in place of its value, as plain text, at most ${CALLER_TEXT_LIMIT} characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”; the text alternative states it whole.`,
+            description: `The text written at a tick in place of its value, as plain text, at most ${CALLER_TEXT_LIMIT} characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”, though never to fewer than a few letters, so on a densely ticked line neighbouring labels may touch; the text alternative states it whole.`,
           },
         },
       },
@@ -187,7 +188,12 @@ const tickLabelsOnTicks: DomainCheck<NumberLine> = {
     const issues: Issue[] = [];
     (line.tickLabels ?? []).forEach((label, i) => {
       if (!drawn.ticks.some((tick) => isTickValue(label.value, tick, drawn.spacing))) {
-        issues.push(createIssue("tick_label_not_on_tick", pointer("tickLabels", i, "value"), { term: `tickLabels[${i}].value`, got: label.value }));
+        issues.push(createIssue("tick_label_not_on_tick", pointer("tickLabels", i, "value"), {
+          term: `tickLabels[${i}].value`,
+          got: label.value,
+          spacing: drawn.spacing,
+          range: { min: line.axis.min, max: line.axis.max },
+        }));
       }
     });
     return issues;

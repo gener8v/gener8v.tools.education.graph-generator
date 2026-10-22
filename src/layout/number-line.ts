@@ -21,9 +21,10 @@ const ARROW_HEAD_HALF_WIDTH = 4.5;
 const ARROW_ROOM = ARROW_EXTENSION + ARROW_HEAD_LENGTH;
 
 /**
- * A custom tick label is cut to one line ending in "…" at the room between neighbouring ticks, so it
- * stays clear of their labels, but never narrower than `TICK_LABEL_MIN_WIDTH` nor wider than
- * `TICK_LABEL_MAX_WIDTH` (DEL-003).
+ * A custom tick label is cut to one line ending in "…" at the room between neighbouring ticks on
+ * the span drawn, so it stays clear of their labels, but never narrower than `TICK_LABEL_MIN_WIDTH`
+ * nor wider than `TICK_LABEL_MAX_WIDTH`. Below the minimum, on a densely ticked line, neighbouring
+ * labels may touch, as numeric ones may (DEL-003; code review CR-002).
  */
 export const TICK_LABEL_MAX_WIDTH = 80;
 export const TICK_LABEL_MIN_WIDTH = 24;
@@ -40,8 +41,11 @@ export const LABEL_MAX_LINES = 2;
 export const LABEL_ROWS = 4;
 /** Clearance between a label and what it labels, or the label below it. */
 const GAP = 4;
-/** How far a shifted candidate moves a label off its point's center, as a share of its width. */
-const SHIFT = 0.5;
+/**
+ * How far a shifted candidate moves a label off its point's center, in label widths plus `GAP`:
+ * one, so it sits beside the centered label and labels at one value find room (code review CR-003).
+ */
+const SHIFT = 1;
 
 type Size = { readonly width: number; readonly height: number };
 
@@ -116,16 +120,21 @@ export const numberLineLayout: Layout<NumberLine> = (normalized: NumberLine, pro
   const lineHeight = labelFont * LINE_HEIGHT;
   const showTickLabels = normalized.axis.showTickLabels !== false;
 
-  // Custom labels, each cleaned and cut to one line no wider than the room between ticks, measured
-  // on the widest span the line can have; a blank stays blank (DEL-003, DEL-004).
-  const widestSpan = SCENE_WIDTH - 2 * (SCENE_MARGIN + ARROW_ROOM);
-  const tickGap = (widestSpan * drawn.spacing) / (max - min);
-  const labelWidth = Math.min(TICK_LABEL_MAX_WIDTH, Math.max(TICK_LABEL_MIN_WIDTH, tickGap - TICK_LABEL_SPACE));
-  const labels = new Map<number, string>();
-  for (const [tick, text] of customLabelsByTick(drawn.ticks, drawn.spacing, normalized.tickLabels ?? [])) {
-    const shown = cleanText(text);
-    labels.set(tick, shown === "" ? "" : (wrap(shown, labelWidth, tickFont, 1)[0] ?? ""));
-  }
+  // Custom labels, each cleaned and cut to one line no wider than the room between ticks on a span;
+  // a blank stays blank (DEL-003, DEL-004).
+  const customLabels = customLabelsByTick(drawn.ticks, drawn.spacing, normalized.tickLabels ?? []);
+  const cutTo = (span: number): Map<number, string> => {
+    const room = (span * drawn.spacing) / (max - min) - TICK_LABEL_SPACE;
+    const width = Math.min(TICK_LABEL_MAX_WIDTH, Math.max(TICK_LABEL_MIN_WIDTH, room));
+    const cut = new Map<number, string>();
+    for (const [tick, text] of customLabels) {
+      const shown = cleanText(text);
+      cut.set(tick, shown === "" ? "" : (wrap(shown, width, tickFont, 1)[0] ?? ""));
+    }
+    return cut;
+  };
+  // First on the widest span the line can have, which sizes the end room.
+  let labels = cutTo(SCENE_WIDTH - 2 * (SCENE_MARGIN + ARROW_ROOM));
   // Room at each end for half the widest tick label, so labels at the ends stay inside the drawing.
   let halfLabel = 0;
   if (showTickLabels) {
@@ -133,6 +142,9 @@ export const numberLineLayout: Layout<NumberLine> = (normalized: NumberLine, pro
   }
   const inset = SCENE_MARGIN + Math.max(ARROW_ROOM, halfLabel);
   const [left, right] = [inset, SCENE_WIDTH - inset];
+  // Then again on the span drawn, which that room narrowed. A cut only narrows a label, so the
+  // labels still fit the room at the ends (code review CR-002).
+  if (right - left < SCENE_WIDTH - 2 * (SCENE_MARGIN + ARROW_ROOM)) labels = cutTo(right - left);
   const xOf = linearScale([min, max], [left, right]);
 
   // Point labels, placed relative to the line at y = 0, then moved below the title.

@@ -93,7 +93,7 @@ const line = (x1: number, y1: number, x2: number, y2: number, width: number, col
  * width (`textWidth`, prd/TC-001). Every number passes through `fmt()` (AD-007). Throws on options
  * no validated axis gives (`checkedLabels`).
  */
-// @spec NLC-REQ-004, NLC-REQ-006, NLC-REQ-007
+// @spec NLC-REQ-004, NLC-REQ-006, NLC-REQ-007, NLC-REQ-019
 export function drawAxis(options: AxisOptions): SceneNode[] {
   const labels = checkedLabels(options);
   const { from, to, domain, ticks, spacing, showTickLabels, side } = options;

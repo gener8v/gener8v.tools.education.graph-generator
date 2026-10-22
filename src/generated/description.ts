@@ -27,7 +27,7 @@ export interface NumberLineDescription {
   leftArrow?: boolean;
   /** Whether the number line's right end has an arrowhead, showing the line goes on; shown unless false. Without one, the line stops at its max. */
   rightArrow?: boolean;
-  /** The points marked on the number line, at most 100, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart. */
+  /** The points marked on the number line, at most 100, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart where the drawing has room. */
   points?: ReadonlyArray<{
     /** A position on the number line, in the line's own numbers: where a point is marked, or the tick a custom label is written at. It must lie on the line's range, ends included; a custom label's value must be a tick. */
     value: number;
@@ -40,7 +40,7 @@ export interface NumberLineDescription {
   tickLabels?: ReadonlyArray<{
     /** A position on the number line, in the line's own numbers: where a point is marked, or the tick a custom label is written at. It must lie on the line's range, ends included; a custom label's value must be a tick. */
     value: number;
-    /** The text written at a tick in place of its value, as plain text, at most 200 characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”; the text alternative states it whole. */
+    /** The text written at a tick in place of its value, as plain text, at most 200 characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”, though never to fewer than a few letters, so on a densely ticked line neighbouring labels may touch; the text alternative states it whole. */
     text: string;
   }>;
 }

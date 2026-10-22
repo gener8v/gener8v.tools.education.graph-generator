@@ -117,6 +117,16 @@ describe("points (NLC-REQ-018, NLC-REQ-011)", () => {
     expect(overlap(a!, b!)).toBe(false);
   });
 
+  it("places up to twelve short labels at one value apart (code review CR-003)", () => {
+    for (const count of [5, 8, 12]) {
+      const boxes = labelTexts(sceneOf(line({ points: Array.from({ length: count }, (_, i) => ({ value: 0, label: `P${i}` })) }))).map(boundsOf);
+      expect(boxes).toHaveLength(count);
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) expect(overlap(boxes[i]!, boxes[j]!), `P${i} and P${j} of ${count}`).toBe(false);
+      }
+    }
+  });
+
   it("draws every one of many coincident points and labels, in a bounded height", () => {
     const scene = sceneOf(line({ points: Array.from({ length: 40 }, (_, i) => ({ value: 0, label: `P${i}` })) }));
     expect(markers(scene)).toHaveLength(40);
@@ -161,13 +171,25 @@ describe("tick labels (NLC-REQ-019, NLC-REQ-006)", () => {
     expect(shown).not.toContain("second");
   });
 
-  it("cuts a long custom label to one line, ending in an ellipsis, no wider than the room between ticks", () => {
+  it("cuts a long custom label to one line, ending in an ellipsis, clear of its neighbours' labels", () => {
     const scene = sceneOf(line({ axis: { min: 0, max: 4, tickSpacing: 1 }, tickLabels: [{ value: 2, text: wordsOf(CALLER_TEXT_LIMIT) }] }));
     const custom = tickLabels(scene).find((node) => node.text.endsWith("…"))!;
     const box = boundsOf(custom);
     expect(box.x1 - box.x0).toBeLessThanOrEqual(TICK_LABEL_MAX_WIDTH);
     const neighbours = tickLabels(scene).filter((node) => node !== custom).map(boundsOf);
     for (const other of neighbours) expect(overlap(box, other), nameOf(other)).toBe(false);
+  });
+
+  it("cuts neighbouring custom labels to the room between ticks on the span drawn (code review CR-002)", () => {
+    const scene = sceneOf(line({ axis: { min: 0, max: 1, tickSpacing: 0.25 }, tickLabels: [{ value: 0.25, text: "one quarter of it" }, { value: 0.5, text: "one half of it" }] }));
+    const boxes = tickLabels(scene).map(boundsOf);
+    for (let i = 1; i < boxes.length; i++) expect(overlap(boxes[i - 1]!, boxes[i]!), nameOf(boxes[i]!)).toBe(false);
+  });
+
+  it("never cuts a custom label below a few letters, so on a densely ticked line it is written whole", () => {
+    const shown = tickLabels(sceneOf(line({ axis: { min: 0, max: 20, tickSpacing: 1 }, tickLabels: [{ value: 4, text: "four" }, { value: 5, text: "five" }] }))).map((node) => node.text);
+    expect(shown).toContain("four");
+    expect(shown).toContain("five");
   });
 
   it("hides every tick label, custom ones too, when showTickLabels is false", () => {

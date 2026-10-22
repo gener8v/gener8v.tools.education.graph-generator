@@ -147,7 +147,8 @@ export interface IssueParamsByCode {
   /** `fittingSpacing` is a tick spacing that would stay within `maxTicks`. */
   too_many_ticks: { term: Term; tickCount: number; maxTicks: number; fittingSpacing: number };
   tick_spacing_invalid: { term: Term; got: unknown };
-  tick_label_not_on_tick: { term: Term; got: unknown };
+  /** `spacing` is the tick spacing drawn, given or default; `range` is the axis range. */
+  tick_label_not_on_tick: { term: Term; got: unknown; spacing: number; range: Range };
   /** `range` is the axis range. */
   outside_axis_range: { term: Term; got: unknown; range: Range };
   degenerate_segment: { term: Term };
@@ -369,7 +370,7 @@ const templates: Templates = {
     `${describeTerm(p.term)} would draw ${p.tickCount} ticks, more than the limit of ${p.maxTicks}; use a larger tick spacing, such as ${describeNumber(p.fittingSpacing)}.`,
   tick_spacing_invalid: (p) => `${describeTerm(p.term)} must be a number greater than 0; got ${describeValue(p.got)}.`,
   tick_label_not_on_tick: (p) =>
-    `${describeTerm(p.term)} is at ${describeValue(p.got)}, which is not a tick position; use a value that is a multiple of the tick spacing.`,
+    `${describeTerm(p.term)} is at ${describeValue(p.got)}, which is not a tick position; use a tick: a multiple of ${describeNumber(p.spacing)} ${describeInterval(p.range)}.`,
   outside_axis_range: (p) =>
     `${describeTerm(p.term)} (${describeValue(p.got)}) is outside the axis range, ${describeInterval(p.range)}; move it inside the range or widen the axis.`,
   degenerate_segment: (p) => `${describeTerm(p.term)} starts and ends at the same point; give it two different points.`,

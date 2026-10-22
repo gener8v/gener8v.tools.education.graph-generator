@@ -104,7 +104,7 @@
       "kind": "enum"
     },
     "points": {
-      "definition": "The points marked on the number line, at most 100, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart.",
+      "definition": "The points marked on the number line, at most 100, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart where the drawing has room.",
       "kind": "array"
     },
     "radius": {
@@ -156,7 +156,7 @@
       "kind": "number"
     },
     "text": {
-      "definition": "The text written at a tick in place of its value, as plain text, at most 200 characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”; the text alternative states it whole.",
+      "definition": "The text written at a tick in place of its value, as plain text, at most 200 characters. An empty text leaves the tick unlabeled. In the drawing, a text wider than its tick's room is cut short with “…”, though never to fewer than a few letters, so on a densely ticked line neighbouring labels may touch; the text alternative states it whole.",
       "kind": "string"
     },
     "tickInterval": {

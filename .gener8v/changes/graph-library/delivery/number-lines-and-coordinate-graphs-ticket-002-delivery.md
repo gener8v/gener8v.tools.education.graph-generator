@@ -402,9 +402,9 @@ The Engineer approved every decision as recommended: D1(a) with ticks taking `li
 | NLC-REQ-014 | `src/core/definitions/number-line.ts`:numberLine; `src/layout/number-line.ts`:numberLineLayout; `src/react/graphs/NumberLineGraph.tsx`:NumberLineGraph | `@spec …, NLC-REQ-014, …` |
 | NLC-REQ-015 | `src/core/definitions/number-line.ts`:defineNumberLineProperties | `@spec …, NLC-REQ-015, …` |
 | NLC-REQ-016 | `src/layout/number-line.ts`:numberLineLayout; `src/core/definitions/number-line.ts`:numberLine.describe | `@spec …, NLC-REQ-016, …` |
-| NLC-REQ-017 | `src/core/definitions/number-line.ts`:defineNumberLineProperties | `@spec …, NLC-REQ-017, …` |
+| NLC-REQ-017 | `src/core/definitions/number-line.ts`:defineNumberLineProperties, hasArrow | `@spec …, NLC-REQ-017, …` |
 | NLC-REQ-018 | `src/layout/number-line.ts`:numberLineLayout | `@spec …, NLC-REQ-018, …` |
-| NLC-REQ-019 | `src/core/definitions/number-line.ts`:defineNumberLineProperties, numberLine.describe; `src/layout/number-line.ts`:numberLineLayout | `@spec …, NLC-REQ-019, …` |
+| NLC-REQ-019 | `src/core/definitions/number-line.ts`:defineNumberLineProperties, numberLine.describe; `src/layout/number-line.ts`:numberLineLayout; `src/layout/kit/axis.ts`:drawAxis | `@spec …, NLC-REQ-019, …` |
 | NLC-REQ-020 | `src/core/definitions/number-line.ts`:tickLabelsOnTicks | `@spec NLC-REQ-020` |
 | NLC-REQ-021 | `src/core/definitions/number-line.ts`:defineNumberLineProperties, numberLine.describe; `src/layout/number-line.ts`:numberLineLayout | `@spec …, NLC-REQ-021` |
 | CPSE-REQ-004 | `src/entries/number-line.ts` | `@spec CPSE-REQ-004` |
@@ -419,4 +419,11 @@ The Engineer approved every decision as recommended: D1(a) with ticks taking `li
 
 ## Post-Review Amendments
 
-None
+### 2026-10-22 — Code review (graph-library/number-lines-and-coordinate-graphs-ticket-002-code-review)
+
+- **CR-001:** `// @spec NLC-REQ-017` added above `hasArrow` (`src/core/definitions/number-line.ts`), and NLC-REQ-019 added to `drawAxis`' annotation (`src/layout/kit/axis.ts`). The `@spec Annotations` table above now lists both, matching the specification's coverage rows.
+- **CR-002 (amends DEL-003):** custom tick labels are cut first on the widest span, which sizes the room at the ends, then cut again on the span actually drawn when that room narrowed it (`cutTo` in `numberLineLayout`). The 24-unit floor stays; the `text` description now says a label is never cut below a few letters, so on a densely ticked line neighbouring labels may touch. Tests: neighbouring "one quarter of it" / "one half of it" on 0..1 by 0.25 do not overlap; "four" / "five" on 0..20 by 1 are written whole. The existing cut test is renamed to what it checks.
+- **CR-003 (amends DEL-007):** `SHIFT` is now 1: a shifted candidate sits a full label width plus the gap beside the centered one, so up to 12 short labels at one value are placed apart. The `points` description says labels are placed apart "where the drawing has room". Test: 5, 8 and 12 coincident labels, no pair overlapping.
+- **CR-004:** the `tick_label_not_on_tick` issue now carries the drawn spacing and the axis range (`src/core/issues.ts`; additive, the code is unchanged, and the issue gains a `range` field). Its message reads "…; use a tick: a multiple of 2 from -10 to 10." Tests: the message for an off-range multiple and for the default spacing; the issues catalogue example updated.
+- Mutation checks: reverting `SHIFT` to 0.5 fails the CR-003 test; skipping the second cut fails the CR-002 test.
+- Re-verification: `pnpm generate` (description, schema, tool schema and vocabulary regenerated for the two descriptions), `lint`, `typecheck`, `test` ×3 (1,454 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./core` 23.11 kB of 25 kB), `publint`, `attw`, `audit`: all exit 0.

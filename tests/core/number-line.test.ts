@@ -102,6 +102,19 @@ describe("custom labels off a tick (NLC-REQ-020)", () => {
     expect(codesAndPaths(line({ axis: { min: 1, max: 10, tickSpacing: 3 }, tickLabels: [{ value: 0, text: "zero" }] }))).toEqual(["tick_label_not_on_tick /tickLabels/0/value"]);
   });
 
+  it("names the ticks in its message: the spacing drawn, given or default, and the range (code review CR-004)", () => {
+    const [far] = issuesOf(validate(line({ axis: { min: 0, max: 10, tickSpacing: 1 }, tickLabels: [{ value: 20, text: "far" }] })));
+    expect(far).toEqual({
+      code: "tick_label_not_on_tick",
+      path: "/tickLabels/0/value",
+      message: "tickLabels[0].value is at 20, which is not a tick position; use a tick: a multiple of 1 from 0 to 10.",
+      range: { min: 0, max: 10 },
+    });
+    expect(issuesOf(validate(line({ tickLabels: [{ value: 3, text: "x" }] })))[0]!.message).toBe(
+      "tickLabels[0].value is at 3, which is not a tick position; use a tick: a multiple of 2 from -10 to 10.",
+    );
+  });
+
   it("checks labels against the default spacing when none is given", () => {
     // -10..10 by default ticks every 2: every 1 would give 21 ticks, past the 20 the default aims at.
     expect(codesAndPaths(line({ tickLabels: [{ value: 4, text: "four" }, { value: 3, text: "x" }] }))).toEqual(["tick_label_not_on_tick /tickLabels/1/value"]);
