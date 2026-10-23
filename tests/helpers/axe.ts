@@ -28,9 +28,11 @@ export interface AxeSvgResult {
 
 /**
  * Runs `SVG_IMAGE_RULES` over static markup. The markup is loaded into a fresh JSDOM window and
- * axe-core is evaluated inside that window, so no browser global reaches the Node environment the
- * other tests run in (NLC-NFR-002, NLC-NFR-006). Shared by the ruler's tests and graph-library NLC
- * TICKET-005's.
+ * axe-core is evaluated only inside that window, so the globals it sets stay on the window and none
+ * reaches the Node environment (NLC-NFR-002, NLC-NFR-006). The window isolates globals, not code:
+ * it is a Node.js `vm` context, not a sandbox, so axe-core is trusted as a pinned devDependency
+ * (rulers NLC TICKET-004 security review SEC-001). Shared by the ruler's tests and graph-library
+ * NLC TICKET-005's.
  */
 export async function axeSvgImage(markup: string): Promise<AxeSvgResult> {
   const dom = new JSDOM(`<!doctype html><html lang="en"><head><title>Graph</title></head><body>${markup}</body></html>`, { runScripts: "outside-only" });

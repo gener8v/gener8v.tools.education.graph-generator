@@ -173,3 +173,8 @@ No source code implements these NFRs: they are verified by tests. The specificat
 - **QR-005:** `tests/helpers/bench.ts` `expectP95(result, { requirement, name, limitMs, minSamples = 100, note })`, used by `tests/core/validate.bench.ts` and `tests/layout/ruler.bench.ts`. Known Hazard appended to graph-library NLC TICKET-005 to use it and `axeSvgImage`.
 - **QR-006:** `vitest.config.ts`'s comment covers every bench; each NLC-NFR-008 line says Vitest's export-getter warning only adds to the time.
 - Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,467 passed each run), `bench` (NLC-NFR-008 worst p95 3.19 ms), `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.
+
+### 2026-10-23 — Security review (rulers/number-lines-and-coordinate-graphs-ticket-004-security-review)
+
+- **SEC-001:** fixed with code review CR-001 (axe-core read as text). In addition, `tests/helpers/axe.ts`'s comment says the JSDOM window isolates globals, not code (a Node.js `vm` context, not a sandbox), and `tests/react/ruler-server-render.test.tsx` asserts the global object's own keys and values are unchanged across the 79 renders. Mutation: a render that sets a global fails it.
+- Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,467 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`, `audit --prod`: all exit 0.
