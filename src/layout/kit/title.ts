@@ -2,7 +2,7 @@ import { cleanText } from "../../core/format";
 import { defaultStyle } from "../../core/style";
 import { SCENE_WIDTH, type SceneNode } from "../scene";
 import { fmt } from "./format";
-import { DEFAULT_FONT_STACK, wrap } from "./text";
+import { DEFAULT_FONT_STACK, textWidth, wrap } from "./text";
 
 /** Space kept between the drawing's edge and anything in it, in drawing units. */
 export const SCENE_MARGIN = 16;
@@ -44,6 +44,18 @@ export function textLines(
  * Scene; the text alternative still states it whole (GSS TICKET-002 security review SEC-001, DEL-008).
  */
 export const TITLE_MAX_LINES = 3;
+
+/**
+ * `text` broken into at most `maxLines` lines no wider than `maxWidth`, with the size of its box:
+ * the widest line's estimated width, and the lines' height (quality review QR-005).
+ */
+export function textBlock(text: string, maxWidth: number, fontSize: number, maxLines: number): { lines: string[]; width: number; height: number } {
+  const lines = wrap(text, maxWidth, fontSize, maxLines);
+  // A loop, not `Math.max(...)`: never spread a caller-sized array into arguments (GSS TICKET-002 SEC-001).
+  let width = 0;
+  for (const line of lines) width = Math.max(width, textWidth(line, fontSize));
+  return { lines, width, height: lines.length * fontSize * LINE_HEIGHT };
+}
 
 /**
  * The shared title above a graph (GSV-REQ-040): the title wrapped to the drawing's width, at most

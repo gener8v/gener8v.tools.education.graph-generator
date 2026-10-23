@@ -9,7 +9,7 @@ import { niceTicks } from "../../src/core/value-scale";
 import { checkScene } from "../../src/layout/kit/check";
 import { linearScale } from "../../src/layout/kit/scale";
 import { titleBlock } from "../../src/layout/kit/title";
-import { LABEL_MAX_LINES, TICK_LABEL_MAX_WIDTH, numberLineLayout } from "../../src/layout/number-line";
+import { LABEL_MAX_LINES, TICK_LABEL_MAX_WIDTH, TICK_LABEL_MIN_WIDTH, numberLineLayout } from "../../src/layout/number-line";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
 import { oneClusterTexts, wordsOf } from "../fixtures/plain-text";
 import { type Bounds, attr, boundsOf, nameOf, overlap } from "../fixtures/scene-geometry";
@@ -57,10 +57,13 @@ describe("ranges (NLC-REQ-014, NLC-REQ-007)", () => {
     ticks(scene).forEach((tick, i) => expect(Math.abs(num(tick, "x1") - x(expected[i]!))).toBeLessThanOrEqual(0.5));
   });
 
-  it("keeps everything inside the drawing, end labels included", () => {
-    for (const axis of [{ min: -1e9, max: 1e9 }, { min: -10, max: 10 }, { min: 0.001, max: 0.002 }]) {
-      const scene = sceneOf(line({ axis }));
-      for (const b of scene.nodes.map(boundsOf)) expect(b.x0 >= 0 && b.x1 <= SCENE_WIDTH && b.y0 >= 0 && b.y1 <= scene.height, nameOf(b)).toBe(true);
+  it("keeps everything inside the drawing, end labels included, custom ones too", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    for (const axis of [{ min: -1e9, max: 1e9 }, { min: -10, max: 10 }, { min: 0.001, max: 0.002 }, { min: 0, max: 4, tickSpacing: 1 }]) {
+      for (const tickLabels of [[], [{ value: axis.min, text: long }, { value: axis.max, text: long }]]) {
+        const scene = sceneOf(line({ axis, tickLabels }));
+        for (const b of scene.nodes.map(boundsOf)) expect(b.x0 >= 0 && b.x1 <= SCENE_WIDTH && b.y0 >= 0 && b.y1 <= scene.height, nameOf(b)).toBe(true);
+      }
     }
   });
 });
@@ -92,12 +95,24 @@ describe("arrowheads (NLC-REQ-015, NLC-REQ-016, NLC-REQ-017)", () => {
     for (const extra of [{ leftArrow: false }, { rightArrow: false }, { leftArrow: false, rightArrow: false }]) expect(at(extra)).toEqual(both);
   });
 
-  it("points each arrowhead outward, tip beyond the line's end", () => {
+  it("points each arrowhead outward, tip beyond the line's end, its base on an extension from the range's end", () => {
     const scene = sceneOf(line());
     const axis = axisLine(scene);
-    const [leftHead, rightHead] = arrowheads(scene).map(boundsOf);
-    expect(leftHead!.x1).toBeLessThan(num(axis, "x1"));
-    expect(rightHead!.x0).toBeGreaterThan(num(axis, "x2"));
+    const y = num(axis, "y1");
+    const extensions = lines(scene).filter((node) => node !== axis && num(node, "y1") === y && num(node, "y2") === y);
+    const corners = (head: SceneNode) => String(attr(head, "points")).split(" ").map((pair) => pair.split(",").map(Number) as [number, number]);
+    const [leftHead, rightHead] = arrowheads(scene).map(corners);
+    for (const [head, end, outward] of [[leftHead!, num(axis, "x1"), -1], [rightHead!, num(axis, "x2"), 1]] as const) {
+      const [tip, ...base] = head;
+      // The tip is on the line, past the range's end; the base is between the tip and the line.
+      expect(tip![1]).toBe(y);
+      expect(Math.sign(tip![0] - end)).toBe(outward);
+      for (const corner of base) expect(Math.sign(tip![0] - corner[0])).toBe(outward);
+      // An extension runs from the range's end to the base.
+      const extension = extensions.find((node) => [num(node, "x1"), num(node, "x2")].includes(end))!;
+      expect([num(extension, "x1"), num(extension, "x2")].sort((a, b) => a - b)).toEqual([end, base[0]![0]].sort((a, b) => a - b));
+      expect(base.every((corner) => corner[0] === base[0]![0])).toBe(true);
+    }
   });
 });
 
@@ -184,6 +199,21 @@ describe("tick labels (NLC-REQ-019, NLC-REQ-006)", () => {
     const scene = sceneOf(line({ axis: { min: 0, max: 1, tickSpacing: 0.25 }, tickLabels: [{ value: 0.25, text: "one quarter of it" }, { value: 0.5, text: "one half of it" }] }));
     const boxes = tickLabels(scene).map(boundsOf);
     for (let i = 1; i < boxes.length; i++) expect(overlap(boxes[i - 1]!, boxes[i]!), nameOf(boxes[i]!)).toBe(false);
+  });
+
+  it("cuts three adjacent long custom labels on a short line clear of one another (quality review QR-001)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const scene = sceneOf(line({ axis: { min: 0, max: 4, tickSpacing: 1 }, tickLabels: [1, 2, 3].map((value) => ({ value, text: long })) }));
+    const boxes = tickLabels(scene).map(boundsOf);
+    for (let i = 1; i < boxes.length; i++) expect(overlap(boxes[i - 1]!, boxes[i]!), nameOf(boxes[i]!)).toBe(false);
+  });
+
+  it("cuts a custom label on a line of 99 intervals to the minimum width, on one line, without failing (quality review QR-002)", () => {
+    const scene = sceneOf(line({ axis: { min: 0, max: 99, tickSpacing: 1 }, tickLabels: [{ value: 50, text: "half way there" }] }));
+    const custom = tickLabels(scene).filter((node) => node.text.endsWith("…"));
+    expect(custom).toHaveLength(1);
+    const box = boundsOf(custom[0]!);
+    expect(box.x1 - box.x0).toBeLessThanOrEqual(TICK_LABEL_MIN_WIDTH);
   });
 
   it("never cuts a custom label below a few letters, so on a densely ticked line it is written whole", () => {

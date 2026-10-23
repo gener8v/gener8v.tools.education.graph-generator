@@ -107,6 +107,7 @@
   - Follow `src/core/definitions/circle.ts` (`labelText`, `unit`). Nest the shared `label` spec object itself, which already carries its limit; never copy it.
 - Draw axis labels through `axisLabelLines` (`src/layout/kit/value-scale.ts`) or `wrap`, never as raw text, so the stacked-mark and cluster bounds apply (ready-tickets reconciliation, 2026-10-21). The shared `xAxisLabel`, `yAxisLabel`, `zAxisLabel` and element `label` already carry their limits.
 - Registration checklist (ready-tickets reconciliation, 2026-10-21): registering a graph type touches `src/core/definitions/index.ts`, `src/layout/registry.ts`, `src/index.ts` (the component export), `src/entries/<type>.ts`, `tsup.config.ts` (`entry`), `package.json` (`exports`), `.size-limit.json` and `tests/package/per-type-bundle.test.ts`, then `pnpm generate`. The newest complete example is rulers NLC TICKET-003 (commit `5e28148`). The Output above omits `tsup.config.ts` and `src/index.ts`.
+- Text measurement (graph-library/number-lines-and-coordinate-graphs-ticket-002-quality-review/QR-005, 2026-10-23): wrap caller text and size its box with `textBlock(text, maxWidth, fontSize, maxLines)` from `src/layout/kit/title.ts`, not a private copy; it keeps the loop that never spreads a caller-sized array into `Math.max` (GSS TICKET-002 SEC-001). So do not write another `measure`.
 
 **Depends On:** TICKET-001
 **Blocks:** TICKET-005

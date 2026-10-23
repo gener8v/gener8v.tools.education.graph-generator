@@ -427,3 +427,12 @@ The Engineer approved every decision as recommended: D1(a) with ticks taking `li
 - **CR-004:** the `tick_label_not_on_tick` issue now carries the drawn spacing and the axis range (`src/core/issues.ts`; additive, the code is unchanged, and the issue gains a `range` field). Its message reads "…; use a tick: a multiple of 2 from -10 to 10." Tests: the message for an off-range multiple and for the default spacing; the issues catalogue example updated.
 - Mutation checks: reverting `SHIFT` to 0.5 fails the CR-003 test; skipping the second cut fails the CR-002 test.
 - Re-verification: `pnpm generate` (description, schema, tool schema and vocabulary regenerated for the two descriptions), `lint`, `typecheck`, `test` ×3 (1,454 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size` (`./core` 23.11 kB of 25 kB), `publint`, `attw`, `audit`: all exit 0.
+
+### 2026-10-23 — Quality review (graph-library/number-lines-and-coordinate-graphs-ticket-002-quality-review)
+
+- **QR-001, QR-004:** fixed by code review CR-002 and CR-004 above. Added for QR-001: three adjacent long custom labels on 0..4 by 1 are cut clear of one another.
+- **QR-002:** new layout tests: each arrowhead's tip points outward on the line and its base meets an extension from the range's end; a custom label on a 0..99-by-1 line is cut to `TICK_LABEL_MIN_WIDTH` on one line without failing; long custom labels at `min` and `max` stay inside the drawing. `LABEL_ROWS` is no longer exported.
+- **QR-003:** the text alternative test pins values as written with -0.125..1.875 by 0.125 and a point at 0.375; the caller-text test runs BENIGN, HOSTILE and SMUGGLED text, accepts a refusal only for an unsafe character, and checks nothing unsafe reaches the text and all four caller texts are quoted.
+- **QR-005:** `textBlock(text, maxWidth, fontSize, maxLines)` added to `src/layout/kit/title.ts`, replacing the number line's private `measure`. Known Hazard appended to NLC TICKET-003 and TICKET-004 to use it.
+- Mutation checks: an inward left head, bases on the wrong side, no left extension, no width floor, numeric-only end room, points stated as derived and a given spacing stated as derived each fail a test.
+- Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,456 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.

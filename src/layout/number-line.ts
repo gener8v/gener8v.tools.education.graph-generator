@@ -9,7 +9,7 @@ import { MARKER_REACH, drawMarker } from "./kit/markers";
 import { linearScale } from "./kit/scale";
 import { textWidth, wrap } from "./kit/text";
 import { tickLabel } from "./kit/ticks";
-import { LINE_HEIGHT, SCENE_MARGIN, textLines, titleBlock } from "./kit/title";
+import { LINE_HEIGHT, SCENE_MARGIN, textBlock, textLines, titleBlock } from "./kit/title";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 
@@ -38,7 +38,7 @@ const LABEL_MAX_WIDTH = 120;
  */
 export const LABEL_MAX_LINES = 2;
 /** How many rows above the line a point label may move up to, to clear the others (DEL-007). */
-export const LABEL_ROWS = 4;
+const LABEL_ROWS = 4;
 /** Clearance between a label and what it labels, or the label below it. */
 const GAP = 4;
 /**
@@ -46,17 +46,6 @@ const GAP = 4;
  * one, so it sits beside the centered label and labels at one value find room (code review CR-003).
  */
 const SHIFT = 1;
-
-type Size = { readonly width: number; readonly height: number };
-
-/** `text` broken into at most `maxLines` lines no wider than `maxWidth`, with the size of its box. */
-function measure(text: string, maxWidth: number, fontSize: number, maxLines: number): { lines: string[] } & Size {
-  const lines = wrap(text, maxWidth, fontSize, maxLines);
-  // A loop, not `Math.max(...)`: never spread a caller-sized array into arguments.
-  let width = 0;
-  for (const line of lines) width = Math.max(width, textWidth(line, fontSize));
-  return { lines, width, height: lines.length * fontSize * LINE_HEIGHT };
-}
 
 /** A filled triangle pointing along `direction` (−1 left, 1 right) with its tip at `tipX`. */
 function arrowhead(tipX: number, y: number, direction: -1 | 1, color: string): SceneNode {
@@ -158,7 +147,7 @@ export const numberLineLayout: Layout<NumberLine> = (normalized: NumberLine, pro
   points.forEach((point) => {
     const text = point.label === undefined ? "" : cleanText(point.label);
     if (text === "") return;
-    const size = measure(text, LABEL_MAX_WIDTH, labelFont, LABEL_MAX_LINES);
+    const size = textBlock(text, LABEL_MAX_WIDTH, labelFont, LABEL_MAX_LINES);
     const x = xOf(point.value);
     const inside = (cx: number) => Math.min(Math.max(cx, SCENE_MARGIN), SCENE_WIDTH - SCENE_MARGIN - size.width);
     const candidates: Array<{ x: number; y: number }> = [];
@@ -207,7 +196,7 @@ export const numberLineLayout: Layout<NumberLine> = (normalized: NumberLine, pro
   let bottom = lineY + defaultStyle.tickLength / 2 + GAP + (showTickLabels ? tickFont * LINE_HEIGHT : 0);
   const lineLabel = normalized.lineLabel === undefined ? "" : cleanText(normalized.lineLabel);
   if (lineLabel !== "") {
-    const size = measure(lineLabel, SCENE_WIDTH - 2 * SCENE_MARGIN, labelFont, LABEL_MAX_LINES);
+    const size = textBlock(lineLabel, SCENE_WIDTH - 2 * SCENE_MARGIN, labelFont, LABEL_MAX_LINES);
     for (const node of textLines(size.lines, SCENE_WIDTH / 2, bottom + GAP, labelFont, defaultStyle.colors.text)) nodes.push(node);
     bottom += GAP + size.height;
   }

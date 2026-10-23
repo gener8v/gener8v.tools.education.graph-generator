@@ -5,7 +5,8 @@ import { NUMBER_LINE_POINT_LIMIT, type NumberLine, hasArrow, numberLine } from "
 import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import type { Issue, ValidationResult } from "../../src/core/result";
 import { MAX_VALUE_TICKS } from "../../src/core/value-scale";
-import { HOSTILE_TEXT } from "../fixtures/plain-text";
+import { findUnsafeTextChar, cleanText, quoteText } from "../../src/core/format";
+import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT } from "../fixtures/plain-text";
 
 const issuesOf = (result: ValidationResult<unknown>): Issue[] => (result.valid ? [] : result.issues);
 const codesAndPaths = (description: unknown) => issuesOf(validate(description)).map((issue) => `${issue.code} ${issue.path}`);
@@ -141,6 +142,10 @@ describe("the text alternative (NLC-REQ-012, NLC-REQ-016, NLC-REQ-019, NLC-REQ-0
 
   it("states a default spacing rounded and a supplied one as written, and values as written", () => {
     expect(describeGraph(line())).toContain("ticked every 2,");
+    // Values the two-decimal rounding of derived values would change (quality review QR-003).
+    expect(describeGraph(line({ axis: { min: -0.125, max: 1.875, tickSpacing: 0.125 }, points: [{ value: 0.375, label: "three eighths" }] }))).toBe(
+      "A number line from -0.125 to 1.875, ticked every 0.125, with arrowheads at both ends. 1 point is marked: 0.375 labeled “three eighths”.",
+    );
     expect(describeGraph(line({ axis: { min: 0, max: 1, tickSpacing: 0.25 }, points: [{ value: 0.1 }] }))).toBe(
       "A number line from 0 to 1, ticked every 0.25, with arrowheads at both ends. 1 point is marked: 0.1.",
     );
@@ -158,14 +163,19 @@ describe("the text alternative (NLC-REQ-012, NLC-REQ-016, NLC-REQ-019, NLC-REQ-0
     expect(describeGraph(line({ title: "  ", lineLabel: "" }))).toBe("A number line from -10 to 10, ticked every 2, with arrowheads at both ends. No points are marked.");
   });
 
-  it("quotes every caller text, so none reads as the package's own sentence", () => {
-    for (const text of HOSTILE_TEXT) {
+  it("quotes every caller text, or the description is refused for an unsafe character; nothing unsafe reaches the text", () => {
+    for (const text of [...BENIGN_TEXT, ...HOSTILE_TEXT, SMUGGLED_TEXT]) {
       const description = line({ title: text, lineLabel: text, points: [{ value: 1, label: text }], tickLabels: [{ value: 0, text }] });
       const result = validate(description);
-      if (!result.valid) continue;
+      if (!result.valid) {
+        expect(findUnsafeTextChar(text), JSON.stringify(text)).not.toBe(-1);
+        continue;
+      }
       const stated = numberLine.describe(result.description as NumberLine, result.provenance);
-      expect(stated.startsWith("A number line")).toBe(true);
-      expect(stated).toMatch(/“[^”]*”/);
+      expect(findUnsafeTextChar(stated), JSON.stringify(text)).toBe(-1);
+      expect(stated.startsWith("A number line"), JSON.stringify(text)).toBe(true);
+      // The title, line label, point label and custom tick label, each quoted.
+      expect(stated.split(quoteText(cleanText(text))).length - 1, JSON.stringify(text)).toBe(4);
     }
   });
 });
