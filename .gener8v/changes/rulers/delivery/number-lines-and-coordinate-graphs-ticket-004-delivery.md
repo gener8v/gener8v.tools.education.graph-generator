@@ -163,3 +163,13 @@ No source code implements these NFRs: they are verified by tests. The specificat
 - **CR-002:** the accessibility test asserts the `<title>` is the SVG's first element child, as AD-008 places it and Files Produced says. Correction to the Notes: graph-library CPSE TICKET-008 is not delivered; it carries a Known Hazard to state the 330 px minimum on the ruler's documentation page.
 - **CR-003:** the CI step running `pnpm bench` is renamed "Benchmarks (GSV-NFR-001, NLC-NFR-008)" (`.github/workflows/ci.yml`). CI enforces NLC-NFR-008's 50 ms p95 on every matrix cell.
 - Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,468 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.
+
+### 2026-10-23 — Quality review (rulers/number-lines-and-coordinate-graphs-ticket-004-quality-review)
+
+- **QR-001:** `tests/layout/ruler.test.ts` checks every mark within 0.5 units and every whole unit the same length (0.02) over all 78 rulers (`EVERY_RULER`), deterministically; the fixed five-ruler mark test it subsumes is removed. Mutation: the 11 in-at-halves ruler's first whole mark moved 0.04 fails it.
+- **QR-002:** `rulerWithObject` writes ends exactly or as `index × (1 / marksPerUnit)`; the fast-check property now checks object ends only, against `locatedValue`; `barEnds` moved to module scope; the NLC-REQ-055 text property no longer repeats the bar-end check.
+- **QR-003:** `tests/react/ruler.test.tsx`: `window` and `document` asserted undefined in an `afterAll` after the axe cases; case names from a division table; the table's count check beside it. (The first-child `<title>` came with CR-002.)
+- **QR-004:** `tests/helpers/axe.ts` returns `incomplete` and writes violations with targets and failure summaries; the test asserts `incomplete` empty and every `SVG_IMAGE_RULES` rule passed.
+- **QR-005:** `tests/helpers/bench.ts` `expectP95(result, { requirement, name, limitMs, minSamples = 100, note })`, used by `tests/core/validate.bench.ts` and `tests/layout/ruler.bench.ts`. Known Hazard appended to graph-library NLC TICKET-005 to use it and `axeSvgImage`.
+- **QR-006:** `vitest.config.ts`'s comment covers every bench; each NLC-NFR-008 line says Vitest's export-getter warning only adds to the time.
+- Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,467 passed each run), `bench` (NLC-NFR-008 worst p95 3.19 ms), `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.

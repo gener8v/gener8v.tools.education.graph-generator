@@ -6,7 +6,7 @@ export default defineConfig({
     include: ["tests/**/*.test.{ts,tsx}"],
     globalSetup: ["tests/setup/build.ts"],
     testTimeout: 30_000,
-    // Samples are kept so the GSV-NFR-001 bench can compute the p95 it asserts.
+    // Samples are kept so the benches can compute the p95 they assert (tests/helpers/bench.ts).
     benchmark: { include: ["tests/**/*.bench.ts"], retainSamples: true },
   },
 });

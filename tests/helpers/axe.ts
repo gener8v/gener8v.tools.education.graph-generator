@@ -18,8 +18,10 @@ export const SVG_IMAGE_RULES = ["svg-img-alt", "aria-allowed-attr", "aria-valid-
 const AXE_SOURCE = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
 
 export interface AxeSvgResult {
-  /** Each violated rule's id and the help text axe gives. */
+  /** Each violated rule's id and help text, with each failing element's selector and failure summary. */
   violations: string[];
+  /** The ids of the rules axe could not decide ("needs review"), which are neither a pass nor a violation. */
+  incomplete: string[];
   /** The ids of the rules that applied and passed, so a test can tell a pass from a rule that never ran. */
   passes: string[];
 }
@@ -37,7 +39,10 @@ export async function axeSvgImage(markup: string): Promise<AxeSvgResult> {
     const inWindow = (dom.window as unknown as { axe: typeof axe }).axe;
     const results = await inWindow.run(dom.window.document.body, { runOnly: { type: "rule", values: [...SVG_IMAGE_RULES] } });
     return {
-      violations: results.violations.map((rule) => `${rule.id}: ${rule.help}`),
+      violations: results.violations.map(
+        (rule) => `${rule.id}: ${rule.help} (${rule.nodes.map((node) => `${node.target.join(" ")}: ${node.failureSummary ?? ""}`).join("; ")})`,
+      ),
+      incomplete: results.incomplete.map((rule) => rule.id),
       passes: results.passes.map((rule) => rule.id),
     };
   } finally {

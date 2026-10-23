@@ -50,6 +50,7 @@
 - Supersedes the benchmark path in the Output: Vitest runs benchmarks only from `tests/**/*.bench.ts` (`vitest.config.ts`), so put it at `tests/layout/nlc-render.bench.ts`, following `tests/core/validate.bench.ts` (`retainSamples`, a p95 assertion). At `bench/` it would never run, and criterion 5 could not be met. (ready-tickets reconciliation, 2026-10-21)
 - axe-core is not yet a devDependency (ready-tickets reconciliation, 2026-10-21): add it (and record it in the delivery record), or share the setup with whichever of rulers NLC TICKET-004 and graph-library NLC TICKET-005 lands first.
 - Generated labels stay within `CALLER_TEXT_LIMIT`. Vitest's default environment is already `node`; jsdom is opt-in per file. (ready-tickets reconciliation, 2026-10-21)
+- Shared test helpers (rulers/number-lines-and-coordinate-graphs-ticket-004-quality-review/QR-004, QR-005, 2026-10-23): take the NLC-NFR-004 p95 from `expectP95` in `tests/helpers/bench.ts` (sample guard, p95, printed line, `minSamples` 100 by default), not a third copy of the bench code. Run axe through `axeSvgImage` in `tests/helpers/axe.ts`, which reads axe-core as text and returns `violations` (with targets), `incomplete` and `passes`; assert `incomplete` empty and every `SVG_IMAGE_RULES` rule passed. Keep the NLC-NFR-002 server render in a file that imports neither jsdom nor that helper, as `tests/react/ruler-server-render.test.tsx` does. So do not re-derive either helper.
 
 **Depends On:** TICKET-002, TICKET-003, TICKET-004
 **Blocks:** None

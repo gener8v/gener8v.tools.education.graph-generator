@@ -12,6 +12,7 @@ import { titleBlock } from "../../src/layout/kit/title";
 import { BAR_HEIGHT, LABEL_MAX_LINES, RULER_EDGE, rulerFontSize, rulerLayout } from "../../src/layout/ruler";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
 import { oneClusterTexts } from "../fixtures/plain-text";
+import { EVERY_RULER } from "../fixtures/rulers";
 import { type Bounds, attr, boundsOf, nameOf, overlap } from "../fixtures/scene-geometry";
 
 type Text = Extract<SceneNode, { kind: "text" }>;
@@ -36,6 +37,11 @@ const rects = (scene: Scene) => scene.nodes.filter((node) => node.kind === "rect
 const body = (scene: Scene) => rects(scene).find((node) => attr(node, "stroke") !== undefined)!;
 /** The object's bar: the one filled rect. */
 const bars = (scene: Scene) => rects(scene).filter((node) => attr(node, "fill") !== "none");
+/** The x of the object's bar's two ends, start first. */
+const barEnds = (scene: Scene) => {
+  const [bar] = bars(scene);
+  return [num(bar!, "x"), num(bar!, "x") + num(bar!, "width")];
+};
 const numbers = (scene: Scene, length: number) => texts(scene).filter((node) => num(node, "font-size") === fmt(rulerFontSize(length)));
 const markLength = (node: SceneNode) => num(node, "y2") - num(node, "y1");
 const distinctLengths = (scene: Scene) => new Set(marks(scene).map(markLength)).size;
@@ -102,15 +108,18 @@ const plainRuler = rulerBase.map(given);
 
 /**
  * A ruler with an object from one mark to a later one. Each end is often the ruler's first or last
- * mark, as well as any mark between (quality review QR-004).
+ * mark, as well as any mark between (quality review QR-004). Each end is written either as the
+ * mark's exact value or as a caller's code would compute it, `index × (1 / marksPerUnit)`, which is
+ * often a float away from it, such as 0.30000000000000004 (rulers NLC TICKET-004 quality review QR-002).
  */
 const rulerWithObject = rulerBase.chain((ruler) => {
   const scale = rulerScale(ruler.rulerUnit, ruler.length, ruler.smallestDivision)!;
   const last = scale.marks.length - 1;
   const index = fc.oneof(fc.constant(0), fc.constant(last), fc.integer({ min: 0, max: last }));
-  return fc.record({ a: index, b: index, label: fc.constantFrom(...LABELS) }).map(({ a, b, label }) => {
+  const valueAt = (i: number, computed: boolean) => (computed ? scale.marks[i]!.index * (1 / scale.marksPerUnit) : scale.marks[i]!.value);
+  return fc.record({ a: index, b: index, computed: fc.boolean(), label: fc.constantFrom(...LABELS) }).map(({ a, b, computed, label }) => {
     const [i, j] = a === b ? (a === last ? [a - 1, a] : [a, a + 1]) : [Math.min(a, b), Math.max(a, b)];
-    return given({ ...ruler, measuredObject: given({ start: scale.marks[i]!.value, end: scale.marks[j]!.value, label }) });
+    return given({ ...ruler, measuredObject: given({ start: valueAt(i, computed), end: valueAt(j, computed), label }) });
   });
 });
 
@@ -167,37 +176,37 @@ describe("drawn to scale with itself (AD-007, NLC-NFR-005)", () => {
     for (let i = 1; i < wholes.length; i++) expect(Math.abs(wholes[i]! - wholes[i - 1]! - RULER_EDGE / length)).toBeLessThanOrEqual(0.02);
   });
 
-  it("puts every mark within 0.5 units of its value's position", () => {
-    for (const [unit, length] of rulers) {
-      const scale = rulerScale(unit, length)!;
-      const scene = sceneOf({ type: "ruler", rulerUnit: unit, length });
-      marks(scene).forEach((node, i) => expect(Math.abs(num(node, "x1") - expectedX(scale.marks[i]!.value, length))).toBeLessThanOrEqual(0.5));
+  it("puts every mark within 0.5 units of its value's position, with every unit the same length, on every one of the 78 rulers (rulers NLC TICKET-004)", () => {
+    // Every ruler, not a sample: one ruler's units off by 0.04 would pass a sample most runs
+    // (rulers NLC TICKET-004 quality review QR-001).
+    for (const [unit, division, length] of EVERY_RULER) {
+      const name = `${length} ${unit} ${division ?? ""}`;
+      const scale = rulerScale(unit, length, division)!;
+      const drawn = marks(sceneOf(given({ type: "ruler", rulerUnit: unit, length, smallestDivision: division })));
+      expect(drawn, name).toHaveLength(scale.marks.length);
+      drawn.forEach((node, i) => expect(Math.abs(num(node, "x1") - expectedX(scale.marks[i]!.value, length)), name).toBeLessThanOrEqual(0.5));
+      // Every whole unit the same length, within the drawing's two-decimal rounding of each end.
+      const wholes = drawn.filter((_, i) => scale.marks[i]!.index % scale.marksPerUnit === 0).map((node) => num(node, "x1"));
+      expect(wholes, name).toHaveLength(length + 1);
+      for (let i = 1; i < wholes.length; i++) expect(Math.abs(wholes[i]! - wholes[i - 1]! - RULER_EDGE / length), name).toBeLessThanOrEqual(0.02);
     }
   });
 
-  it("puts every mark and both object ends within 0.5 units of their values' positions, with every unit the same length, whatever the ruler (rulers NLC TICKET-004)", () => {
-    // Expected positions come from the values alone: the fixed edge's share for each mark, and for
-    // each object end the mark it is located at (`locatedValue`), the rule the layout shares.
+  it("puts both object ends within 0.5 units of their marks' positions, whatever the ruler and object, ends computed or exact (rulers NLC TICKET-004)", () => {
+    // Expected from the values alone: each end at the mark it is located at (`locatedValue`), the
+    // rule the layout and the text alternative share, so a computed end is drawn at its mark.
     fc.assert(
       fc.property(fc.oneof(rulerWithObject, plainRuler), (d) => {
         const scale = rulerScale(d.rulerUnit, d.length, d.smallestDivision)!;
         const scene = sceneOf(d);
-        const drawn = marks(scene);
-        expect(drawn).toHaveLength(scale.marks.length);
-        drawn.forEach((node, i) => expect(Math.abs(num(node, "x1") - expectedX(scale.marks[i]!.value, d.length))).toBeLessThanOrEqual(0.5));
-        // Every whole unit the same length, within the drawing's two-decimal rounding of each end.
-        const wholes = drawn.filter((_, i) => scale.marks[i]!.index % scale.marksPerUnit === 0).map((node) => num(node, "x1"));
-        expect(wholes).toHaveLength(d.length + 1);
-        for (let i = 1; i < wholes.length; i++) expect(Math.abs(wholes[i]! - wholes[i - 1]! - RULER_EDGE / d.length)).toBeLessThanOrEqual(0.02);
         const object = "measuredObject" in d ? d.measuredObject : undefined;
         if (object === undefined) {
           expect(bars(scene)).toEqual([]);
           return;
         }
-        const [bar] = bars(scene);
-        const [x1, x2] = [num(bar!, "x"), num(bar!, "x") + num(bar!, "width")];
-        expect(Math.abs(x1 - expectedX(locatedValue(scale, object.start), d.length))).toBeLessThanOrEqual(0.5);
-        expect(Math.abs(x2 - expectedX(locatedValue(scale, object.end), d.length))).toBeLessThanOrEqual(0.5);
+        const [x1, x2] = barEnds(scene);
+        expect(Math.abs(x1! - expectedX(locatedValue(scale, object.start), d.length))).toBeLessThanOrEqual(0.5);
+        expect(Math.abs(x2! - expectedX(locatedValue(scale, object.end), d.length))).toBeLessThanOrEqual(0.5);
       }),
       { numRuns: 300 },
     );
@@ -223,11 +232,6 @@ describe("drawn to scale with itself (AD-007, NLC-NFR-005)", () => {
 });
 
 describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
-  /** The x of the object's bar's two ends, start first. */
-  const barEnds = (scene: Scene) => {
-    const [bar] = bars(scene);
-    return [num(bar!, "x"), num(bar!, "x") + num(bar!, "width")];
-  };
 
   it("draws a bar whose ends lie within 0.5 units of its start and end marks, from a start other than 0", () => {
     const scene = sceneOf(inches(6, { smallestDivision: "eighth", measuredObject: { start: 1.5, end: 4.25 } }));
@@ -315,9 +319,6 @@ describe("the measured object (NLC-REQ-050, NLC-REQ-055)", () => {
         // The object's length, as the text alternative would write a mark, appears nowhere.
         const measured = String(Math.round((d.measuredObject.end - d.measuredObject.start) * 10_000) / 10_000);
         if (!allowed.has(measured)) expect(texts(scene).some((node) => node.text.includes(measured))).toBe(false);
-        const [bar] = bars(scene);
-        expect(Math.abs(num(bar!, "x") - expectedX(d.measuredObject.start, d.length))).toBeLessThanOrEqual(0.5);
-        expect(Math.abs(num(bar!, "x") + num(bar!, "width") - expectedX(d.measuredObject.end, d.length))).toBeLessThanOrEqual(0.5);
       }),
       { numRuns: 200 },
     );

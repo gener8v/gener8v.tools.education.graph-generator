@@ -5,6 +5,7 @@ import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { RULER_MAX_LENGTH } from "../../src/core/ruler";
 import { RulerGraph } from "../../src/react/graphs/RulerGraph";
 import { oneClusterTexts, wordsOf } from "../fixtures/plain-text";
+import { expectP95 } from "../helpers/bench";
 
 // NLC-NFR-008: a ruler of the maximum length in either unit, with an object, renders in at most
 // 50 ms at p95 in a server render on a CI runner. Each case is a whole server render, validation,
@@ -33,19 +34,17 @@ describe("ruler rendering speed (NLC-NFR-008)", () => {
     test(`${name}: p95 at most ${P95_LIMIT_MS} ms`, async ({ bench }) => {
       // A render that fell back to the invalid-description placeholder would time the wrong thing.
       expect(renderToStaticMarkup(createElement(RulerGraph, { description }))).toMatch(/^<svg role="img" aria-label="A ruler titled/);
-      // Vitest warns that the render reads module export getters many times: the package's own
-      // modules, as Vitest transforms them. That overhead only adds to the time measured.
       const result = await bench(name, () => {
         renderToStaticMarkup(createElement(RulerGraph, { description }));
       }).run({ time: 500, warmupTime: 100 });
-      // Latencies in milliseconds, sorted ascending; kept by `benchmark.retainSamples`.
-      const samples = result.latency.samples;
-      if (samples === undefined || samples.length === 0) throw new Error("No latency samples were kept; set benchmark.retainSamples");
-      const p95 = samples[Math.floor(samples.length * 0.95)]!;
-      const summary = `${name}: p95 ${p95.toFixed(4)} ms over ${samples.length} runs`;
-      // Printed on every run, so the CI log records the measurement.
-      console.log(`NLC-NFR-008 ${summary}`);
-      expect(p95, summary).toBeLessThanOrEqual(P95_LIMIT_MS);
+      // Vitest warns that the render reads module export getters many times: the package's own
+      // modules, as Vitest transforms them. The printed line says so, so the log explains itself.
+      expectP95(result, {
+        requirement: "NLC-NFR-008",
+        name,
+        limitMs: P95_LIMIT_MS,
+        note: "Vitest's export-getter warning above only adds to this time",
+      });
     });
   }
 });
