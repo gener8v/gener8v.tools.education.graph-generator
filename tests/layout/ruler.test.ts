@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { validate } from "../../src/core/index";
 import { type Ruler, ruler as rulerDefinition } from "../../src/core/definitions/ruler";
-import { INCH_DIVISIONS, RULER_MAX_LENGTH, type RulerUnit, rulerScale } from "../../src/core/ruler";
+import { INCH_DIVISIONS, RULER_MAX_LENGTH, type RulerUnit, locatedValue, rulerScale } from "../../src/core/ruler";
 import { CALLER_TEXT_LIMIT, sharedProperties } from "../../src/core/definitions/shared";
 import { defaultStyle } from "../../src/core/style";
 import { checkScene } from "../../src/layout/kit/check";
@@ -173,6 +173,34 @@ describe("drawn to scale with itself (AD-007, NLC-NFR-005)", () => {
       const scene = sceneOf({ type: "ruler", rulerUnit: unit, length });
       marks(scene).forEach((node, i) => expect(Math.abs(num(node, "x1") - expectedX(scale.marks[i]!.value, length))).toBeLessThanOrEqual(0.5));
     }
+  });
+
+  it("puts every mark and both object ends within 0.5 units of their values' positions, with every unit the same length, whatever the ruler (rulers NLC TICKET-004)", () => {
+    // Expected positions come from the values alone: the fixed edge's share for each mark, and for
+    // each object end the mark it is located at (`locatedValue`), the rule the layout shares.
+    fc.assert(
+      fc.property(fc.oneof(rulerWithObject, plainRuler), (d) => {
+        const scale = rulerScale(d.rulerUnit, d.length, d.smallestDivision)!;
+        const scene = sceneOf(d);
+        const drawn = marks(scene);
+        expect(drawn).toHaveLength(scale.marks.length);
+        drawn.forEach((node, i) => expect(Math.abs(num(node, "x1") - expectedX(scale.marks[i]!.value, d.length))).toBeLessThanOrEqual(0.5));
+        // Every whole unit the same length, within the drawing's two-decimal rounding of each end.
+        const wholes = drawn.filter((_, i) => scale.marks[i]!.index % scale.marksPerUnit === 0).map((node) => num(node, "x1"));
+        expect(wholes).toHaveLength(d.length + 1);
+        for (let i = 1; i < wholes.length; i++) expect(Math.abs(wholes[i]! - wholes[i - 1]! - RULER_EDGE / d.length)).toBeLessThanOrEqual(0.02);
+        const object = "measuredObject" in d ? d.measuredObject : undefined;
+        if (object === undefined) {
+          expect(bars(scene)).toEqual([]);
+          return;
+        }
+        const [bar] = bars(scene);
+        const [x1, x2] = [num(bar!, "x"), num(bar!, "x") + num(bar!, "width")];
+        expect(Math.abs(x1 - expectedX(locatedValue(scale, object.start), d.length))).toBeLessThanOrEqual(0.5);
+        expect(Math.abs(x2 - expectedX(locatedValue(scale, object.end), d.length))).toBeLessThanOrEqual(0.5);
+      }),
+      { numRuns: 300 },
+    );
   });
 
   it("keeps every number clear of its neighbours and inside the body at both maximum lengths (NLC TICKET-001 CR-005)", () => {
