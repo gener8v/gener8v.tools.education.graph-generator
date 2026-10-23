@@ -1,4 +1,6 @@
-import axe from "axe-core";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import type axe from "axe-core";
 import { JSDOM } from "jsdom";
 
 /**
@@ -7,6 +9,13 @@ import { JSDOM } from "jsdom";
  * not among them (rulers NLC TICKET-004 D5).
  */
 export const SVG_IMAGE_RULES = ["svg-img-alt", "aria-allowed-attr", "aria-valid-attr", "aria-valid-attr-value", "aria-roles"] as const;
+
+/**
+ * axe-core's browser bundle, read as text and never imported, so it runs only inside the JSDOM
+ * window: importing it would run its bundle in Node's realm, which adds `__core-js_shared__` to
+ * the global object (rulers NLC TICKET-004 code review CR-001).
+ */
+const AXE_SOURCE = readFileSync(createRequire(import.meta.url).resolve("axe-core/axe.min.js"), "utf8");
 
 export interface AxeSvgResult {
   /** Each violated rule's id and the help text axe gives. */
@@ -24,7 +33,7 @@ export interface AxeSvgResult {
 export async function axeSvgImage(markup: string): Promise<AxeSvgResult> {
   const dom = new JSDOM(`<!doctype html><html lang="en"><head><title>Graph</title></head><body>${markup}</body></html>`, { runScripts: "outside-only" });
   try {
-    dom.window.eval(axe.source);
+    dom.window.eval(AXE_SOURCE);
     const inWindow = (dom.window as unknown as { axe: typeof axe }).axe;
     const results = await inWindow.run(dom.window.document.body, { runOnly: { type: "rule", values: [...SVG_IMAGE_RULES] } });
     return {

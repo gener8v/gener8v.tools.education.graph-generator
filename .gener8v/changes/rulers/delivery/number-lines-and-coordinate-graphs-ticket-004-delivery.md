@@ -157,4 +157,9 @@ No source code implements these NFRs: they are verified by tests. The specificat
 
 ## Post-Review Amendments
 
-None
+### 2026-10-23 — Code review (rulers/number-lines-and-coordinate-graphs-ticket-004-code-review)
+
+- **CR-001 (corrects DEL-002's rationale):** importing `axe-core` ran its bundle in Node's realm and added `__core-js_shared__` to `globalThis`; DEL-002's "no global is installed" held for the helper, not for the import. Now `tests/helpers/axe.ts` reads `axe-core/axe.min.js` as text (`createRequire(...).resolve`) and keeps only a type import, so axe-core runs only inside the JSDOM window; a probe shows the helper adds no own key to `globalThis`. The NLC-NFR-006 block moved to `tests/react/ruler-server-render.test.tsx`, which imports neither jsdom nor the helper (graph-library NLC TICKET-005's shape); the ruler description helper moved to `tests/fixtures/rulers.ts` (`rulerSpanned`). The specification's NLC-NFR-006 coverage row names the new file.
+- **CR-002:** the accessibility test asserts the `<title>` is the SVG's first element child, as AD-008 places it and Files Produced says. Correction to the Notes: graph-library CPSE TICKET-008 is not delivered; it carries a Known Hazard to state the 330 px minimum on the ruler's documentation page.
+- **CR-003:** the CI step running `pnpm bench` is renamed "Benchmarks (GSV-NFR-001, NLC-NFR-008)" (`.github/workflows/ci.yml`). CI enforces NLC-NFR-008's 50 ms p95 on every matrix cell.
+- Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,468 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.

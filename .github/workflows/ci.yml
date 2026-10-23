@@ -72,7 +72,7 @@ jobs:
         env:
           GRAPH_GENERATOR_PREBUILT: "1"
 
-      - name: Validation speed (GSV-NFR-001)
+      - name: Benchmarks (GSV-NFR-001, NLC-NFR-008)
         run: pnpm bench
         env:
           GRAPH_GENERATOR_PREBUILT: "1"
