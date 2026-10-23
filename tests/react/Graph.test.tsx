@@ -592,6 +592,25 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     expect(markup.match(/<text /g)!.length).toBeLessThan(150);
   });
 
+  it("keeps the number line's text alternative and markup bounded at its limits: 100 points, 100 custom labels, 200-character texts, values written in full (NLC TICKET-002 SEC-001)", () => {
+    // The worst case the limits allow: 100 ticks each with a 200-character custom label, 100 points
+    // each with a 200-character label, at values with the longest written forms (5e-324 is 326
+    // characters). Measured 2026-10-23: a 47 KB description gives a 75,721-character text
+    // alternative and 228,807 characters of markup; with "&" as the text, 560,771.
+    const text = "a".repeat(CALLER_TEXT_LIMIT);
+    const axis = { min: -0.99, max: 1, tickSpacing: 0.02 };
+    const tickLabels = Array.from({ length: 100 }, (_, i) => ({ value: Math.round((-0.98 + i * 0.02) * 100) / 100, text }));
+    const points = Array.from({ length: 100 }, (_, i) => ({ value: i % 2 === 0 ? 5e-324 : -2.2250738585072014e-308, label: text }));
+    const description = { type: "number-line", title: text, lineLabel: text, axis, tickLabels, points };
+    const result = createGraph(description);
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.scene.textAlternative.length).toBeGreaterThan(70_000);
+    expect(result.scene.textAlternative.length).toBeLessThan(80_000);
+    const markup = html(<PackageNumberLineGraph description={description} />);
+    expect(markup.length).toBeLessThan(700_000);
+    expect(markup.match(/<text /g)!.length).toBeLessThan(320);
+  });
+
   it("reports a category name over the limit rather than drawing it, so a megabyte of names never reaches the renderer (DGP TICKET-005 SEC-001)", () => {
     // Before the limit, 40 columns of names like "i i i …" in 1 MB drew about 500,000 text nodes and
     // 95.5 MB of markup, and 4 MB threw past the fallback.

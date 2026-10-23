@@ -436,3 +436,10 @@ The Engineer approved every decision as recommended: D1(a) with ticks taking `li
 - **QR-005:** `textBlock(text, maxWidth, fontSize, maxLines)` added to `src/layout/kit/title.ts`, replacing the number line's private `measure`. Known Hazard appended to NLC TICKET-003 and TICKET-004 to use it.
 - Mutation checks: an inward left head, bases on the wrong side, no left extension, no width floor, numeric-only end room, points stated as derived and a given spacing stated as derived each fail a test.
 - Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,456 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.
+
+### 2026-10-23 — Security review (graph-library/number-lines-and-coordinate-graphs-ticket-002-security-review)
+
+- **SEC-001 (corrects the plan's D5 and DEL-005 figure):** the text alternative at the limits is not "about 25 kB". With 100 points and 100 custom labels, every text at 200 characters and values at their longest written forms (`5e-324`), it is 75,721 characters (116,121 UTF-16 units, 197,729 bytes as UTF-8 for text outside the BMP), and the markup is up to about 0.66 MB per render. Raising the point or custom-label limit, or `CALLER_TEXT_LIMIT`, raises it in proportion.
+- `tests/react/Graph.test.tsx` pins it: the text alternative between 70,000 and 80,000 characters, the markup under 700,000, under 320 `<text>` nodes.
+- Values stay stated as written; the subnormal echo is an accepted risk (Security — Thomas Eaves, 2026-10-23).
+- Re-verification: `pnpm generate`, `lint`, `typecheck`, `test` ×3 (1,457 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.
