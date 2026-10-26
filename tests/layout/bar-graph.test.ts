@@ -12,7 +12,7 @@ import { displayValue } from "../../src/layout/kit/format";
 import { checkScene } from "../../src/layout/kit/check";
 import { LINE_HEIGHT, SCENE_MARGIN } from "../../src/layout/kit/title";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
-import { attr, boundsOf, nameOf, overlap, positionOf, ticksOf as ticks, valueAxisOf as valueAxis } from "../fixtures/scene-geometry";
+import { attr, boundsOf, nameOf, overlap, positionOf, tickLabelNodes, ticksOf as ticks, valueAxisOf as valueAxis } from "../fixtures/scene-geometry";
 
 /** The Scene the bar-graph layout draws for a valid description; it must pass `checkScene`. */
 function sceneOf(input: Record<string, unknown>): Scene {
@@ -276,8 +276,11 @@ describe("value labels (DGP-REQ-020)", () => {
 });
 
 describe("value axis labels (defect sweep DS-001)", () => {
-  it("labels a tick interval worked out in floating point with the value meant", () => {
+  // The data graphs clean their ticks with onGrid, so this passed before DS-001's fix to the axis rule
+  // too: it guards the bar graph's labels against a change to either rule (code review CR-001).
+  it("keeps clean tick labels for a tick interval worked out in floating point", () => {
     const scene = sceneOf({ values: [1, 0.5, 0.25], valueScale: { minimum: 0, maximum: 1.2, tickInterval: 0.1 * 3 } });
+    expect(tickLabelNodes(scene).map((node) => (node.kind === "text" ? node.text : ""))).toEqual(["0", "0.3", "0.6", "0.9", "1.2"]);
     expect(ticks(scene).map((tick) => tick.value)).toEqual([0, 0.3, 0.6, 0.9, 1.2]);
   });
 });

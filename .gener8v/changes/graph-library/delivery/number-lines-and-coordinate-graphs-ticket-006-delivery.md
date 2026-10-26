@@ -136,4 +136,5 @@ The spec's `## @spec Coverage` row for NLC-REQ-004 now lists `decimalPlaces`.
 
 ## Post-Review Amendments
 
-None
+- **graph-library/number-lines-and-coordinate-graphs-ticket-006-code-review/CR-001** (2026-10-26): the bar-graph DS-001 test also asserts the printed tick label text through `tickLabelNodes`, is renamed "keeps clean tick labels for a tick interval worked out in floating point", and says in a comment that it guards the bar graph against a change to either tick rule, since it passed before the fix. Files: `tests/layout/bar-graph.test.ts`. Re-verified: `pnpm lint` 0, `pnpm typecheck` 0, `pnpm test` 0 (1,481 passed).
+- **graph-library/number-lines-and-coordinate-graphs-ticket-006-code-review/CR-002** (2026-10-26): DEL-002 applies to any spacing with more than 12 significant digits, not only `1 / 3`: its labels print at 12 significant digits (`0.123456789012345` labels `0.123456789012`). Accepted; no code change.
