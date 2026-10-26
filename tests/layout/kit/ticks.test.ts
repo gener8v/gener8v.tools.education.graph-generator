@@ -259,9 +259,11 @@ describe("tick labels", () => {
     expect(tickLabel(spacing, spacing)).toBe(labels[1]);
   });
 
-  it("still labels a spacing that is not a short decimal at twelve decimal places (defect sweep DS-001)", () => {
+  it("labels a spacing longer than twelve significant digits at twelve significant digits (defect sweep DS-001; quality review QR-002)", () => {
     expect(tickLabel(1 / 3, 1 / 3)).toBe("0.333333333333");
     expect(niceTicks(0, 1, 1 / 3).ticks.map((tick) => tickLabel(tick, 1 / 3))).toEqual(["0", "0.333333333333", "0.666666666667", "1"]);
+    // Twelve significant digits, not twelve decimal places: five of them come before the point here.
+    expect(niceTicks(0, 24691.357802469, 12345.6789012345).ticks.map((tick) => tickLabel(tick, 12345.6789012345))).toEqual(["0", "12345.6789012", "24691.3578025"]);
   });
 
   it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])("refuse a value of %d, which no axis ticks (security review SEC-004)", (value) => {

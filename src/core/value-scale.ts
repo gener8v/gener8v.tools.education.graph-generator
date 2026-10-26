@@ -470,8 +470,10 @@ export function niceTicks(min: number, max: number, spacing?: number): { spacing
 
 /**
  * The number of decimal places in `spacing` written out in full: 0.25 → 2, 2 → 0, 1e-7 → 7. The
- * spacing's arithmetic noise is removed first, so 0.1 × 3 counts 1 decimal, not 17 (defect sweep
- * DS-001). The ticks themselves are not rounded at 12 digits (QR-002).
+ * spacing's arithmetic noise is removed first (`cleanDecimal`, 12 significant digits), so 0.1 × 3
+ * counts 1 decimal, not 17 (defect sweep DS-001), and a spacing longer than 12 significant digits
+ * counts only the decimals among its first 12: 1 / 3 counts 12, 12345.6789012345 counts 7 (quality
+ * review QR-002). The ticks themselves are not rounded at 12 digits (NLC TICKET-001 QR-002).
  */
 // @spec NLC-REQ-004
 function decimalPlaces(spacing: number): number {
