@@ -409,38 +409,36 @@ describe("the ruler's published vocabulary and schemas (GSV-REQ-046..048; rulers
   const ruler = vocabulary.graphTypes["ruler"]!.properties;
   const example = JSON.parse(readFileSync(new URL("../../examples/ruler.json", import.meta.url), "utf8")) as Record<string, unknown>;
 
-  it("defines the six terms, each with a definition that states its limit", () => {
-    for (const term of ["rulerUnit", "length", "smallestDivision", "measuredObject", "start", "end"]) {
-      expect(vocabulary.terms[term]?.definition.length, term).toBeGreaterThan(10);
-    }
-    expect(vocabulary.terms["rulerUnit"]!.definition).toMatch(/centimeters or inches/);
-    expect(vocabulary.terms["length"]!.definition).toMatch(/1 to 30 for centimeters, 1 to 12 for inches/);
-    expect(vocabulary.terms["smallestDivision"]!.definition).toMatch(/inch ruler/);
-    expect(vocabulary.terms["smallestDivision"]!.definition).toMatch(/sixteenth when left out/);
-    expect(vocabulary.terms["start"]!.definition).toMatch(/as a decimal/);
-    expect(vocabulary.terms["start"]!.definition).toMatch(/in the ruler's unit/);
-    expect(vocabulary.terms["start"]!.definition).toMatch(/whole millimeter/);
-    expect(vocabulary.terms["end"]!.definition).toMatch(/after its start/);
+  // What publishing adds: the vocabulary's text, value descriptions and conditions. The definition's
+  // own shape (kinds, lists, required) is tested in tests/core/ruler-definition.test.ts
+  // (quality review QR-002).
+  it("defines the six terms, each with a definition that states its limit (quality review QR-001)", () => {
+    const definitionOf = (term: string) => vocabulary.terms[term]!.definition;
+    expect(definitionOf("rulerUnit")).toMatch(/centimeters or inches/);
+    expect(definitionOf("length")).toMatch(/1 to 30 for centimeters, 1 to 12 for inches/);
+    expect(definitionOf("smallestDivision")).toMatch(/inch ruler/);
+    expect(definitionOf("smallestDivision")).toMatch(/sixteenth when left out/);
+    expect(definitionOf("measuredObject")).toMatch(/lying along the ruler/);
+    expect(definitionOf("start")).toMatch(/in the ruler's unit, as a decimal/);
+    expect(definitionOf("start")).toMatch(/whole millimeter/);
+    expect(definitionOf("start")).toMatch(/from 0 to the ruler's length/);
+    expect(definitionOf("end")).toMatch(/after its start, given as the start is/);
+    // Both ends are required: an object always has a start mark and an end mark.
+    expect(ruler["measuredObject"]!.properties).toMatchObject({ start: { required: true }, end: { required: true } });
   });
 
-  it("describes each unit and each division, and states that a division applies to inches only", () => {
-    expect(ruler["rulerUnit"]).toMatchObject({ kind: "enum", required: true, values: ["centimeters", "inches"] });
-    expect(ruler["smallestDivision"]).toMatchObject({
-      kind: "enum",
-      required: false,
-      values: ["half", "quarter", "eighth", "sixteenth"],
-      appliesWhen: { term: "rulerUnit", values: ["inches"] },
-    });
+  it("describes each unit and each division by its own name, and states that a division applies to inches only (quality review QR-001)", () => {
+    expect(ruler["smallestDivision"]!.appliesWhen).toEqual({ term: "rulerUnit", values: ["inches"] });
     for (const term of ["rulerUnit", "smallestDivision"]) {
       const descriptions = ruler[term]!.valueDescriptions!;
       expect(Object.keys(descriptions), term).toEqual(ruler[term]!.values);
-      for (const [value, text] of Object.entries(descriptions)) expect(text.length, `${term} ${value}`).toBeGreaterThan(5);
+      // A unit is named in the singular ("centimeter", "inch"), a division as it is written.
+      for (const [value, text] of Object.entries(descriptions)) expect(text, `${term} ${value}`).toContain(value.replace(/e?s$/, ""));
     }
   });
 
   it("limits the object's label to the caller text limit", () => {
-    expect(ruler["measuredObject"]!.properties!["label"]).toMatchObject({ kind: "string", maxLength: CALLER_TEXT_LIMIT });
-    expect(CALLER_TEXT_LIMIT).toBe(200);
+    expect(ruler["measuredObject"]!.properties!["label"]).toMatchObject({ maxLength: CALLER_TEXT_LIMIT });
   });
 
   it("is in both schemas, and its example is accepted by the schema and, in tool form, by the strict tool schema", () => {
@@ -470,9 +468,13 @@ describe("the ruler's published vocabulary and schemas (GSV-REQ-046..048; rulers
     if (!result.valid) expect(result.issues[0]).toMatchObject({ code: "unknown_graph_type", allowed: expect.arrayContaining(["ruler"]) });
   });
 
-  it("offers the British spelling nowhere in the generated files (the vocabulary's spelling is US)", () => {
+  it("spells the ruler's units the US way everywhere it is published, from the definitions and in the committed files (quality review QR-003)", () => {
+    const britishUnit = /(centi|milli)?metre/i;
+    expect(JSON.stringify(getVocabulary())).not.toMatch(britishUnit);
+    expect(JSON.stringify(getSchema())).not.toMatch(britishUnit);
+    expect(JSON.stringify(getToolSchema())).not.toMatch(britishUnit);
     for (const path of Object.keys(generatedFiles())) {
-      expect(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8"), path).not.toMatch(/centimetre/i);
+      expect(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8"), path).not.toMatch(britishUnit);
     }
   });
 });

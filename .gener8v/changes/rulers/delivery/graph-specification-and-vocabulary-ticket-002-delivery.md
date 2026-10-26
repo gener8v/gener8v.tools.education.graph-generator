@@ -146,3 +146,13 @@ None — implementation followed the approved plan. Written by a Sonnet subagent
 - **CR-001:** `tests/core/schema-shape.test.ts` "publishes the label's limit and the division's condition in both schemas": `measuredObject.label` `maxLength` 200, and `smallestDivision`'s description ending "Give it only when rulerUnit is "inches".", in the published schema and the strict tool schema.
 - **CR-002:** the specification's `@spec Coverage` rows for GSV-REQ-046..048 moved above GSV-REQ-049, in requirement order.
 - Re-verification: `pnpm generate` (no change), `lint`, `typecheck`, `test` ×3 (1,474 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.
+
+### 2026-10-26 — Quality review (rulers/graph-specification-and-vocabulary-ticket-002-quality-review)
+
+- **QR-001:** the terms test pins `measuredObject`'s "lying along the ruler", `start`'s "from 0 to the ruler's length" and `end`'s "after its start, given as the start is", and asserts `start` and `end` required; each unit and division description must name its own value. Mutation: swapped division texts, `start` made optional, and the range sentence removed each fail.
+- **QR-002:** the block asserts only what publishing adds; the definition's shape stays in `tests/core/ruler-definition.test.ts` (comment in the block). The `CALLER_TEXT_LIMIT === 200` line is gone.
+- **QR-003:** "spells the ruler's units the US way everywhere it is published …" checks `getVocabulary()`, `getSchema()`, `getToolSchema()` and the committed files for `/(centi|milli)?metre/i`. Mutation: "millimetre" in `start`'s description fails it without a regeneration.
+- **Found, not fixed (outside this ticket):** the pictograph "person" image's description says "dark grey" (`src/generated/vocabulary.json`), against the vocabulary's US spelling. A trivial fix for a later commit.
+- **Re-verification:** `pnpm generate` (no change), `lint`, `typecheck`, `test`, `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.
+  - `pnpm test`: 1,474 passed on 10 of 11 full runs. The 11th exited 1: a Vitest worker crashed with SIGSEGV while running `tests/react/ruler.test.tsx` (rulers NLC TICKET-004's axe test, which evaluates axe-core in a JSDOM window). This ticket does not touch that file. 30 isolated runs of it passed, on Node v24.1.0.
+  - The crash is in Node or JSDOM, not an assertion, but it can fail CI. It should be tracked as its own fix: run that file in a `forks` pool or with `isolate`, or move CI's Node off 24.1.0.
