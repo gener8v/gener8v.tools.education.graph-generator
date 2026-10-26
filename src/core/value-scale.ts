@@ -470,16 +470,25 @@ export function niceTicks(min: number, max: number, spacing?: number): { spacing
 
 /**
  * The number of decimal places in `spacing` written out in full: 0.25 → 2, 2 → 0, 1e-7 → 7. The
- * spacing's arithmetic noise is removed first (`cleanDecimal`, 12 significant digits), so 0.1 × 3
- * counts 1 decimal, not 17 (defect sweep DS-001), and a spacing longer than 12 significant digits
- * counts only the decimals among its first 12: 1 / 3 counts 12, 12345.6789012345 counts 7 (quality
- * review QR-002). The ticks themselves are not rounded at 12 digits (NLC TICKET-001 QR-002).
+ * precision `axisTick` rounds at, so it keeps the spacing's noise: rounding coarser would move an
+ * end tick out of the range it was counted in (NLC TICKET-006 security review SEC-001).
  */
-// @spec NLC-REQ-004
 function decimalPlaces(spacing: number): number {
-  const text = formatSupplied(cleanDecimal(Math.abs(spacing)));
+  const text = formatSupplied(Math.abs(spacing));
   const point = text.indexOf(".");
   return point < 0 ? 0 : text.length - point - 1;
+}
+
+/**
+ * How many decimal places a tick label shows: those of the spacing with its arithmetic noise
+ * removed (`cleanDecimal`, 12 significant digits), so 0.1 × 3 shows 1 decimal, not 17 (defect sweep
+ * DS-001). A spacing longer than 12 significant digits shows only the decimals among its first 12:
+ * 1 / 3 shows 12, 12345.6789012345 shows 7 (NLC TICKET-006 quality review QR-002). Only labels are
+ * cut; the ticks keep `decimalPlaces` (NLC TICKET-001 QR-002).
+ */
+// @spec NLC-REQ-004
+function labelDecimals(spacing: number): number {
+  return decimalPlaces(cleanDecimal(Math.abs(spacing)));
 }
 
 /**
@@ -491,6 +500,6 @@ function decimalPlaces(spacing: number): number {
 // @spec NLC-REQ-004
 export function axisTickLabel(value: number, spacing: number): string {
   if (!Number.isFinite(value)) throw new RangeError(`axisTickLabel(): ${value} is not a tick value`);
-  const rounded = Number(value.toFixed(Math.min(100, decimalPlaces(spacing))));
+  const rounded = Number(value.toFixed(Math.min(100, labelDecimals(spacing))));
   return formatSupplied(rounded === 0 ? 0 : rounded);
 }

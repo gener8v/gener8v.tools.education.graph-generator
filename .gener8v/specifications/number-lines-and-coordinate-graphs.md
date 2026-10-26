@@ -200,7 +200,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 |-------------|-----------------|
 | NLC-REQ-002 | `src/core/definitions/axis.ts`:axisProperties, axisProperty |
 | NLC-REQ-003 | `src/core/definitions/axis.ts`:axisProperties |
-| NLC-REQ-004 | `src/core/definitions/axis.ts`:axisProperties; `src/core/value-scale.ts`:tickCount, niceTicks, axisTickLabel, decimalPlaces; `src/layout/kit/axis.ts`:drawAxis |
+| NLC-REQ-004 | `src/core/definitions/axis.ts`:axisProperties; `src/core/value-scale.ts`:tickCount, niceTicks, axisTickLabel, labelDecimals; `src/layout/kit/axis.ts`:drawAxis |
 | NLC-REQ-005 | `src/core/definitions/axis.ts`:axisProperties; `src/core/value-scale.ts`:axisSpacing, niceTicks |
 | NLC-REQ-006 | `src/core/definitions/axis.ts`:axisProperties; `src/layout/kit/axis.ts`:drawAxis |
 | NLC-REQ-007 | `src/layout/kit/axis.ts`:drawAxis (ticks); `src/layout/number-line.ts`:numberLineLayout (points; segments with NLC TICKET-003, TICKET-004) |

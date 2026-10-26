@@ -84,6 +84,25 @@ describe("ticks at whole multiples of the spacing (NLC-REQ-004)", () => {
     );
   });
 
+  it("lists every tick it counts for a spacing longer than twelve significant digits, end ticks included (NLC TICKET-006 security review SEC-001)", () => {
+    // Labels clean the spacing's noise (DS-001); ticks must not, or rounding moves an end tick out of range.
+    const end = 2.9999999999958;
+    expect(niceTicks(0, end, end / 10).ticks).toHaveLength(11);
+    expect(niceTicks(0, end, end / 10).ticks.at(-1)).toBe(end);
+    expect(niceTicks(-end, 0, end / 10).ticks[0]).toBe(-end);
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: 999 }), fc.integer({ min: 0, max: 3 }), fc.double({ min: -5e-13, max: 5e-13, noNaN: true }), fc.integer({ min: 2, max: 60 }), fc.double({ min: -5e-13, max: 5e-13, noNaN: true }), (whole, places, drift, steps, off) => {
+        // A spacing within 5e-13 of a short decimal, and an end well within the 1e-12 a multiple is matched at.
+        const spacing = (whole / 10 ** places) * (1 + drift);
+        const max = spacing * steps * (1 + off);
+        fc.pre(max <= 1e9);
+        expect(niceTicks(0, max, spacing).ticks).toHaveLength(tickCount(0, max, spacing));
+        expect(niceTicks(-max, 0, spacing).ticks).toHaveLength(tickCount(-max, 0, spacing));
+      }),
+      { numRuns: 2000 },
+    );
+  });
+
   it("adds no tick outside the range far from zero, where a tick's index is large (code review CR-001)", () => {
     expect(niceTicks(999_999_998.4, 999_999_999.6, 1).ticks).toEqual([999_999_999]);
     expect(tickCount(999_999_900.4, 999_999_999.6, 1)).toBe(99);

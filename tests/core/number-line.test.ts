@@ -95,6 +95,11 @@ describe("custom labels off a tick (NLC-REQ-020)", () => {
     expect(codesAndPaths(line({ axis: { min: 0, max: 1, tickSpacing: 0.1 }, tickLabels: [{ value: 0.1 + 0.2, text: "three tenths" }] }))).toEqual([]);
   });
 
+  it("accepts a label at the end tick of a spacing longer than twelve significant digits (NLC TICKET-006 security review SEC-001)", () => {
+    const end = 2.9999999999958;
+    expect(codesAndPaths(line({ axis: { min: 0, max: end, tickSpacing: end / 10 }, tickLabels: [{ value: end, text: "end" }] }))).toEqual([]);
+  });
+
   it("reports a label between ticks, past the tolerance, or off the range", () => {
     expect(codesAndPaths(line({ axis: { min: 0, max: 10, tickSpacing: 1 }, tickLabels: [{ value: 0.5, text: "half" }] }))).toEqual(["tick_label_not_on_tick /tickLabels/0/value"]);
     expect(codesAndPaths(line({ axis: { min: 0, max: 1, tickSpacing: 1 / 3 }, tickLabels: [{ value: 2 / 3 + 1e-5, text: "near" }] }))).toEqual(["tick_label_not_on_tick /tickLabels/0/value"]);
