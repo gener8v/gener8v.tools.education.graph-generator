@@ -56,7 +56,7 @@ const scaleOf = (ruler: Ruler): RulerScale | undefined => rulerScale(ruler.ruler
  * index once both ends are marks, so an end is never compared with a start off the ruler (rulers
  * NLC TICKET-002 security review).
  */
-// @spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-042, NLC-REQ-046, NLC-REQ-049, NLC-REQ-054, GSV-REQ-040, GSV-REQ-049, GSV-REQ-050, GSV-REQ-051
+// @spec NLC-REQ-001, NLC-REQ-041, NLC-REQ-042, NLC-REQ-046, NLC-REQ-049, NLC-REQ-054, GSV-REQ-040, GSV-REQ-046, GSV-REQ-047, GSV-REQ-048, GSV-REQ-049, GSV-REQ-050, GSV-REQ-051
 /* @__NO_SIDE_EFFECTS__ */
 function defineRulerProperties() {
   return defineProperties({

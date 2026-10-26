@@ -6,7 +6,7 @@ import { type Registry, definitions, propertiesOf, registeredTypes } from "../..
 import type { PropertyMap } from "../../src/core/definitions/types";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { PLAIN_TEXT_PATTERN, findUnsafeTextChar } from "../../src/core/format";
-import { getSchema, getToolSchema, getVocabulary } from "../../src/core/index";
+import { getSchema, getToolSchema, getVocabulary, validate } from "../../src/core/index";
 import { COLOR_PATTERN, type JsonSchema, buildDescriptionTypes, buildSchema, buildToolSchema, buildVocabulary } from "../../src/core/schema";
 import { resolveColor } from "../../src/core/style";
 import { conditionalRegistry } from "../fixtures/definitions/conditional-ruler";
@@ -401,5 +401,66 @@ describe("caller text limits in the published schemas (GSV-REQ-054; graph-librar
     const circle = getVocabulary().graphTypes.circle!;
     expect(circle.properties["unit"]).toMatchObject({ maxLength: UNIT_TEXT_LIMIT });
     expect(circle.properties["title"]).toMatchObject({ maxLength: CALLER_TEXT_LIMIT });
+  });
+});
+
+describe("the ruler's published vocabulary and schemas (GSV-REQ-046..048; rulers GSV TICKET-002)", () => {
+  const vocabulary = getVocabulary();
+  const ruler = vocabulary.graphTypes["ruler"]!.properties;
+  const example = JSON.parse(readFileSync(new URL("../../examples/ruler.json", import.meta.url), "utf8")) as Record<string, unknown>;
+
+  it("defines the six terms, each with a definition that states its limit", () => {
+    for (const term of ["rulerUnit", "length", "smallestDivision", "measuredObject", "start", "end"]) {
+      expect(vocabulary.terms[term]?.definition.length, term).toBeGreaterThan(10);
+    }
+    expect(vocabulary.terms["rulerUnit"]!.definition).toMatch(/centimeters or inches/);
+    expect(vocabulary.terms["length"]!.definition).toMatch(/1 to 30 for centimeters, 1 to 12 for inches/);
+    expect(vocabulary.terms["smallestDivision"]!.definition).toMatch(/inch ruler/);
+    expect(vocabulary.terms["smallestDivision"]!.definition).toMatch(/sixteenth when left out/);
+    expect(vocabulary.terms["start"]!.definition).toMatch(/as a decimal/);
+    expect(vocabulary.terms["start"]!.definition).toMatch(/in the ruler's unit/);
+    expect(vocabulary.terms["start"]!.definition).toMatch(/whole millimeter/);
+    expect(vocabulary.terms["end"]!.definition).toMatch(/after its start/);
+  });
+
+  it("describes each unit and each division, and states that a division applies to inches only", () => {
+    expect(ruler["rulerUnit"]).toMatchObject({ kind: "enum", required: true, values: ["centimeters", "inches"] });
+    expect(ruler["smallestDivision"]).toMatchObject({
+      kind: "enum",
+      required: false,
+      values: ["half", "quarter", "eighth", "sixteenth"],
+      appliesWhen: { term: "rulerUnit", values: ["inches"] },
+    });
+    for (const term of ["rulerUnit", "smallestDivision"]) {
+      const descriptions = ruler[term]!.valueDescriptions!;
+      expect(Object.keys(descriptions), term).toEqual(ruler[term]!.values);
+      for (const [value, text] of Object.entries(descriptions)) expect(text.length, `${term} ${value}`).toBeGreaterThan(5);
+    }
+  });
+
+  it("limits the object's label to the caller text limit", () => {
+    expect(ruler["measuredObject"]!.properties!["label"]).toMatchObject({ kind: "string", maxLength: CALLER_TEXT_LIMIT });
+    expect(CALLER_TEXT_LIMIT).toBe(200);
+  });
+
+  it("is in both schemas, and its example is accepted by the schema and, in tool form, by the strict tool schema", () => {
+    const published = (getSchema()["anyOf"] as JsonSchema[]).map((type) => propertiesIn(type)["type"]!["const"]);
+    const strict = graphTypes(getToolSchema()).map((type) => propertiesIn(type)["type"]!["enum"]);
+    expect(published).toContain("ruler");
+    expect(strict).toContainEqual(["ruler"]);
+    expect(ajv.validate(getSchema(), example), JSON.stringify(ajv.errors)).toBe(true);
+    expect(ajv.validate(getToolSchema(), toolForm(example, definitions)), JSON.stringify(ajv.errors)).toBe(true);
+  });
+
+  it("is listed among the allowed types when a type is unknown", () => {
+    const result = validate({ type: "pie" });
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.issues[0]).toMatchObject({ code: "unknown_graph_type", allowed: expect.arrayContaining(["ruler"]) });
+  });
+
+  it("offers the British spelling nowhere in the generated files (the vocabulary's spelling is US)", () => {
+    for (const path of Object.keys(generatedFiles())) {
+      expect(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8"), path).not.toMatch(/centimetre/i);
+    }
   });
 });
