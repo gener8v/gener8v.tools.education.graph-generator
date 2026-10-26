@@ -1,7 +1,8 @@
 # Rulers
 
-**Status:** Approved
+**Status:** Complete
 **Approved by:** Product Owner — Thomas Eaves, 2026-10-19
+**Completed:** Product Owner — Thomas Eaves, 2026-10-26 (all six tickets done: delivered, verified and approved by every review)
 **Opened:** 2026-10-19
 **Slug:** rulers
 
