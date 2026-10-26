@@ -452,6 +452,18 @@ describe("the ruler's published vocabulary and schemas (GSV-REQ-046..048; rulers
     expect(ajv.validate(getToolSchema(), toolForm(example, definitions)), JSON.stringify(ajv.errors)).toBe(true);
   });
 
+  it("publishes the label's limit and the division's condition in both schemas (code review CR-001)", () => {
+    const rulerIn = (types: JsonSchema[], key: "const" | "enum") =>
+      propertiesIn(types.find((type) => JSON.stringify(propertiesIn(type)["type"]![key]) === JSON.stringify(key === "const" ? "ruler" : ["ruler"]))!);
+    for (const [name, properties] of [
+      ["published", rulerIn(getSchema()["anyOf"] as JsonSchema[], "const")],
+      ["tool", rulerIn(graphTypes(getToolSchema()), "enum")],
+    ] as const) {
+      expect(propertiesIn(properties["measuredObject"]!)["label"], name).toMatchObject({ maxLength: CALLER_TEXT_LIMIT });
+      expect(properties["smallestDivision"]!["description"], name).toMatch(/Give it only when rulerUnit is "inches"\.$/);
+    }
+  });
+
   it("is listed among the allowed types when a type is unknown", () => {
     const result = validate({ type: "pie" });
     expect(result.valid).toBe(false);

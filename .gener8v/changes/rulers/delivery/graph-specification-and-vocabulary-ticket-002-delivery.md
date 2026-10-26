@@ -141,4 +141,8 @@ None — implementation followed the approved plan. Written by a Sonnet subagent
 
 ## Post-Review Amendments
 
-None
+### 2026-10-25 — Code review (rulers/graph-specification-and-vocabulary-ticket-002-code-review)
+
+- **CR-001:** `tests/core/schema-shape.test.ts` "publishes the label's limit and the division's condition in both schemas": `measuredObject.label` `maxLength` 200, and `smallestDivision`'s description ending "Give it only when rulerUnit is "inches".", in the published schema and the strict tool schema.
+- **CR-002:** the specification's `@spec Coverage` rows for GSV-REQ-046..048 moved above GSV-REQ-049, in requirement order.
+- Re-verification: `pnpm generate` (no change), `lint`, `typecheck`, `test` ×3 (1,474 passed each run), `bench`, `build`, `check:dist`, `check:deps`, `check:images`, `size`, `publint`, `attw`, `audit`: all exit 0.
