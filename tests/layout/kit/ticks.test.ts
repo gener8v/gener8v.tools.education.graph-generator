@@ -246,6 +246,24 @@ describe("tick labels", () => {
     expect(tickLabel(-0, 1)).toBe("0");
   });
 
+  // A spacing worked out in floating point carries noise (0.1 * 3 is 0.30000000000000004); the labels
+  // state the value the caller meant, not the noise (defect sweep DS-001).
+  it.each([
+    ["0.1 * 3", 0.1 * 3, 1.2, ["0", "0.3", "0.6", "0.9", "1.2"]],
+    ["0.1 + 0.2", 0.1 + 0.2, 1.2, ["0", "0.3", "0.6", "0.9", "1.2"]],
+    ["0.7 / 7", 0.7 / 7, 0.4, ["0", "0.1", "0.2", "0.3", "0.4"]],
+    ["0.2 * 3", 0.2 * 3, 2.4, ["0", "0.6", "1.2", "1.8", "2.4"]],
+  ])("label a spacing of %s with the decimals of the value meant (defect sweep DS-001)", (_name, spacing, max, labels) => {
+    const { ticks, spacing: used } = niceTicks(0, max, spacing);
+    expect(ticks.map((tick) => tickLabel(tick, used))).toEqual(labels);
+    expect(tickLabel(spacing, spacing)).toBe(labels[1]);
+  });
+
+  it("still labels a spacing that is not a short decimal at twelve decimal places (defect sweep DS-001)", () => {
+    expect(tickLabel(1 / 3, 1 / 3)).toBe("0.333333333333");
+    expect(niceTicks(0, 1, 1 / 3).ticks.map((tick) => tickLabel(tick, 1 / 3))).toEqual(["0", "0.333333333333", "0.666666666667", "1"]);
+  });
+
   it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])("refuse a value of %d, which no axis ticks (security review SEC-004)", (value) => {
     expect(() => tickLabel(value, 1)).toThrow(RangeError);
   });

@@ -195,6 +195,14 @@ describe("tick labels (NLC-REQ-019, NLC-REQ-006)", () => {
     for (const other of neighbours) expect(overlap(box, other), nameOf(other)).toBe(false);
   });
 
+  it("labels a spacing worked out in floating point with the value meant, and draws what the typed spacing draws (defect sweep DS-001)", () => {
+    const computed = sceneOf(line({ axis: { min: 0, max: 1.2, tickSpacing: 0.1 * 3 } }));
+    expect(tickLabels(computed).map((node) => node.text)).toEqual(["0", "0.3", "0.6", "0.9", "1.2"]);
+    expect(computed.nodes).toEqual(sceneOf(line({ axis: { min: 0, max: 1.2, tickSpacing: 0.3 } })).nodes);
+    // The text alternative states the spacing as written; describe() is deliberately untouched.
+    expect(computed.textAlternative).toContain("0.30000000000000004");
+  });
+
   it("cuts neighbouring custom labels to the room between ticks on the span drawn (code review CR-002)", () => {
     const scene = sceneOf(line({ axis: { min: 0, max: 1, tickSpacing: 0.25 }, tickLabels: [{ value: 0.25, text: "one quarter of it" }, { value: 0.5, text: "one half of it" }] }));
     const boxes = tickLabels(scene).map(boundsOf);

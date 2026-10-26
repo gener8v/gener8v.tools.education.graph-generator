@@ -468,9 +468,14 @@ export function niceTicks(min: number, max: number, spacing?: number): { spacing
   return result;
 }
 
-/** The number of decimal places in `spacing` written out in full: 0.25 → 2, 2 → 0, 1e-7 → 7. */
+/**
+ * The number of decimal places in `spacing` written out in full: 0.25 → 2, 2 → 0, 1e-7 → 7. The
+ * spacing's arithmetic noise is removed first, so 0.1 × 3 counts 1 decimal, not 17 (defect sweep
+ * DS-001). The ticks themselves are not rounded at 12 digits (QR-002).
+ */
+// @spec NLC-REQ-004
 function decimalPlaces(spacing: number): number {
-  const text = formatSupplied(Math.abs(spacing));
+  const text = formatSupplied(cleanDecimal(Math.abs(spacing)));
   const point = text.indexOf(".");
   return point < 0 ? 0 : text.length - point - 1;
 }

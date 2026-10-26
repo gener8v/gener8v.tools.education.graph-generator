@@ -275,6 +275,13 @@ describe("value labels (DGP-REQ-020)", () => {
   });
 });
 
+describe("value axis labels (defect sweep DS-001)", () => {
+  it("labels a tick interval worked out in floating point with the value meant", () => {
+    const scene = sceneOf({ values: [1, 0.5, 0.25], valueScale: { minimum: 0, maximum: 1.2, tickInterval: 0.1 * 3 } });
+    expect(ticks(scene).map((tick) => tick.value)).toEqual([0, 0.3, 0.6, 0.9, 1.2]);
+  });
+});
+
 describe("prototype pollution elsewhere in the process (security review SEC-003)", () => {
   const prototype = Object.prototype as Record<string, unknown>;
 
