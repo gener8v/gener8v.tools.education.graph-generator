@@ -14,6 +14,7 @@ import { LineGraph as PackageLineGraph } from "../../src/react/graphs/LineGraphG
 import { BarGraph as PackageBarGraph } from "../../src/react/graphs/BarGraphGraph";
 import { RulerGraph as PackageRulerGraph } from "../../src/react/graphs/RulerGraph";
 import { NumberLineGraph as PackageNumberLineGraph } from "../../src/react/graphs/NumberLineGraph";
+import { XyGraph as PackageXyGraph } from "../../src/react/graphs/XyGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -121,6 +122,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     expect(PackageBarGraph.displayName).toBe("BarGraph");
     expect(PackageRulerGraph.displayName).toBe("RulerGraph");
     expect(PackageNumberLineGraph.displayName).toBe("NumberLineGraph");
+    expect(PackageXyGraph.displayName).toBe("XyGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -222,6 +224,29 @@ describe("the number line's accessible name (NLC-REQ-012, NLC-REQ-013; graph-lib
       const supplied = html(<Component description={example} textAlternative="A number line with two days marked." />);
       expect(supplied).toContain('aria-label="A number line with two days marked."');
       expect(supplied).toContain("<title>A number line with two days marked.</title>");
+      expect(supplied).not.toContain(generated);
+      expect(html(<Component description={example} textAlternative="  " />)).toContain(`aria-label="${generated}"`);
+    }
+  });
+});
+
+describe("the x,y graph's accessible name (NLC-REQ-012, NLC-REQ-013; graph-library NLC TICKET-003)", () => {
+  const example: unknown = JSON.parse(readFileSync(new URL("../../examples/xy-graph.json", import.meta.url), "utf8"));
+  const generated =
+    "A coordinate graph titled “A walk across town”, x from -5 to 5 ticked every 1, y from -5 to 5 ticked every 1, showing all four quadrants, with grid lines. The x-axis is labeled “Blocks east”. The y-axis is labeled “Blocks north”. 2 points are plotted: (1, 2) labeled “Home” and (-3, 4) labeled “School”. 1 segment is drawn: from (1, 2) to (-3, 4) labeled “Route”.";
+
+  it("names the x,y graph with its generated text alternative, as aria-label and <title>, through <XyGraph> and <Graph>", () => {
+    const markup = html(<PackageXyGraph description={example} />);
+    expect(markup).toBe(html(<Graph description={example} />));
+    expect(markup).toContain(`aria-label="${generated}"`);
+    expect(markup).toContain(`<title>${generated}</title>`);
+  });
+
+  it("replaces it with the caller's text alternative in both places, and keeps it for a blank one", () => {
+    for (const Component of [Graph, PackageXyGraph]) {
+      const supplied = html(<Component description={example} textAlternative="A route from home to school." />);
+      expect(supplied).toContain('aria-label="A route from home to school."');
+      expect(supplied).toContain("<title>A route from home to school.</title>");
       expect(supplied).not.toContain(generated);
       expect(html(<Component description={example} textAlternative="  " />)).toContain(`aria-label="${generated}"`);
     }
@@ -518,6 +543,28 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("draws a valid x,y graph with every text at its limit in <Graph> and <XyGraph>, never throwing (GSV-REQ-052)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const description = {
+      type: "xy-graph",
+      title: long,
+      xAxisLabel: long,
+      yAxisLabel: long,
+      xAxis: { min: -5, max: 5, tickSpacing: 1 },
+      yAxis: { min: -5, max: 5, tickSpacing: 1 },
+      showGrid: true,
+      points: Array.from({ length: 4 }, (_, i) => ({ x: i, y: i, label: `${i}${long.slice(1)}` })),
+      segments: [{ from: { x: -4, y: 4 }, to: { x: 4, y: -4 }, label: long }],
+    };
+    for (const Component of [Graph, PackageXyGraph]) {
+      const received: Issue[][] = [];
+      const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toEqual([]);
+      // Title 3 lines, two axis labels of 2, four point labels and a segment label of 2, 22 tick labels and the origin's 0.
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 4 + 10 + 22 + 1);
+    }
+  });
+
   it("refuses every caller text one character over its limit, with too_large naming the limit, in <Graph> and each component (GSV-REQ-052, GSV-REQ-053)", () => {
     const over = "@".repeat(CALLER_TEXT_LIMIT + 1);
     const cases: Array<[GraphComponent, object, string]> = [
@@ -531,6 +578,11 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       [PackageNumberLineGraph, { type: "number-line", axis: { min: 0, max: 10 }, points: [{ value: 1, label: over }] }, "/points/0/label"],
       [PackageNumberLineGraph, { type: "number-line", axis: { min: 0, max: 10 }, tickLabels: [{ value: 2, text: over }] }, "/tickLabels/0/text"],
       [PackageNumberLineGraph, { type: "number-line", axis: { min: 0, max: 10 }, lineLabel: over }, "/lineLabel"],
+      [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, title: over }, "/title"],
+      [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, xAxisLabel: over }, "/xAxisLabel"],
+      [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, yAxisLabel: over }, "/yAxisLabel"],
+      [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, points: [{ x: 1, y: 1, label: over }] }, "/points/0/label"],
+      [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, segments: [{ from: { x: 1, y: 1 }, to: { x: 2, y: 2 }, label: over }] }, "/segments/0/label"],
     ];
     for (const [Component, description, path] of cases) {
       for (const Drawn of [Graph, Component]) {
@@ -609,6 +661,26 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     const markup = html(<PackageNumberLineGraph description={description} />);
     expect(markup.length).toBeLessThan(700_000);
     expect(markup.match(/<text /g)!.length).toBeLessThan(320);
+  });
+
+  it("keeps the x,y graph's text alternative, markup and time bounded at its limits: 1,000 labeled points and 700 labeled segments, 200-character texts (NLC TICKET-003)", () => {
+    // The most labeled elements the 10,000-value description limit lets through with both lists in
+    // use: a labeled point is 4 values, a labeled segment 8. Values with long written forms.
+    // Measured 2026-10-27: a 420 KB description lays out in about 0.2 s, with a 712,557-character
+    // text alternative and 2,239,478 characters of markup, which holds the text alternative twice.
+    const text = "a".repeat(CALLER_TEXT_LIMIT);
+    const points = Array.from({ length: 1000 }, (_, i) => ({ x: i % 2 === 0 ? 5e-324 : -2.2250738585072014e-308, y: (i % 21) - 10, label: text }));
+    const segments = Array.from({ length: 700 }, (_, i) => ({ from: { x: -10 + (i % 20), y: -10 }, to: { x: 10 - (i % 20), y: 10 }, label: text }));
+    const description = { type: "xy-graph", title: text, xAxisLabel: text, yAxisLabel: text, xAxis: { min: -10, max: 10 }, yAxis: { min: -10, max: 10 }, showGrid: true, points, segments };
+    const started = performance.now();
+    const result = createGraph(description);
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(result.scene.textAlternative.length).toBeLessThan(800_000);
+    const markup = html(<PackageXyGraph description={description} />);
+    expect(markup.length).toBeLessThan(2_500_000);
+    // Each label at most two lines; title 3, axis labels 2 each, 22 tick labels and the origin's 0.
+    expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(2 * 1700 + 3 + 4 + 23);
   });
 
   it("reports a category name over the limit rather than drawing it, so a megabyte of names never reaches the renderer (DGP TICKET-005 SEC-001)", () => {

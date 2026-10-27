@@ -43,6 +43,10 @@
       "definition": "The ruler mark the object ends at, after its start, given as the start is.",
       "kind": "number"
     },
+    "from": {
+      "definition": "Where a line segment starts: its x and y coordinates.",
+      "kind": "object"
+    },
     "label": {
       "definition": "A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
@@ -104,7 +108,7 @@
       "kind": "enum"
     },
     "points": {
-      "definition": "The points marked on the number line, at most 100, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart where the drawing has room.",
+      "definition": "The points marked on the graph, each at its position (its value on a number line, its x and y on a coordinate graph) and optionally with a label and a color. Points may share a position: each is drawn, and their labels are placed apart where the drawing has room.",
       "kind": "array"
     },
     "radius": {
@@ -123,6 +127,10 @@
       "definition": "The unit a ruler is marked in: centimeters or inches.",
       "kind": "enum"
     },
+    "segments": {
+      "definition": "The line segments drawn on a coordinate graph, at most 1000, each from one point to another, and optionally with a label at its middle and a color.",
+      "kind": "array"
+    },
     "series": {
       "definition": "The series, at least 1 and at most 6, each drawn as a line through one point per category. Without a lineColor, a series takes the default color for its position (the first series the first color, and so on); every series also has its own point shape and dash pattern, so series differ without color.",
       "kind": "array"
@@ -133,6 +141,10 @@
     },
     "showDiameter": {
       "definition": "Whether the diameter is drawn through the center; it never lies on the radius.",
+      "kind": "boolean"
+    },
+    "showGrid": {
+      "definition": "Whether a coordinate graph has grid lines across it at every tick of both axes; off unless true.",
       "kind": "boolean"
     },
     "showRadius": {
@@ -175,6 +187,10 @@
       "definition": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
     },
+    "to": {
+      "definition": "Where a line segment ends: its x and y coordinates.",
+      "kind": "object"
+    },
     "type": {
       "definition": "The graph type: which kind of graph the description draws.",
       "kind": "enum"
@@ -214,6 +230,30 @@
     "version": {
       "definition": "The schema version the description is written for. Leave it out for the current version, 1.",
       "kind": "integer"
+    },
+    "x": {
+      "definition": "A position along the x-axis, in its own numbers: a point's or a segment end's x coordinate, inside the x-axis range, ends included.",
+      "kind": "number"
+    },
+    "xAxis": {
+      "definition": "The coordinate graph's horizontal x axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
+      "kind": "object"
+    },
+    "xAxisLabel": {
+      "definition": "A label for the x-axis, as plain text, at most 200 characters.",
+      "kind": "string"
+    },
+    "y": {
+      "definition": "A position along the y-axis, in its own numbers: a point's or a segment end's y coordinate, inside the y-axis range, ends included.",
+      "kind": "number"
+    },
+    "yAxis": {
+      "definition": "The coordinate graph's vertical y axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
+      "kind": "object"
+    },
+    "yAxisLabel": {
+      "definition": "A label for the y-axis, as plain text, at most 200 characters.",
+      "kind": "string"
     }
   },
   "graphTypes": {
@@ -440,6 +480,208 @@
         "the measured object's start is a mark of the ruler",
         "the measured object's end is a mark of the ruler",
         "the measured object's start mark is before its end mark"
+      ]
+    },
+    "xy-graph": {
+      "title": "x,y coordinate graph",
+      "description": "A coordinate graph: an x-axis and a y-axis, each through the origin when the other's range includes zero and along the nearest edge otherwise, showing one, two or four quadrants, one unit drawn the same length on both axes; optionally a grid, points (at most 1000) and line segments (at most 1000).",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "xy-graph"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "xAxisLabel": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "yAxisLabel": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "xAxis": {
+          "kind": "object",
+          "required": true,
+          "properties": {
+            "min": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "max": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickSpacing": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            },
+            "showTickLabels": {
+              "kind": "boolean",
+              "required": false
+            }
+          },
+          "ordered": [
+            [
+              "min",
+              "max"
+            ]
+          ]
+        },
+        "yAxis": {
+          "kind": "object",
+          "required": true,
+          "properties": {
+            "min": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "max": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickSpacing": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            },
+            "showTickLabels": {
+              "kind": "boolean",
+              "required": false
+            }
+          },
+          "ordered": [
+            [
+              "min",
+              "max"
+            ]
+          ]
+        },
+        "showGrid": {
+          "kind": "boolean",
+          "required": false
+        },
+        "points": {
+          "kind": "array",
+          "required": false,
+          "maxItems": 1000,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "x": {
+                "kind": "number",
+                "required": true
+              },
+              "y": {
+                "kind": "number",
+                "required": true
+              },
+              "label": {
+                "kind": "string",
+                "required": false,
+                "maxLength": 200
+              },
+              "color": {
+                "kind": "color",
+                "required": false
+              }
+            }
+          }
+        },
+        "segments": {
+          "kind": "array",
+          "required": false,
+          "maxItems": 1000,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "from": {
+                "kind": "object",
+                "required": true,
+                "properties": {
+                  "x": {
+                    "kind": "number",
+                    "required": true
+                  },
+                  "y": {
+                    "kind": "number",
+                    "required": true
+                  }
+                }
+              },
+              "to": {
+                "kind": "object",
+                "required": true,
+                "properties": {
+                  "x": {
+                    "kind": "number",
+                    "required": true
+                  },
+                  "y": {
+                    "kind": "number",
+                    "required": true
+                  }
+                }
+              },
+              "label": {
+                "kind": "string",
+                "required": false,
+                "maxLength": 200
+              },
+              "color": {
+                "kind": "color",
+                "required": false
+              }
+            }
+          }
+        }
+      },
+      "derivations": [],
+      "checks": [
+        "the xAxis range can be drawn",
+        "the xAxis tick spacing is greater than 0 and gives at most 100 ticks",
+        "the yAxis range can be drawn",
+        "the yAxis tick spacing is greater than 0 and gives at most 100 ticks",
+        "every point lies inside both axis ranges",
+        "every segment end lies inside both axis ranges",
+        "every segment joins two different points"
       ]
     },
     "line-graph": {

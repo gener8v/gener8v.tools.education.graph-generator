@@ -8,6 +8,7 @@ export { LineGraph } from "./react/graphs/LineGraphGraph";
 export { NumberLineGraph } from "./react/graphs/NumberLineGraph";
 export { Pictograph } from "./react/graphs/PictographGraph";
 export { RulerGraph } from "./react/graphs/RulerGraph";
+export { XyGraph } from "./react/graphs/XyGraph";
 export type { Fallback, GraphComponent, GraphProps } from "./react/createGraphComponent";
 export { createGraph } from "./graph";
 export type { CreateGraphResult } from "./graph";

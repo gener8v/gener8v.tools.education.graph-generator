@@ -242,6 +242,37 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     }
   });
 
+  it("leaves every other type out of the x,y graph's entry and component, and the x,y graph out of theirs (graph-library NLC TICKET-003)", async () => {
+    for (const entry of [`export { XyGraph } from "./src/entries/xy-graph";`, `export { XyGraph } from "./src/react/graphs/XyGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A coordinate graph");
+      for (const other of ["A circle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A red apple", OTHER, OTHER_DEFINITION]) expect(code, other).not.toContain(other);
+    }
+    for (const entry of [
+      `export { CircleGraph } from "./src/entries/circle";`,
+      `export { Pictograph } from "./src/entries/pictograph";`,
+      `export { LineGraph } from "./src/entries/line-graph";`,
+      `export { BarGraph } from "./src/entries/bar-graph";`,
+      `export { RulerGraph } from "./src/entries/ruler";`,
+      `export { NumberLineGraph } from "./src/entries/number-line";`,
+    ]) {
+      expect(await bundle(entry), entry).not.toContain("A coordinate graph");
+    }
+  });
+
+  it("leaves the x,y graph out of a consumer's bundle of every other built entry, and the other types out of the built ./xy-graph", async () => {
+    // Text that survives minifying: the definition's description and the text alternative's wording.
+    for (const built of ["circle", "pictograph", "line-graph", "bar-graph", "ruler", "number-line"]) {
+      const code = await consumerBundle(`export * from "./dist/${built}.js";`);
+      for (const text of ["A coordinate graph", "To fit, one y unit"]) expect(code, `${built}: ${text}`).not.toContain(text);
+    }
+    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
+    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
+    const code = await consumerBundle(`export * from "./dist/xy-graph.js";`);
+    expect(code).toContain("A coordinate graph");
+    for (const other of ["A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A red apple"]) expect(code, other).not.toContain(other);
+  });
+
   it("keeps every type's layout and definition in the entry component's bundle", async () => {
     const code = await bundle(`export { Graph } from "./src/react/Graph";`);
     expect(code).toContain(OTHER);

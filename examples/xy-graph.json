@@ -1,0 +1,40 @@
+{
+  "type": "xy-graph",
+  "title": "A walk across town",
+  "xAxis": {
+    "min": -5,
+    "max": 5,
+    "tickSpacing": 1,
+    "showTickLabels": true
+  },
+  "yAxis": {
+    "min": -5,
+    "max": 5,
+    "tickSpacing": 1,
+    "showTickLabels": true
+  },
+  "showGrid": true,
+  "points": [
+    {
+      "x": 1,
+      "y": 2,
+      "label": "Home",
+      "color": "red"
+    },
+    {
+      "x": -3,
+      "y": 4,
+      "label": "School"
+    }
+  ],
+  "segments": [
+    {
+      "from": { "x": 1, "y": 2 },
+      "to": { "x": -3, "y": 4 },
+      "label": "Route",
+      "color": "green"
+    }
+  ],
+  "xAxisLabel": "Blocks east",
+  "yAxisLabel": "Blocks north"
+}

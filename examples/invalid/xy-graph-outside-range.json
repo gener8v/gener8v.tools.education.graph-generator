@@ -1,0 +1,6 @@
+{
+  "type": "xy-graph",
+  "xAxis": { "min": -5, "max": 5 },
+  "yAxis": { "min": -5, "max": 5 },
+  "segments": [{ "from": { "x": 0, "y": 0 }, "to": { "x": 3, "y": 8 } }]
+}

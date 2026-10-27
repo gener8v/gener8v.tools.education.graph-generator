@@ -666,3 +666,32 @@ describe("definitions cannot be changed or reached through inherited keys (secur
   });
 });
 
+describe("the x,y graph, registered (graph-library NLC TICKET-003)", () => {
+  const definition = definitions["xy-graph"]!;
+
+  it("follows the vocabulary, stage and applicability rules, its checks reading real paths", () => {
+    expect(vocabularyProblems(definition.properties)).toEqual([]);
+    expect(stageProblems(definition)).toEqual([]);
+    expect(applicabilityProblems(definition)).toEqual([]);
+    expect(definition.checks.flatMap((check) => check.inputs)).toContain("segments/*/to/y");
+  });
+
+  it("takes its own terms and the shared title and axis labels, with the shared label and color on each point and segment", () => {
+    expect(Object.keys(propertiesOf("xy-graph", definitions)).sort()).toEqual(["points", "segments", "showGrid", "title", "xAxis", "xAxisLabel", "yAxis", "yAxisLabel"]);
+    for (const list of ["points", "segments"]) {
+      const spec = definition.properties[list]!;
+      if (spec.kind !== "array" || spec.items.kind !== "object") throw new Error(`${list} is not a list of objects`);
+      expect(spec.items.properties["label"], list).toBe(sharedProperties.label);
+      expect(spec.items.properties["color"], list).toBe(sharedProperties.color);
+    }
+  });
+
+  it("defines points once with the number line, and every term once among the registered types (GSV-REQ-015)", () => {
+    expect(definition.properties["points"]!.description).toBe(definitions["number-line"]!.properties["points"]!.description);
+    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties)])).toEqual([]);
+  });
+
+  it("is frozen all the way down, with no prototypes", () => {
+    expect(lockedDown(definition.properties, "xy-graph")).toEqual([]);
+  });
+});

@@ -58,5 +58,11 @@
     "path": "dist/number-line.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./xy-graph",
+    "path": "dist/xy-graph.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

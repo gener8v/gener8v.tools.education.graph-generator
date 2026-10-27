@@ -40,6 +40,14 @@ export const CALLER_TEXT_LIMIT = 200;
 export const UNIT_TEXT_LIMIT = 20;
 
 /**
+ * The one definition of the `points` term, for every type that marks points: a term has one
+ * definition in the vocabulary (GSV-REQ-015), so it names no type and no limit. Each type's
+ * `maxItems` and its own description state its limit (graph-library NLC TICKET-003).
+ */
+export const POINTS_DESCRIPTION =
+  "The points marked on the graph, each at its position (its value on a number line, its x and y on a coordinate graph) and optionally with a label and a color. Points may share a position: each is drawn, and their labels are placed apart where the drawing has room.";
+
+/**
  * The shared presentation options. Labels and titles are plain text (GSV-REQ-043); colors are a
  * color name or a hex code (GSV-REQ-042). Where each applies follows the per-type option lists
  * of the NLC, DGP and GSS specifications (DEL-002); the number line's `title` and `lineColor`

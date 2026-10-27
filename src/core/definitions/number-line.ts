@@ -3,7 +3,7 @@ import { createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
 import { MAX_VALUE_TICKS, axisSpacing, axisTickLabel, drawableTicks, isTickValue } from "../value-scale";
 import { type Axis, axisDomainChecks, axisProperty } from "./axis";
-import { CALLER_TEXT_LIMIT, sharedProperties } from "./shared";
+import { CALLER_TEXT_LIMIT, POINTS_DESCRIPTION, sharedProperties } from "./shared";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, type PropertySpec, defineProperties } from "./types";
 
 /** One marked point of a number line (NLC-REQ-011, NLC-REQ-018). */
@@ -115,7 +115,8 @@ function defineNumberLineProperties() {
       kind: "array",
       required: false,
       maxItems: NUMBER_LINE_POINT_LIMIT,
-      description: `The points marked on the number line, at most ${NUMBER_LINE_POINT_LIMIT}, each at its value and optionally with a label and a color. Points may share a value: each is drawn, and their labels are placed apart where the drawing has room.`,
+      // One definition with the x,y graph's points; the limit is in `maxItems` and the type's description.
+      description: POINTS_DESCRIPTION,
       items: {
         kind: "object",
         description: "One marked point: its value, and optionally its label and color.",

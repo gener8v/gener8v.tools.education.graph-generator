@@ -241,3 +241,18 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-NFR-006 | `tests/react/ruler-server-render.test.tsx` (verification) |
 | NLC-NFR-007 | `tests/react/ruler.test.tsx` "every ruler is named for assistive technology", `tests/helpers/axe.ts` (verification) |
 | NLC-NFR-008 | `tests/layout/ruler.bench.ts` (verification) |
+| NLC-REQ-001 | `src/core/definitions/xy-graph.ts`:xyGraph, defineXyGraph (xy part; registered in `src/core/definitions/index.ts`) |
+| NLC-REQ-010 | `src/core/definitions/xy-graph.ts`:pointsInRange, segmentsInRange (xy part) |
+| NLC-REQ-012 | `src/core/definitions/xy-graph.ts`:xyGraph.describe (xy part) |
+| NLC-REQ-022 | `src/core/definitions/xy-graph.ts`:xyGraph; `src/layout/xy-graph.ts`:xyGraphLayout; `src/react/graphs/XyGraph.tsx`:XyGraph |
+| NLC-REQ-023 | `src/core/definitions/xy-graph.ts`:quadrantCount, xyGraph.describe; `src/layout/xy-graph.ts`:planeAxes |
+| NLC-REQ-024 | `src/layout/xy-graph.ts`:planeAxes, xyGraphLayout |
+| NLC-REQ-025 | `src/layout/xy-graph.ts`:planeAxes, xyGraphLayout |
+| NLC-REQ-026 | `src/core/definitions/xy-graph.ts`:defineXyGraph (`showGrid`), xyGraph.describe; `src/layout/xy-graph.ts`:xyGraphLayout |
+| NLC-REQ-027 | `src/core/definitions/xy-graph.ts`:defineXyGraph (`xAxis`, `yAxis`); `src/layout/xy-graph.ts`:xyGraphLayout |
+| NLC-REQ-028 | `src/core/definitions/xy-graph.ts`:defineXyGraph (`points`); `src/layout/xy-graph.ts`:xyGraphLayout |
+| NLC-REQ-029 | `src/core/definitions/xy-graph.ts`:defineXyGraph (`segments`); `src/layout/xy-graph.ts`:xyGraphLayout |
+| NLC-REQ-030 | `src/core/definitions/xy-graph.ts`:defineXyGraph (the shared `label` and `color` nested per segment); `src/layout/xy-graph.ts`:xyGraphLayout |
+| NLC-REQ-031 | `src/core/definitions/xy-graph.ts`:xyGraph.describe; `src/layout/xy-graph.ts`:xyGraphLayout (the shared `xAxisLabel`, `yAxisLabel`) |
+| NLC-REQ-032 | `src/core/definitions/xy-graph.ts`:planeShape, xyGraph.describe; `src/layout/xy-graph.ts`:planeAxes |
+| NLC-REQ-033 | `src/core/definitions/xy-graph.ts`:segmentsHaveLength |

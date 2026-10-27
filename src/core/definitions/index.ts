@@ -6,6 +6,7 @@ import { numberLine } from "./number-line";
 import { pictograph } from "./pictograph";
 import { ruler } from "./ruler";
 import { type ScopedPropertySpec, sharedProperties } from "./shared";
+import { xyGraph } from "./xy-graph";
 import { GRAPH_TYPES, type GraphType, type GraphTypeDefinition, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 /** A set of graph-type definitions, keyed by `type` value. */
@@ -24,6 +25,7 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
 export const definitions: Registry = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {
     "number-line": numberLine,
+    "xy-graph": xyGraph,
     "line-graph": lineGraph,
     "bar-graph": barGraph,
     pictograph,

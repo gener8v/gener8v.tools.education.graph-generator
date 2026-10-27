@@ -72,6 +72,10 @@
       "types": "./dist/number-line.d.ts",
       "default": "./dist/number-line.js"
     },
+    "./xy-graph": {
+      "types": "./dist/xy-graph.d.ts",
+      "default": "./dist/xy-graph.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./vocabulary.json": "./dist/vocabulary.json",
     "./package.json": "./package.json"
