@@ -14,7 +14,6 @@ import {
   planeRooms,
   xyGraph as xyGraphDefinition,
 } from "../../src/core/definitions/xy-graph";
-import { formatDerived } from "../../src/core/format";
 import { defaultStyle, namedColors } from "../../src/core/style";
 import { axisSpacing, axisTickLabel, niceTicks } from "../../src/core/value-scale";
 import { checkScene } from "../../src/layout/kit/check";
@@ -465,13 +464,19 @@ describe("a default tick spacing the drawn axis has room for (NLC-REQ-005, NLC-R
         const spacing = { x: drawnSpacing(x, drawn.x, plot.xOf), y: drawnSpacing(y, drawn.y, plot.yOf) };
         expect(spacing.x, JSON.stringify(description)).toBeDefined();
         expect(spacing.y, JSON.stringify(description)).toBeDefined();
-        // A default spacing is stated as a derived value, rounded to two decimals (`formatDerived`),
-        // which states a spacing of 0.005 as 0.01: older than this ticket, and raised in its delivery record.
-        expect(every.x, `x every ${spacing.x}: ${JSON.stringify(description)}`).toBe(Number(formatDerived(spacing.x!)));
-        expect(every.y, `y every ${spacing.y}: ${JSON.stringify(description)}`).toBe(Number(formatDerived(spacing.y!)));
+        // Stated exactly as drawn, 0.005 included (security review SEC-001).
+        expect(every.x, `x every ${spacing.x}: ${JSON.stringify(description)}`).toBe(spacing.x);
+        expect(every.y, `y every ${spacing.y}: ${JSON.stringify(description)}`).toBe(spacing.y);
       }),
       { numRuns: 300, examples },
     );
+  });
+
+  it("states a default spacing of 0.005 as drawn, not rounded to 0.01 (security review SEC-001)", () => {
+    const scene = sceneOf({ type: "xy-graph", xAxis: { min: 0, max: 0.03 }, yAxis: { min: 0, max: 0.03 }, showGrid: true });
+    const plot = plotOf(scene, [0, 0.03], [0, 0.03]);
+    expect(drawnSpacing([0, 0.03], grid(scene).x, plot.xOf)).toBe(0.005);
+    expect(scene.textAlternative).toContain("x from 0 to 0.03 ticked every 0.005,");
   });
 
   it("uses a supplied spacing as given, and keeps the range's own spacing on an axis with hidden tick labels", () => {

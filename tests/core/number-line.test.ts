@@ -145,8 +145,10 @@ describe("the text alternative (NLC-REQ-012, NLC-REQ-016, NLC-REQ-019, NLC-REQ-0
     expect(describeGraph(line({ leftArrow: false, rightArrow: false }))).toContain("with no arrowheads");
   });
 
-  it("states a default spacing rounded and a supplied one as written, and values as written", () => {
+  it("states a default spacing and a supplied one as written, and values as written", () => {
     expect(describeGraph(line())).toContain("ticked every 2,");
+    // A default of 0.005 is stated as drawn, not rounded to 0.01 (NLC TICKET-009 security review SEC-001).
+    expect(describeGraph(line({ axis: { min: 0, max: 0.05 } }))).toContain("from 0 to 0.05, ticked every 0.005,");
     // Values the two-decimal rounding of derived values would change (quality review QR-003).
     expect(describeGraph(line({ axis: { min: -0.125, max: 1.875, tickSpacing: 0.125 }, points: [{ value: 0.375, label: "three eighths" }] }))).toBe(
       "A number line from -0.125 to 1.875, ticked every 0.125, with arrowheads at both ends. 1 point is marked: 0.375 labeled “three eighths”.",

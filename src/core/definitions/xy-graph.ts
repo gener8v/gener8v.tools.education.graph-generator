@@ -329,8 +329,9 @@ function defineXyGraph(): GraphTypeDefinition<XyGraph> {
      * "A coordinate graph titled “Distance”, x from -5 to 5 ticked every 1, y from -5 to 5 ticked
      * every 1, showing all four quadrants, with grid lines. The x-axis is labeled “Time”. 2 points
      * are plotted: (1, 2) labeled “A” and (-3, 4). 1 segment is drawn: from (1, 2) to (-3, 4)
-     * labeled “AB”." Supplied values are stated as written and a default spacing rounded; unequal
-     * units are said, so the text alternative says what the figure shows (prd/CC-002).
+     * labeled “AB”." Supplied values are stated as written, and so is a default spacing, which is
+     * 1, 2 or 5 × 10ⁿ and short written out: rounded, 0.005 would read 0.01 (NLC TICKET-009 security
+     * review SEC-001). Unequal units are said, so the text alternative says what the figure shows (prd/CC-002).
      */
     // @spec NLC-REQ-012, NLC-REQ-023, NLC-REQ-026, NLC-REQ-031, NLC-REQ-032
     describe: (graph: XyGraph, provenance: Provenance) => {
@@ -340,7 +341,8 @@ function defineXyGraph(): GraphTypeDefinition<XyGraph> {
       const axis = (name: "x" | "y") => {
         const { min, max, tickSpacing } = graph[`${name}Axis`];
         const given = Object.hasOwn(graph[`${name}Axis`], "tickSpacing") ? tickSpacing : undefined;
-        const spacing = stateMeasurement(axisSpacing(min, max, given, rooms[name]), given === undefined ? "derived" : "supplied");
+        // Exactly as drawn, given or default (security review SEC-001).
+        const spacing = stateMeasurement(axisSpacing(min, max, given, rooms[name]), "supplied");
         return `${name} from ${at(`${name}Axis/min`, min)} to ${at(`${name}Axis/max`, max)} ticked every ${spacing}`;
       };
       const point = (path: string, p: XyCoordinates) =>

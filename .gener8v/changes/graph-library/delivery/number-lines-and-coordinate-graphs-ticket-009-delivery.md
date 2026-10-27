@@ -263,3 +263,17 @@ The rows are appended to the specification's `## @spec Coverage` table.
 - **QR-003:** `tests/layout/xy-graph.test.ts` now asserts that the property excludes at most 15% of the descriptions it generates (2 to 4% at delivery), in place of the `console.info`. Mutation-checked: a 0.1% bound fails with "11 of 300 excluded". The file is not split.
 - **QR-004:** `src/core/value-scale.ts` gains `labelsStandApart`, which uses `every`, and `fittedAxisSpacing` calls it. Behaviour is unchanged. Mutation-checked: making the helper always pass fails 6 tests.
 - **Re-verification:** `pnpm lint` exit 0, `pnpm typecheck` exit 0, `pnpm test` exit 0 three times (1,579 passed). `pnpm size`: `./core` 25.13 kB of 40, `./xy-graph` 21.66 kB of 25.
+
+### graph-library/number-lines-and-coordinate-graphs-ticket-009-security-review/SEC-001
+
+- **What changed:**
+  - `src/core/definitions/xy-graph.ts` and `src/core/definitions/number-line.ts`: `describe` states a default tick spacing exactly, `stateMeasurement(…, "supplied")`, in place of rounding it to two decimals. A default is 1, 2 or 5 × 10ⁿ and short written out; rounded, 0.005 read as 0.01.
+  - `tests/layout/xy-graph.test.ts`: the criterion-7 property compares the stated spacing with the drawn one exactly, and a fixed case (x 0..0.03 by y 0..0.03, every 0.005) is added.
+  - `tests/core/number-line.test.ts`: a number line 0..0.05 states "ticked every 0.005", and the test's name drops "rounded". This edits a number-line test, which the ticket's criterion 9 kept unedited; the Engineer approved it in this resolution.
+  - `.changeset/default-tick-spacing-stated-exactly.md`: a `Fixed:` entry.
+- **Behaviour:** no drawing changes. The text alternative changes only where a default spacing is 0.005. This closes the record's Note on the older `formatDerived` defect, so it needs no ticket of its own.
+- **Re-verification:**
+  - `pnpm generate`, `pnpm lint`, `pnpm typecheck`, `pnpm bench`, `pnpm build`, `check:dist`, `check:deps`, `check:images`, `check:changesets`, `publint`, `attw`, `pnpm audit` and `pnpm audit --prod`: exit 0.
+  - `pnpm test`: exit 0 three times, 1,580 passed.
+  - `pnpm size`: `./core` 25.12 kB, `./xy-graph` 21.65 kB, `./number-line` 19.98 kB.
+  - Mutation checks: restoring the rounding fails 2 x,y tests and 1 number-line test.

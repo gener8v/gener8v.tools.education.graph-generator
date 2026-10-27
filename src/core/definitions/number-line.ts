@@ -238,8 +238,9 @@ function defineNumberLine(): GraphTypeDefinition<NumberLine> {
     /**
      * "A number line titled “Temperatures”, labeled “Integers”, from -10 to 10, ticked every 1,
      * with arrowheads at both ends. Ticks labeled: 0 as “start”. 2 points are marked: -3 labeled
-     * “A” and 4." (DEL-006). Supplied values are stated as written and a default spacing rounded;
-     * a custom label is stated only when it is drawn, as the first at its tick, so the text
+     * “A” and 4." (DEL-006). Supplied values are stated as written, and so is a default spacing,
+     * which is 1, 2 or 5 × 10ⁿ and short written out: rounded, 0.005 would read 0.01 (NLC TICKET-009
+     * security review SEC-001). A custom label is stated only when it is drawn, as the first at its tick, so the text
      * alternative says what the figure shows (prd/CC-002).
      */
     // @spec NLC-REQ-012, NLC-REQ-016, NLC-REQ-019, NLC-REQ-021
@@ -248,7 +249,7 @@ function defineNumberLine(): GraphTypeDefinition<NumberLine> {
       const lineLabel = cleaned(line.lineLabel);
       const { min, max } = line.axis;
       const given = Object.hasOwn(line.axis, "tickSpacing") ? line.axis.tickSpacing : undefined;
-      const spacing = stateMeasurement(axisSpacing(min, max, given), given === undefined ? "derived" : "supplied");
+      const spacing = stateMeasurement(axisSpacing(min, max, given), "supplied");
       const range = `from ${stateMeasurement(min, sourceOf(provenance, "axis/min"))} to ${stateMeasurement(max, sourceOf(provenance, "axis/max"))}`;
       const named = `${title === "" ? "" : ` titled ${quoteText(title)}`}${lineLabel === "" ? "" : `, labeled ${quoteText(lineLabel)},`}`;
       const sentences = [`A number line${named} ${range}, ticked every ${spacing}, ${arrowheadPhrase(line)}.`];
