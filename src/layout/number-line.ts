@@ -2,9 +2,9 @@ import { type NumberLine, numberLine as numberLineDefinition, customLabelsByTick
 import { cleanText } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
-import { drawAxis } from "./kit/axis";
+import { drawAxis, drawLine } from "./kit/axis";
 import { fmt, fmtPoints } from "./kit/format";
-import { type Box, type Obstacle, placeLabel } from "./kit/labels";
+import { ELEMENT_LABEL_MAX_LINES, type Obstacle, type PlacedLabel, placeElementLabel } from "./kit/labels";
 import { MARKER_REACH, drawMarker } from "./kit/markers";
 import { linearScale } from "./kit/scale";
 import { textWidth, wrap } from "./kit/text";
@@ -12,6 +12,9 @@ import { tickLabel } from "./kit/ticks";
 import { LINE_HEIGHT, SCENE_MARGIN, textBlock, textLines, titleBlock } from "./kit/title";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
+
+// The label cut is the kit's, the same as the x,y graph's (quality review QR-002 on NLC TICKET-003).
+export { ELEMENT_LABEL_MAX_LINES as LABEL_MAX_LINES } from "./kit/labels";
 
 /** How far an arrowhead's line runs past the range's end, and the head's length and half width. */
 const ARROW_EXTENSION = 8;
@@ -30,13 +33,6 @@ export const TICK_LABEL_MAX_WIDTH = 80;
 export const TICK_LABEL_MIN_WIDTH = 24;
 /** Space kept between a custom tick label and its neighbours' labels. */
 const TICK_LABEL_SPACE = 4;
-/** Point labels wider than this wrap, to at most `LABEL_MAX_LINES` lines. */
-const LABEL_MAX_WIDTH = 120;
-/**
- * A point label or the line label longer than this many lines is cut, ending in "…", so caller
- * text yields a bounded Scene; the text alternative states it whole (GSS TICKET-002 SEC-001).
- */
-export const LABEL_MAX_LINES = 2;
 /** How many rows above the line a point label may move up to, to clear the others (DEL-007). */
 const LABEL_ROWS = 4;
 /** Clearance between a label and what it labels, or the label below it. */
@@ -66,18 +62,6 @@ function arrowhead(tipX: number, y: number, direction: -1 | 1, color: string): S
   };
 }
 
-const segment = (x1: number, x2: number, y: number, color: string): SceneNode => ({
-  kind: "line",
-  attrs: [
-    ["x1", fmt(x1)],
-    ["y1", fmt(y)],
-    ["x2", fmt(x2)],
-    ["y2", fmt(y)],
-    ["stroke", color],
-    ["stroke-width", fmt(defaultStyle.lineWidths.axis)],
-  ],
-});
-
 /**
  * The number line's layout (AD-002). From the top: the title (`titleBlock`), the band of point
  * labels, the line with its ticks, tick labels and arrowheads (`drawAxis`), then the line label.
@@ -89,7 +73,7 @@ const segment = (x1: number, x2: number, y: number, color: string): SceneNode =>
  * (NLC-REQ-016, NLC-REQ-017). The line, its ticks and its arrowheads take `lineColor` (DEL-001).
  *
  * Each point is a circle marker at `linearScale(value)` in its own color or the accent (NLC-REQ-018,
- * NLC-REQ-011). Its label, wrapped and cut to `LABEL_MAX_LINES`, is placed by `placeLabel` above
+ * NLC-REQ-011). Its label, wrapped and cut to `LABEL_MAX_LINES`, is placed by `placeElementLabel` above
  * the line: centered on the point, then shifted right and left, on up to `LABEL_ROWS` rows, clear of
  * the line, the markers and every label placed before it. A label with no clear place takes the
  * first candidate (DEL-007; NLC OQ-005), so every point and label is drawn, coincident ones too.
@@ -143,22 +127,20 @@ export const numberLineLayout: Layout<NumberLine> = (normalized: NumberLine, pro
     return { x: x - MARKER_REACH, y: -MARKER_REACH, width: 2 * MARKER_REACH, height: 2 * MARKER_REACH };
   });
   const obstacles: Obstacle[] = [{ x1: left, y1: 0, x2: right, y2: 0 }, ...markerBoxes];
-  const placed: Array<{ lines: string[]; box: Box }> = [];
-  points.forEach((point) => {
-    const text = point.label === undefined ? "" : cleanText(point.label);
-    if (text === "") return;
-    const size = textBlock(text, LABEL_MAX_WIDTH, labelFont, LABEL_MAX_LINES);
+  const placed: PlacedLabel[] = [];
+  for (const point of points) {
     const x = xOf(point.value);
-    const inside = (cx: number) => Math.min(Math.max(cx, SCENE_MARGIN), SCENE_WIDTH - SCENE_MARGIN - size.width);
-    const candidates: Array<{ x: number; y: number }> = [];
-    for (let row = 0; row < LABEL_ROWS; row++) {
-      const y = -MARKER_REACH - GAP - size.height - row * (LABEL_MAX_LINES * lineHeight + GAP);
-      for (const offset of [0, SHIFT, -SHIFT]) candidates.push({ x: inside(x - size.width / 2 + offset * (size.width + GAP)), y });
-    }
-    const box: Box = placeLabel(size, candidates, obstacles) ?? { ...candidates[0]!, ...size };
-    obstacles.push(box);
-    placed.push({ lines: size.lines, box });
-  });
+    const label = placeElementLabel(point.label, (width, height) => {
+      const inside = (cx: number) => Math.min(Math.max(cx, SCENE_MARGIN), SCENE_WIDTH - SCENE_MARGIN - width);
+      const candidates: Array<{ x: number; y: number }> = [];
+      for (let row = 0; row < LABEL_ROWS; row++) {
+        const y = -MARKER_REACH - GAP - height - row * (ELEMENT_LABEL_MAX_LINES * lineHeight + GAP);
+        for (const offset of [0, SHIFT, -SHIFT]) candidates.push({ x: inside(x - width / 2 + offset * (width + GAP)), y });
+      }
+      return candidates;
+    }, obstacles);
+    if (label !== undefined) placed.push(label);
+  }
   let labelTop = -MARKER_REACH;
   for (const { box } of placed) labelTop = Math.min(labelTop, box.y);
 
@@ -181,10 +163,10 @@ export const numberLineLayout: Layout<NumberLine> = (normalized: NumberLine, pro
     nodes.push(node);
   }
   if (hasArrow(normalized.leftArrow)) {
-    nodes.push(segment(left - ARROW_EXTENSION, left, lineY, lineColor), arrowhead(left - ARROW_ROOM, lineY, -1, lineColor));
+    nodes.push(drawLine(left - ARROW_EXTENSION, lineY, left, lineY, defaultStyle.lineWidths.axis, lineColor), arrowhead(left - ARROW_ROOM, lineY, -1, lineColor));
   }
   if (hasArrow(normalized.rightArrow)) {
-    nodes.push(segment(right, right + ARROW_EXTENSION, lineY, lineColor), arrowhead(right + ARROW_ROOM, lineY, 1, lineColor));
+    nodes.push(drawLine(right, lineY, right + ARROW_EXTENSION, lineY, defaultStyle.lineWidths.axis, lineColor), arrowhead(right + ARROW_ROOM, lineY, 1, lineColor));
   }
 
   for (const point of points) nodes.push(drawMarker("circle", xOf(point.value), lineY, point.color ?? defaultStyle.colors.accent));
@@ -196,7 +178,7 @@ export const numberLineLayout: Layout<NumberLine> = (normalized: NumberLine, pro
   let bottom = lineY + defaultStyle.tickLength / 2 + GAP + (showTickLabels ? tickFont * LINE_HEIGHT : 0);
   const lineLabel = normalized.lineLabel === undefined ? "" : cleanText(normalized.lineLabel);
   if (lineLabel !== "") {
-    const size = textBlock(lineLabel, SCENE_WIDTH - 2 * SCENE_MARGIN, labelFont, LABEL_MAX_LINES);
+    const size = textBlock(lineLabel, SCENE_WIDTH - 2 * SCENE_MARGIN, labelFont, ELEMENT_LABEL_MAX_LINES);
     for (const node of textLines(size.lines, SCENE_WIDTH / 2, bottom + GAP, labelFont, defaultStyle.colors.text)) nodes.push(node);
     bottom += GAP + size.height;
   }

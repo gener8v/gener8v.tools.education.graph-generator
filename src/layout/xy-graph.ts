@@ -1,20 +1,22 @@
 import { type XyGraph, PLANE_MAX_RATIO, planeShape, quadrantCount, xyGraph as xyGraphDefinition } from "../core/definitions/xy-graph";
 import type { Axis } from "../core/definitions/axis";
-import { cleanText } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { niceTicks } from "../core/value-scale";
-import { drawAxis } from "./kit/axis";
+import { drawAxis, drawLine } from "./kit/axis";
 import { fmt } from "./kit/format";
-import { type Box, type Obstacle, placeLabel } from "./kit/labels";
+import { type Box, type Obstacle, type PlacedLabel, placeElementLabel } from "./kit/labels";
 import { MARKER_REACH, drawMarker } from "./kit/markers";
 import { linearScale } from "./kit/scale";
 import { DEFAULT_FONT_STACK, textWidth } from "./kit/text";
 import { tickLabel } from "./kit/ticks";
-import { LINE_HEIGHT, SCENE_MARGIN, textBlock, textLines, titleBlock } from "./kit/title";
+import { BASELINE, LINE_HEIGHT, SCENE_MARGIN, textLines, titleBlock } from "./kit/title";
 import { TICK_LABEL_DROP, axisLabelDepth, axisLabelLines, drawBottomAxisLabel, drawLeftAxisLabel } from "./kit/value-scale";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
+
+// The label cut is the kit's, the same as the number line's (quality review QR-002 on NLC TICKET-003).
+export { ELEMENT_LABEL_MAX_LINES as LABEL_MAX_LINES } from "./kit/labels";
 
 /**
  * The tallest a plot is drawn: a little less than the drawing's width, so a square plane fits a
@@ -30,13 +32,6 @@ export const MAX_PLOT_HEIGHT = 360;
 export const MIN_PLOT_WIDTH = MAX_PLOT_HEIGHT / PLANE_MAX_RATIO;
 /** The length the y-axis label wraps to, read upward beside the plot; it may reach past a short plot. */
 const Y_LABEL_LENGTH = 160;
-/** Point and segment labels wider than this wrap, to at most `LABEL_MAX_LINES` lines. */
-const LABEL_MAX_WIDTH = 120;
-/**
- * A point or segment label longer than this many lines is cut, ending in "…", so caller text yields
- * a bounded Scene; the text alternative states it whole (GSS TICKET-002 SEC-001).
- */
-export const LABEL_MAX_LINES = 2;
 /** How many rows outward from a point its label may move, to clear the labels near it. */
 const LABEL_ROWS = 2;
 /** Space between the plot, its labels and the title, and between a label and what it labels. */
@@ -62,7 +57,7 @@ export interface PlaneAxes {
   readonly equalUnits: boolean;
 }
 
-/** `value` held to `[min, max]`: 0 for a range that includes it, else its nearest end. */
+/** `value` held to `[min, max]`. */
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 /**
@@ -78,14 +73,12 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
  */
 // @spec NLC-REQ-023, NLC-REQ-024, NLC-REQ-025, NLC-REQ-032
 export function planeAxes(xRange: readonly [number, number], yRange: readonly [number, number], maxWidth = SCENE_WIDTH - 2 * SCENE_MARGIN): PlaneAxes {
-  const [xAxis, yAxis]: Axis[] = [
-    { min: xRange[0], max: xRange[1] },
-    { min: yRange[0], max: yRange[1] },
-  ];
-  const { ratio, equalUnits } = planeShape(xAxis!, yAxis!);
+  const xAxis: Axis = { min: xRange[0], max: xRange[1] };
+  const yAxis: Axis = { min: yRange[0], max: yRange[1] };
+  const { ratio, equalUnits } = planeShape(xAxis, yAxis);
   const width = Math.min(maxWidth, MAX_PLOT_HEIGHT / ratio);
   return {
-    quadrants: quadrantCount(xAxis!, yAxis!),
+    quadrants: quadrantCount(xAxis, yAxis),
     xAxisAt: clamp(0, yRange[0], yRange[1]),
     yAxisAt: clamp(0, xRange[0], xRange[1]),
     xLabelSide: yRange[1] < 0 ? "above" : "below",
@@ -103,206 +96,317 @@ function widest(texts: Iterable<string>): number {
   return width;
 }
 
-const line = (x1: number, y1: number, x2: number, y2: number, color: string, width: number): SceneNode => ({
-  kind: "line",
-  attrs: [
-    ["x1", fmt(x1)],
-    ["y1", fmt(y1)],
-    ["x2", fmt(x2)],
-    ["y2", fmt(y2)],
-    ["stroke", color],
-    ["stroke-width", fmt(width)],
-  ],
-});
+/** Each axis's ticks (`niceTicks`, at its own spacing, NLC-REQ-027) and whether its tick labels show. */
+interface PlaneTicks {
+  readonly x: { readonly ticks: number[]; readonly spacing: number };
+  readonly y: { readonly ticks: number[]; readonly spacing: number };
+  readonly showX: boolean;
+  readonly showY: boolean;
+}
 
-/** A label to place: its wrapped lines and box size, and where it may go, in order of preference. */
-interface PendingLabel {
-  readonly lines: string[];
-  readonly width: number;
-  readonly height: number;
-  readonly candidates: Array<{ x: number; y: number }>;
+/** Which axes leave their tick label at 0 blank, so the origin is labeled once. */
+interface ZeroBlanks {
+  readonly x: boolean;
+  readonly y: boolean;
 }
 
 /**
- * The x,y graph's layout (AD-002). From the top: the title (`titleBlock`), then the plot with the
- * y-axis label read upward on its left and the x-axis label centered below it (`axisLabelLines`,
- * NLC-REQ-031).
- *
- * The plot is sized by `planeAxes` from the room left beside the y tick labels and half the widest x
- * tick label, and centered in that room. With `showGrid`, a grid line crosses the plot at every
- * tick of both axes, under everything else, and nowhere else (NLC-REQ-026). Each axis is drawn by
- * `drawAxis` with its own ticks (`niceTicks`, its own spacing, NLC-REQ-027) at the place
- * `planeAxes` gives, so an edge axis is ticked and labeled with its true values (NLC-REQ-025). The
- * origin is labeled once, by the x-axis: the y-axis leaves its 0 blank where the x-axis crosses
- * it, and when the y-axis runs down through the x-axis's 0, that "0" moves below-left of the origin
- * where the neighbouring tick labels leave room for it.
- *
- * Segments are lines between their ends (NLC-REQ-029), then points circle markers at their
- * coordinates (NLC-REQ-028), each in its own color or the accent (NLC-REQ-030, NLC-REQ-011). Labels,
- * wrapped and cut to `LABEL_MAX_LINES`, are placed by `placeLabel` clear of the axes, the
- * segments, the markers and every label placed before: a point's beside it, a segment's at its
- * middle. A label with no clear place takes its first candidate (NLC OQ-005). Every number passes
- * through `fmt()` (AD-007), and no caller-sized list is spread into arguments.
+ * The plot on the page: its sides, the page x of the y-axis and the page y of the x-axis, and the
+ * page position of an x or a y value (NLC-REQ-007). What every phase after `plotRoom` reads
+ * (quality review QR-001 on NLC TICKET-003).
  */
-// @spec NLC-REQ-007, NLC-REQ-022, NLC-REQ-024, NLC-REQ-025, NLC-REQ-026, NLC-REQ-027, NLC-REQ-028, NLC-REQ-029, NLC-REQ-030, NLC-REQ-031
-export const xyGraphLayout: Layout<XyGraph> = (graph: XyGraph, provenance: Provenance): Scene => {
+interface Plot {
+  readonly left: number;
+  readonly right: number;
+  readonly top: number;
+  readonly bottom: number;
+  readonly originX: number;
+  readonly originY: number;
+  readonly xOf: (x: number) => number;
+  readonly yOf: (y: number) => number;
+}
+
+/** The plot `plotRoom` sizes and places, the room it is centered in, and the depth its edge needs below it. */
+interface PlotRoom {
+  /** The plane sized to the room (`planeAxes`). */
+  readonly plane: PlaneAxes;
+  readonly plot: Plot;
+  /** The room across the drawing the plot is centered in, left of the y-axis label's room excluded. */
+  readonly left: number;
+  readonly right: number;
+  /** How far below the plot the x tick labels, a marker's reach, half a y tick label or the y-axis label reach. */
+  readonly below: number;
+}
+
+/**
+ * The plot sized and placed (NLC-REQ-031, NLC-REQ-032). Room beside it: the y-axis label and the y
+ * tick labels (`yTickLabels` in place of their value) on their side of `axes`, half the widest x
+ * tick label at either end, and a marker's reach for a point on the edge. `planeAxes` sizes the
+ * plane within that room, and the plot is centered in it. Room above and below it: the x tick
+ * labels on their side, half a y tick label, a marker's reach, and room for the y-axis label where
+ * it reaches past a short plot; the plot starts below the title's `titleHeight` (quality review
+ * QR-001 on NLC TICKET-003).
+ */
+// @spec NLC-REQ-007, NLC-REQ-031, NLC-REQ-032
+function plotRoom(
+  graph: XyGraph,
+  axes: PlaneAxes,
+  ticks: PlaneTicks,
+  yTickLabels: ReadonlyMap<number, string>,
+  yLabel: readonly string[],
+  titleHeight: number,
+): PlotRoom {
   const { xAxis, yAxis } = graph;
-  const xTicks = niceTicks(xAxis.min, xAxis.max, Object.hasOwn(xAxis, "tickSpacing") ? xAxis.tickSpacing : undefined);
-  const yTicks = niceTicks(yAxis.min, yAxis.max, Object.hasOwn(yAxis, "tickSpacing") ? yAxis.tickSpacing : undefined);
-  const showX = xAxis.showTickLabels !== false;
-  const showY = yAxis.showTickLabels !== false;
+  const { x: xTicks, y: yTicks, showX, showY } = ticks;
   const tickFont = defaultStyle.fontSizes.tickLabel;
   const half = defaultStyle.tickLength / 2;
-  // Where the axes go, which no width changes; the plot's size is taken again once the room is known.
-  const shape = planeAxes([xAxis.min, xAxis.max], [yAxis.min, yAxis.max]);
-
-  // The origin is labeled once, and only where the axes cross at (0, 0); an edge axis labels its 0
-  // as the true value it is (code review CR-001). At the origin, the x-axis leaves its 0 blank where
-  // the y-axis runs down through it, and the y-axis leaves its 0 blank where the x-axis would label
-  // the origin or runs left through the label; the "0" is then written below-left of the origin.
-  const atOrigin = shape.xAxisAt === 0 && shape.yAxisAt === 0;
-  const xZeroBlank = atOrigin && yAxis.min < 0;
-  const yZeroBlank = atOrigin && (showX || xAxis.min < 0);
-  const yLabels = new Map<number, string>(yZeroBlank ? [[0, ""]] : []);
-  const xLabels = new Map<number, string>(xZeroBlank ? [[0, ""]] : []);
-
-  // Room beside the plot: the y-axis label and the y tick labels on their side, half the widest x
-  // tick label at either end, and a marker's reach for a point on the edge.
-  const yLabel = axisLabelLines(graph.yAxisLabel, Y_LABEL_LENGTH);
   const yLabelRoom = yLabel.length > 0 ? axisLabelDepth(yLabel) + GAP : 0;
-  const yTickRoom = half + (showY ? TICK_LABEL_GAP + widest(yTicks.ticks.map((tick) => (yLabels.get(tick) ?? tickLabel(tick, yTicks.spacing)))) : 0);
+  const yTickRoom = half + (showY ? TICK_LABEL_GAP + widest(yTicks.ticks.map((tick) => (yTickLabels.get(tick) ?? tickLabel(tick, yTicks.spacing)))) : 0);
   const xOverhang = showX ? widest(xTicks.ticks.map((tick) => tickLabel(tick, xTicks.spacing))) / 2 : 0;
-  const left = SCENE_MARGIN + yLabelRoom + Math.max(MARKER_REACH, xOverhang, shape.yLabelSide === "left" ? yTickRoom : 0);
-  const right = SCENE_WIDTH - SCENE_MARGIN - Math.max(MARKER_REACH, xOverhang, shape.yLabelSide === "right" ? yTickRoom : 0);
+  const left = SCENE_MARGIN + yLabelRoom + Math.max(MARKER_REACH, xOverhang, axes.yLabelSide === "left" ? yTickRoom : 0);
+  const right = SCENE_WIDTH - SCENE_MARGIN - Math.max(MARKER_REACH, xOverhang, axes.yLabelSide === "right" ? yTickRoom : 0);
   const plane = planeAxes([xAxis.min, xAxis.max], [yAxis.min, yAxis.max], right - left);
   const plotLeft = left + (right - left - plane.width) / 2;
   const plotRight = plotLeft + plane.width;
 
-  // Room above and below: the x tick labels on their side, half a y tick label, a marker's reach,
-  // and room for the y-axis label where it reaches past a short plot.
   const xTickRoom = half + (showX ? TICK_LABEL_GAP + tickFont * LINE_HEIGHT : 0);
   const edge = Math.max(MARKER_REACH, showY ? tickFont / 2 : 0);
   let yLabelReach = 0;
   for (const text of yLabel) yLabelReach = Math.max(yLabelReach, textWidth(text, defaultStyle.fontSizes.label) / 2);
   const overhang = Math.max(0, yLabelReach - plane.height / 2);
-  const title = titleBlock(graph.title);
-  const plotTop = title.height + SCENE_MARGIN + Math.max(edge, plane.xLabelSide === "above" ? xTickRoom : 0, overhang);
+  const plotTop = titleHeight + SCENE_MARGIN + Math.max(edge, plane.xLabelSide === "above" ? xTickRoom : 0, overhang);
   const plotBottom = plotTop + plane.height;
   const xOf = linearScale([xAxis.min, xAxis.max], [plotLeft, plotRight]);
   const yOf = linearScale([yAxis.min, yAxis.max], [plotBottom, plotTop]);
-  const [originX, originY] = [xOf(plane.yAxisAt), yOf(plane.xAxisAt)];
+  return {
+    plane,
+    plot: { left: plotLeft, right: plotRight, top: plotTop, bottom: plotBottom, originX: xOf(plane.yAxisAt), originY: yOf(plane.xAxisAt), xOf, yOf },
+    left,
+    right,
+    below: Math.max(edge, plane.xLabelSide === "below" ? xTickRoom : 0, overhang),
+  };
+}
 
-  const nodes: SceneNode[] = [];
-  for (const node of title.nodes) nodes.push(node);
+/**
+ * Which axes leave their 0 blank. The origin is labeled once, and only where the axes cross at
+ * (0, 0); an edge axis labels its 0 as the true value it is (code review CR-001). At the origin, the
+ * x-axis leaves its 0 blank where the y-axis runs down through it, and the y-axis leaves its 0
+ * blank where the x-axis would label the origin or runs left through the label; the "0" is then
+ * written below-left of the origin (`originLabel`).
+ */
+// @spec NLC-REQ-024, NLC-REQ-025
+function zeroBlanks(graph: XyGraph, axes: PlaneAxes, showX: boolean): ZeroBlanks {
+  const atOrigin = axes.xAxisAt === 0 && axes.yAxisAt === 0;
+  return { x: atOrigin && graph.yAxis.min < 0, y: atOrigin && (showX || graph.xAxis.min < 0) };
+}
 
-  // The grid, under everything: one line across the plot at every tick of each axis.
-  if (graph.showGrid === true) {
-    const { grid } = defaultStyle.colors;
-    for (const tick of xTicks.ticks) nodes.push(line(xOf(tick), plotTop, xOf(tick), plotBottom, grid, defaultStyle.lineWidths.grid));
-    for (const tick of yTicks.ticks) nodes.push(line(plotLeft, yOf(tick), plotRight, yOf(tick), grid, defaultStyle.lineWidths.grid));
-  }
-
-  const axes = [
-    { from: [plotLeft, originY], to: [plotRight, originY], domain: [xAxis.min, xAxis.max], ...xTicks, labels: xLabels, showTickLabels: showX, side: plane.xLabelSide },
-    { from: [originX, plotBottom], to: [originX, plotTop], domain: [yAxis.min, yAxis.max], ...yTicks, labels: yLabels, showTickLabels: showY, side: plane.yLabelSide },
-  ] as const;
-  for (const options of axes) for (const node of drawAxis(options)) nodes.push(node);
-  // The origin's own "0", below-left of it, where it clears the x tick label left of the origin and
-  // the y tick label below it; on axes ticked too densely for that the origin is left unlabeled.
-  const zeroRight = originX - half - TICK_LABEL_GAP;
-  const zeroTop = originY + half + TICK_LABEL_GAP;
+/**
+ * Whether the origin's "0", ending at `zeroRight` with its top at `zeroTop`, clears by `GAP` the x
+ * tick label left of the origin and the y tick label below it. An axis with hidden tick labels, or
+ * no tick there, is clear. The y tick label's top is its baseline, `TICK_LABEL_DROP` of the font
+ * size below its tick (`drawAxis`), less `BASELINE` of it (quality review QR-006 on NLC TICKET-003).
+ */
+function originLabelFits(graph: XyGraph, ticks: PlaneTicks, plot: Plot, zeroRight: number, zeroTop: number): boolean {
+  const { x: xTicks, y: yTicks, showX, showY } = ticks;
+  const tickFont = defaultStyle.fontSizes.tickLabel;
   const [before, below] = [-xTicks.spacing, -yTicks.spacing];
-  const clearOfX = !showX || before < xAxis.min || xOf(before) + textWidth(tickLabel(before, xTicks.spacing), tickFont) / 2 + GAP <= zeroRight - textWidth("0", tickFont);
-  const clearOfY = !showY || below < yAxis.min || yOf(below) + tickFont * (TICK_LABEL_DROP - 0.8) >= zeroTop + tickFont + GAP;
-  // Written for whichever axis blanked its own 0 and shows its tick labels: the x-axis's, else the y-axis's.
-  if ((showX ? xZeroBlank : showY && yZeroBlank) && clearOfX && clearOfY) {
-    nodes.push({
-      kind: "text",
-      attrs: [
-        ["x", fmt(zeroRight)],
-        ["y", fmt(zeroTop + tickFont * 0.8)],
-        ["fill", defaultStyle.colors.text],
-        ["font-family", DEFAULT_FONT_STACK],
-        ["font-size", fmt(tickFont)],
-        ["text-anchor", "end"],
-      ],
-      text: "0",
-    });
-  }
+  const clearOfX =
+    !showX || before < graph.xAxis.min || plot.xOf(before) + textWidth(tickLabel(before, xTicks.spacing), tickFont) / 2 + GAP <= zeroRight - textWidth("0", tickFont);
+  const clearOfY = !showY || below < graph.yAxis.min || plot.yOf(below) + tickFont * (TICK_LABEL_DROP - BASELINE) >= zeroTop + tickFont + GAP;
+  return clearOfX && clearOfY;
+}
 
-  // Segments, then the points' markers over them.
+/**
+ * The origin's own "0", below-left of it, written for whichever axis blanked its own 0 and shows
+ * its tick labels: the x-axis's, else the y-axis's. `undefined` when neither did, or where the "0"
+ * would not clear the neighbouring tick labels (`originLabelFits`): on axes ticked too densely the
+ * origin is left unlabeled (quality review QR-001 on NLC TICKET-003).
+ */
+// @spec NLC-REQ-024
+function originLabel(graph: XyGraph, ticks: PlaneTicks, blanks: ZeroBlanks, plot: Plot): SceneNode | undefined {
+  if (!(ticks.showX ? blanks.x : ticks.showY && blanks.y)) return undefined;
+  const tickFont = defaultStyle.fontSizes.tickLabel;
+  const half = defaultStyle.tickLength / 2;
+  const zeroRight = plot.originX - half - TICK_LABEL_GAP;
+  const zeroTop = plot.originY + half + TICK_LABEL_GAP;
+  if (!originLabelFits(graph, ticks, plot, zeroRight, zeroTop)) return undefined;
+  return {
+    kind: "text",
+    attrs: [
+      ["x", fmt(zeroRight)],
+      ["y", fmt(zeroTop + tickFont * BASELINE)],
+      ["fill", defaultStyle.colors.text],
+      ["font-family", DEFAULT_FONT_STACK],
+      ["font-size", fmt(tickFont)],
+      ["text-anchor", "end"],
+    ],
+    text: "0",
+  };
+}
+
+/** With `showGrid`, one line across the plot at every tick of each axis; none without (NLC-REQ-026). */
+// @spec NLC-REQ-026
+function gridLines(graph: XyGraph, ticks: PlaneTicks, plot: Plot): SceneNode[] {
+  if (graph.showGrid !== true) return [];
+  const { grid } = defaultStyle.colors;
+  const width = defaultStyle.lineWidths.grid;
+  const nodes: SceneNode[] = [];
+  for (const tick of ticks.x.ticks) nodes.push(drawLine(plot.xOf(tick), plot.top, plot.xOf(tick), plot.bottom, width, grid));
+  for (const tick of ticks.y.ticks) nodes.push(drawLine(plot.left, plot.yOf(tick), plot.right, plot.yOf(tick), width, grid));
+  return nodes;
+}
+
+/**
+ * The segments, lines between their ends (NLC-REQ-029), then the points' circle markers over them
+ * at their coordinates (NLC-REQ-028), each in its own color or the accent (NLC-REQ-030,
+ * NLC-REQ-011). With them, what a label must clear: both axes, the segments and the markers.
+ */
+// @spec NLC-REQ-007, NLC-REQ-011, NLC-REQ-028, NLC-REQ-029, NLC-REQ-030
+function figures(graph: XyGraph, plot: Plot): { nodes: SceneNode[]; obstacles: Obstacle[] } {
+  const { xOf, yOf } = plot;
   const accent = defaultStyle.colors.accent;
-  const segments = graph.segments ?? [];
-  const points = graph.points ?? [];
+  const nodes: SceneNode[] = [];
   const obstacles: Obstacle[] = [
-    { x1: plotLeft, y1: originY, x2: plotRight, y2: originY },
-    { x1: originX, y1: plotBottom, x2: originX, y2: plotTop },
+    { x1: plot.left, y1: plot.originY, x2: plot.right, y2: plot.originY },
+    { x1: plot.originX, y1: plot.bottom, x2: plot.originX, y2: plot.top },
   ];
-  for (const { from, to, color } of segments) {
+  for (const { from, to, color } of graph.segments ?? []) {
     const [x1, y1, x2, y2] = [xOf(from.x), yOf(from.y), xOf(to.x), yOf(to.y)];
-    nodes.push(line(x1, y1, x2, y2, color ?? accent, defaultStyle.lineWidths.figure));
+    nodes.push(drawLine(x1, y1, x2, y2, defaultStyle.lineWidths.figure, color ?? accent));
     obstacles.push({ x1, y1, x2, y2 });
   }
-  for (const { x, y, color } of points) {
+  for (const { x, y, color } of graph.points ?? []) {
     nodes.push(drawMarker("circle", xOf(x), yOf(y), color ?? accent));
     obstacles.push({ x: xOf(x) - MARKER_REACH, y: yOf(y) - MARKER_REACH, width: 2 * MARKER_REACH, height: 2 * MARKER_REACH });
   }
+  return { nodes, obstacles };
+}
 
-  // Labels: each candidate kept inside the plot, give or take a marker's reach.
-  const labelFont = defaultStyle.fontSizes.label;
+/**
+ * The segment labels, then the point labels, each placed by `placeElementLabel` clear of
+ * `obstacles` and every label placed before it, at a candidate kept inside the plot, give or take a
+ * marker's reach. A segment's goes at its middle, a point's beside its marker (NLC-REQ-011,
+ * NLC-REQ-030; quality review QR-001 on NLC TICKET-003).
+ */
+// @spec NLC-REQ-011, NLC-REQ-030
+function elementLabels(graph: XyGraph, plot: Plot, obstacles: Obstacle[]): PlacedLabel[] {
+  const { xOf, yOf } = plot;
+  // Each candidate, given as [x, y] for a label's size, kept inside the plot, give or take a marker's reach.
   const within = (at: number, low: number, high: number, size: number) => clamp(at, low - MARKER_REACH, Math.max(low - MARKER_REACH, high + MARKER_REACH - size));
-  const inside = (x: number, y: number, width: number, height: number) => ({ x: within(x, plotLeft, plotRight, width), y: within(y, plotTop, plotBottom, height) });
-  const pending = (label: string | undefined, around: (width: number, height: number) => Array<[number, number]>): PendingLabel | undefined => {
-    const text = label === undefined ? "" : cleanText(label);
-    if (text === "") return undefined;
-    const { lines, width, height } = textBlock(text, LABEL_MAX_WIDTH, labelFont, LABEL_MAX_LINES);
-    return { lines, width, height, candidates: around(width, height).map(([x, y]) => inside(x, y, width, height)) };
-  };
+  const inside =
+    (around: (width: number, height: number) => Array<[number, number]>) =>
+    (width: number, height: number): Array<{ x: number; y: number }> =>
+      around(width, height).map(([x, y]) => ({ x: within(x, plot.left, plot.right, width), y: within(y, plot.top, plot.bottom, height) }));
   const reach = MARKER_REACH + GAP / 2;
-  const labels: PendingLabel[] = [];
-  for (const { from, to, label } of segments) {
+  const labels: PlacedLabel[] = [];
+  for (const { from, to, label } of graph.segments ?? []) {
     const [mx, my] = [(xOf(from.x) + xOf(to.x)) / 2, (yOf(from.y) + yOf(to.y)) / 2];
     // Centered above or below the middle, then beside it, then off each corner, which clears a
     // level or upright segment and an axis through the middle.
-    const placed = pending(label, (w, h) => [
-      [mx - w / 2, my - GAP - h],
-      [mx - w / 2, my + GAP],
-      [mx + GAP, my - h / 2],
-      [mx - GAP - w, my - h / 2],
-      [mx + GAP, my - GAP - h],
-      [mx - GAP - w, my - GAP - h],
-      [mx + GAP, my + GAP],
-      [mx - GAP - w, my + GAP],
-    ]);
+    const placed = placeElementLabel(
+      label,
+      inside((w, h) => [
+        [mx - w / 2, my - GAP - h],
+        [mx - w / 2, my + GAP],
+        [mx + GAP, my - h / 2],
+        [mx - GAP - w, my - h / 2],
+        [mx + GAP, my - GAP - h],
+        [mx - GAP - w, my - GAP - h],
+        [mx + GAP, my + GAP],
+        [mx - GAP - w, my + GAP],
+      ]),
+      obstacles,
+    );
     if (placed !== undefined) labels.push(placed);
   }
-  for (const { x, y, label } of points) {
+  for (const { x, y, label } of graph.points ?? []) {
     const [px, py] = [xOf(x), yOf(y)];
     // Off each corner of the marker, then centered above and below it, on `LABEL_ROWS` rows
     // outward, so labels of points close together find room.
-    const placed = pending(label, (w, h) => {
-      const candidates: Array<[number, number]> = [];
-      for (let row = 0; row < LABEL_ROWS; row++) {
-        const [above, below] = [py - reach - h - row * (h + GAP), py + reach + row * (h + GAP)];
-        for (const y of [above, below]) candidates.push([px + reach, y], [px - reach - w, y]);
-        candidates.push([px - w / 2, above], [px - w / 2, below]);
-      }
-      return candidates;
-    });
+    const placed = placeElementLabel(
+      label,
+      inside((w, h) => {
+        const candidates: Array<[number, number]> = [];
+        for (let row = 0; row < LABEL_ROWS; row++) {
+          const [above, below] = [py - reach - h - row * (h + GAP), py + reach + row * (h + GAP)];
+          for (const at of [above, below]) candidates.push([px + reach, at], [px - reach - w, at]);
+          candidates.push([px - w / 2, above], [px - w / 2, below]);
+        }
+        return candidates;
+      }),
+      obstacles,
+    );
     if (placed !== undefined) labels.push(placed);
   }
-  let bottom = plotBottom + Math.max(edge, plane.xLabelSide === "below" ? xTickRoom : 0, overhang);
-  for (const { lines, width, height, candidates } of labels) {
-    const box: Box = placeLabel({ width, height }, candidates, obstacles) ?? { ...candidates[0]!, width, height };
-    obstacles.push(box);
+  return labels;
+}
+
+/**
+ * The x,y graph's layout (AD-002). From the top: the title (`titleBlock`), then the plot with the
+ * y-axis label read upward on its left and the x-axis label centered below it (`axisLabelLines`,
+ * NLC-REQ-031). By phase (quality review QR-001 on NLC TICKET-003):
+ *
+ * - `plotRoom` sizes the plot by `planeAxes` from the room left beside the y tick labels and half
+ *   the widest x tick label, and centers it in that room.
+ * - `gridLines`, with `showGrid`: a grid line crosses the plot at every tick of both axes, under
+ *   everything else, and nowhere else (NLC-REQ-026).
+ * - Each axis is drawn by `drawAxis` with its own ticks (`niceTicks`, its own spacing,
+ *   NLC-REQ-027) at the place `planeAxes` gives, so an edge axis is ticked and labeled with its true
+ *   values (NLC-REQ-025). The origin is labeled once, by the x-axis (`zeroBlanks`): the y-axis
+ *   leaves its 0 blank where the x-axis crosses it, and when the y-axis runs down through the
+ *   x-axis's 0, that "0" moves below-left of the origin where the neighbouring tick labels leave
+ *   room for it (`originLabel`).
+ * - `figures`: segments are lines between their ends (NLC-REQ-029), then points circle markers at
+ *   their coordinates (NLC-REQ-028), each in its own color or the accent (NLC-REQ-030, NLC-REQ-011).
+ * - `elementLabels`: labels, wrapped and cut to `LABEL_MAX_LINES`, are placed by
+ *   `placeElementLabel` clear of the axes, the segments, the markers and every label placed before:
+ *   a point's beside it, a segment's at its middle. A label with no clear place takes its first
+ *   candidate (NLC OQ-005).
+ *
+ * Every number passes through `fmt()` (AD-007), and no caller-sized list is spread into arguments.
+ */
+// @spec NLC-REQ-007, NLC-REQ-022, NLC-REQ-024, NLC-REQ-025, NLC-REQ-026, NLC-REQ-027, NLC-REQ-028, NLC-REQ-029, NLC-REQ-030, NLC-REQ-031
+export const xyGraphLayout: Layout<XyGraph> = (graph: XyGraph, provenance: Provenance): Scene => {
+  const { xAxis, yAxis } = graph;
+  const ticks: PlaneTicks = {
+    x: niceTicks(xAxis.min, xAxis.max, Object.hasOwn(xAxis, "tickSpacing") ? xAxis.tickSpacing : undefined),
+    y: niceTicks(yAxis.min, yAxis.max, Object.hasOwn(yAxis, "tickSpacing") ? yAxis.tickSpacing : undefined),
+    showX: xAxis.showTickLabels !== false,
+    showY: yAxis.showTickLabels !== false,
+  };
+  // Where the axes go, which no width changes; `plotRoom` sizes the plane once the room is known.
+  const axes = planeAxes([xAxis.min, xAxis.max], [yAxis.min, yAxis.max]);
+  const blanks = zeroBlanks(graph, axes, ticks.showX);
+  const xLabels = new Map<number, string>(blanks.x ? [[0, ""]] : []);
+  const yLabels = new Map<number, string>(blanks.y ? [[0, ""]] : []);
+  const yLabel = axisLabelLines(graph.yAxisLabel, Y_LABEL_LENGTH);
+  const title = titleBlock(graph.title);
+  const { plane, plot, left, right, below } = plotRoom(graph, axes, ticks, yLabels, yLabel, title.height);
+
+  const nodes: SceneNode[] = [];
+  for (const node of title.nodes) nodes.push(node);
+  // The grid, under everything.
+  for (const node of gridLines(graph, ticks, plot)) nodes.push(node);
+  const axisLines = [
+    { from: [plot.left, plot.originY], to: [plot.right, plot.originY], domain: [xAxis.min, xAxis.max], ...ticks.x, labels: xLabels, showTickLabels: ticks.showX, side: plane.xLabelSide },
+    { from: [plot.originX, plot.bottom], to: [plot.originX, plot.top], domain: [yAxis.min, yAxis.max], ...ticks.y, labels: yLabels, showTickLabels: ticks.showY, side: plane.yLabelSide },
+  ] as const;
+  for (const options of axisLines) for (const node of drawAxis(options)) nodes.push(node);
+  const zero = originLabel(graph, ticks, blanks, plot);
+  if (zero !== undefined) nodes.push(zero);
+  // Segments, then the points' markers over them, then their labels.
+  const drawn = figures(graph, plot);
+  for (const node of drawn.nodes) nodes.push(node);
+  let bottom = plot.bottom + below;
+  for (const { lines, box } of elementLabels(graph, plot, drawn.obstacles)) {
     bottom = Math.max(bottom, box.y + box.height);
-    for (const node of textLines(lines, box.x + box.width / 2, box.y, labelFont, defaultStyle.colors.text)) nodes.push(node);
+    for (const node of textLines(lines, box.x + box.width / 2, box.y, defaultStyle.fontSizes.label, defaultStyle.colors.text)) nodes.push(node);
   }
 
   // The axis labels: the y-axis's read upward on the left, centered on the plot; the x-axis's below.
-  const plotBox: Box = { x: plotLeft, y: plotTop, width: plane.width, height: plane.height };
+  const plotBox: Box = { x: plot.left, y: plot.top, width: plane.width, height: plane.height };
   // Beside the plot however far it was narrowed, so the label stays next to its axis.
-  for (const node of drawLeftAxisLabel(yLabel, SCENE_MARGIN + plotLeft - left, plotBox)) nodes.push(node);
+  for (const node of drawLeftAxisLabel(yLabel, SCENE_MARGIN + plot.left - left, plotBox)) nodes.push(node);
   const xLabel = axisLabelLines(graph.xAxisLabel, right - left);
   if (xLabel.length > 0) {
     for (const node of drawBottomAxisLabel(xLabel, { ...plotBox, x: left, width: right - left }, bottom + GAP)) nodes.push(node);

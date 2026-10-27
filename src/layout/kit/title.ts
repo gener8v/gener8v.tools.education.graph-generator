@@ -11,9 +11,16 @@ export const SCENE_MARGIN = 16;
 export const LINE_HEIGHT = 1.2;
 
 /**
+ * How far below the top of a line of text its baseline sits, as a share of the font size: about
+ * four fifths, the usual ascent of the system sans-serif fonts (AD-010). The one value for every
+ * text the kit writes from its top (quality review QR-006 on NLC TICKET-003).
+ */
+export const BASELINE = 0.8;
+
+/**
  * Text nodes for `lines`, one per line, centered on `centerX` and stacked from `top` (SVG text does
- * not wrap; prd/TC-011). The baseline sits at about four fifths of the font size below each line's
- * top, the usual ascent of the system sans-serif fonts (AD-010).
+ * not wrap; prd/TC-011). The baseline sits `BASELINE` of the font size below the top of each line's
+ * glyphs, which are centered in the line's height (AD-010).
  */
 export function textLines(
   lines: readonly string[],
@@ -28,7 +35,7 @@ export function textLines(
     kind: "text",
     attrs: [
       ["x", fmt(centerX)],
-      ["y", fmt(top + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * 0.8)],
+      ["y", fmt(top + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * BASELINE)],
       ["fill", color],
       ["font-family", DEFAULT_FONT_STACK],
       ["font-size", fmt(fontSize)],

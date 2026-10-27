@@ -6,7 +6,7 @@ import { fmt, rotate } from "./format";
 import type { Box } from "./labels";
 import { linearScale } from "./scale";
 import { DEFAULT_FONT_STACK, textWidth, widestWord, wrap } from "./text";
-import { LINE_HEIGHT, textLines } from "./title";
+import { BASELINE, LINE_HEIGHT, textLines } from "./title";
 
 // The scale arithmetic is core's, shared with the validator (quality reviews QR-003, QR-005).
 export { DEFAULT_VALUE_INTERVALS, resolveValueScale, type ScaleOptions, type ValueScale, valueTicks } from "../../core/value-scale";
@@ -112,7 +112,7 @@ export function drawValueAxis(scale: ValueScale, orientation: Orientation, box: 
       nodes.push(label(box.x - tickLength - LABEL_GAP, p + fontSize * TICK_LABEL_DROP, "end"));
     } else {
       nodes.push(line(p, bottom, p, bottom + tickLength, defaultStyle.lineWidths.tick));
-      nodes.push(label(p, bottom + tickLength + LABEL_GAP + fontSize * 0.8, "middle"));
+      nodes.push(label(p, bottom + tickLength + LABEL_GAP + fontSize * BASELINE, "middle"));
     }
   }
   return nodes;
@@ -232,7 +232,7 @@ export function categorySlots(
 function upwardLines(lines: readonly string[], left: number, y: number, fontSize: number, anchor: "end" | "middle"): SceneNode[] {
   const lineHeight = fontSize * LINE_HEIGHT;
   return lines.map((text, i) => {
-    const x = left + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * 0.8;
+    const x = left + i * lineHeight + (lineHeight - fontSize) / 2 + fontSize * BASELINE;
     return {
       kind: "text",
       attrs: [

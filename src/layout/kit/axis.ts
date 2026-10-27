@@ -5,6 +5,7 @@ import { fmt } from "./format";
 import { linearScale } from "./scale";
 import { DEFAULT_FONT_STACK, textWidth } from "./text";
 import { isTickValue, tickLabel } from "./ticks";
+import { BASELINE } from "./title";
 import { TICK_LABEL_DROP } from "./value-scale";
 
 /**
@@ -70,7 +71,12 @@ function checkedLabels(options: AxisOptions): ReadonlyMap<number, string> | unde
   return labels;
 }
 
-const line = (x1: number, y1: number, x2: number, y2: number, width: number, color: string): SceneNode => ({
+/**
+ * A straight line from (`x1`, `y1`) to (`x2`, `y2`), `width` wide in `color`: an axis, a tick, a grid
+ * line or a figure's line. Every number passes through `fmt()` (AD-007). The kit's one line node,
+ * shared by the axis and the layouts that draw beside it (quality review QR-002 on NLC TICKET-003).
+ */
+export const drawLine = (x1: number, y1: number, x2: number, y2: number, width: number, color: string): SceneNode => ({
   kind: "line",
   attrs: [
     ["x1", fmt(x1)],
@@ -121,19 +127,19 @@ export function drawAxis(options: AxisOptions): SceneNode[] {
     return tickLabel(tick, spacing);
   };
 
-  const nodes: SceneNode[] = [line(x0, y0, x1, y1, defaultStyle.lineWidths.axis, color)];
+  const nodes: SceneNode[] = [drawLine(x0, y0, x1, y1, defaultStyle.lineWidths.axis, color)];
   const texts: SceneNode[] = [];
   for (const value of ticks) {
     const t = at(value);
     const x = x0 + t * (x1 - x0);
     const y = y0 + t * (y1 - y0);
-    nodes.push(line(x - nx * half, y - ny * half, x + nx * half, y + ny * half, defaultStyle.lineWidths.tick, color));
+    nodes.push(drawLine(x - nx * half, y - ny * half, x + nx * half, y + ny * half, defaultStyle.lineWidths.tick, color));
     if (!showTickLabels) continue;
     const text = labelAt(value);
     const clear = reach + LABEL_GAP + climb(textWidth(text, fontSize));
     const [lx, ly, anchor] =
       side === "below"
-        ? [x, y + clear + fontSize * 0.8, "middle"]
+        ? [x, y + clear + fontSize * BASELINE, "middle"]
         : side === "above"
           ? [x, y - clear - fontSize * 0.2, "middle"]
           : side === "left"

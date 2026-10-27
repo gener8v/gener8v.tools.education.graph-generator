@@ -107,6 +107,7 @@
   - `describe` states each axis's default spacing as "ticked every N" (the x,y graph's `describe` is the pattern), so it must call the same decision with the same lengths. A length that only the layout knows makes the text alternative state a spacing the figure does not draw.
   - Add a test that no two neighboring default tick labels on any of the three axes overlap (`boundsOf` and `overlap`, `tests/fixtures/scene-geometry.ts`), including a short projected axis, and that a supplied `tickSpacing` is used as given.
   - `./core` is near its 25 kB limit (24.55 kB after NLC TICKET-003; TICKET-009 reports its own figure): see quality review QR-005 of TICKET-003 for the open budget decision. Keep this type's core code small.
+- The `./core` budget is now 40 kB (graph-library/number-lines-and-coordinate-graphs-ticket-003-quality-review/QR-005, Engineer — Thomas Eaves, 2026-10-27). `./core` holds every type's definition by design (AD-001), while CPSE-NFR-002's 25 kB per-type limit is enforced on the per-type entries (`./xy-graph`, `./number-line`, …), which stay at 25 kB. **This supersedes any criterion or hazard above that holds `./core` to 25 kB.** So keep core changes small, check `./core` against 40 kB, and check this type's own entry against 25 kB.
 
 **Depends On:** TICKET-001, TICKET-006, TICKET-009
 **Blocks:** TICKET-005

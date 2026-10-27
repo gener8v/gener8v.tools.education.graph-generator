@@ -1,3 +1,7 @@
+import { cleanText } from "../../core/format";
+import { defaultStyle } from "../../core/style";
+import { textBlock } from "./title";
+
 /** An axis-aligned box in drawing units; `x`, `y` is the top-left corner. */
 export interface Box {
   readonly x: number;
@@ -87,4 +91,45 @@ export function placeLabel(
     if (!obstacles.some((obstacle) => overlaps(clearance, obstacle))) return { x, y, width: size.width, height: size.height };
   }
   return undefined;
+}
+
+/**
+ * Point and segment labels on a number line or an x,y graph wider than this wrap, to at most
+ * `ELEMENT_LABEL_MAX_LINES` lines (quality review QR-002 on NLC TICKET-003).
+ */
+export const ELEMENT_LABEL_MAX_WIDTH = 120;
+/**
+ * A point or segment label on a number line or an x,y graph longer than this many lines is cut,
+ * ending in "…", so caller text yields a bounded Scene; the text alternative states it whole (GSS
+ * TICKET-002 SEC-001). The one cut for both layouts (quality review QR-002 on NLC TICKET-003).
+ */
+export const ELEMENT_LABEL_MAX_LINES = 2;
+
+/** A label placed by `placeElementLabel`: its wrapped lines, and the box they fill. */
+export interface PlacedLabel {
+  readonly lines: string[];
+  readonly box: Box;
+}
+
+/**
+ * A point's or segment's label on a number line or an x,y graph, placed: `text` cleaned, wrapped
+ * at the label size to `ELEMENT_LABEL_MAX_WIDTH` and cut to `ELEMENT_LABEL_MAX_LINES` (`textBlock`),
+ * then put by `placeLabel` at the first of `candidates(width, height)` clear of `obstacles`, else at
+ * the first candidate, so every label is drawn (NLC OQ-005). Its box is pushed onto `obstacles`, so
+ * the next label clears it. `undefined` for no label, or one blank once cleaned. The candidates are
+ * the layout's own, as they follow its geometry (quality review QR-002 on NLC TICKET-003).
+ */
+// @spec NLC-REQ-011, NLC-REQ-030
+export function placeElementLabel(
+  text: string | undefined,
+  candidates: (width: number, height: number) => ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  obstacles: Obstacle[],
+): PlacedLabel | undefined {
+  const cleaned = text === undefined ? "" : cleanText(text);
+  if (cleaned === "") return undefined;
+  const { lines, width, height } = textBlock(cleaned, ELEMENT_LABEL_MAX_WIDTH, defaultStyle.fontSizes.label, ELEMENT_LABEL_MAX_LINES);
+  const places = candidates(width, height);
+  const box: Box = placeLabel({ width, height }, places, obstacles) ?? { x: places[0]!.x, y: places[0]!.y, width, height };
+  obstacles.push(box);
+  return { lines, box };
 }

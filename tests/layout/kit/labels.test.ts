@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { placeLabel, type Obstacle } from "../../../src/layout/kit/labels";
+import { defaultStyle } from "../../../src/core/style";
+import { ELEMENT_LABEL_MAX_LINES, ELEMENT_LABEL_MAX_WIDTH, placeElementLabel, placeLabel, type Obstacle } from "../../../src/layout/kit/labels";
+import { textBlock } from "../../../src/layout/kit/title";
 
 const size = { width: 40, height: 20 };
 
@@ -64,5 +66,60 @@ describe("placeLabel (AD-010, prd/RF-001)", () => {
     expect(placeLabel(size, [{ x: 0, y: 0 }], [line], 6)).toBeUndefined();
     expect(placeLabel(size, [{ x: 0, y: 0 }, { x: 0, y: -10 }], [line], 4)).toEqual({ x: 0, y: 0, width: 40, height: 20 });
     expect(placeLabel(size, [{ x: 0, y: 0 }, { x: 0, y: -10 }], [line], 6)).toEqual({ x: 0, y: -10, width: 40, height: 20 });
+  });
+});
+
+describe("placeElementLabel (quality review QR-002 on NLC TICKET-003)", () => {
+  const fontSize = defaultStyle.fontSizes.label;
+
+  it("places nothing, and adds no obstacle, for no label or one blank once cleaned", () => {
+    const obstacles: Obstacle[] = [];
+    expect(placeElementLabel(undefined, () => [{ x: 0, y: 0 }], obstacles)).toBeUndefined();
+    expect(placeElementLabel("   ", () => [{ x: 0, y: 0 }], obstacles)).toBeUndefined();
+    expect(obstacles).toEqual([]);
+  });
+
+  it("sizes the cleaned text at the label size, wrapped and cut to the shared limits, and offers candidates for that size", () => {
+    const text = "a label long enough to wrap onto more lines than the cut allows, and then some";
+    const block = textBlock(text, ELEMENT_LABEL_MAX_WIDTH, fontSize, ELEMENT_LABEL_MAX_LINES);
+    const sizes: Array<[number, number]> = [];
+    const placed = placeElementLabel(
+      `  ${text}  `,
+      (width, height) => {
+        sizes.push([width, height]);
+        return [{ x: 5, y: 7 }];
+      },
+      [],
+    );
+    expect(sizes).toEqual([[block.width, block.height]]);
+    expect(placed).toEqual({ lines: block.lines, box: { x: 5, y: 7, width: block.width, height: block.height } });
+    expect(placed!.lines).toHaveLength(ELEMENT_LABEL_MAX_LINES);
+    expect(placed!.lines[ELEMENT_LABEL_MAX_LINES - 1]!.endsWith("…")).toBe(true);
+  });
+
+  it("takes the first clear candidate and adds its box to the obstacles, so the next label clears it", () => {
+    const obstacles: Obstacle[] = [{ x: 0, y: 0, width: 50, height: 50 }];
+    const candidates = () => [
+      { x: 10, y: 10 },
+      { x: 100, y: 0 },
+      { x: 200, y: 0 },
+    ];
+    const first = placeElementLabel("A", candidates, obstacles);
+    const second = placeElementLabel("B", candidates, obstacles);
+    expect(first!.box).toMatchObject({ x: 100, y: 0 });
+    expect(second!.box).toMatchObject({ x: 200, y: 0 });
+    expect(obstacles.slice(1)).toEqual([first!.box, second!.box]);
+  });
+
+  it("falls back to the first candidate when none is clear (NLC OQ-005)", () => {
+    const wall: Obstacle = { x: -1000, y: -1000, width: 3000, height: 3000 };
+    const obstacles: Obstacle[] = [wall];
+    const candidates = () => [
+      { x: 3, y: 4 },
+      { x: 300, y: 400 },
+    ];
+    const placed = placeElementLabel("Blocked", candidates, obstacles);
+    expect(placed!.box).toMatchObject({ x: 3, y: 4 });
+    expect(obstacles).toEqual([wall, placed!.box]);
   });
 });
