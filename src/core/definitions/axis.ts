@@ -47,7 +47,7 @@ export const axisProperties: PropertyMap = /* @__PURE__ */ defineProperties({
     kind: "number",
     required: false,
     max: 2 * AXIS_LIMIT,
-    description: `The distance between neighbouring ticks on an axis: greater than 0 and at most ${2 * AXIS_LIMIT}, giving at most ${MAX_VALUE_TICKS} ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one).`,
+    description: `The distance between neighbouring ticks on an axis: greater than 0 and at most ${2 * AXIS_LIMIT}, giving at most ${MAX_VALUE_TICKS} ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart.`,
   },
   showTickLabels: {
     term: "showTickLabels",

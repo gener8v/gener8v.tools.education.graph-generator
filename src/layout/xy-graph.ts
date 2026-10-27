@@ -1,4 +1,4 @@
-import { type XyGraph, PLANE_MAX_RATIO, planeShape, quadrantCount, xyGraph as xyGraphDefinition } from "../core/definitions/xy-graph";
+import { type XyGraph, MAX_PLOT_HEIGHT, PLANE_MAX_RATIO, planeRooms, planeShape, quadrantCount, xyGraph as xyGraphDefinition } from "../core/definitions/xy-graph";
 import type { Axis } from "../core/definitions/axis";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
@@ -18,12 +18,8 @@ import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 // The label cut is the kit's, the same as the number line's (quality review QR-002 on NLC TICKET-003).
 export { ELEMENT_LABEL_MAX_LINES as LABEL_MAX_LINES } from "./kit/labels";
 
-/**
- * The tallest a plot is drawn: a little less than the drawing's width, so a square plane fits a
- * page column beside its text. A plot that would be taller at equal units is narrowed instead,
- * centered, down to `MIN_PLOT_WIDTH` (NLC-REQ-032).
- */
-export const MAX_PLOT_HEIGHT = 360;
+// The tallest plot is core's, so the default tick spacing can read it (NLC TICKET-009).
+export { MAX_PLOT_HEIGHT };
 /**
  * The narrowest a plot is drawn, still room for a few tick labels: the tallest plot over the
  * tallest ratio `planeShape` keeps (`PLANE_MAX_RATIO`), so the layout and the text alternative
@@ -351,7 +347,8 @@ function elementLabels(graph: XyGraph, plot: Plot, obstacles: Obstacle[]): Place
  * - `gridLines`, with `showGrid`: a grid line crosses the plot at every tick of both axes, under
  *   everything else, and nowhere else (NLC-REQ-026).
  * - Each axis is drawn by `drawAxis` with its own ticks (`niceTicks`, its own spacing,
- *   NLC-REQ-027) at the place `planeAxes` gives, so an edge axis is ticked and labeled with its true
+ *   NLC-REQ-027; a default one fitted to the axis's drawn length by `planeRooms`, NLC-REQ-006) at
+ *   the place `planeAxes` gives, so an edge axis is ticked and labeled with its true
  *   values (NLC-REQ-025). The origin is labeled once, by the x-axis (`zeroBlanks`): the y-axis
  *   leaves its 0 blank where the x-axis crosses it, and when the y-axis runs down through the
  *   x-axis's 0, that "0" moves below-left of the origin where the neighbouring tick labels leave
@@ -365,12 +362,14 @@ function elementLabels(graph: XyGraph, plot: Plot, obstacles: Obstacle[]): Place
  *
  * Every number passes through `fmt()` (AD-007), and no caller-sized list is spread into arguments.
  */
-// @spec NLC-REQ-007, NLC-REQ-022, NLC-REQ-024, NLC-REQ-025, NLC-REQ-026, NLC-REQ-027, NLC-REQ-028, NLC-REQ-029, NLC-REQ-030, NLC-REQ-031
+// @spec NLC-REQ-006, NLC-REQ-007, NLC-REQ-022, NLC-REQ-024, NLC-REQ-025, NLC-REQ-026, NLC-REQ-027, NLC-REQ-028, NLC-REQ-029, NLC-REQ-030, NLC-REQ-031
 export const xyGraphLayout: Layout<XyGraph> = (graph: XyGraph, provenance: Provenance): Scene => {
   const { xAxis, yAxis } = graph;
+  // A default spacing fitted to the length each axis is drawn at, as `describe` states it (NLC TICKET-009).
+  const rooms = planeRooms(graph);
   const ticks: PlaneTicks = {
-    x: niceTicks(xAxis.min, xAxis.max, Object.hasOwn(xAxis, "tickSpacing") ? xAxis.tickSpacing : undefined),
-    y: niceTicks(yAxis.min, yAxis.max, Object.hasOwn(yAxis, "tickSpacing") ? yAxis.tickSpacing : undefined),
+    x: niceTicks(xAxis.min, xAxis.max, Object.hasOwn(xAxis, "tickSpacing") ? xAxis.tickSpacing : undefined, rooms.x),
+    y: niceTicks(yAxis.min, yAxis.max, Object.hasOwn(yAxis, "tickSpacing") ? yAxis.tickSpacing : undefined, rooms.y),
     showX: xAxis.showTickLabels !== false,
     showY: yAxis.showTickLabels !== false,
   };

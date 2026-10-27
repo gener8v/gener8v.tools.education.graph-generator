@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { validate } from "../../src/core/index";
+import { describe as describeGraph, validate } from "../../src/core/index";
 import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
-import { PLANE_MIN_RATIO, type XyGraph, xyGraph as xyGraphDefinition } from "../../src/core/definitions/xy-graph";
+import { PLANE_MIN_RATIO, type XyGraph, planeLengths, planeRooms, xyGraph as xyGraphDefinition } from "../../src/core/definitions/xy-graph";
+import { formatDerived } from "../../src/core/format";
 import { defaultStyle, namedColors } from "../../src/core/style";
-import { niceTicks } from "../../src/core/value-scale";
+import { axisSpacing, axisTickLabel, niceTicks } from "../../src/core/value-scale";
 import { checkScene } from "../../src/layout/kit/check";
 import { linearScale } from "../../src/layout/kit/scale";
+import { textWidth } from "../../src/layout/kit/text";
 import { titleBlock } from "../../src/layout/kit/title";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
 import { LABEL_MAX_LINES, MAX_PLOT_HEIGHT, MIN_PLOT_WIDTH, planeAxes, xyGraphLayout } from "../../src/layout/xy-graph";
@@ -43,6 +45,13 @@ const texts = (scene: Scene) => scene.nodes.filter((node): node is Text => node.
 /** The tick labels drawn, leaving out the blank one an axis writes at its 0 when the origin is labeled by the other. */
 const tickTexts = (scene: Scene) => texts(scene).filter((node) => num(node, "font-size") === defaultStyle.fontSizes.tickLabel && node.text !== "");
 const labelTexts = (scene: Scene) => texts(scene).filter((node) => num(node, "font-size") === defaultStyle.fontSizes.label && attr(node, "transform") === undefined);
+
+/** The normalized description, which `planeLengths` and `planeRooms` read. */
+function normalizedOf(description: unknown): XyGraph {
+  const result = validate(description);
+  if (!result.valid) throw new Error(`expected a valid x,y graph, got ${JSON.stringify(result.issues)}`);
+  return result.description as XyGraph;
+}
 
 /** The plot read off the drawing: the x-axis spans its width and the y-axis its height, ends included. */
 function plotOf(scene: Scene, x: [number, number], y: [number, number]) {
@@ -132,9 +141,12 @@ describe("quadrants and where the axes go (NLC-REQ-023, NLC-REQ-024, NLC-REQ-025
   });
 
   it("leaves the origin unlabeled rather than crowd its neighbours on densely ticked axes", () => {
-    const scene = sceneOf(graph([-2, 2], [-5, 5]));
+    // Ticked every 0.5 as given: the default for this narrow plot is now every 1, which leaves the
+    // origin room for its "0" (NLC TICKET-009).
+    const scene = sceneOf(graph([-2, 2], [-5, 5], { xAxis: { min: -2, max: 2, tickSpacing: 0.5 } }));
     const boxes = tickTexts(scene).map(boundsOf);
     const zero = boxes.filter((box) => (box.node as Text).text === "0");
+    expect(zero).toEqual([]);
     for (const box of zero) for (const other of boxes) if (other !== box) expect(overlap(box, other), nameOf(other)).toBe(false);
   });
 });
@@ -150,8 +162,10 @@ describe("tick spacing per axis (NLC-REQ-027, NLC-REQ-004, NLC-REQ-005)", () => 
       const plot = plotOf(scene, [x.min, x.max], [y.min, y.max]);
       const vertical = gridLines(scene).filter((node) => num(node, "x1") === num(node, "x2"));
       const horizontal = gridLines(scene).filter((node) => num(node, "y1") === num(node, "y2"));
-      const xTicks = niceTicks(x.min, x.max, x.tickSpacing).ticks;
-      const yTicks = niceTicks(y.min, y.max, y.tickSpacing).ticks;
+      // The decision the layout makes: a default fitted to the length each axis is drawn at (NLC TICKET-009).
+      const rooms = planeRooms(normalizedOf({ type: "xy-graph", xAxis: x, yAxis: y, showGrid: true }));
+      const xTicks = niceTicks(x.min, x.max, x.tickSpacing, rooms.x).ticks;
+      const yTicks = niceTicks(y.min, y.max, y.tickSpacing, rooms.y).ticks;
       expect(vertical).toHaveLength(xTicks.length);
       expect(horizontal).toHaveLength(yTicks.length);
       vertical.forEach((node, i) => expect(Math.abs(num(node, "x1") - plot.xOf(xTicks[i]!))).toBeLessThanOrEqual(0.5));
@@ -170,6 +184,275 @@ describe("tick spacing per axis (NLC-REQ-027, NLC-REQ-004, NLC-REQ-005)", () => 
     const scene = sceneOf(graph([0, 10], [0, 10], { xAxis: { min: 0, max: 10, showTickLabels: false } }));
     // The y-axis labels the origin, since the x-axis does not (code review CR-001).
     expect(tickTexts(scene).map((node) => node.text)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+  });
+});
+
+describe("a default tick spacing the drawn axis has room for (NLC-REQ-005, NLC-REQ-006, NLC-REQ-012, NLC-REQ-027; NLC TICKET-009)", () => {
+  const TICK_FONT = defaultStyle.fontSizes.tickLabel;
+  /** Between neighbouring labels the rule keeps a fifth of the tick font: beside one another along x, stacked along y. */
+  const GAP = TICK_FONT / 5;
+
+  /** Whether both axes cross at the origin, where the "0" written below-left of it is neither axis's tick label. */
+  const crossAtOrigin = (x: readonly [number, number], y: readonly [number, number]) => x[0] <= 0 && x[1] >= 0 && y[0] <= 0 && y[1] >= 0;
+
+  /**
+   * Each axis's tick labels as drawn, in order along it: the x labels centered on their ticks, the y
+   * labels beside theirs, leaving out a y "0" where the axes cross at the origin (the origin's own label).
+   */
+  function axisLabels(scene: Scene, x: readonly [number, number], y: readonly [number, number]) {
+    const shown = tickTexts(scene);
+    return {
+      x: shown.filter((node) => attr(node, "text-anchor") === "middle").sort((a, b) => num(a, "x") - num(b, "x")),
+      y: shown.filter((node) => attr(node, "text-anchor") !== "middle" && !(crossAtOrigin(x, y) && node.text === "0")).sort((a, b) => num(b, "y") - num(a, "y")),
+    };
+  }
+
+  /** The neighbouring labels that overlap (`boundsOf`, `overlap`), as "a / b". */
+  const crowded = (labels: readonly Text[]) =>
+    labels.slice(1).flatMap((label, i) => (overlap(boundsOf(labels[i]!), boundsOf(label)) ? [`${labels[i]!.text} / ${label.text}`] : []));
+
+  /** The next spacing of 1, 2 or 5 × 10ⁿ above `spacing`. */
+  const coarser = (spacing: number) => {
+    const power = 10 ** Math.floor(Math.log10(spacing) + 1e-9);
+    const step = Math.round(spacing / power);
+    return Number(((step === 1 ? 2 : step === 2 ? 5 : 10) * power).toPrecision(12));
+  };
+
+  /**
+   * The test's own search, apart from the rule under test: whether some spacing from the range's own
+   * upward leaves two or more ticks whose neighbouring labels are at least `needed` apart along an
+   * axis `length` long.
+   */
+  function someSpacingClears([min, max]: readonly [number, number], length: number, needed: (a: string, b: string) => number): boolean {
+    for (let spacing = axisSpacing(min, max); ; spacing = coarser(spacing)) {
+      const { ticks } = niceTicks(min, max, spacing);
+      if (ticks.length < 2) return false;
+      const apart = (spacing * length) / (max - min);
+      if (ticks.every((tick, i) => i === 0 || apart >= needed(axisTickLabel(ticks[i - 1]!, spacing), axisTickLabel(tick, spacing)))) return true;
+    }
+  }
+  /** Labels side by side along x clear when half of each one's width fits between their ticks; stacked along y, their height. */
+  const side = (a: string, b: string) => (textWidth(a, TICK_FONT) + textWidth(b, TICK_FONT)) / 2;
+  const stacked = () => TICK_FONT;
+
+  /** Whether the grid lines across an axis (page positions) sit at exactly `ticks`, each within half a unit. */
+  const drawnAt = (pages: readonly number[], ticks: readonly number[], at: (value: number) => number) =>
+    pages.length === ticks.length && pages.every((page, i) => Math.abs(page - at(ticks[i]!)) <= 0.5);
+  /** Each axis's grid line positions, with `showGrid`: the x-axis's vertical lines and the y-axis's level ones, in drawing order. */
+  const grid = (scene: Scene) => ({
+    x: gridLines(scene).filter((node) => num(node, "x1") === num(node, "x2")).map((node) => num(node, "x1")),
+    y: gridLines(scene).filter((node) => num(node, "y1") === num(node, "y2")).map((node) => num(node, "y1")),
+  });
+
+  /** The spacing whose ticks the grid lines across an axis sit at, from the range's own upward; undefined if none. */
+  function drawnSpacing([min, max]: readonly [number, number], pages: readonly number[], at: (value: number) => number): number | undefined {
+    for (let spacing = axisSpacing(min, max); ; spacing = coarser(spacing)) {
+      const { ticks } = niceTicks(min, max, spacing);
+      if (drawnAt(pages, ticks, at)) return spacing;
+      if (ticks.length < 2) return undefined;
+    }
+  }
+
+  /** "x from … ticked every N, y from … ticked every M," read from a text alternative. */
+  const stated = (text: string) => {
+    const match = /x from \S+ to \S+ ticked every ([^,\s]+), y from \S+ to \S+ ticked every ([^,\s]+),/.exec(text);
+    if (match === null) throw new Error(`no spacing stated in ${text}`);
+    return { x: Number(match[1]), y: Number(match[2]) };
+  };
+
+  interface Plane {
+    readonly x: [number, number];
+    readonly y: [number, number];
+    readonly description: { type: "xy-graph"; xAxis: { min: number; max: number; showTickLabels?: boolean }; yAxis: { min: number; max: number; showTickLabels?: boolean }; showGrid: true; yAxisLabel?: string };
+  }
+  const round = (value: number) => (value === 0 ? 0 : Number(value.toPrecision(12)));
+  const plane = (x: [number, number], y: [number, number], options: { yAxisLabel?: string; hideX?: boolean; hideY?: boolean } = {}): Plane => ({
+    x,
+    y,
+    description: {
+      type: "xy-graph",
+      xAxis: { min: x[0], max: x[1], ...(options.hideX === true && { showTickLabels: false }) },
+      yAxis: { min: y[0], max: y[1], ...(options.hideY === true && { showTickLabels: false }) },
+      showGrid: true,
+      ...(options.yAxisLabel !== undefined && { yAxisLabel: options.yAxisLabel }),
+    },
+  });
+
+  /** A range of `span`: through the origin, on the positive side (from 0 or beyond), or on the negative side (to 0 or beyond). */
+  const placed = (span: number, where: "through" | "positive" | "negative", step: number): [number, number] => {
+    if (where === "through") return [round(-span * (step % 9 + 1) / 10), round(span - span * (step % 9 + 1) / 10)];
+    return where === "positive" ? [round(span * step), round(span * (step + 1))] : [round(-span * (step + 1)), round(-span * step)];
+  };
+  const span = fc.record({ digits: fc.integer({ min: 1, max: 99 }), power: fc.integer({ min: -3, max: 5 }) }).map(({ digits, power }) => round(digits * 10 ** power));
+  /**
+   * Generated planes with no tick spacing: square ones, tall ones narrowed to the 120-unit width, flat
+   * ones down to a sixth, ranges past both clamps, and free pairs; each axis through the origin or along
+   * an edge; with and without a y-axis label and, now and then, hidden tick labels.
+   */
+  const planes = fc
+    .record({
+      xSpan: span,
+      ratio: fc.oneof(fc.constantFrom(1, 2.5, 3, 5, 50, 1000, 0.5, 0.2, 1 / 6, 0.1, 0.001), span.map((ySpan) => -ySpan)),
+      xWhere: fc.constantFrom("through" as const, "positive" as const, "negative" as const),
+      yWhere: fc.constantFrom("through" as const, "positive" as const, "negative" as const),
+      xStep: fc.integer({ min: 0, max: 20 }),
+      yStep: fc.integer({ min: 0, max: 20 }),
+      yAxisLabel: fc.constantFrom(undefined, "Distance", "Distance from home, in metres along the road"),
+      hideX: fc.constantFrom(false, false, false, false, true),
+      hideY: fc.constantFrom(false, false, false, false, true),
+    })
+    .map(({ xSpan, ratio, xWhere, yWhere, xStep, yStep, yAxisLabel, hideX, hideY }) => {
+      // A negative ratio carries a free y span instead.
+      const ySpan = ratio < 0 ? -ratio : round(xSpan * ratio);
+      return plane(placed(xSpan, xWhere, xStep), placed(ySpan, yWhere, yStep), { yAxisLabel, hideX, hideY });
+    })
+    // Inside the axis limit, ±10⁹.
+    .filter(({ x, y }) => Math.max(-x[0], x[1], -y[0], y[1]) <= 1e9);
+  const examples: Array<[Plane]> = [
+    [plane([-2, 2], [-100, 100])],
+    [plane([-10, 10], [-2, 2])],
+    [plane([0, 1], [0, 1000])],
+    [plane([0, 1000], [0, 1])],
+    [plane([-2, 2], [-5, 5])],
+    [plane([-10, 10], [0, 100], { yAxisLabel: "Distance" })],
+    [plane([177.8, 1956], [0, 10000])],
+  ];
+
+  it("ticks x -2..2 with y -100..100 every 1 (five ticks 30 units apart) and y every 20, and says so", () => {
+    const scene = sceneOf(graph([-2, 2], [-100, 100], { showGrid: true }));
+    const plot = plotOf(scene, [-2, 2], [-100, 100]);
+    const drawn = grid(scene);
+    expect(drawnAt(drawn.x, [-2, -1, 0, 1, 2], plot.xOf)).toBe(true);
+    expect(drawn.x[1]! - drawn.x[0]!).toBeCloseTo(30, 1);
+    expect(drawnAt(drawn.y, niceTicks(-100, 100, 20).ticks, plot.yOf)).toBe(true);
+    expect(scene.textAlternative).toContain("x from -2 to 2 ticked every 1, y from -100 to 100 ticked every 20");
+  });
+
+  it("keeps the y labels of the flat x -10..10 with y -2..2 apart, and its x-axis ticked every 2", () => {
+    const scene = sceneOf(graph([-10, 10], [-2, 2], { showGrid: true }));
+    const plot = plotOf(scene, [-10, 10], [-2, 2]);
+    const labels = axisLabels(scene, [-10, 10], [-2, 2]);
+    expect(labels.y.length).toBeGreaterThanOrEqual(2);
+    expect(crowded(labels.y)).toEqual([]);
+    expect(crowded(labels.x)).toEqual([]);
+    expect(drawnAt(grid(scene).x, niceTicks(-10, 10, 2).ticks, plot.xOf)).toBe(true);
+    expect(scene.textAlternative).toContain("x from -10 to 10 ticked every 2, y from -2 to 2 ticked every 1");
+  });
+
+  it("draws no neighbouring tick labels overlapping, wherever the test's own search finds a spacing that clears them at the drawn length", () => {
+    let runs = 0;
+    let excluded = 0;
+    let example: string | undefined;
+    fc.assert(
+      fc.property(planes, ({ x, y, description }) => {
+        runs++;
+        const scene = sceneOf(description);
+        const plot = plotOf(scene, x, y);
+        const labels = axisLabels(scene, x, y);
+        let fits = true;
+        if (description.xAxis.showTickLabels !== false) {
+          if (someSpacingClears(x, plot.width, side)) expect(crowded(labels.x), JSON.stringify(description)).toEqual([]);
+          else fits = false;
+        }
+        if (description.yAxis.showTickLabels !== false) {
+          if (someSpacingClears(y, plot.height, stacked)) expect(crowded(labels.y), JSON.stringify(description)).toEqual([]);
+          else fits = false;
+        }
+        if (!fits) {
+          excluded++;
+          example ??= JSON.stringify(description);
+        }
+      }),
+      { numRuns: 300, examples },
+    );
+    // The descriptions the search proves have no clear spacing, where the rule falls back to the
+    // coarsest spacing that leaves two ticks and labels may touch (recorded in the delivery record).
+    console.info(`x,y tick labels: ${excluded} of ${runs} generated descriptions excluded as having no clear spacing${example === undefined ? "" : `, for example ${example}`}`);
+  });
+
+  it("bounds each axis's drawn length from numbers alone: planeLengths never exceeds the plot drawn", () => {
+    fc.assert(
+      fc.property(planes, ({ x, y, description }) => {
+        const plot = plotOf(sceneOf(description), x, y);
+        const lengths = planeLengths(normalizedOf(description));
+        // The drawing rounds each end to 0.01 (`fmt`), so a length read from it is within 0.01.
+        expect(lengths.x, JSON.stringify(description)).toBeLessThanOrEqual(plot.width + 0.01 + 1e-9);
+        expect(lengths.y, JSON.stringify(description)).toBeLessThanOrEqual(plot.height + 0.01 + 1e-9);
+      }),
+      { numRuns: 300, examples },
+    );
+  });
+
+  it("changes an axis's spacing from the range's own only where those labels would clear by less than the gap", () => {
+    fc.assert(
+      fc.property(planes, ({ x, y, description }) => {
+        const scene = sceneOf(description);
+        const plot = plotOf(scene, x, y);
+        const drawn = grid(scene);
+        const lengths = planeLengths(normalizedOf(description));
+        // Worked out here with textWidth: the range's own spacing, and whether its labels clear by the gap.
+        const ranged = (range: readonly [number, number], length: number, needed: (a: string, b: string) => number) => {
+          const spacing = axisSpacing(range[0], range[1]);
+          const { ticks } = niceTicks(range[0], range[1], spacing);
+          const apart = (spacing * length) / (range[1] - range[0]);
+          return { ticks, clears: ticks.every((tick, i) => i === 0 || apart >= GAP + needed(axisTickLabel(ticks[i - 1]!, spacing), axisTickLabel(tick, spacing))) };
+        };
+        const xRanged = ranged(x, lengths.x, side);
+        const yRanged = ranged(y, lengths.y, stacked);
+        const where = JSON.stringify(description);
+        expect(drawnAt(drawn.x, xRanged.ticks, plot.xOf), where).toBe(description.xAxis.showTickLabels === false || xRanged.clears);
+        expect(drawnAt(drawn.y, yRanged.ticks, plot.yOf), where).toBe(description.yAxis.showTickLabels === false || yRanged.clears);
+        // With no y-axis label, `planeLengths` is the plot the range's own spacings draw, before this
+        // ticket and after it where neither axis changes. Where one axis changes, its labels may narrow
+        // and widen the plot, so the other axis is judged at the length drawn before, not the new one.
+        const unchanged = drawnAt(drawn.x, xRanged.ticks, plot.xOf) && drawnAt(drawn.y, yRanged.ticks, plot.yOf);
+        if (description.yAxisLabel === undefined && unchanged) {
+          expect(Math.abs(lengths.x - plot.width), where).toBeLessThanOrEqual(0.01 + 1e-9);
+          expect(Math.abs(lengths.y - plot.height), where).toBeLessThanOrEqual(0.01 + 1e-9);
+        }
+      }),
+      { numRuns: 300, examples },
+    );
+  });
+
+  it("states the spacing each axis draws, and describe(input) from ./core is the Scene's text alternative", () => {
+    fc.assert(
+      fc.property(planes, ({ x, y, description }) => {
+        const scene = sceneOf(description);
+        const plot = plotOf(scene, x, y);
+        const text = describeGraph(description);
+        expect(scene.textAlternative).toBe(text);
+        const every = stated(text);
+        const drawn = grid(scene);
+        const spacing = { x: drawnSpacing(x, drawn.x, plot.xOf), y: drawnSpacing(y, drawn.y, plot.yOf) };
+        expect(spacing.x, JSON.stringify(description)).toBeDefined();
+        expect(spacing.y, JSON.stringify(description)).toBeDefined();
+        // A default spacing is stated as a derived value, rounded to two decimals (`formatDerived`),
+        // which states a spacing of 0.005 as 0.01: older than this ticket, and raised in its delivery record.
+        expect(every.x, `x every ${spacing.x}: ${JSON.stringify(description)}`).toBe(Number(formatDerived(spacing.x!)));
+        expect(every.y, `y every ${spacing.y}: ${JSON.stringify(description)}`).toBe(Number(formatDerived(spacing.y!)));
+      }),
+      { numRuns: 300, examples },
+    );
+  });
+
+  it("uses a supplied spacing as given, and keeps the range's own spacing on an axis with hidden tick labels", () => {
+    const supplied = sceneOf({ type: "xy-graph", xAxis: { min: -2, max: 2, tickSpacing: 0.5 }, yAxis: { min: -100, max: 100 }, showGrid: true });
+    expect(grid(supplied).x).toHaveLength(9);
+    expect(supplied.textAlternative).toContain("x from -2 to 2 ticked every 0.5,");
+    const hidden = sceneOf({ type: "xy-graph", xAxis: { min: -2, max: 2, showTickLabels: false }, yAxis: { min: -100, max: 100 }, showGrid: true });
+    expect(grid(hidden).x).toHaveLength(9);
+    expect(hidden.textAlternative).toContain("x from -2 to 2 ticked every 0.5,");
+  });
+
+  it("changes nothing where there is room: the example, and x -10..10 with y -10..10 ticked every 2", () => {
+    const example: unknown = JSON.parse(readFileSync("examples/xy-graph.json", "utf8"));
+    expect(stated(sceneOf(example).textAlternative)).toEqual({ x: 1, y: 1 });
+    const square = sceneOf(graph([-10, 10], [-10, 10], { showGrid: true }));
+    const plot = plotOf(square, [-10, 10], [-10, 10]);
+    expect(drawnAt(grid(square).x, niceTicks(-10, 10, 2).ticks, plot.xOf)).toBe(true);
+    expect(drawnAt(grid(square).y, niceTicks(-10, 10, 2).ticks, plot.yOf)).toBe(true);
+    expect(stated(square.textAlternative)).toEqual({ x: 2, y: 2 });
   });
 });
 

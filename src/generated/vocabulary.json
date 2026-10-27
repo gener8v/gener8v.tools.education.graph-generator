@@ -180,7 +180,7 @@
       "kind": "array"
     },
     "tickSpacing": {
-      "definition": "The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one).",
+      "definition": "The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart.",
       "kind": "number"
     },
     "title": {

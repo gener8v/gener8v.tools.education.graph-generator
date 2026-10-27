@@ -35,8 +35,9 @@ describe("the x,y graph's terms (NLC-REQ-001, NLC-REQ-022, NLC-REQ-026..031)", (
     expect(describeGraph(graph({ xAxis: { min: 0, max: 10, tickSpacing: 1 }, yAxis: { min: 0, max: 100, tickSpacing: 25 } }))).toContain(
       "x from 0 to 10 ticked every 1, y from 0 to 100 ticked every 25,",
     );
-    // -10..10 ticks every 2 by default; 0..100 every 10.
-    expect(describeGraph(graph({ yAxis: { min: 0, max: 100 } }))).toContain("x from -10 to 10 ticked every 2, y from 0 to 100 ticked every 10,");
+    // 0..100 ticks every 10 by default. The plot is narrowed to 120 units, where -10..10's eleven
+    // labels every 2 would be 12 units apart and overlap, so x ticks every 5 (NLC TICKET-009).
+    expect(describeGraph(graph({ yAxis: { min: 0, max: 100 } }))).toContain("x from -10 to 10 ticked every 5, y from 0 to 100 ticked every 10,");
     expect(describeGraph(graph({ xAxis: { min: -10, max: 10, tickSpacing: 5 } }))).toContain("x from -10 to 10 ticked every 5, y from -10 to 10 ticked every 2,");
     expect(codesAndPaths(graph({ yAxis: { min: 0, max: 10, tickSpacing: 0 } }))).toEqual(["tick_spacing_invalid /yAxis/tickSpacing"]);
     expect(codesAndPaths(graph({ xAxis: { min: 0, max: 10, tickSpacing: 0.01 } }))).toEqual(["too_many_ticks /xAxis/tickSpacing"]);
@@ -75,6 +76,36 @@ describe("the x,y graph's terms (NLC-REQ-001, NLC-REQ-022, NLC-REQ-026..031)", (
     const of = (file: string) => codesAndPaths(JSON.parse(readFileSync(`examples/invalid/${file}`, "utf8")));
     expect(of("xy-graph-outside-range.json")).toEqual(["outside_axis_range /segments/0/to/y"]);
     expect(of("xy-graph-degenerate-segment.json")).toEqual(["degenerate_segment /segments/0"]);
+  });
+});
+
+describe("a default tick spacing the drawn axis has room for (NLC-REQ-005, NLC-REQ-012; NLC TICKET-009)", () => {
+  const plane = (xAxis: object, yAxis: object) => ({ type: "xy-graph", xAxis, yAxis });
+
+  it("states the spacing the figure draws: x -2..2 with y -100..100 every 1 and every 20", () => {
+    expect(describeGraph(plane({ min: -2, max: 2 }, { min: -100, max: 100 }))).toContain("x from -2 to 2 ticked every 1, y from -100 to 100 ticked every 20,");
+    expect(describeGraph(plane({ min: -10, max: 10 }, { min: -2, max: 2 }))).toContain("x from -10 to 10 ticked every 2, y from -2 to 2 ticked every 1,");
+    // Where there is room, the range's own spacing.
+    expect(describeGraph(graph())).toContain("x from -10 to 10 ticked every 2, y from -10 to 10 ticked every 2,");
+  });
+
+  it("states a supplied spacing as written, and the range's own spacing on an axis with hidden tick labels", () => {
+    expect(describeGraph(plane({ min: -2, max: 2, tickSpacing: 0.5 }, { min: -100, max: 100 }))).toContain("x from -2 to 2 ticked every 0.5,");
+    expect(describeGraph(plane({ min: -2, max: 2, showTickLabels: false }, { min: -100, max: 100 }))).toContain("x from -2 to 2 ticked every 0.5,");
+  });
+
+  it("validates as before: a default spacing is never reported, and a supplied one is reported exactly as it was", () => {
+    for (const [x, y] of [
+      [{ min: -2, max: 2 }, { min: -100, max: 100 }],
+      [{ min: -10, max: 10 }, { min: -2, max: 2 }],
+      [{ min: 0, max: 1 }, { min: 0, max: 1000 }],
+      [{ min: 0, max: 1000 }, { min: 0, max: 1 }],
+    ]) {
+      expect(codesAndPaths(plane(x!, y!)), JSON.stringify([x, y])).toEqual([]);
+    }
+    expect(codesAndPaths(plane({ min: -2, max: 2, tickSpacing: 0.5 }, { min: -100, max: 100 }))).toEqual([]);
+    expect(codesAndPaths(plane({ min: -2, max: 2, tickSpacing: 0.01 }, { min: -100, max: 100 }))).toEqual(["too_many_ticks /xAxis/tickSpacing"]);
+    expect(codesAndPaths(plane({ min: -2, max: 2 }, { min: -100, max: 100, tickSpacing: -20 }))).toEqual(["tick_spacing_invalid /yAxis/tickSpacing"]);
   });
 });
 

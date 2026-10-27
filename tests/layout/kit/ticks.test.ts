@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { drawableTicks } from "../../../src/core/value-scale";
+import { axisSpacing, drawableTicks, fittedAxisSpacing, niceInterval, tickLabelWidth } from "../../../src/core/value-scale";
+import { textWidth } from "../../../src/layout/kit/text";
 import { AXIS_DEFAULT_INTERVALS, isTickValue, niceTicks, tickCount, tickLabel } from "../../../src/layout/kit/ticks";
 
 /** Whether `x` is 1, 2 or 5 times a power of ten. */
@@ -301,5 +302,84 @@ describe("tick labels", () => {
       }),
       { numRuns: 200 },
     );
+  });
+});
+
+describe("the default spacing for the length an axis is drawn at (NLC-REQ-005, NLC-REQ-006; NLC TICKET-009)", () => {
+  // The x,y graph's figures: a gap of a fifth of the 12-unit tick font between labels side by side,
+  // and a label's height plus that gap between labels stacked.
+  const ACROSS = 2.4;
+  const STACKED = 14.4;
+
+  it("keeps the range's own spacing where its labels stand apart at the length", () => {
+    expect(fittedAxisSpacing(-10, 10, 400, ACROSS, 12)).toBe(axisSpacing(-10, 10));
+    expect(fittedAxisSpacing(-10, 10, 400, ACROSS, 12)).toBe(2);
+    expect(fittedAxisSpacing(0, 100, 360, STACKED)).toBe(10);
+  });
+
+  it("is coarser where neighbouring labels would run together: x -2..2 across 120 units, y -2..2 64 units tall", () => {
+    // Every 0.5 puts "-2" and "-1.5" 15 units apart, where half of each label's width and the gap need 19.6.
+    expect(axisSpacing(-2, 2)).toBe(0.5);
+    expect(fittedAxisSpacing(-2, 2, 120, ACROSS, 12)).toBe(1);
+    // Labels 12 units tall, level with their ticks: every 0.5 is 8 units apart, every 1 is 16.
+    expect(fittedAxisSpacing(-2, 2, 64, STACKED)).toBe(1);
+  });
+
+  it("falls back to the coarsest spacing that leaves two ticks where none clears, where labels may touch", () => {
+    // 10 units across: nothing clears; every 5 leaves one tick (0), so every 2: -2, 0 and 2.
+    expect(fittedAxisSpacing(-2, 2, 10, ACROSS, 12)).toBe(2);
+    expect(niceTicks(-2, 2, 2).ticks).toEqual([-2, 0, 2]);
+    // One unit tall: every 1 leaves 0 and 1; every 2 leaves only 0.
+    expect(fittedAxisSpacing(0, 1, 1, STACKED)).toBe(1);
+  });
+
+  it("is 1, 2 or 5 × 10ⁿ, never finer than the range's own, always leaves two ticks, and is what a room gives niceTicks", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -3, max: 6, noNaN: true }),
+        fc.double({ min: -1e6, max: 1e6, noNaN: true }),
+        fc.double({ min: 0, max: 400, noNaN: true }),
+        fc.double({ min: 0, max: 30, noNaN: true }),
+        fc.constantFrom(0, 12),
+        (logWidth, start, length, extent, textSize) => {
+          const [min, max] = [start, start + 10 ** logWidth];
+          const spacing = fittedAxisSpacing(min, max, length, extent, textSize);
+          expect(isNice(spacing), String(spacing)).toBe(true);
+          expect(spacing).toBeGreaterThanOrEqual(axisSpacing(min, max));
+          expect(drawableTicks(min, max, spacing)!.ticks.length, `${min} to ${max} by ${spacing}`).toBeGreaterThanOrEqual(2);
+          expect(niceTicks(min, max, undefined, { length, extent, textSize }).spacing).toBe(spacing);
+        },
+      ),
+      { numRuns: 300 },
+    );
+  });
+
+  it("measures a tick label exactly as the layout's textWidth does, from the three widths a label's characters have", () => {
+    fc.assert(
+      fc.property(fc.double({ min: -1e9, max: 1e9, noNaN: true }), fc.constantFrom(1e-9, 0.0025, 0.1, 0.5, 2, 5, 1 / 3, 100000), fc.constantFrom(7.5, 12, 14), (value, spacing, size) => {
+        const label = tickLabel(value, spacing);
+        expect(tickLabelWidth(label, size), label).toBe(textWidth(label, size));
+      }),
+      { numRuns: 300 },
+    );
+    expect(tickLabelWidth("-10.5", 12)).toBe(textWidth("-10.5", 12));
+  });
+
+  it("leaves every result as it was without a room, and a given spacing as given with one", () => {
+    fc.assert(
+      fc.property(fc.double({ min: -3, max: 6, noNaN: true }), fc.double({ min: -1e6, max: 1e6, noNaN: true }), (logWidth, start) => {
+        const [min, max] = [start, start + 10 ** logWidth];
+        const ranged = niceInterval(max - min, AXIS_DEFAULT_INTERVALS);
+        expect(axisSpacing(min, max)).toBe(ranged);
+        expect(drawableTicks(min, max)).toEqual(drawableTicks(min, max, ranged));
+        expect(niceTicks(min, max)).toEqual(niceTicks(min, max, ranged));
+        const cramped = { length: 10, extent: STACKED, textSize: 12 };
+        expect(axisSpacing(min, max, ranged, cramped)).toBe(ranged);
+        expect(drawableTicks(min, max, ranged, cramped)).toEqual(drawableTicks(min, max, ranged));
+        expect(niceTicks(min, max, ranged, cramped)).toEqual(niceTicks(min, max, ranged));
+      }),
+      { numRuns: 200 },
+    );
+    expect(niceTicks(-10, 10).spacing).toBe(2);
   });
 });

@@ -256,3 +256,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-031 | `src/core/definitions/xy-graph.ts`:xyGraph.describe; `src/layout/xy-graph.ts`:xyGraphLayout (the shared `xAxisLabel`, `yAxisLabel`) |
 | NLC-REQ-032 | `src/core/definitions/xy-graph.ts`:planeShape, xyGraph.describe; `src/layout/xy-graph.ts`:planeAxes |
 | NLC-REQ-033 | `src/core/definitions/xy-graph.ts`:segmentsHaveLength |
+| NLC-REQ-005 | `src/core/value-scale.ts`:fittedAxisSpacing, axisSpacing, drawableTicks, niceTicks (length-aware default); `src/core/definitions/xy-graph.ts`:planeLengths, planeRooms (graph-library NLC TICKET-009) |
+| NLC-REQ-006 | `src/core/value-scale.ts`:fittedAxisSpacing; `src/core/definitions/xy-graph.ts`:planeRooms; `src/layout/xy-graph.ts`:xyGraphLayout (tick labels kept apart, graph-library NLC TICKET-009) |
+| NLC-REQ-027 | `src/core/definitions/xy-graph.ts`:planeRooms (each axis's own length, graph-library NLC TICKET-009) |
+| NLC-REQ-032 | `src/core/definitions/xy-graph.ts`:planeLengths (graph-library NLC TICKET-009) |

@@ -1,7 +1,8 @@
 import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
 import { createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
-import { axisSpacing, cleanDecimal } from "../value-scale";
+import { defaultStyle } from "../style";
+import { type AxisRoom, axisSpacing, axisTickLabel, cleanDecimal, drawableTicks, tickLabelWidth } from "../value-scale";
 import { type Axis, axisDomainChecks, axisProperty } from "./axis";
 import { POINTS_DESCRIPTION, sharedProperties } from "./shared";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, type PropertySpec, defineProperties } from "./types";
@@ -68,6 +69,72 @@ export function planeShape(xAxis: Axis, yAxis: Axis): { ratio: number; equalUnit
   const exact = (yAxis.max - yAxis.min) / (xAxis.max - xAxis.min);
   const ratio = Math.min(PLANE_MAX_RATIO, Math.max(PLANE_MIN_RATIO, exact));
   return { ratio, equalUnits: ratio === exact };
+}
+
+/**
+ * The tallest a plot is drawn: a little less than the drawing's width, so a square plane fits a
+ * page column beside its text. A plot that would be taller at equal units is narrowed instead,
+ * centered, down to `MIN_PLOT_WIDTH` (NLC-REQ-032). Here, not in the layout, so `planeLengths` can
+ * read it; the layout re-exports it (NLC TICKET-009).
+ */
+export const MAX_PLOT_HEIGHT = 360;
+
+/** Caller text cleaned of hidden characters, or `""` when absent. */
+const cleaned = (text: string | undefined): string => (text === undefined ? "" : cleanText(text));
+
+/**
+ * The width the plot and the room beside it share: the 400-unit drawing less its 16-unit margin on
+ * each side (`SCENE_WIDTH` and `SCENE_MARGIN` in `src/layout`, which `./core` must not import).
+ */
+const PLANE_ROOM = 368;
+
+/**
+ * A lower bound on the plot's width (`x`) and height (`y`) as the layout draws it (NLC-REQ-032),
+ * from numbers alone, mirroring the layout's `plotRoom`: the room across less two lines of y-axis
+ * label (`AXIS_LABEL_MAX_LINES`, `LINE_HEIGHT`, then a 4-unit gap) when there is one, and on each
+ * side the most of a marker's reach (`MARKER_REACH`), half the widest x tick label and, on the y
+ * labels' side, half a tick, the 4-unit gap and the widest y tick label. Labels are measured at
+ * the given spacing or the range's own: a coarser one never prints a wider label, so the layout
+ * draws a plot at least this long (NLC TICKET-009).
+ */
+// @spec NLC-REQ-005, NLC-REQ-032
+export function planeLengths(graph: XyGraph): { x: number; y: number } {
+  const { tickLabel: tickFont, label: labelFont } = defaultStyle.fontSizes;
+  const widest = (axis: Axis): number => {
+    if (axis.showTickLabels === false) return 0;
+    const drawn = drawableTicks(axis.min, axis.max, Object.hasOwn(axis, "tickSpacing") ? axis.tickSpacing : undefined);
+    let width = 0;
+    for (const tick of drawn?.ticks ?? []) width = Math.max(width, tickLabelWidth(axisTickLabel(tick, drawn!.spacing), tickFont));
+    return width;
+  };
+  const yLabelRoom = cleaned(graph.yAxisLabel) === "" ? 0 : 2 * labelFont * 1.2 + 4;
+  const xOverhang = widest(graph.xAxis) / 2;
+  const yTickRoom = defaultStyle.tickLength / 2 + (graph.yAxis.showTickLabels === false ? 0 : 4 + widest(graph.yAxis));
+  const onLeft = !(graph.xAxis.max < 0);
+  const reach = (yLabels: boolean) => Math.max((defaultStyle.markerSize / 2) * 1.5, xOverhang, yLabels ? yTickRoom : 0);
+  const { ratio } = planeShape(graph.xAxis, graph.yAxis);
+  const x = Math.min(PLANE_ROOM - yLabelRoom - reach(onLeft) - reach(!onLeft), MAX_PLOT_HEIGHT / ratio);
+  return { x, y: x * ratio };
+}
+
+/**
+ * The room each axis's tick labels have (`AxisRoom`), for the default spacing `describe` states and
+ * the layout draws (NLC-REQ-005, NLC-REQ-006, NLC-REQ-027): each axis's `planeLengths`, and a gap
+ * of a fifth of the tick font size between neighbouring labels, so stacked y labels sit a line
+ * height apart. The Engineer chose that gap (Thomas Eaves, 2026-10-27) over the bar graph's 6
+ * units, which would change drawings whose labels already clear by up to 6. An x label needs its
+ * width; a y label, level with its tick, its height. An axis with hidden tick labels has no room,
+ * and keeps the range's own spacing (NLC TICKET-009).
+ */
+// @spec NLC-REQ-005, NLC-REQ-006, NLC-REQ-027
+export function planeRooms(graph: XyGraph): { x: AxisRoom | undefined; y: AxisRoom | undefined } {
+  const tickFont = defaultStyle.fontSizes.tickLabel;
+  const gap = tickFont / 5;
+  const { x, y } = planeLengths(graph);
+  return {
+    x: graph.xAxis.showTickLabels === false ? undefined : { length: x, extent: gap, textSize: tickFont },
+    y: graph.yAxis.showTickLabels === false ? undefined : { length: y, extent: tickFont + gap, textSize: 0 },
+  };
 }
 
 /**
@@ -210,9 +277,6 @@ const segmentsHaveLength: DomainCheck<XyGraph> = {
   },
 };
 
-/** Caller text cleaned of hidden characters, or `""` when absent. */
-const cleaned = (text: string | undefined): string => (text === undefined ? "" : cleanText(text));
-
 const QUADRANTS = ["", "one quadrant", "two quadrants", "", "all four quadrants"];
 
 /**
@@ -260,10 +324,12 @@ function defineXyGraph(): GraphTypeDefinition<XyGraph> {
     // @spec NLC-REQ-012, NLC-REQ-023, NLC-REQ-026, NLC-REQ-031, NLC-REQ-032
     describe: (graph: XyGraph, provenance: Provenance) => {
       const at = (path: string, value: number) => stateMeasurement(value, sourceOf(provenance, path));
+      // The spacing the layout draws: a default one fitted to the axis's drawn length (NLC TICKET-009).
+      const rooms = planeRooms(graph);
       const axis = (name: "x" | "y") => {
         const { min, max, tickSpacing } = graph[`${name}Axis`];
         const given = Object.hasOwn(graph[`${name}Axis`], "tickSpacing") ? tickSpacing : undefined;
-        const spacing = stateMeasurement(axisSpacing(min, max, given), given === undefined ? "derived" : "supplied");
+        const spacing = stateMeasurement(axisSpacing(min, max, given, rooms[name]), given === undefined ? "derived" : "supplied");
         return `${name} from ${at(`${name}Axis/min`, min)} to ${at(`${name}Axis/max`, max)} ticked every ${spacing}`;
       };
       const point = (path: string, p: XyCoordinates) =>

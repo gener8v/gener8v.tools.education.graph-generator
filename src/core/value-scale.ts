@@ -346,6 +346,8 @@ export function checkValueScale(values: readonly ScaledValue[], given: GivenValu
  * How many intervals an axis's chosen tick spacing aims at: at most 19, so at most 20 ticks. The
  * candidates 1, 2 and 5 × 10ⁿ are at most 2.5 times apart, so the spacing chosen gives more than
  * 19 / 2.5 intervals, and every range 0.001 to 10⁶ wide gets between 7 and 20 ticks (NLC-REQ-005).
+ * That is the spacing for the range alone. An axis drawn too short for its tick labels at that
+ * spacing gets a coarser one, and fewer ticks, down to two (`fittedAxisSpacing`, NLC TICKET-009).
  */
 export const AXIS_DEFAULT_INTERVALS = 19;
 
@@ -407,10 +409,70 @@ export function tickCount(min: number, max: number, spacing: number): number {
   return Number.isFinite(count) ? Math.max(0, count) : Number.POSITIVE_INFINITY;
 }
 
-/** The spacing an axis draws with: the given one, else 1, 2 or 5 × 10ⁿ for 7 to 20 ticks (NLC-REQ-005). */
+/**
+ * The room an axis's tick labels have, for `fittedAxisSpacing`: the `length` the axis is drawn at,
+ * the `extent` a label needs along the axis beyond its text, and the font size its labels' widths
+ * are counted at, 0 where they stand across the axis (a y-axis, whose labels need their height,
+ * given in `extent`). Numbers only, so any type can give the lengths it draws (NLC TICKET-009).
+ */
+export interface AxisRoom {
+  readonly length: number;
+  readonly extent: number;
+  readonly textSize: number;
+}
+
+/**
+ * The spacing an axis draws with (NLC-REQ-005): the given one; else, with the `room` the axis is
+ * drawn in, the finest spacing whose tick labels stand apart there (`fittedAxisSpacing`); else 1,
+ * 2 or 5 × 10ⁿ for 7 to 20 ticks on the range alone. Without a room, the result is the range's.
+ */
 // @spec NLC-REQ-005
-export function axisSpacing(min: number, max: number, spacing?: number): number {
-  return spacing ?? niceInterval(max - min, AXIS_DEFAULT_INTERVALS);
+export function axisSpacing(min: number, max: number, spacing?: number, room?: AxisRoom): number {
+  if (spacing !== undefined) return spacing;
+  return room === undefined ? niceInterval(max - min, AXIS_DEFAULT_INTERVALS) : fittedAxisSpacing(min, max, room.length, room.extent, room.textSize);
+}
+
+/**
+ * A tick label's width at `fontSize`, in drawing units: the layout's `textWidth` for the only
+ * characters a label holds, a digit 0.556 em, the minus sign 0.333 and the point 0.278 (anything
+ * else counts as a digit), times its safety margin of 1.1, in the same order of arithmetic, so the
+ * two agree to the bit. Three numbers, not the font table, which stays in `src/layout`: `./core`
+ * must not import it, and `describe` must state the spacing the layout draws (NLC TICKET-009).
+ */
+export function tickLabelWidth(label: string, fontSize: number): number {
+  let total = 0;
+  for (const char of label) total += char === "-" ? 333 : char === "." ? 278 : 556;
+  return total * ((fontSize * 1.1) / 1000);
+}
+
+/** The most spacings `fittedAxisSpacing` tries: three per power of ten, far past any axis's range. */
+const MAX_FITS = 100;
+
+/**
+ * The default spacing for an axis drawn `length` long (NLC-REQ-005, NLC-REQ-006; NLC TICKET-009):
+ * the finest 1, 2 or 5 × 10ⁿ, never finer than the range's own (`axisSpacing(min, max)`), at which
+ * every two neighbouring tick labels are at least `extent` plus half of each label's width
+ * (`tickLabelWidth` at `textSize`, labels from `axisTickLabel`) apart. Where none both does that
+ * and leaves two ticks, it is the coarsest spacing that still leaves two, where labels may touch:
+ * fewer than two ticks would be no scale at all. Arithmetic on numbers only, never throws.
+ */
+// @spec NLC-REQ-005, NLC-REQ-006
+export function fittedAxisSpacing(min: number, max: number, length: number, extent: number, textSize = 0): number {
+  let spacing = axisSpacing(min, max);
+  let fallback = spacing;
+  // A bounded counter: each turn the spacing is at least 1.5 times coarser.
+  for (let turn = 0; turn < MAX_FITS; turn++) {
+    const ticks = drawableTicks(min, max, spacing)?.ticks;
+    if (ticks === undefined || ticks.length < 2) break;
+    fallback = spacing;
+    const apart = (spacing * length) / (max - min);
+    const width = (tick: number) => tickLabelWidth(axisTickLabel(tick, spacing), textSize);
+    let clear = true;
+    for (let i = 1; clear && i < ticks.length; i++) clear = apart >= extent + (width(ticks[i - 1]!) + width(ticks[i]!)) / 2;
+    if (clear) return spacing;
+    spacing = niceInterval(spacing * 1.5, 1);
+  }
+  return fallback;
 }
 
 /**
@@ -429,7 +491,9 @@ function axisTick(k: number, spacing: number): number {
  * whole multiple `k × spacing` inside `[min, max]`, endpoints included, anchored at zero, so zero
  * is ticked whenever the range holds it and an endpoint off the grid gets no tick. Each tick is
  * `k × spacing` for an integer `k`, never a running sum (`axisTick`). Without a spacing, it is 1, 2
- * or 5 × 10ⁿ, giving 7 to 20 ticks (`AXIS_DEFAULT_INTERVALS`). An axis cannot be drawn when its
+ * or 5 × 10ⁿ, giving 7 to 20 ticks (`AXIS_DEFAULT_INTERVALS`), or, with the `room` the axis is
+ * drawn in, coarser where its labels need it, down to two ticks (`fittedAxisSpacing`, NLC
+ * TICKET-009). A given spacing ignores the room. An axis cannot be drawn when its
  * ends are not finite and increasing, its range is too narrow (`axisTooNarrow`), its spacing is not
  * a finite number above 0, or it would have more than `MAX_VALUE_TICKS` ticks. Never throws, so a
  * domain check can read the ticks of an axis another check may be reporting (code review CR-006):
@@ -439,10 +503,10 @@ function axisTick(k: number, spacing: number): number {
  * decimal noise is never listed (security review SEC-001).
  */
 // @spec NLC-REQ-004, NLC-REQ-005
-export function drawableTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } | undefined {
+export function drawableTicks(min: number, max: number, spacing?: number, room?: AxisRoom): { spacing: number; ticks: number[] } | undefined {
   if (!Number.isFinite(min) || !Number.isFinite(max) || !(max > min) || axisTooNarrow(min, max)) return undefined;
   if (spacing !== undefined && !(spacing > 0 && Number.isFinite(spacing))) return undefined;
-  const used = axisSpacing(min, max, spacing);
+  const used = axisSpacing(min, max, spacing, room);
   const { first, last } = multiplesIn(min, max, used);
   const count = tickCount(min, max, used);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || !(count <= MAX_VALUE_TICKS)) return undefined;
@@ -457,13 +521,13 @@ export function drawableTicks(min: number, max: number, spacing?: number): { spa
 }
 
 /**
- * An axis's ticks, as `drawableTicks`, for a layout drawing a validated description. An axis that
- * cannot be drawn is one the validator refuses, so here it is a layout bug, and throws rather
- * than drawing nonsense.
+ * An axis's ticks, as `drawableTicks`, for a layout drawing a validated description, with the
+ * `room` the axis is drawn in where the layout knows it. An axis that cannot be drawn is one the
+ * validator refuses, so here it is a layout bug, and throws rather than drawing nonsense.
  */
 // @spec NLC-REQ-004, NLC-REQ-005
-export function niceTicks(min: number, max: number, spacing?: number): { spacing: number; ticks: number[] } {
-  const result = drawableTicks(min, max, spacing);
+export function niceTicks(min: number, max: number, spacing?: number, room?: AxisRoom): { spacing: number; ticks: number[] } {
+  const result = drawableTicks(min, max, spacing, room);
   if (result === undefined) throw new RangeError(`niceTicks(): ${spacing ?? "the default spacing"} does not give a drawable axis from ${min} to ${max}`);
   return result;
 }
