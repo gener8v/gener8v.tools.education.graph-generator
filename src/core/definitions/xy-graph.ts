@@ -82,20 +82,28 @@ export const MAX_PLOT_HEIGHT = 360;
 /** Caller text cleaned of hidden characters, or `""` when absent. */
 const cleaned = (text: string | undefined): string => (text === undefined ? "" : cleanText(text));
 
-/**
- * The width the plot and the room beside it share: the 400-unit drawing less its 16-unit margin on
- * each side (`SCENE_WIDTH` and `SCENE_MARGIN` in `src/layout`, which `./core` must not import).
- */
-const PLANE_ROOM = 368;
+// The layout's numbers `planeLengths` mirrors, since `./core` must not import `src/layout`. Each is
+// named for its layout counterpart, and `tests/layout/xy-graph.test.ts` pins it there, so a change
+// on either side fails a test that names the number (NLC TICKET-009 code review CR-003).
+
+/** The width the plot and the room beside it share: `SCENE_WIDTH` (400) less `SCENE_MARGIN` (16) on each side. */
+export const PLANE_ROOM = 368;
+/** Between a tick and its label, and beside the y-axis label: the layout's `TICK_LABEL_GAP` and `GAP`. */
+export const PLANE_GAP = 4;
+/** How many lines an axis label wraps to at most: `AXIS_LABEL_MAX_LINES`. */
+export const PLANE_AXIS_LABEL_LINES = 2;
+/** The line height of an axis label, as a share of its font size: `LINE_HEIGHT`. */
+export const PLANE_LINE_HEIGHT = 1.2;
+/** How far a marker reaches from its point: `MARKER_REACH`. */
+export const PLANE_MARKER_REACH = (defaultStyle.markerSize / 2) * 1.5;
 
 /**
  * A lower bound on the plot's width (`x`) and height (`y`) as the layout draws it (NLC-REQ-032),
- * from numbers alone, mirroring the layout's `plotRoom`: the room across less two lines of y-axis
- * label (`AXIS_LABEL_MAX_LINES`, `LINE_HEIGHT`, then a 4-unit gap) when there is one, and on each
- * side the most of a marker's reach (`MARKER_REACH`), half the widest x tick label and, on the y
- * labels' side, half a tick, the 4-unit gap and the widest y tick label. Labels are measured at
- * the given spacing or the range's own: a coarser one never prints a wider label, so the layout
- * draws a plot at least this long (NLC TICKET-009).
+ * from numbers alone, mirroring the layout's `plotRoom`: the room across (`PLANE_ROOM`) less the
+ * y-axis label's lines and a gap when there is one, and on each side the most of a marker's reach,
+ * half the widest x tick label and, on the y labels' side, half a tick, a gap and the widest y tick
+ * label. Labels are measured at the given spacing or the range's own: a coarser one never prints a
+ * wider label, so the layout draws a plot at least this long (NLC TICKET-009).
  */
 // @spec NLC-REQ-005, NLC-REQ-032
 export function planeLengths(graph: XyGraph): { x: number; y: number } {
@@ -103,17 +111,20 @@ export function planeLengths(graph: XyGraph): { x: number; y: number } {
   const widest = (axis: Axis): number => {
     if (axis.showTickLabels === false) return 0;
     const drawn = drawableTicks(axis.min, axis.max, Object.hasOwn(axis, "tickSpacing") ? axis.tickSpacing : undefined);
+    if (drawn === undefined) return 0;
     let width = 0;
-    for (const tick of drawn?.ticks ?? []) width = Math.max(width, tickLabelWidth(axisTickLabel(tick, drawn!.spacing), tickFont));
+    for (const tick of drawn.ticks) width = Math.max(width, tickLabelWidth(axisTickLabel(tick, drawn.spacing), tickFont));
     return width;
   };
-  const yLabelRoom = cleaned(graph.yAxisLabel) === "" ? 0 : 2 * labelFont * 1.2 + 4;
+  const yLabelRoom = cleaned(graph.yAxisLabel) === "" ? 0 : PLANE_AXIS_LABEL_LINES * labelFont * PLANE_LINE_HEIGHT + PLANE_GAP;
   const xOverhang = widest(graph.xAxis) / 2;
-  const yTickRoom = defaultStyle.tickLength / 2 + (graph.yAxis.showTickLabels === false ? 0 : 4 + widest(graph.yAxis));
-  const onLeft = !(graph.xAxis.max < 0);
-  const reach = (yLabels: boolean) => Math.max((defaultStyle.markerSize / 2) * 1.5, xOverhang, yLabels ? yTickRoom : 0);
+  const yTickRoom = defaultStyle.tickLength / 2 + (graph.yAxis.showTickLabels === false ? 0 : PLANE_GAP + widest(graph.yAxis));
+  // The y tick labels sit left of the y-axis, unless every x is negative and it runs down the right edge.
+  const yLabelsLeft = !(graph.xAxis.max < 0);
+  const reach = (withYLabels: boolean) => Math.max(PLANE_MARKER_REACH, xOverhang, withYLabels ? yTickRoom : 0);
+  const [leftReach, rightReach] = [reach(yLabelsLeft), reach(!yLabelsLeft)];
   const { ratio } = planeShape(graph.xAxis, graph.yAxis);
-  const x = Math.min(PLANE_ROOM - yLabelRoom - reach(onLeft) - reach(!onLeft), MAX_PLOT_HEIGHT / ratio);
+  const x = Math.min(PLANE_ROOM - yLabelRoom - leftReach - rightReach, MAX_PLOT_HEIGHT / ratio);
   return { x, y: x * ratio };
 }
 

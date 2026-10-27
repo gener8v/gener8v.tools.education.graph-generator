@@ -3,14 +3,26 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { describe as describeGraph, validate } from "../../src/core/index";
 import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
-import { PLANE_MIN_RATIO, type XyGraph, planeLengths, planeRooms, xyGraph as xyGraphDefinition } from "../../src/core/definitions/xy-graph";
+import {
+  PLANE_AXIS_LABEL_LINES,
+  PLANE_LINE_HEIGHT,
+  PLANE_MARKER_REACH,
+  PLANE_MIN_RATIO,
+  PLANE_ROOM,
+  type XyGraph,
+  planeLengths,
+  planeRooms,
+  xyGraph as xyGraphDefinition,
+} from "../../src/core/definitions/xy-graph";
 import { formatDerived } from "../../src/core/format";
 import { defaultStyle, namedColors } from "../../src/core/style";
 import { axisSpacing, axisTickLabel, niceTicks } from "../../src/core/value-scale";
 import { checkScene } from "../../src/layout/kit/check";
+import { MARKER_REACH } from "../../src/layout/kit/markers";
 import { linearScale } from "../../src/layout/kit/scale";
 import { textWidth } from "../../src/layout/kit/text";
-import { titleBlock } from "../../src/layout/kit/title";
+import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "../../src/layout/kit/title";
+import { AXIS_LABEL_MAX_LINES } from "../../src/layout/kit/value-scale";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "../../src/layout/scene";
 import { LABEL_MAX_LINES, MAX_PLOT_HEIGHT, MIN_PLOT_WIDTH, planeAxes, xyGraphLayout } from "../../src/layout/xy-graph";
 import { oneClusterTexts, wordsOf } from "../fixtures/plain-text";
@@ -381,6 +393,31 @@ describe("a default tick spacing the drawn axis has room for (NLC-REQ-005, NLC-R
       }),
       { numRuns: 300, examples },
     );
+  });
+
+  it("mirrors the layout's own numbers, and with a two-line y-axis label is the plot drawn (code review CR-003)", () => {
+    expect(PLANE_ROOM).toBe(SCENE_WIDTH - 2 * SCENE_MARGIN);
+    expect(PLANE_AXIS_LABEL_LINES).toBe(AXIS_LABEL_MAX_LINES);
+    expect(PLANE_LINE_HEIGHT).toBe(LINE_HEIGHT);
+    expect(PLANE_MARKER_REACH).toBe(MARKER_REACH);
+    // The 4-unit gaps are private to the layout, so the plots below pin them: each range keeps its
+    // own spacing, and its y-axis label wraps to two lines, so the bound is the plot drawn.
+    const yAxisLabel = "Distance from home, in metres along the road";
+    const cases: Array<[[number, number], [number, number], object]> = [
+      [[-10, 10], [-10, 10], { yAxisLabel }],
+      [[0, 10], [0, 10], { yAxisLabel, yAxis: { min: 0, max: 10, showTickLabels: false } }],
+      [[-10, -2], [0, 10], { yAxisLabel }],
+      [[0, 5000], [0, 5000], { yAxisLabel, xAxis: { min: 0, max: 5000, tickSpacing: 1000 }, yAxis: { min: 0, max: 5000, tickSpacing: 1000 } }],
+    ];
+    for (const [x, y, extra] of cases) {
+      const description = graph(x, y, extra);
+      const scene = sceneOf(description);
+      expect(texts(scene).filter((node) => attr(node, "transform") !== undefined)).toHaveLength(2);
+      const plot = plotOf(scene, x, y);
+      const lengths = planeLengths(normalizedOf(description));
+      expect(Math.abs(lengths.x - plot.width), JSON.stringify(description)).toBeLessThanOrEqual(0.01 + 1e-9);
+      expect(Math.abs(lengths.y - plot.height), JSON.stringify(description)).toBeLessThanOrEqual(0.01 + 1e-9);
+    }
   });
 
   it("changes an axis's spacing from the range's own only where those labels would clear by less than the gap", () => {

@@ -245,4 +245,15 @@ The rows are appended to the specification's `## @spec Coverage` table.
 
 ## Post-Review Amendments
 
-None
+### graph-library/number-lines-and-coordinate-graphs-ticket-009-code-review/CR-003 (with quality review QR-001, QR-002)
+
+- **What changed:**
+  - `src/core/definitions/xy-graph.ts`: the numbers `planeLengths` mirrors from the layout are named, exported constants, each with its layout counterpart in its comment: `PLANE_ROOM`, `PLANE_GAP`, `PLANE_AXIS_LABEL_LINES`, `PLANE_LINE_HEIGHT` and `PLANE_MARKER_REACH`.
+  - `planeLengths`: `widest` returns early for an axis it cannot draw (no `drawn!`), and the two sides are `leftReach` and `rightReach`.
+  - `tests/layout/xy-graph.test.ts`: a new test, "mirrors the layout's own numbers…", pins each constant to `SCENE_WIDTH`/`SCENE_MARGIN`, `AXIS_LABEL_MAX_LINES`, `LINE_HEIGHT` and `MARKER_REACH`. It pins the layout's private 4-unit gaps by requiring `planeLengths` to equal the drawn plot within 0.01 for four graphs with a two-line y-axis label.
+- **Behaviour:** none; the Scenes are unchanged.
+- **Re-verification:**
+  - `pnpm lint` exit 0; `pnpm typecheck` exit 0.
+  - `pnpm test`: exit 0 three times, 1,579 passed. One earlier run exited 1 with 1,574 of 1,579 reported and no failing test; three runs since were clean. This looks like the known Vitest worker crash.
+  - `pnpm size`: `./core` 25.13 kB of 40, `./xy-graph` 21.66 kB of 25.
+  - Mutation checks: `PLANE_GAP` 3 and `PLANE_ROOM` 370 each fail the new test.
