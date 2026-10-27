@@ -2,7 +2,7 @@
 
 ## Overview
 
-Eight tickets cover all 39 requirements and 4 NFRs this change adds for the area (NLC-REQ-001..039, NLC-NFR-001..004); all are Must, per the change brief. TICKET-006..008 were added on 2026-10-26 from the layout kit text and axis defect sweep (`.gener8v/sweeps/layout-kit-text-and-axis-sweep.md`), one ticket per finding: DS-001 → TICKET-006, DS-002 → TICKET-007 (a Product Owner decision), DS-003 → TICKET-008. They add no requirement; each names the requirement its bug violates. TICKET-001 builds the shared axis and tick foundation; the three graph types (number line, x,y graph, x,y,z graph) then proceed in parallel; TICKET-005 adds the measurable checks across all three. NLC-REQ-001, NLC-REQ-010 and NLC-REQ-012 are split across the three type tickets, each covering its own type. Every ticket also depends on cross-area work that the Depends On field cannot express: the CPSE Scene model, layout kit and component factory (component-packaging-and-source-export TICKET-002, TICKET-003) and the GSV definition format, issue codes and validator (graph-specification-and-vocabulary TICKET-001..004) — DEP-002 — and TICKET-004 additionally needs the GSS isometric kit (geometric-shapes-and-solids TICKET-001, RES-003).
+Nine tickets cover all 39 requirements and 4 NFRs this change adds for the area (NLC-REQ-001..039, NLC-NFR-001..004); all are Must, per the change brief. TICKET-006..008 were added on 2026-10-26 from the layout kit text and axis defect sweep (`.gener8v/sweeps/layout-kit-text-and-axis-sweep.md`), one ticket per finding: DS-001 → TICKET-006, DS-002 → TICKET-007 (a Product Owner decision), DS-003 → TICKET-008. They add no requirement; each names the requirement its bug violates. TICKET-009 was added on 2026-10-27 from the TICKET-003 code review (CR-002) and quality review (QR-004), which the Engineer deferred to it: a default tick spacing the drawn axis has room for. It adds no requirement either, and it blocks TICKET-004, which reuses its rule. TICKET-001 builds the shared axis and tick foundation; the three graph types (number line, x,y graph, x,y,z graph) then proceed in parallel; TICKET-005 adds the measurable checks across all three. NLC-REQ-001, NLC-REQ-010 and NLC-REQ-012 are split across the three type tickets, each covering its own type. Every ticket also depends on cross-area work that the Depends On field cannot express: the CPSE Scene model, layout kit and component factory (component-packaging-and-source-export TICKET-002, TICKET-003) and the GSV definition format, issue codes and validator (graph-specification-and-vocabulary TICKET-001..004) — DEP-002 — and TICKET-004 additionally needs the GSS isometric kit (geometric-shapes-and-solids TICKET-001, RES-003).
 
 ## Source Context
 
@@ -22,6 +22,8 @@ TICKET-006 ──→ TICKET-003   (sweep fix DS-001: tick label noise; also a pr
            └─→ TICKET-004
 TICKET-007     (sweep fix DS-002: no dependencies, blocks nothing; TICKET-003 and TICKET-004 pick the rule up through the shared axis checks)
 TICKET-008     (sweep fix DS-003: documentation, no dependencies, blocks nothing)
+
+TICKET-003 ──→ TICKET-009 ──→ TICKET-004   (review fix CR-002, QR-004: a default tick spacing the drawn axis has room for; TICKET-004 reuses it)
 ```
 
 ## Suggested Ordering
@@ -29,8 +31,9 @@ TICKET-008     (sweep fix DS-003: documentation, no dependencies, blocks nothing
 1. **TICKET-001** — Foundational; every graph type in the area needs axes and ticks. Start as soon as the CPSE layout kit and GSV validator exist.
 2. **TICKET-002** — Smallest graph type; establishes the point, label and `outside_axis_range` patterns the other two reuse.
 3. **TICKET-003** — Can run in parallel with TICKET-002; the largest and riskiest ticket in the area (quadrants, axis placement, equal units), so start it early.
-4. **TICKET-004** — Can run in parallel once the GSS isometric kit is delivered; blocked on that cross-area ticket, not on TICKET-002 or TICKET-003.
-5. **TICKET-005** — Last of the original five; needs all three graph types to measure.
+4. **TICKET-009** — Review fix (2026-10-27) to TICKET-003's tick labels; do it before TICKET-004, which reuses its length-aware default spacing for the x, y and z axes. Needs only TICKET-003, which is delivered.
+5. **TICKET-004** — Can run in parallel once the GSS isometric kit is delivered; blocked on that cross-area ticket and on TICKET-009, not on TICKET-002 or TICKET-003.
+6. **TICKET-005** — Last of the original five; needs all three graph types to measure.
 
 Sweep fixes (2026-10-26):
 
@@ -45,14 +48,15 @@ Sweep fixes (2026-10-26):
 | TICKET-001 | Build the axis and tick foundation shared by all three axis-based graph types | Must | Medium | None | Ready (after cross-area CPSE TICKET-002, GSV TICKET-001..003) |
 | TICKET-002 | Deliver the number line graph type | Must | Medium | TICKET-001 | Blocked |
 | TICKET-003 | Deliver the x,y coordinate graph type | Must | Large | TICKET-001, TICKET-006 | Blocked |
-| TICKET-004 | Deliver the x,y,z coordinate graph type | Must | Medium | TICKET-001, TICKET-006 | Blocked |
+| TICKET-004 | Deliver the x,y,z coordinate graph type | Must | Medium | TICKET-001, TICKET-006, TICKET-009 | Blocked |
 | TICKET-005 | Verify accuracy, server rendering, accessibility and performance for all axis-based graphs | Must | Small | TICKET-002, TICKET-003, TICKET-004 | Blocked |
 | TICKET-006 | Keep floating-point noise out of axis tick labels when the tick spacing is computed | Must | Small | None | Ready |
 | TICKET-007 | Report a tick spacing that leaves fewer than two ticks in the axis range | Must | Small | None | Ready |
 | TICKET-008 | Document the minimum shown width of a ruler for 3:1 mark contrast where `<Graph>` users read it | Must | Small | None | Ready |
+| TICKET-009 | Choose a default tick spacing the drawn axis has room for | Must | Medium | TICKET-003 | Ready |
 
-**Total Tickets:** 8
-**Ready to Start:** 3 (TICKET-006, TICKET-007, TICKET-008; TICKET-001 and TICKET-002 are already delivered)
+**Total Tickets:** 9
+**Ready to Start:** 4 (TICKET-006, TICKET-007, TICKET-008, TICKET-009; TICKET-001, TICKET-002 and TICKET-003 are already delivered)
 
 *Status here is as of this breakdown. Live status (delivered, reviewed, done) is derived from delivery records and reviews into `.gener8v/pipeline-state.yaml`; this table is not updated as tickets progress.*
 
@@ -63,3 +67,6 @@ Sweep fixes (2026-10-26):
 - Spec OQ-006, OQ-007, OQ-008 (full lines, xyz segments, axis-break symbol) — not built
 - Spec OQ-003 resolved by AD-009 (isometric)
 - TICKET-007: the specification states no lower bound on the number of ticks (NLC-REQ-008 and NLC-REQ-009 set only the 100-tick and zero-or-negative bounds). The Product Owner decision of 2026-10-26 (Thomas Eaves) stands in; the specification needs a new requirement through the Specification skill
+- TICKET-009: the specification's Behaviors & Rules → Ticks line says the default spacing gives "between 5 and 20 ticks" (the code and TICKET-007 say 7 to 20). A default that depends on the drawn length gives fewer on a short axis, down to two, so the line needs an amendment through the Specification skill (Product Owner); the ticket changes the published `tickSpacing` description and the code comments, not the specification
+- TICKET-009: the number line has the same overlapping default labels for labels of about six characters or more (for example `-100000..100000`); that is not in the ticket, and adopting the same rule for the number line is a Product Owner decision
+- TICKET-009: for some ranges on a short axis no 1, 2 or 5 × 10ⁿ spacing both clears the labels and leaves two ticks (6% of a scan at 120 units); thinning labels would remove that residue and is a Product Owner decision, not part of the ticket

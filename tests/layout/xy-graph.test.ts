@@ -100,6 +100,24 @@ describe("quadrants and where the axes go (NLC-REQ-023, NLC-REQ-024, NLC-REQ-025
     expect(negative).toContain("-3");
   });
 
+  it("labels a 0 on an edge axis as the true value it is, where the other axis crosses away from the origin (code review CR-001)", () => {
+    // The y-axis on the left edge at x = 5: y = 0 is a tick on it, not the origin.
+    const edgeY = tickTexts(sceneOf(graph([5, 10], [-5, 5], { xAxis: { min: 5, max: 10, tickSpacing: 1 }, yAxis: { min: -5, max: 5, tickSpacing: 1 } }))).map((node) => node.text);
+    expect(edgeY).toEqual(["5", "6", "7", "8", "9", "10", "-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"]);
+    // The x-axis on the top edge at y = -2: x = 0 is a tick on it, not the origin.
+    const edgeX = tickTexts(sceneOf(graph([-5, 5], [-10, -2], { xAxis: { min: -5, max: 5, tickSpacing: 1 }, yAxis: { min: -10, max: -2, tickSpacing: 2 } }))).map((node) => node.text);
+    expect(edgeX.filter((text) => text === "0")).toHaveLength(1);
+  });
+
+  it("labels the origin once when only the y-axis shows its tick labels (code review CR-001)", () => {
+    for (const [x, y] of [[[0, 10], [0, 10]], [[-10, 10], [0, 10]], [[0, 10], [-10, 10]], [[-10, 10], [-10, 10]]] as const) {
+      const zeros = tickTexts(sceneOf(graph([...x], [...y], { xAxis: { min: x[0], max: x[1], showTickLabels: false } }))).filter((node) => node.text === "0");
+      expect(zeros, `${x} ${y}`).toHaveLength(1);
+    }
+    const hidden = { xAxis: { min: -10, max: 10, showTickLabels: false }, yAxis: { min: -10, max: 10, showTickLabels: false } };
+    expect(tickTexts(sceneOf(graph([-10, 10], [-10, 10], hidden)))).toHaveLength(0);
+  });
+
   it("labels the origin once: below it, or below-left where the y-axis runs down through it", () => {
     for (const [x, y] of [[[0, 10], [0, 10]], [[-10, 10], [0, 10]], [[0, 10], [-10, 10]], [[-10, 10], [-10, 10]]] as const) {
       const zeros = tickTexts(sceneOf(graph([...x], [...y]))).filter((node) => node.text === "0");
@@ -150,7 +168,8 @@ describe("tick spacing per axis (NLC-REQ-027, NLC-REQ-004, NLC-REQ-005)", () => 
 
   it("hides an axis's tick labels when its showTickLabels is false, keeping its ticks", () => {
     const scene = sceneOf(graph([0, 10], [0, 10], { xAxis: { min: 0, max: 10, showTickLabels: false } }));
-    expect(tickTexts(scene).map((node) => node.text)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+    // The y-axis labels the origin, since the x-axis does not (code review CR-001).
+    expect(tickTexts(scene).map((node) => node.text)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
   });
 });
 

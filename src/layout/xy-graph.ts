@@ -156,10 +156,13 @@ export const xyGraphLayout: Layout<XyGraph> = (graph: XyGraph, provenance: Prove
   // Where the axes go, which no width changes; the plot's size is taken again once the room is known.
   const shape = planeAxes([xAxis.min, xAxis.max], [yAxis.min, yAxis.max]);
 
-  // The origin is labeled once: the y-axis leaves its 0 blank where the x-axis crosses it, and the
-  // x-axis leaves its 0 blank where the y-axis runs down through it, writing it below-left instead.
-  const yZeroBlank = shape.xAxisAt === 0;
-  const xZeroBlank = shape.yAxisAt === 0 && yAxis.min < 0;
+  // The origin is labeled once, and only where the axes cross at (0, 0); an edge axis labels its 0
+  // as the true value it is (code review CR-001). At the origin, the x-axis leaves its 0 blank where
+  // the y-axis runs down through it, and the y-axis leaves its 0 blank where the x-axis would label
+  // the origin or runs left through the label; the "0" is then written below-left of the origin.
+  const atOrigin = shape.xAxisAt === 0 && shape.yAxisAt === 0;
+  const xZeroBlank = atOrigin && yAxis.min < 0;
+  const yZeroBlank = atOrigin && (showX || xAxis.min < 0);
   const yLabels = new Map<number, string>(yZeroBlank ? [[0, ""]] : []);
   const xLabels = new Map<number, string>(xZeroBlank ? [[0, ""]] : []);
 
@@ -209,9 +212,10 @@ export const xyGraphLayout: Layout<XyGraph> = (graph: XyGraph, provenance: Prove
   const zeroRight = originX - half - TICK_LABEL_GAP;
   const zeroTop = originY + half + TICK_LABEL_GAP;
   const [before, below] = [-xTicks.spacing, -yTicks.spacing];
-  const clearOfX = before < xAxis.min || xOf(before) + textWidth(tickLabel(before, xTicks.spacing), tickFont) / 2 + GAP <= zeroRight - textWidth("0", tickFont);
+  const clearOfX = !showX || before < xAxis.min || xOf(before) + textWidth(tickLabel(before, xTicks.spacing), tickFont) / 2 + GAP <= zeroRight - textWidth("0", tickFont);
   const clearOfY = !showY || below < yAxis.min || yOf(below) + tickFont * (TICK_LABEL_DROP - 0.8) >= zeroTop + tickFont + GAP;
-  if (xZeroBlank && showX && clearOfX && clearOfY) {
+  // Written for whichever axis blanked its own 0 and shows its tick labels: the x-axis's, else the y-axis's.
+  if ((showX ? xZeroBlank : showY && yZeroBlank) && clearOfX && clearOfY) {
     nodes.push({
       kind: "text",
       attrs: [
