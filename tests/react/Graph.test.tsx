@@ -663,24 +663,59 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     expect(markup.match(/<text /g)!.length).toBeLessThan(320);
   });
 
-  it("keeps the x,y graph's text alternative, markup and time bounded at its limits: 1,000 labeled points and 700 labeled segments, 200-character texts (NLC TICKET-003)", () => {
-    // The most labeled elements the 10,000-value description limit lets through with both lists in
-    // use: a labeled point is 4 values, a labeled segment 8. Values with long written forms.
-    // Measured 2026-10-27: a 420 KB description lays out in about 0.2 s, with a 712,557-character
-    // text alternative and 2,239,478 characters of markup, which holds the text alternative twice.
-    const text = "a".repeat(CALLER_TEXT_LIMIT);
-    const points = Array.from({ length: 1000 }, (_, i) => ({ x: i % 2 === 0 ? 5e-324 : -2.2250738585072014e-308, y: (i % 21) - 10, label: text }));
-    const segments = Array.from({ length: 700 }, (_, i) => ({ from: { x: -10 + (i % 20), y: -10 }, to: { x: 10 - (i % 20), y: 10 }, label: text }));
-    const description = { type: "xy-graph", title: text, xAxisLabel: text, yAxisLabel: text, xAxis: { min: -10, max: 10 }, yAxis: { min: -10, max: 10 }, showGrid: true, points, segments };
+  it("keeps the x,y graph's text alternative and markup bounded at its limits: the worst case for each (NLC TICKET-003 SEC-001)", () => {
+    // The 10,000-value limit lets through 1,000 labeled points and 740 labeled segments (4 and 8
+    // values each), or 1,000 points and 950 segments unlabeled. Coordinates are stated at most 12
+    // significant digits and noise as 0 (SEC-001), so the longest stated coordinate is one just above
+    // a trillionth of the narrowest axis's span. Measured 2026-10-27 on a 2e-9-wide plane: 224,391
+    // characters unlabeled (1.79 million before SEC-001); with every text 200 × `"`, a 559,223-
+    // character text alternative and 5,818,168 characters of markup, which escapes each `"` as
+    // `&quot;` and holds the text alternative twice. Raising XY_ELEMENT_LIMIT,
+    // DESCRIPTION_VALUE_LIMIT or CALLER_TEXT_LIMIT raises these in proportion.
+    const span = 2e-9;
+    const coordinate = (i: number) => (i % 2 ? -1 : 1) * span * 1.23456789012e-12 * (1 + (i % 7) / 10);
+    const plane = (label: string | undefined, points: number, segments: number) => ({
+      type: "xy-graph",
+      ...(label === undefined ? {} : { title: label, xAxisLabel: label, yAxisLabel: label }),
+      xAxis: { min: -span / 2, max: span / 2 },
+      yAxis: { min: -span / 2, max: span / 2 },
+      showGrid: true,
+      points: Array.from({ length: points }, (_, i) => ({ x: coordinate(i), y: coordinate(i + 1), ...(label === undefined ? {} : { label }) })),
+      segments: Array.from({ length: segments }, (_, i) => ({ from: { x: coordinate(i), y: coordinate(i + 2) }, to: { x: coordinate(i + 3), y: coordinate(i + 5) }, ...(label === undefined ? {} : { label }) })),
+    });
+    const unlabeled = createGraph(plane(undefined, 1000, 950));
+    if (!unlabeled.ok) throw new Error(JSON.stringify(unlabeled.issues));
+    expect(unlabeled.scene.textAlternative.length).toBeLessThan(250_000);
+    // Subnormal coordinates, 326 digits each written in full, made 126 KB into 1.79 million
+    // characters before SEC-001; they draw at 0 and are stated as 0.
+    const subnormal = (i: number) => (i % 2 === 0 ? 5e-324 : -2.2250738585072014e-308);
+    const points = Array.from({ length: 1000 }, (_, i) => ({ x: subnormal(i), y: subnormal(i + 1) }));
+    const segments = Array.from({ length: 857 }, (_, i) => ({ from: { x: subnormal(i), y: subnormal(i + 1) }, to: { x: 1, y: subnormal(i) } }));
+    const piled = createGraph({ type: "xy-graph", xAxis: { min: -10, max: 10 }, yAxis: { min: -10, max: 10 }, points, segments });
+    if (!piled.ok) throw new Error(JSON.stringify(piled.issues));
+    expect(piled.scene.textAlternative.length).toBeLessThan(100_000);
+    const quoted = plane('"'.repeat(CALLER_TEXT_LIMIT), 1000, 740);
+    const result = createGraph(quoted);
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.scene.textAlternative.length).toBeLessThan(600_000);
+    const markup = html(<PackageXyGraph description={quoted} />);
+    expect(markup.length).toBeLessThan(6_200_000);
+    // Each label at most two lines; title 3, axis labels 2 each, tick labels and the origin's 0.
+    expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(2 * 1740 + 3 + 4 + 23);
+  });
+
+  it("lays out the x,y graph's costliest labels within a second and a half: points stacked at one spot and labeled segments (NLC TICKET-003 SEC-003)", () => {
+    // Each label tries up to 12 places (points) or 8 (segments) against every obstacle placed so far,
+    // the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Measured 2026-10-27:
+    // 0.37 to 0.53 s for this 69 KB description, against its forecast of about half a second.
+    const points = Array.from({ length: 1000 }, () => ({ x: 5, y: 5, label: "a" }));
+    const segments = Array.from({ length: 700 }, (_, i) => ({ from: { x: 5, y: 5 }, to: { x: 5 + (i + 1) / 1000, y: 5 }, label: "a" }));
+    const description = { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, points, segments };
     const started = performance.now();
     const result = createGraph(description);
+    const elapsed = performance.now() - started;
     if (!result.ok) throw new Error(JSON.stringify(result.issues));
-    expect(performance.now() - started).toBeLessThan(5_000);
-    expect(result.scene.textAlternative.length).toBeLessThan(800_000);
-    const markup = html(<PackageXyGraph description={description} />);
-    expect(markup.length).toBeLessThan(2_500_000);
-    // Each label at most two lines; title 3, axis labels 2 each, 22 tick labels and the origin's 0.
-    expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(2 * 1700 + 3 + 4 + 23);
+    expect(elapsed).toBeLessThan(1_500);
   });
 
   it("reports a category name over the limit rather than drawing it, so a megabyte of names never reaches the renderer (DGP TICKET-005 SEC-001)", () => {

@@ -1,7 +1,7 @@
 import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
 import { createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
-import { axisSpacing } from "../value-scale";
+import { axisSpacing, cleanDecimal } from "../value-scale";
 import { type Axis, axisDomainChecks, axisProperty } from "./axis";
 import { POINTS_DESCRIPTION, sharedProperties } from "./shared";
 import { type DescriptionBase, type DomainCheck, type GraphTypeDefinition, type PropertySpec, defineProperties } from "./types";
@@ -224,6 +224,18 @@ const QUADRANTS = ["", "one quadrant", "two quadrants", "", "all four quadrants"
 export const xyGraph: GraphTypeDefinition<XyGraph> = /* @__PURE__ */ defineXyGraph();
 
 /**
+ * A point's or segment end's coordinate as the text alternative states it: closer to 0 than a
+ * trillionth of its axis's span is 0, and anything else at most 12 significant digits
+ * (`cleanDecimal`). So computed noise reads as the value meant (sin π = 1.2e-16 reads 0, 0.1 + 0.2
+ * reads 0.3), a typed value reads as written, and a subnormal is never written out in 326 digits
+ * (NLC TICKET-003 security review SEC-001, Product Owner — Thomas Eaves, 2026-10-27).
+ */
+// @spec NLC-REQ-012
+export function coordinate(value: number, axis: Axis): number {
+  return Math.abs(value) < (axis.max - axis.min) * 1e-12 ? 0 : cleanDecimal(value);
+}
+
+/**
  * Builds the x,y graph definition. A function marked free of side effects, so a bundle that never
  * reads the definition drops it, as the other types' are dropped.
  */
@@ -254,7 +266,8 @@ function defineXyGraph(): GraphTypeDefinition<XyGraph> {
         const spacing = stateMeasurement(axisSpacing(min, max, given), given === undefined ? "derived" : "supplied");
         return `${name} from ${at(`${name}Axis/min`, min)} to ${at(`${name}Axis/max`, max)} ticked every ${spacing}`;
       };
-      const point = (path: string, p: XyCoordinates) => `(${at(`${path}/x`, p.x)}, ${at(`${path}/y`, p.y)})`;
+      const point = (path: string, p: XyCoordinates) =>
+        `(${at(`${path}/x`, coordinate(p.x, graph.xAxis))}, ${at(`${path}/y`, coordinate(p.y, graph.yAxis))})`;
       const labeled = (text: string, label: string | undefined) => (cleaned(label) === "" ? text : `${text} labeled ${quoteText(cleaned(label))}`);
       const title = cleaned(graph.title);
       const sentences = [

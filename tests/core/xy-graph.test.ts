@@ -180,6 +180,17 @@ describe("the text alternative (NLC-REQ-012, NLC-REQ-023, NLC-REQ-026, NLC-REQ-0
     );
   });
 
+  it("states a coordinate's noise as the value meant, never a subnormal in full (security review SEC-001)", () => {
+    const stated = describeGraph(
+      graph({ xAxis: { min: -5, max: 5 }, yAxis: { min: -5, max: 5 }, points: [{ x: Math.PI, y: Math.sin(Math.PI) }, { x: 0.1 + 0.2, y: 5e-324 }], segments: [{ from: { x: -2.2250738585072014e-308, y: 1 }, to: { x: 2.5, y: -1.25 } }] }),
+    );
+    // Closer to 0 than a trillionth of the axis's span is 0; anything else at most 12 significant digits.
+    expect(stated).toContain("(3.14159265359, 0) and (0.3, 0)");
+    expect(stated).toContain("from (0, 1) to (2.5, -1.25)");
+    // On an axis a trillionth as wide, the same small value is stated, at 12 significant digits.
+    expect(describeGraph(graph({ xAxis: { min: -1e-9, max: 1e-9 }, yAxis: { min: -5, max: 5 }, points: [{ x: 1.234567890123456e-10, y: 0 }] }))).toContain("(0.000000000123456789012, 0)");
+  });
+
   it("says when units are not equal, and which way, and when tick labels are hidden", () => {
     expect(describeGraph({ type: "xy-graph", xAxis: { min: 0, max: 1000 }, yAxis: { min: 0, max: 1 } })).toContain("To fit, one y unit is drawn longer than one x unit.");
     expect(describeGraph({ type: "xy-graph", xAxis: { min: 0, max: 1 }, yAxis: { min: 0, max: 100 } })).toContain("To fit, one y unit is drawn shorter than one x unit.");

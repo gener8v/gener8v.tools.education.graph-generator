@@ -243,7 +243,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-NFR-008 | `tests/layout/ruler.bench.ts` (verification) |
 | NLC-REQ-001 | `src/core/definitions/xy-graph.ts`:xyGraph, defineXyGraph (xy part; registered in `src/core/definitions/index.ts`) |
 | NLC-REQ-010 | `src/core/definitions/xy-graph.ts`:pointsInRange, segmentsInRange (xy part) |
-| NLC-REQ-012 | `src/core/definitions/xy-graph.ts`:xyGraph.describe (xy part) |
+| NLC-REQ-012 | `src/core/definitions/xy-graph.ts`:xyGraph.describe, coordinate (xy part) |
 | NLC-REQ-022 | `src/core/definitions/xy-graph.ts`:xyGraph; `src/layout/xy-graph.ts`:xyGraphLayout; `src/react/graphs/XyGraph.tsx`:XyGraph |
 | NLC-REQ-023 | `src/core/definitions/xy-graph.ts`:quadrantCount, xyGraph.describe; `src/layout/xy-graph.ts`:planeAxes |
 | NLC-REQ-024 | `src/layout/xy-graph.ts`:planeAxes, xyGraphLayout |
