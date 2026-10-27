@@ -257,3 +257,9 @@ The rows are appended to the specification's `## @spec Coverage` table.
   - `pnpm test`: exit 0 three times, 1,579 passed. One earlier run exited 1 with 1,574 of 1,579 reported and no failing test; three runs since were clean. This looks like the known Vitest worker crash.
   - `pnpm size`: `./core` 25.13 kB of 40, `./xy-graph` 21.66 kB of 25.
   - Mutation checks: `PLANE_GAP` 3 and `PLANE_ROOM` 370 each fail the new test.
+
+### graph-library/number-lines-and-coordinate-graphs-ticket-009-quality-review/QR-003, QR-004
+
+- **QR-003:** `tests/layout/xy-graph.test.ts` now asserts that the property excludes at most 15% of the descriptions it generates (2 to 4% at delivery), in place of the `console.info`. Mutation-checked: a 0.1% bound fails with "11 of 300 excluded". The file is not split.
+- **QR-004:** `src/core/value-scale.ts` gains `labelsStandApart`, which uses `every`, and `fittedAxisSpacing` calls it. Behaviour is unchanged. Mutation-checked: making the helper always pass fails 6 tests.
+- **Re-verification:** `pnpm lint` exit 0, `pnpm typecheck` exit 0, `pnpm test` exit 0 three times (1,579 passed). `pnpm size`: `./core` 25.13 kB of 40, `./xy-graph` 21.66 kB of 25.

@@ -378,8 +378,9 @@ describe("a default tick spacing the drawn axis has room for (NLC-REQ-005, NLC-R
       { numRuns: 300, examples },
     );
     // The descriptions the search proves have no clear spacing, where the rule falls back to the
-    // coarsest spacing that leaves two ticks and labels may touch (recorded in the delivery record).
-    console.info(`x,y tick labels: ${excluded} of ${runs} generated descriptions excluded as having no clear spacing${example === undefined ? "" : `, for example ${example}`}`);
+    // coarsest spacing that leaves two ticks and labels may touch: 2 to 4% at delivery, so a rise
+    // past 15% means the property has stopped testing most of what it generates (quality review QR-003).
+    expect(excluded / runs, `${excluded} of ${runs} excluded, for example ${example}`).toBeLessThanOrEqual(0.15);
   });
 
   it("bounds each axis's drawn length from numbers alone: planeLengths never exceeds the plot drawn", () => {

@@ -449,6 +449,16 @@ export function tickLabelWidth(label: string, fontSize: number): number {
 const MAX_FITS = 100;
 
 /**
+ * Whether every two neighbouring `ticks`, `apart` drawing units apart, are at least `extent` plus
+ * half of each one's label width (`tickLabelWidth` at `textSize`) apart (NLC TICKET-009 quality
+ * review QR-004).
+ */
+function labelsStandApart(ticks: readonly number[], spacing: number, apart: number, extent: number, textSize: number): boolean {
+  const width = (tick: number) => tickLabelWidth(axisTickLabel(tick, spacing), textSize);
+  return ticks.every((tick, i) => i === 0 || apart >= extent + (width(ticks[i - 1]!) + width(tick)) / 2);
+}
+
+/**
  * The default spacing for an axis drawn `length` long (NLC-REQ-005, NLC-REQ-006; NLC TICKET-009):
  * the finest 1, 2 or 5 × 10ⁿ, never finer than the range's own (`axisSpacing(min, max)`), at which
  * every two neighbouring tick labels are at least `extent` plus half of each label's width
@@ -465,11 +475,7 @@ export function fittedAxisSpacing(min: number, max: number, length: number, exte
     const ticks = drawableTicks(min, max, spacing)?.ticks;
     if (ticks === undefined || ticks.length < 2) break;
     fallback = spacing;
-    const apart = (spacing * length) / (max - min);
-    const width = (tick: number) => tickLabelWidth(axisTickLabel(tick, spacing), textSize);
-    let clear = true;
-    for (let i = 1; clear && i < ticks.length; i++) clear = apart >= extent + (width(ticks[i - 1]!) + width(ticks[i]!)) / 2;
-    if (clear) return spacing;
+    if (labelsStandApart(ticks, spacing, (spacing * length) / (max - min), extent, textSize)) return spacing;
     spacing = niceInterval(spacing * 1.5, 1);
   }
   return fallback;
