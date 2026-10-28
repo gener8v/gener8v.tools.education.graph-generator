@@ -192,7 +192,6 @@ function tickLabels(axes: readonly AxisGeometry[], frame: Frame, obstacles: Obst
       const text = tickLabel(tick, axis.ticks.spacing);
       const meeting = tick === frame.meet[axis.name];
       if (meeting && atMeeting.has(text)) continue;
-      if (meeting) atMeeting.add(text);
       const width = textWidth(text, tickFont);
       const [tx, ty] = axis.at(tick);
       let candidates: Array<{ x: number; y: number }>;
@@ -214,8 +213,18 @@ function tickLabels(axes: readonly AxisGeometry[], frame: Frame, obstacles: Obst
       if (meeting && wedge !== undefined) {
         candidates.push({ x: tx - wedge - width, y: ty - height / 2 }, { x: tx + wedge, y: ty - height / 2 });
       }
+      // Then each side one step farther out: a row farther for an x or y label, a gap farther for a z label.
+      const [stepX, stepY] = axis.across ? [0, height + GAP] : [width / 2 + GAP, 0];
+      for (const { x, y } of candidates.slice(0, 2)) {
+        const [dx, dy] = [Math.sign(x + width / 2 - tx) * stepX, Math.sign(y + height / 2 - ty) * stepY];
+        candidates.push({ x: x + dx, y: y + dy });
+      }
       const held = candidates.map(({ x, y }) => ({ x: holdX(x, width), y }));
-      const box = placeLabel({ width, height }, held, obstacles) ?? { x: held[0]!.x, y: held[0]!.y, width, height };
+      // A label with no clear place is left out, its tick still drawn, so no tick label covers another
+      // (code review CR-001).
+      const box = placeLabel({ width, height }, held, obstacles);
+      if (box === undefined) continue;
+      if (meeting) atMeeting.add(text);
       obstacles.push(box);
       placed.push({ text, box });
     }
@@ -271,7 +280,7 @@ function axisLabels(graph: XyzGraph, axes: readonly AxisGeometry[], obstacles: O
     // Far enough along the axis past its end that the box's nearest side is `GAP` from it.
     const out = GAP + (Math.abs(ux) * width + Math.abs(uy) * height) / 2;
     const beyond = { x: ex + ux * out - width / 2, y: ey + uy * out - height / 2 };
-    const candidates = (
+    const near = (
       across
         ? [
             // Raised a little, so it clears a tick label below the end.
@@ -286,7 +295,11 @@ function axisLabels(graph: XyzGraph, axes: readonly AxisGeometry[], obstacles: O
             { x: ex + half + GAP, y: ey - height / 2 },
             { x: ex - half - GAP - width, y: ey - height / 2 },
           ]
-    ).map(({ x, y }) => ({ x: holdX(x, width), y }));
+    );
+    // Then each of those a row higher and a row lower, for two axes whose ends meet where both
+    // ranges stop at zero (code review CR-001).
+    const rows = near.flatMap(({ x, y }) => [-1, 1].map((row) => ({ x, y: y + row * (height + GAP) })));
+    const candidates = [...near, ...rows].map(({ x, y }) => ({ x: holdX(x, width), y }));
     const box = placeLabel({ width, height }, candidates, obstacles, GAP / 2) ?? { x: candidates[0]!.x, y: candidates[0]!.y, width, height };
     obstacles.push(box);
     placed.push({ lines, box });
@@ -349,6 +362,8 @@ export const xyzGraphLayout: Layout<XyzGraph> = (graph: XyzGraph, provenance: Pr
   const frame = frameOf(graph);
   const axes = axesOf(graph, frame);
   const obstacles = axisObstacles(axes);
+  // The axis names first, which are always drawn; a tick label gives way to them (code review CR-001).
+  const names = axisLabels(graph, axes, obstacles);
   const ticks = tickLabels(axes, frame, obstacles);
   const guides = guideSegments(graph, frame);
   for (const guide of guides) obstacles.push(guide);
@@ -358,7 +373,6 @@ export const xyzGraphLayout: Layout<XyzGraph> = (graph: XyzGraph, provenance: Pr
     obstacles.push({ x: px - MARKER_REACH, y: py - MARKER_REACH, width: 2 * MARKER_REACH, height: 2 * MARKER_REACH });
     return { x: px, y: py, color: color ?? accent };
   });
-  const names = axisLabels(graph, axes, obstacles);
   const labels = pointLabels(graph, frame, obstacles);
 
   // Everything drawn is in `obstacles`: the figure's top and bottom are theirs.

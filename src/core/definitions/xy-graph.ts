@@ -165,13 +165,13 @@ export const coordinates = {
     term: "x",
     kind: "number",
     required: true,
-    description: "A position along the x-axis, in its own numbers: a point's or a segment end's x coordinate, inside the x-axis range, ends included.",
+    description: "A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included.",
   },
   y: {
     term: "y",
     kind: "number",
     required: true,
-    description: "A position along the y-axis, in its own numbers: a point's or a segment end's y coordinate, inside the y-axis range, ends included.",
+    description: "A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included.",
   },
 } as const satisfies Record<string, PropertySpec>;
 

@@ -245,4 +245,25 @@ The specification's `## @spec Coverage` table has the matching rows.
 
 ## Post-Review Amendments
 
-None
+### graph-library/number-lines-and-coordinate-graphs-ticket-004-code-review/CR-001 — tick labels of different axes overlapped
+
+- **Changed:** `src/layout/xyz-graph.ts`:
+  - `tickLabels` tries each side one step farther out (a row for x and y, a gap for z).
+  - A tick label with no clear place is left out, its tick still drawn, instead of falling back to its first candidate.
+  - `xyzGraphLayout` places the axis names before the tick labels, so tick labels give way to them.
+  - `axisLabels` also tries each candidate a row higher and a row lower.
+- **Effect:** in a sweep of 8,000 range combinations, the graphs with overlapping text went from 2,242 to 0. About 1.7% of tick labels are left out, chiefly where the axes meet. On common curriculum ranges, 6 of 512 graphs lose one label each.
+- **Test:** `tests/layout/xyz-graph.test.ts` adds "draws no text over another, across axes too …" (512 graphs: no overlapping text, every axis named, more than 95% of ticks labeled; 97.4% measured). `tickLabelsByAxis` now reads a tick whose label is not the next drawn as left out. Mutation check: restoring the fallback fails 2 tests; placing the names after the tick labels fails 1.
+- **Supersedes:** DEL-003's "A label with no clear candidate takes its first" and the Notes' cross-axis overlap figure.
+- **Approved by:** Engineer — Thomas Eaves, 2026-10-28.
+
+### graph-library/number-lines-and-coordinate-graphs-ticket-004-code-review/CR-002 — shared `x`/`y` text named a segment end
+
+- **Changed:** `src/core/definitions/xy-graph.ts`, the `coordinates` descriptions: "the x (y) coordinate of a plotted point (or, on an x,y graph, of a segment's end)". `src/generated/*` regenerated.
+- **Approved by:** Engineer — Thomas Eaves, 2026-10-28.
+
+**Re-verification (2026-10-28):** all exit 0:
+- `pnpm generate`, lint, typecheck, bench, build, `check:dist`, `check:deps`, `check:images`, `check:changesets`, size, publint, attw, `pnpm audit` and `pnpm audit --prod`;
+- `pnpm test` ×3, 1,636 tests each run.
+
+An earlier run failed one existing timing test, `tests/layout/kit/text.test.ts` "stops early, so caller-sized text costs little" (1,009 ms against a 1,000 ms bound). That test is unrelated to this change, and it passed on the reruns. Sizes: `./xyz-graph` 21.27 kB of 25; `./core` 25.9 kB of 40.
