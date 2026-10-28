@@ -280,3 +280,14 @@ An earlier run failed one existing timing test, `tests/layout/kit/text.test.ts` 
 - `pnpm test` ×3, 1,636 tests each run.
 
 `./xyz-graph` is 21.29 kB of 25.
+
+### graph-library/number-lines-and-coordinate-graphs-ticket-004-security-review/SEC-001 — the type's size ceiling was neither recorded nor pinned
+
+- **Changed:** `tests/react/Graph.test.tsx` adds "keeps the x,y,z graph's text alternative and markup bounded at its limits, below the x,y graph's". Its input is 1,000 labeled points on a 2e-9-wide cube, every text 200 × `"`, with guide lines on.
+- **Ceiling (measured 2026-10-28):** a 322,212-character text alternative (526,228 bytes as UTF-8 with text outside the BMP) and 3,672,785 characters of markup. Both are below the x,y graph's 559,223 and 5,818,168, so the x,y graph stays the largest description (CPSE TICKET-007's hazard stands).
+- **Bounds asserted:** under 350,000 and 4,000,000, under the x,y graph's ceilings, and a bounded `<text>` count. Stating the points twice fails the test.
+- **Approved by:** Security — Thomas Eaves, 2026-10-28.
+
+**Re-verification (2026-10-28):** all exit 0:
+- `pnpm generate`, lint, typecheck, bench, build, `check:dist`, `check:deps`, `check:images`, `check:changesets`, size, publint, attw, `pnpm audit` and `pnpm audit --prod`;
+- `pnpm test` ×3, 1,637 tests each run.

@@ -758,6 +758,40 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(2 * 1740 + 3 + 4 + 23);
   });
 
+  it("keeps the x,y,z graph's text alternative and markup bounded at its limits, below the x,y graph's (NLC TICKET-004 SEC-001)", () => {
+    // 1,000 labeled points (5 values each) on a 2e-9-wide cube, each coordinate just above a
+    // trillionth of the span, so stated in 12 significant digits; every text 200 × `"`, guide lines
+    // on. Measured 2026-10-28: a 322,212-character text alternative and 3,672,785 characters of
+    // markup, below the x,y graph's 559,223 and 5,818,168 above, so the x,y graph stays the largest
+    // description (CPSE TICKET-007). Raising XYZ_POINT_LIMIT or CALLER_TEXT_LIMIT, stating
+    // coordinates raw or adding segments (spec OQ-007) raises these.
+    const quote = '"'.repeat(CALLER_TEXT_LIMIT);
+    const axis = { min: -1e-9, max: 1e-9 };
+    const coordinate = (i: number) => -(1 + (i % 9) / 10 + 0.023456789012) * 1e-20;
+    const description = {
+      type: "xyz-graph",
+      title: quote,
+      xAxisLabel: quote,
+      yAxisLabel: quote,
+      zAxisLabel: quote,
+      xAxis: axis,
+      yAxis: axis,
+      zAxis: axis,
+      guideLines: true,
+      points: Array.from({ length: 1000 }, (_, i) => ({ x: coordinate(i), y: coordinate(i + 1), z: coordinate(i + 2), label: quote, color: "#123456" })),
+    };
+    const result = createGraph(description);
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(result.scene.textAlternative.length).toBeLessThan(350_000);
+    const markup = html(<PackageXyzGraph description={description} />);
+    expect(markup.length).toBeLessThan(4_000_000);
+    // Below the x,y graph's ceilings in the test above.
+    expect(result.scene.textAlternative.length).toBeLessThan(600_000);
+    expect(markup.length).toBeLessThan(6_200_000);
+    // Each point label at most two lines; title 3, axis labels 2 each, and at most 101 tick labels per axis.
+    expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(2 * 1000 + 3 + 6 + 3 * 101);
+  });
+
   it("lays out the x,y graph's costliest labels within a second and a half: points stacked at one spot and labeled segments (NLC TICKET-003 SEC-003)", () => {
     // Each label tries up to 12 places (points) or 8 (segments) against every obstacle placed so far,
     // the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Measured 2026-10-27:
