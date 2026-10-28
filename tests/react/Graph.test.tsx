@@ -15,6 +15,7 @@ import { BarGraph as PackageBarGraph } from "../../src/react/graphs/BarGraphGrap
 import { RulerGraph as PackageRulerGraph } from "../../src/react/graphs/RulerGraph";
 import { NumberLineGraph as PackageNumberLineGraph } from "../../src/react/graphs/NumberLineGraph";
 import { XyGraph as PackageXyGraph } from "../../src/react/graphs/XyGraph";
+import { XyzGraph as PackageXyzGraph } from "../../src/react/graphs/XyzGraph";
 import {
   type GraphComponent,
   type GraphProps,
@@ -123,6 +124,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     expect(PackageRulerGraph.displayName).toBe("RulerGraph");
     expect(PackageNumberLineGraph.displayName).toBe("NumberLineGraph");
     expect(PackageXyGraph.displayName).toBe("XyGraph");
+    expect(PackageXyzGraph.displayName).toBe("XyzGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -247,6 +249,29 @@ describe("the x,y graph's accessible name (NLC-REQ-012, NLC-REQ-013; graph-libra
       const supplied = html(<Component description={example} textAlternative="A route from home to school." />);
       expect(supplied).toContain('aria-label="A route from home to school."');
       expect(supplied).toContain("<title>A route from home to school.</title>");
+      expect(supplied).not.toContain(generated);
+      expect(html(<Component description={example} textAlternative="  " />)).toContain(`aria-label="${generated}"`);
+    }
+  });
+});
+
+describe("the x,y,z graph's accessible name (NLC-REQ-012, NLC-REQ-013; graph-library NLC TICKET-004)", () => {
+  const example: unknown = JSON.parse(readFileSync(new URL("../../examples/xyz-graph.json", import.meta.url), "utf8"));
+  const generated =
+    "A three-dimensional coordinate graph titled “Corners of a box”, x from 0 to 5 ticked every 1, y from 0 to 5 ticked every 1, z from 0 to 5 ticked every 1, in isometric projection, with guide lines from each point to the x,y plane. The x-axis is labeled “Length”. The y-axis is labeled “Width”. The z-axis is labeled “Height”. 3 points are plotted: (1, 2, 3) labeled “A”, (4, 1, 2) labeled “B” and (2, 5, 1) labeled “C”.";
+
+  it("names the x,y,z graph with its generated text alternative, as aria-label and <title>, through <XyzGraph> and <Graph>", () => {
+    const markup = html(<PackageXyzGraph description={example} />);
+    expect(markup).toBe(html(<Graph description={example} />));
+    expect(markup).toContain(`aria-label="${generated}"`);
+    expect(markup).toContain(`<title>${generated}</title>`);
+  });
+
+  it("replaces it with the caller's text alternative in both places, and keeps it for a blank one", () => {
+    for (const Component of [Graph, PackageXyzGraph]) {
+      const supplied = html(<Component description={example} textAlternative="Three corners of a box." />);
+      expect(supplied).toContain('aria-label="Three corners of a box."');
+      expect(supplied).toContain("<title>Three corners of a box.</title>");
       expect(supplied).not.toContain(generated);
       expect(html(<Component description={example} textAlternative="  " />)).toContain(`aria-label="${generated}"`);
     }
@@ -565,6 +590,30 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("draws a valid x,y,z graph with every text at its limit in <Graph> and <XyzGraph>, never throwing (GSV-REQ-052)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const axis = { min: 0, max: 5, tickSpacing: 1 };
+    const description = {
+      type: "xyz-graph",
+      title: long,
+      xAxisLabel: long,
+      yAxisLabel: long,
+      zAxisLabel: long,
+      xAxis: axis,
+      yAxis: axis,
+      zAxis: axis,
+      guideLines: true,
+      points: Array.from({ length: 4 }, (_, i) => ({ x: i, y: i + 1, z: 4 - i, label: `${i}${long.slice(1)}` })),
+    };
+    for (const Component of [Graph, PackageXyzGraph]) {
+      const received: Issue[][] = [];
+      const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+      expect(received).toEqual([]);
+      // Title 3 lines, three axis labels and four point labels of 2, and 16 tick labels: the origin's 0 once.
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 6 + 8 + 16);
+    }
+  });
+
   it("refuses every caller text one character over its limit, with too_large naming the limit, in <Graph> and each component (GSV-REQ-052, GSV-REQ-053)", () => {
     const over = "@".repeat(CALLER_TEXT_LIMIT + 1);
     const cases: Array<[GraphComponent, object, string]> = [
@@ -583,6 +632,11 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, yAxisLabel: over }, "/yAxisLabel"],
       [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, points: [{ x: 1, y: 1, label: over }] }, "/points/0/label"],
       [PackageXyGraph, { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, segments: [{ from: { x: 1, y: 1 }, to: { x: 2, y: 2 }, label: over }] }, "/segments/0/label"],
+      [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, title: over }, "/title"],
+      [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, xAxisLabel: over }, "/xAxisLabel"],
+      [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, yAxisLabel: over }, "/yAxisLabel"],
+      [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, zAxisLabel: over }, "/zAxisLabel"],
+      [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, points: [{ x: 1, y: 1, z: 1, label: over }] }, "/points/0/label"],
     ];
     for (const [Component, description, path] of cases) {
       for (const Drawn of [Graph, Component]) {
@@ -711,6 +765,19 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     const points = Array.from({ length: 1000 }, () => ({ x: 5, y: 5, label: "a" }));
     const segments = Array.from({ length: 700 }, (_, i) => ({ from: { x: 5, y: 5 }, to: { x: 5 + (i + 1) / 1000, y: 5 }, label: "a" }));
     const description = { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, points, segments };
+    const started = performance.now();
+    const result = createGraph(description);
+    const elapsed = performance.now() - started;
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+    expect(elapsed).toBeLessThan(1_500);
+  });
+
+  it("lays out the x,y,z graph's costliest labels within a second and a half: 1,000 labeled points stacked at one spot, with guide lines (NLC TICKET-004)", () => {
+    // Each label tries up to 12 places against every obstacle placed so far, the guide lines among
+    // them, the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Measured
+    // 2026-10-27: about 0.6 s.
+    const points = Array.from({ length: 1000 }, () => ({ x: 3, y: 2, z: 4, label: "a" }));
+    const description = { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, guideLines: true, points };
     const started = performance.now();
     const result = createGraph(description);
     const elapsed = performance.now() - started;

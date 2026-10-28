@@ -64,5 +64,11 @@
     "path": "dist/xy-graph.js",
     "limit": "25 kB",
     "gzip": true
+  },
+  {
+    "name": "./xyz-graph",
+    "path": "dist/xyz-graph.js",
+    "limit": "25 kB",
+    "gzip": true
   }
 ]

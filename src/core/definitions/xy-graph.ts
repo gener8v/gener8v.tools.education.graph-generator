@@ -156,11 +156,11 @@ export function planeRooms(graph: XyGraph): { x: AxisRoom | undefined; y: AxisRo
 export const quadrantCount = (xAxis: Axis, yAxis: Axis): number => (xAxis.min < 0 && xAxis.max > 0 ? 2 : 1) * (yAxis.min < 0 && yAxis.max > 0 ? 2 : 1);
 
 /**
- * The `x` and `y` terms, one definition each for a point and a segment's ends (GSV-REQ-015). No
- * structural bounds: a value off its axis is reported with the axis's range by the domain checks,
- * as the number line's `value` is (NLC TICKET-002 DEL-009).
+ * The `x` and `y` terms, one definition each for a point and a segment's ends, and for the x,y,z
+ * graph's points too (GSV-REQ-015). No structural bounds: a value off its axis is reported with the
+ * axis's range by the domain checks, as the number line's `value` is (NLC TICKET-002 DEL-009).
  */
-const coordinates = {
+export const coordinates = {
   x: {
     term: "x",
     kind: "number",
@@ -193,8 +193,9 @@ function defineXyGraphProperties() {
     properties: coordinates,
   });
   return defineProperties({
-    xAxis: axisProperty("xAxis", "coordinate graph's horizontal x"),
-    yAxis: axisProperty("yAxis", "coordinate graph's vertical y"),
+    // Worded for the x,y,z graph's axes too: a term has one definition (GSV-REQ-015).
+    xAxis: axisProperty("xAxis", "coordinate graph's x"),
+    yAxis: axisProperty("yAxis", "coordinate graph's y"),
     showGrid: {
       term: "showGrid",
       kind: "boolean",

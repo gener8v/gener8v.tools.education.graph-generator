@@ -47,6 +47,10 @@
       "definition": "Where a line segment starts: its x and y coordinates.",
       "kind": "object"
     },
+    "guideLines": {
+      "definition": "Whether a three-dimensional coordinate graph draws dashed guide lines from each point straight to the x,y plane, and from there to the x-axis and the y-axis, so the point's depth can be read; off unless true.",
+      "kind": "boolean"
+    },
     "label": {
       "definition": "A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
       "kind": "string"
@@ -236,7 +240,7 @@
       "kind": "number"
     },
     "xAxis": {
-      "definition": "The coordinate graph's horizontal x axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
+      "definition": "The coordinate graph's x axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
       "kind": "object"
     },
     "xAxisLabel": {
@@ -248,11 +252,23 @@
       "kind": "number"
     },
     "yAxis": {
-      "definition": "The coordinate graph's vertical y axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
+      "definition": "The coordinate graph's y axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
       "kind": "object"
     },
     "yAxisLabel": {
       "definition": "A label for the y-axis, as plain text, at most 200 characters.",
+      "kind": "string"
+    },
+    "z": {
+      "definition": "A position along the z-axis, in its own numbers: a point's z coordinate, inside the z-axis range, ends included.",
+      "kind": "number"
+    },
+    "zAxis": {
+      "definition": "The three-dimensional coordinate graph's upright z axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled.",
+      "kind": "object"
+    },
+    "zAxisLabel": {
+      "definition": "A label for the z-axis, as plain text, at most 200 characters.",
       "kind": "string"
     }
   },
@@ -682,6 +698,209 @@
         "every point lies inside both axis ranges",
         "every segment end lies inside both axis ranges",
         "every segment joins two different points"
+      ]
+    },
+    "xyz-graph": {
+      "title": "x,y,z coordinate graph",
+      "description": "A three-dimensional coordinate graph: an x-axis, a y-axis and a z-axis meeting at the origin (or, for a range without zero, at its end nearest zero), drawn in isometric projection, the same fixed view as cubes and cylinders: z straight up the page, x toward the lower left and y toward the lower right, each 30° below the horizontal, the three 120° apart. Each axis is drawn the same length whatever its range. Points (at most 1000) are plotted at their x, y and z, optionally with dashed guide lines to the x,y plane.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "xyz-graph"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "xAxisLabel": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "yAxisLabel": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "zAxisLabel": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "xAxis": {
+          "kind": "object",
+          "required": true,
+          "properties": {
+            "min": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "max": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickSpacing": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            },
+            "showTickLabels": {
+              "kind": "boolean",
+              "required": false
+            }
+          },
+          "ordered": [
+            [
+              "min",
+              "max"
+            ]
+          ]
+        },
+        "yAxis": {
+          "kind": "object",
+          "required": true,
+          "properties": {
+            "min": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "max": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickSpacing": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            },
+            "showTickLabels": {
+              "kind": "boolean",
+              "required": false
+            }
+          },
+          "ordered": [
+            [
+              "min",
+              "max"
+            ]
+          ]
+        },
+        "zAxis": {
+          "kind": "object",
+          "required": true,
+          "properties": {
+            "min": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "max": {
+              "kind": "number",
+              "required": true,
+              "range": {
+                "min": -1000000000,
+                "max": 1000000000
+              }
+            },
+            "tickSpacing": {
+              "kind": "number",
+              "required": false,
+              "range": {
+                "max": 2000000000
+              }
+            },
+            "showTickLabels": {
+              "kind": "boolean",
+              "required": false
+            }
+          },
+          "ordered": [
+            [
+              "min",
+              "max"
+            ]
+          ]
+        },
+        "guideLines": {
+          "kind": "boolean",
+          "required": false
+        },
+        "points": {
+          "kind": "array",
+          "required": false,
+          "maxItems": 1000,
+          "items": {
+            "kind": "object",
+            "properties": {
+              "x": {
+                "kind": "number",
+                "required": true
+              },
+              "y": {
+                "kind": "number",
+                "required": true
+              },
+              "z": {
+                "kind": "number",
+                "required": true
+              },
+              "label": {
+                "kind": "string",
+                "required": false,
+                "maxLength": 200
+              },
+              "color": {
+                "kind": "color",
+                "required": false
+              }
+            }
+          }
+        }
+      },
+      "derivations": [],
+      "checks": [
+        "the xAxis range can be drawn",
+        "the xAxis tick spacing is greater than 0 and gives at most 100 ticks",
+        "the yAxis range can be drawn",
+        "the yAxis tick spacing is greater than 0 and gives at most 100 ticks",
+        "the zAxis range can be drawn",
+        "the zAxis tick spacing is greater than 0 and gives at most 100 ticks",
+        "every point lies inside all three axis ranges"
       ]
     },
     "line-graph": {

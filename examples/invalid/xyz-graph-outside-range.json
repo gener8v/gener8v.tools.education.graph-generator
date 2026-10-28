@@ -1,0 +1,7 @@
+{
+  "type": "xyz-graph",
+  "xAxis": { "min": 0, "max": 5 },
+  "yAxis": { "min": 0, "max": 5 },
+  "zAxis": { "min": 0, "max": 5 },
+  "points": [{ "x": 1, "y": 2, "z": 8 }]
+}

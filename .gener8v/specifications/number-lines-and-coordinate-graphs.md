@@ -260,3 +260,13 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-006 | `src/core/value-scale.ts`:fittedAxisSpacing; `src/core/definitions/xy-graph.ts`:planeRooms; `src/layout/xy-graph.ts`:xyGraphLayout (tick labels kept apart, graph-library NLC TICKET-009) |
 | NLC-REQ-027 | `src/core/definitions/xy-graph.ts`:planeRooms (each axis's own length, graph-library NLC TICKET-009) |
 | NLC-REQ-032 | `src/core/definitions/xy-graph.ts`:planeLengths (graph-library NLC TICKET-009) |
+| NLC-REQ-001 | `src/core/definitions/xyz-graph.ts`:xyzGraph, defineXyzGraphProperties (xyz part; registered in `src/core/definitions/index.ts`) |
+| NLC-REQ-010 | `src/core/definitions/xyz-graph.ts`:pointsInRange (xyz part) |
+| NLC-REQ-012 | `src/core/definitions/xyz-graph.ts`:xyzGraph.describe (xyz part) |
+| NLC-REQ-034 | `src/core/definitions/xyz-graph.ts`:xyzGraph, defineXyzGraphProperties (`xAxis`, `yAxis`, `zAxis`); `src/layout/xyz-graph.ts`:frameOf, axesOf, xyzGraphLayout; `src/react/graphs/XyzGraph.tsx`:XyzGraph |
+| NLC-REQ-035 | `src/core/definitions/xyz-graph.ts`:xyzGraph (the projection documented as isometric), xyzGraph.describe; `src/layout/xyz-graph.ts`:frameOf (scaled, then `isometric()` only), tickLabels, xyzGraphLayout |
+| NLC-REQ-036 | `src/layout/xyz-graph.ts`:axisLabels (the shared `xAxisLabel`, `yAxisLabel`, `zAxisLabel`, else the axis's name) |
+| NLC-REQ-037 | `src/core/definitions/xyz-graph.ts`:defineXyzGraphProperties (`points`); `src/layout/xyz-graph.ts`:frameOf, pointLabels, xyzGraphLayout |
+| NLC-REQ-038 | `src/core/definitions/xyz-graph.ts`:defineXyzGraphProperties (`guideLines`), xyzGraph.describe; `src/layout/xyz-graph.ts`:guideSegments |
+| NLC-REQ-039 | `src/core/definitions/xyz-graph.ts`:defineXyzGraphProperties, xyzRooms, xyzGraph.describe; `src/layout/xyz-graph.ts`:axesOf, tickLabels |
+| NLC-REQ-005 | `src/core/definitions/xyz-graph.ts`:xyzRooms (each axis's drawn length, graph-library NLC TICKET-004) |

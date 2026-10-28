@@ -84,7 +84,7 @@ export interface XyGraphDescription {
   xAxisLabel?: string;
   /** A label for the y-axis, as plain text, at most 200 characters. */
   yAxisLabel?: string;
-  /** The coordinate graph's horizontal x axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. */
+  /** The coordinate graph's x axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. */
   xAxis: {
     /** The lowest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and below the axis's max. */
     min: number;
@@ -95,7 +95,7 @@ export interface XyGraphDescription {
     /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
     showTickLabels?: boolean;
   };
-  /** The coordinate graph's vertical y axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. */
+  /** The coordinate graph's y axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. */
   yAxis: {
     /** The lowest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and below the axis's max. */
     min: number;
@@ -135,6 +135,70 @@ export interface XyGraphDescription {
       /** A position along the y-axis, in its own numbers: a point's or a segment end's y coordinate, inside the y-axis range, ends included. */
       y: number;
     };
+    /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
+    label?: string;
+    /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
+    color?: string;
+  }>;
+}
+
+/** A three-dimensional coordinate graph: an x-axis, a y-axis and a z-axis meeting at the origin (or, for a range without zero, at its end nearest zero), drawn in isometric projection, the same fixed view as cubes and cylinders: z straight up the page, x toward the lower left and y toward the lower right, each 30° below the horizontal, the three 120° apart. Each axis is drawn the same length whatever its range. Points (at most 1000) are plotted at their x, y and z, optionally with dashed guide lines to the x,y plane. */
+export interface XyzGraphDescription {
+  /** The graph type: which kind of graph the description draws. */
+  type: "xyz-graph";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
+  version?: 1;
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  title?: string;
+  /** A label for the x-axis, as plain text, at most 200 characters. */
+  xAxisLabel?: string;
+  /** A label for the y-axis, as plain text, at most 200 characters. */
+  yAxisLabel?: string;
+  /** A label for the z-axis, as plain text, at most 200 characters. */
+  zAxisLabel?: string;
+  /** The coordinate graph's x axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. */
+  xAxis: {
+    /** The lowest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and below the axis's max. */
+    min: number;
+    /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
+    max: number;
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    tickSpacing?: number;
+    /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
+    showTickLabels?: boolean;
+  };
+  /** The coordinate graph's y axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. */
+  yAxis: {
+    /** The lowest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and below the axis's max. */
+    min: number;
+    /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
+    max: number;
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    tickSpacing?: number;
+    /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
+    showTickLabels?: boolean;
+  };
+  /** The three-dimensional coordinate graph's upright z axis: its range from min to max, and optionally its tick spacing and whether its ticks are labeled. */
+  zAxis: {
+    /** The lowest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and below the axis's max. */
+    min: number;
+    /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
+    max: number;
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    tickSpacing?: number;
+    /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
+    showTickLabels?: boolean;
+  };
+  /** Whether a three-dimensional coordinate graph draws dashed guide lines from each point straight to the x,y plane, and from there to the x-axis and the y-axis, so the point's depth can be read; off unless true. */
+  guideLines?: boolean;
+  /** The points marked on the graph, each at its position (its value on a number line, its x and y on a coordinate graph) and optionally with a label and a color. Points may share a position: each is drawn, and their labels are placed apart where the drawing has room. */
+  points?: ReadonlyArray<{
+    /** A position along the x-axis, in its own numbers: a point's or a segment end's x coordinate, inside the x-axis range, ends included. */
+    x: number;
+    /** A position along the y-axis, in its own numbers: a point's or a segment end's y coordinate, inside the y-axis range, ends included. */
+    y: number;
+    /** A position along the z-axis, in its own numbers: a point's z coordinate, inside the z-axis range, ends included. */
+    z: number;
     /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
     /** The color of this one point, segment, bar or measured object: a color name or a hex code such as #0072b2. */
@@ -281,4 +345,4 @@ export interface CircleDescription {
 }
 
 /** Any one graph description. */
-export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription;
+export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | XyzGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription;

@@ -695,3 +695,31 @@ describe("the x,y graph, registered (graph-library NLC TICKET-003)", () => {
     expect(lockedDown(definition.properties, "xy-graph")).toEqual([]);
   });
 });
+
+describe("the x,y,z graph, registered (graph-library NLC TICKET-004)", () => {
+  const definition = definitions["xyz-graph"]!;
+
+  it("follows the vocabulary, stage and applicability rules, its checks reading real paths", () => {
+    expect(vocabularyProblems(definition.properties)).toEqual([]);
+    expect(stageProblems(definition)).toEqual([]);
+    expect(applicabilityProblems(definition)).toEqual([]);
+    expect(definition.checks.flatMap((check) => check.inputs)).toContain("points/*/z");
+  });
+
+  it("takes its own terms and the shared title and three axis labels, with the shared label and color on each point", () => {
+    expect(Object.keys(propertiesOf("xyz-graph", definitions)).sort()).toEqual(["guideLines", "points", "title", "xAxis", "xAxisLabel", "yAxis", "yAxisLabel", "zAxis", "zAxisLabel"]);
+    const spec = definition.properties["points"]!;
+    if (spec.kind !== "array" || spec.items.kind !== "object") throw new Error("points is not a list of objects");
+    expect(spec.items.properties["label"]).toBe(sharedProperties.label);
+    expect(spec.items.properties["color"]).toBe(sharedProperties.color);
+  });
+
+  it("defines points, x and y once with the other coordinate graphs, and every term once among the registered types (GSV-REQ-015)", () => {
+    expect(definition.properties["points"]!.description).toBe(definitions["xy-graph"]!.properties["points"]!.description);
+    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties)])).toEqual([]);
+  });
+
+  it("is frozen all the way down, with no prototypes", () => {
+    expect(lockedDown(definition.properties, "xyz-graph")).toEqual([]);
+  });
+});

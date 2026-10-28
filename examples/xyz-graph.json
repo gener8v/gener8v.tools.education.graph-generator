@@ -1,0 +1,48 @@
+{
+  "type": "xyz-graph",
+  "title": "Corners of a box",
+  "xAxis": {
+    "min": 0,
+    "max": 5,
+    "tickSpacing": 1,
+    "showTickLabels": true
+  },
+  "yAxis": {
+    "min": 0,
+    "max": 5,
+    "tickSpacing": 1,
+    "showTickLabels": true
+  },
+  "zAxis": {
+    "min": 0,
+    "max": 5,
+    "tickSpacing": 1,
+    "showTickLabels": true
+  },
+  "guideLines": true,
+  "points": [
+    {
+      "x": 1,
+      "y": 2,
+      "z": 3,
+      "label": "A",
+      "color": "red"
+    },
+    {
+      "x": 4,
+      "y": 1,
+      "z": 2,
+      "label": "B"
+    },
+    {
+      "x": 2,
+      "y": 5,
+      "z": 1,
+      "label": "C",
+      "color": "green"
+    }
+  ],
+  "xAxisLabel": "Length",
+  "yAxisLabel": "Width",
+  "zAxisLabel": "Height"
+}

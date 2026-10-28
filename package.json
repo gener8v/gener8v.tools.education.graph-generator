@@ -76,6 +76,10 @@
       "types": "./dist/xy-graph.d.ts",
       "default": "./dist/xy-graph.js"
     },
+    "./xyz-graph": {
+      "types": "./dist/xyz-graph.d.ts",
+      "default": "./dist/xyz-graph.js"
+    },
     "./schema.json": "./dist/schema.json",
     "./vocabulary.json": "./dist/vocabulary.json",
     "./package.json": "./package.json"

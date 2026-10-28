@@ -8,6 +8,7 @@ import { pictographLayout } from "./pictograph";
 import { rulerLayout } from "./ruler";
 import type { Scene } from "./scene";
 import { xyGraphLayout } from "./xy-graph";
+import { xyzGraphLayout } from "./xyz-graph";
 
 /**
  * A graph type's layout: a pure function from a normalized description of that type, and which of
@@ -37,6 +38,7 @@ export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, Layout>>, {
     "number-line": numberLineLayout,
     "xy-graph": xyGraphLayout,
+    "xyz-graph": xyzGraphLayout,
     "line-graph": lineGraphLayout,
     "bar-graph": barGraphLayout,
     pictograph: pictographLayout,
