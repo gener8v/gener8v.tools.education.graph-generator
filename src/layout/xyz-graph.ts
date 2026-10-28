@@ -152,77 +152,100 @@ interface TickText {
   readonly box: Box;
 }
 
+/** The rules every tick label's candidates share, worked out once from the figure. */
+interface TickRules {
+  /** Whether an x or y label tries above its axis first: where the z-axis runs below the meeting point. */
+  readonly aboveFirst: boolean;
+  /** Whether a z label tries the right of its axis first: where the figure has more room there. */
+  readonly rightFirst: boolean;
+  /** How far left or right of the meeting point a label clears the slanted axes, if they slope. */
+  readonly wedge: number | undefined;
+}
+
 /**
- * The tick labels (NLC-REQ-004, NLC-REQ-039), each placed by `placeLabel` clear of the axes, their
- * ticks and every tick label placed before it (AD-010), at its first clear candidate, else its
- * first. An x or a y label goes straight below its tick, moved down just enough to clear the
- * slanted line, by half its width times the line's slope on the page, as `drawAxis` does; then
- * above it. Where the z-axis runs below the meeting point, between the x-axis and the y-axis, the
- * x and y labels go above their axes first, leaving that wedge to the z labels. A z label goes
- * beside its tick, on the left of the z-axis unless the figure has more room on its right, then on
- * the other side. A label at the point where the axes meet may also go in the open wedge left or
- * right of it, between the slanted axes. The meeting point is labeled once per value: where the
- * axes meet at (0, 0, 0), the origin is labeled "0" once, by the first axis that shows its tick
- * labels, and the other axes leave their 0 unlabeled. Values come from `tickLabel`, never rounded
- * again (DS-001).
+ * The rules for `axes` in `frame`. Where the z-axis runs below the meeting point, between the x-axis
+ * and the y-axis, the x and y labels go above their axes first, leaving that wedge to the z labels.
+ * A z label goes on the left of the z-axis unless the figure has more than 1 unit more room on its
+ * right. The open wedges left and right of the meeting point lie between the slanted axes: a label
+ * level with it clears them `wedge` out, from the least slope among them.
+ */
+function tickRules(axes: readonly AxisGeometry[], frame: Frame): TickRules {
+  const height = defaultStyle.fontSizes.tickLabel * LINE_HEIGHT;
+  const zAxis = axes.find((axis) => axis.name === "z")!;
+  // Left on a tie, which the figure's symmetric box gives up to rounding.
+  const zSide = zAxis.from[0];
+  let slope = Infinity;
+  for (const { across, direction } of axes) if (across) slope = Math.min(slope, Math.abs(direction[1] / direction[0]));
+  return {
+    aboveFirst: zAxis.axis.min < frame.meet.z,
+    rightFirst: frame.right - zSide > zSide - frame.left + 1,
+    wedge: slope > 1e-9 && Number.isFinite(slope) ? (height / 2 + GAP) / slope : undefined,
+  };
+}
+
+/**
+ * Where a tick label `width` wide may go, in order, as top-left corners held inside the side margins.
+ * An x or a y label goes straight below its tick, moved down just enough to clear the slanted line,
+ * by half its width times the line's slope on the page, as `drawAxis` does; then above it (above
+ * first by `rules`). A z label goes beside its tick, left then right (right first by `rules`). A
+ * label where the axes meet may also go in the open wedge left or right of it. Then each side one
+ * step farther out: a row for an x or y label, a gap for a z label (code review CR-001).
+ */
+function tickCandidates(axis: AxisGeometry, tick: number, width: number, meeting: boolean, rules: TickRules): Array<{ x: number; y: number }> {
+  const height = defaultStyle.fontSizes.tickLabel * LINE_HEIGHT;
+  const half = defaultStyle.tickLength / 2;
+  const [ux, uy] = axis.direction;
+  const [tx, ty] = axis.at(tick);
+  let candidates: Array<{ x: number; y: number }>;
+  if (axis.across) {
+    const clear = half * Math.abs(ux) + GAP + (Math.abs(uy / ux) * width) / 2;
+    const [below, above] = [
+      { x: tx - width / 2, y: ty + clear },
+      { x: tx - width / 2, y: ty - clear - height },
+    ];
+    candidates = rules.aboveFirst ? [above, below] : [below, above];
+  } else {
+    const clear = half * Math.abs(uy) + GAP + (Math.abs(ux / uy) * height) / 2;
+    const [left, right] = [
+      { x: tx - clear - width, y: ty - height / 2 },
+      { x: tx + clear, y: ty - height / 2 },
+    ];
+    candidates = rules.rightFirst ? [right, left] : [left, right];
+  }
+  if (meeting && rules.wedge !== undefined) {
+    candidates.push({ x: tx - rules.wedge - width, y: ty - height / 2 }, { x: tx + rules.wedge, y: ty - height / 2 });
+  }
+  const [stepX, stepY] = axis.across ? [0, height + GAP] : [width / 2 + GAP, 0];
+  for (const { x, y } of candidates.slice(0, 2)) {
+    candidates.push({ x: x + Math.sign(x + width / 2 - tx) * stepX, y: y + Math.sign(y + height / 2 - ty) * stepY });
+  }
+  return candidates.map(({ x, y }) => ({ x: holdX(x, width), y }));
+}
+
+/**
+ * The tick labels (NLC-REQ-004, NLC-REQ-039), each placed by `placeLabel` at the first of its
+ * `tickCandidates` clear of the axes, their ticks, the axis names and every label placed before it
+ * (AD-010). A label with no clear place is left out, its tick still drawn, so no label covers another
+ * (code review CR-001). The meeting point is labeled once per value: where the axes meet at (0, 0, 0),
+ * the origin is labeled "0" once, by the first axis that shows its tick labels and finds it room, and
+ * the other axes leave their 0 unlabeled. Values come from `tickLabel`, never rounded again (DS-001).
  */
 // @spec NLC-REQ-035, NLC-REQ-039
 function tickLabels(axes: readonly AxisGeometry[], frame: Frame, obstacles: Obstacle[]): TickText[] {
   const tickFont = defaultStyle.fontSizes.tickLabel;
   const height = tickFont * LINE_HEIGHT;
-  const half = defaultStyle.tickLength / 2;
-  const zAxis = axes.find((axis) => axis.name === "z")!;
-  const aboveFirst = zAxis.axis.min < frame.meet.z;
-  // Left on a tie, which the figure's symmetric box gives up to rounding.
-  const zSide = zAxis.from[0];
-  const rightFirst = frame.right - zSide > zSide - frame.left + 1;
-  // The open wedges left and right of the meeting point lie between the slanted axes: a box centered
-  // level with it clears them this far out, from the least slope among them.
-  let slope = Infinity;
-  for (const { across, direction } of axes) if (across) slope = Math.min(slope, Math.abs(direction[1] / direction[0]));
-  const wedge = slope > 1e-9 && Number.isFinite(slope) ? (height / 2 + GAP) / slope : undefined;
+  const rules = tickRules(axes, frame);
   // The texts already written at the meeting point.
   const atMeeting = new Set<string>();
-
   const placed: TickText[] = [];
   for (const axis of axes) {
     if (!axis.show) continue;
-    const [ux, uy] = axis.direction;
     for (const tick of axis.ticks.ticks) {
       const text = tickLabel(tick, axis.ticks.spacing);
       const meeting = tick === frame.meet[axis.name];
       if (meeting && atMeeting.has(text)) continue;
       const width = textWidth(text, tickFont);
-      const [tx, ty] = axis.at(tick);
-      let candidates: Array<{ x: number; y: number }>;
-      if (axis.across) {
-        const clear = half * Math.abs(ux) + GAP + (Math.abs(uy / ux) * width) / 2;
-        const [below, above] = [
-          { x: tx - width / 2, y: ty + clear },
-          { x: tx - width / 2, y: ty - clear - height },
-        ];
-        candidates = aboveFirst ? [above, below] : [below, above];
-      } else {
-        const clear = half * Math.abs(uy) + GAP + (Math.abs(ux / uy) * height) / 2;
-        const [left, right] = [
-          { x: tx - clear - width, y: ty - height / 2 },
-          { x: tx + clear, y: ty - height / 2 },
-        ];
-        candidates = rightFirst ? [right, left] : [left, right];
-      }
-      if (meeting && wedge !== undefined) {
-        candidates.push({ x: tx - wedge - width, y: ty - height / 2 }, { x: tx + wedge, y: ty - height / 2 });
-      }
-      // Then each side one step farther out: a row farther for an x or y label, a gap farther for a z label.
-      const [stepX, stepY] = axis.across ? [0, height + GAP] : [width / 2 + GAP, 0];
-      for (const { x, y } of candidates.slice(0, 2)) {
-        const [dx, dy] = [Math.sign(x + width / 2 - tx) * stepX, Math.sign(y + height / 2 - ty) * stepY];
-        candidates.push({ x: x + dx, y: y + dy });
-      }
-      const held = candidates.map(({ x, y }) => ({ x: holdX(x, width), y }));
-      // A label with no clear place is left out, its tick still drawn, so no tick label covers another
-      // (code review CR-001).
-      const box = placeLabel({ width, height }, held, obstacles);
+      const box = placeLabel({ width, height }, tickCandidates(axis, tick, width, meeting, rules), obstacles);
       if (box === undefined) continue;
       if (meeting) atMeeting.add(text);
       obstacles.push(box);
@@ -264,8 +287,10 @@ interface AxisText {
  * axis's name when it is absent or blank, wrapped to `AXIS_LABEL_WIDTH` and cut to
  * `AXIS_LABEL_MAX_LINES` (`textBlock`). Each goes just beyond its axis's max end: for the x-axis and
  * y-axis level with the end, then along the axis, then below or above the end; for the z-axis above
- * its end, then higher, clear of a tick label there, then beside it. Each is placed by `placeLabel`
- * `GAP / 2` clear of `obstacles`, else at its first candidate, and held inside the side margins.
+ * its end, then higher, clear of the top tick's label, then beside it; then each of those a row
+ * higher and a row lower. Each is placed by `placeLabel` `GAP / 2` clear of `obstacles`, else at its
+ * first candidate, and held inside the side margins. Placed before the tick labels, which give way
+ * to it (code review CR-001).
  */
 // @spec NLC-REQ-036
 function axisLabels(graph: XyzGraph, axes: readonly AxisGeometry[], obstacles: Obstacle[]): AxisText[] {
@@ -343,15 +368,16 @@ function pointLabels(graph: XyzGraph, frame: Frame, obstacles: Obstacle[]): Plac
  * - `frameOf` scales every value into drawing units and projects it with `isometric()` only, the
  *   one fixed view of cubes and cylinders (NLC-REQ-035); `axesOf` gives each axis its ends and its
  *   ticks, at its own spacing or the default `describe` states (NLC-REQ-039).
- * - `tickLabels` places each tick label clear of the axes and the labels before it (AD-010), the
- *   origin's "0" once.
+ * - `axisLabels` first, so every axis keeps its name: each placed clear of the axes, their ticks and
+ *   the names before it, else at its first candidate (code review CR-001).
+ * - `tickLabels` places each tick label clear of those and the labels before it (AD-010), the
+ *   origin's "0" once; a tick label with no clear place is left out.
  * - `guideSegments`, with `guideLines`: dashed lines from each point to the x,y plane and on to the
  *   x-axis and y-axis (NLC-REQ-038), in the grid's color and width, under the axes.
  * - The points: circle markers at their projected (x, y, z), each in its color or the accent
  *   (NLC-REQ-037, NLC-REQ-011).
- * - `axisLabels` and `pointLabels`: labels placed clear of the axes, ticks, guide lines, markers and
- *   the labels before them, held inside the side margins. A label with no clear place takes its
- *   first candidate (NLC OQ-005).
+ * - `pointLabels`: labels placed clear of everything before them, held inside the side margins. A
+ *   label with no clear place takes its first candidate (NLC OQ-005).
  *
  * The figure is laid out first, then moved down as a whole so its topmost mark sits below the title;
  * the drawing's height is its lowest mark plus the margin. Every number passes through `fmt()`

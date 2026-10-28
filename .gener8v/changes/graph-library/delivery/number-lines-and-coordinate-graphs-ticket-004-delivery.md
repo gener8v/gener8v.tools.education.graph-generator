@@ -267,3 +267,16 @@ The specification's `## @spec Coverage` table has the matching rows.
 - `pnpm test` ×3, 1,636 tests each run.
 
 An earlier run failed one existing timing test, `tests/layout/kit/text.test.ts` "stops early, so caller-sized text costs little" (1,009 ms against a 1,000 ms bound). That test is unrelated to this change, and it passed on the reruns. Sizes: `./xyz-graph` 21.27 kB of 25; `./core` 25.9 kB of 40.
+
+### graph-library/number-lines-and-coordinate-graphs-ticket-004-quality-review/QR-003 — `tickLabels` mixed several placement rules
+
+- **Changed:** `src/layout/xyz-graph.ts`: `tickRules` (above-first, right-first, the meeting-point gap) and `tickCandidates` (one label's ordered candidates) are extracted. `tickLabels` keeps the meeting-point deduplication and placement. The doc comments of `axisLabels` and `xyzGraphLayout` now describe the CR-001 order: names first, then tick labels, which are left out with no clear place.
+- **Behaviour:** unchanged. The 8,000-graph sweep gives the same counts (0 overlapping; 1,980 of 116,159 tick labels left out).
+- **QR-001 and QR-002** are resolved by the CR-001 amendment above. QR-004 is deferred (a kit refactor when a third type needs it); QR-005 is dismissed (it matches the x,y graph's pattern).
+- **Approved by:** Engineer — Thomas Eaves, 2026-10-28.
+
+**Re-verification (2026-10-28):** all exit 0:
+- `pnpm generate`, lint, typecheck, bench, build, `check:dist`, `check:deps`, `check:images`, `check:changesets`, size, publint, attw and both audits;
+- `pnpm test` ×3, 1,636 tests each run.
+
+`./xyz-graph` is 21.29 kB of 25.
