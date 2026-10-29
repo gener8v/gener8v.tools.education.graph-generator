@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dataGraphProperties } from "../../src/core/definitions/categories";
+import { unitProperty } from "../../src/core/definitions/figure";
 import { definitions, propertiesOf, scopedProperty, scopedPropertyMaps } from "../../src/core/definitions/index";
 import { type ScopedPropertySpec, sharedProperties } from "../../src/core/definitions/shared";
 import {
@@ -746,7 +747,11 @@ describe("the square, registered (graph-library GSS TICKET-003)", () => {
   });
 
   it("defines unit once with the circle, and every term once among the registered types (GSV-REQ-015)", () => {
-    expect(definition.properties["unit"]).toEqual(definitions.circle!.properties["unit"]);
+    // One frozen, prototype-free object shared by identity, not a copy per figure (security review SEC-001).
+    expect(definition.properties["unit"]).toBe(definitions.circle!.properties["unit"]);
+    expect(definition.properties["unit"]).toBe(unitProperty);
+    expect(Object.isFrozen(unitProperty)).toBe(true);
+    expect(Object.getPrototypeOf(unitProperty)).toBeNull();
     expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties)])).toEqual([]);
   });
 

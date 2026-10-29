@@ -220,3 +220,9 @@ Run in the main session on 2026-10-29, after the code was written.
 - QR-003: the square's at-limit Scene bound names its parts (`TITLE_MAX_LINES + LABELS * LABEL_MAX_LINES + OUTLINE + MARKS`).
 **Files:** `src/layout/circle.ts`, `src/layout/kit/figure-labels.ts`, `tests/layout/circle.test.ts`, `tests/layout/kit/figure-labels.test.ts`, `tests/layout/square.test.ts`, `.gener8v/specifications/geometric-shapes-and-solids.md`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 1,706 passed each; gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-003-security-review/SEC-001 — the shared `unit` spec was copied per figure
+
+**Change:** `src/core/definitions/figure.ts` builds the `unit` term with `/* @__PURE__ */ defineProperties(…)` and exports `unitProperty = figureTerms.unit`: frozen, null prototype, and the same object in the circle's and the square's properties (not a bare `Object.freeze`, which would keep `Object.prototype`). `tests/core/definitions.test.ts` asserts identity, frozenness and the null prototype (a spread copy fails it). This supersedes DEL-002's "plain object literal".
+**Files:** `src/core/definitions/figure.ts`, `tests/core/definitions.test.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,706 passed each; sizes unchanged (`./square` 16.51 kB, `./circle` 16.85 kB, `./core` 26.44 kB); `pnpm audit` and `--prod` clean; gener8v-state lint 0 errors.
