@@ -3,7 +3,7 @@ import { sourceOf } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt } from "./kit/format";
-import { GAP, LABEL_MAX_LINES, type LabelRequest, type Point, besideHorizontal, besideVertical, placeLabels, segmentNode } from "./kit/figure-labels";
+import { GAP, type LabelRequest, type Point, besideHorizontal, besideVertical, placeLabels, segmentNode } from "./kit/figure-labels";
 import type { Obstacle, Segment } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
 import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
@@ -14,8 +14,6 @@ import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 export const DRAWN_RADIUS = 110;
 
 const CENTER_X = SCENE_WIDTH / 2;
-/** Re-exported: the label line cap now lives with the kit's label code, shared with the square. */
-export { LABEL_MAX_LINES };
 const CENTER_MARK_RADIUS = 3;
 /** The outline as this many straight pieces, as obstacles for label placement. */
 const OUTLINE_PIECES = 72;

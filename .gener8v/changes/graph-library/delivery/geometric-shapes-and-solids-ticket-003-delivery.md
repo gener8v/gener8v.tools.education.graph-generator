@@ -211,3 +211,12 @@ Run in the main session on 2026-10-29, after the code was written.
 **Change:** The term's description now says "a small right-angle mark in each corner", matching the L-shaped polyline the layout draws; `pnpm generate` carried it into the generated types, schema, tool schema and vocabulary.
 **Files:** `src/core/definitions/square.ts`, `src/generated/description.ts`, `src/generated/schema.json`, `src/generated/tool-schema.json`, `src/generated/vocabulary.json`
 **Re-verification:** full verification loop — generate, lint, typecheck, vitest ×3 (1,706 passed each), bench, build, check:dist, check:deps, check:images, check:changesets, size, publint, attw, audit, audit --prod — all exit 0; gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-003-quality-review/QR-001, QR-002, QR-003 — kit naming and an unexplained bound
+
+**Change:**
+- QR-001: `src/layout/circle.ts` no longer re-exports `LABEL_MAX_LINES`; the circle test imports it from the kit (its only change).
+- QR-002: the kit exports `LabelBlock` (a `LabelSize` with its lines); `labelSize` is renamed `labelBlock` and returns it; `placeLabels` holds unplaced labels as `LabelBlock[]`.
+- QR-003: the square's at-limit Scene bound names its parts (`TITLE_MAX_LINES + LABELS * LABEL_MAX_LINES + OUTLINE + MARKS`).
+**Files:** `src/layout/circle.ts`, `src/layout/kit/figure-labels.ts`, `tests/layout/circle.test.ts`, `tests/layout/kit/figure-labels.test.ts`, `tests/layout/square.test.ts`, `.gener8v/specifications/geometric-shapes-and-solids.md`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,706 passed each; gener8v-state lint 0 errors.

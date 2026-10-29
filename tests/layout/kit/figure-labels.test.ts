@@ -6,7 +6,7 @@ import {
   LABEL_MAX_WIDTH,
   besideHorizontal,
   besideVertical,
-  labelSize,
+  labelBlock,
   placeLabels,
   segmentNode,
   type Bounds,
@@ -20,23 +20,23 @@ const fontSize = defaultStyle.fontSizes.label;
 const bounds: Bounds = { left: 0, top: 0, right: 400, bottom: 300 };
 const attr = (node: SceneNode, name: string) => node.attrs.find(([key]) => key === name)?.[1];
 
-describe("labelSize", () => {
+describe("labelBlock", () => {
   it("measures one line by its width and the line height", () => {
-    const size = labelSize("5 cm", fontSize);
+    const size = labelBlock("5 cm", fontSize);
     expect(size.lines).toEqual(["5 cm"]);
     expect(size.width).toBe(textWidth("5 cm", fontSize));
     expect(size.height).toBe(fontSize * LINE_HEIGHT);
   });
 
   it("wraps at the label width and cuts at the line cap, ending in an ellipsis", () => {
-    const size = labelSize("word ".repeat(200), fontSize);
+    const size = labelBlock("word ".repeat(200), fontSize);
     expect(size.lines).toHaveLength(LABEL_MAX_LINES);
     expect(size.lines.at(-1)!.endsWith("…")).toBe(true);
     expect(size.width).toBeLessThanOrEqual(LABEL_MAX_WIDTH + 1);
   });
 
   it("takes text of any length without spreading it into arguments", () => {
-    expect(() => labelSize("a".repeat(500_000), fontSize)).not.toThrow();
+    expect(() => labelBlock("a".repeat(500_000), fontSize)).not.toThrow();
   });
 });
 

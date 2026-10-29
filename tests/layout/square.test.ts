@@ -9,7 +9,7 @@ import { checkScene } from "../../src/layout/kit/check";
 import { GAP, LABEL_MAX_LINES } from "../../src/layout/kit/figure-labels";
 import { type Box, type Obstacle, placeLabel } from "../../src/layout/kit/labels";
 import { textWidth } from "../../src/layout/kit/text";
-import { LINE_HEIGHT } from "../../src/layout/kit/title";
+import { LINE_HEIGHT, TITLE_MAX_LINES } from "../../src/layout/kit/title";
 import type { Scene, SceneNode } from "../../src/layout/scene";
 import { DRAWN_SIDE, RIGHT_ANGLE_MARK, squareLayout } from "../../src/layout/square";
 import { wordsOf } from "../fixtures/plain-text";
@@ -224,8 +224,13 @@ describe("square labels (GSS-REQ-008, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", (
       sideLabelText: wordsOf(CALLER_TEXT_LIMIT),
       showRightAngles: true,
     });
-    expect(texts(scene).length).toBeLessThanOrEqual(3 + 4 * LABEL_MAX_LINES);
-    expect(scene.nodes.length).toBeLessThanOrEqual(3 + 4 * LABEL_MAX_LINES + 5);
+    // At most the title's and each of the four labels' capped lines, plus the outline and the four
+    // right-angle marks.
+    const LABELS = 4;
+    const OUTLINE = 1;
+    const MARKS = 4;
+    expect(texts(scene).length).toBeLessThanOrEqual(TITLE_MAX_LINES + LABELS * LABEL_MAX_LINES);
+    expect(scene.nodes.length).toBeLessThanOrEqual(TITLE_MAX_LINES + LABELS * LABEL_MAX_LINES + OUTLINE + MARKS);
   });
 
   it("never overlaps a label with another label, a side or the title (GSS-NFR-003, this figure)", () => {

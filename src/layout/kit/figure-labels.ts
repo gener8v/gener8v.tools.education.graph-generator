@@ -26,9 +26,14 @@ export interface LabelSize {
   readonly height: number;
 }
 
+/** A label's text broken into lines, with the size of the box they fill. */
+export interface LabelBlock extends LabelSize {
+  readonly lines: string[];
+}
+
 /** A label's text broken into at most `LABEL_MAX_LINES` lines, with the size of its box. */
 // @spec GSS-REQ-006, GSS-REQ-008
-export function labelSize(text: string, fontSize: number): { lines: string[]; width: number; height: number } {
+export function labelBlock(text: string, fontSize: number): LabelBlock {
   // `textBlock` measures with a loop, never `Math.max(...)`: no caller-sized spread (SEC-001).
   return textBlock(text, LABEL_MAX_WIDTH, fontSize, LABEL_MAX_LINES);
 }
@@ -94,10 +99,10 @@ export function placeLabels(
   const fontSize = defaultStyle.fontSizes.label;
   const color = defaultStyle.colors.text;
   const nodes: SceneNode[] = [];
-  const unplaced: Array<ReturnType<typeof labelSize>> = [];
+  const unplaced: LabelBlock[] = [];
   for (const request of requests) {
     if (request.text === "") continue;
-    const size = labelSize(request.text, fontSize);
+    const size = labelBlock(request.text, fontSize);
     const inside = (p: Point) =>
       p.x >= bounds.left && p.x + size.width <= bounds.right && p.y >= bounds.top && p.y + size.height <= bounds.bottom;
     const box = placeLabel(size, request.candidates(size).filter(inside), obstacles);

@@ -157,7 +157,7 @@ The type-specific vocabulary terms this area adds to the GSV single definition (
 | GSS-REQ-005 | `src/core/definitions/circle.ts`:circle; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-006 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-007 | `src/core/definitions/square.ts`:square; `src/layout/square.ts`:squareLayout; `src/react/graphs/SquareGraph.tsx`:SquareGraph |
-| GSS-REQ-008 | `src/core/definitions/square.ts`:squareLabels, square; `src/layout/kit/figure-labels.ts`:labelSize, placeLabels; `src/layout/square.ts`:squareLayout |
+| GSS-REQ-008 | `src/core/definitions/square.ts`:squareLabels, square; `src/layout/kit/figure-labels.ts`:labelBlock, placeLabels; `src/layout/square.ts`:squareLayout |
 | GSS-REQ-009 | `src/core/definitions/square.ts`:square; `src/layout/square.ts`:squareLayout |
 | GSS-REQ-032 | `src/layout/kit/isometric.ts`:isometric, faceVisible, isoEllipse (the viewpoint only; the cube and cylinder layouts, TICKET-006 and TICKET-007, draw from it) |
 | GSS-REQ-033 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout |

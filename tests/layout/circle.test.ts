@@ -11,7 +11,8 @@ import { type Box, type Obstacle, placeLabel } from "../../src/layout/kit/labels
 import { measurementLabel } from "../../src/layout/kit/measure";
 import { textWidth } from "../../src/layout/kit/text";
 import { LINE_HEIGHT } from "../../src/layout/kit/title";
-import { DRAWN_RADIUS, LABEL_MAX_LINES, besideOutline, circleLayout } from "../../src/layout/circle";
+import { DRAWN_RADIUS, besideOutline, circleLayout } from "../../src/layout/circle";
+import { LABEL_MAX_LINES } from "../../src/layout/kit/figure-labels";
 import type { Scene, SceneNode } from "../../src/layout/scene";
 
 const LABEL_SIZE = 14;
