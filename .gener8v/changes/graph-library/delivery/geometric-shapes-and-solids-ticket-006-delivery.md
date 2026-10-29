@@ -154,4 +154,8 @@ Run in the main session on 2026-10-29, after the code was written.
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-006-code-review/CR-001 (= quality-review/QR-002) — one dash constant
+
+**Change:** `src/layout/xyz-graph.ts`'s `GUIDE_DASH` is now the isometric kit's `HIDDEN_DASH`, the one dash of the shared viewpoint (supersedes DEL-003's two separate constants).
+**Files:** `src/layout/xyz-graph.ts`, `src/layout/kit/isometric.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,951 passed each; 1,208 Scenes hash identically before and after; gener8v-state lint 0 errors.

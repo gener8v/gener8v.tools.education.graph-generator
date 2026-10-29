@@ -67,8 +67,9 @@ export function faceVisible(normal: Point3): boolean {
 
 /**
  * The dash pattern of a solid's hidden lines (GSS-REQ-024, GSS-REQ-028), an SVG `stroke-dasharray`
- * presentation attribute (AD-011): the same pattern as the x,y,z graph's guide lines (`GUIDE_DASH`),
- * so every dashed line in the solids' viewpoint reads alike.
+ * presentation attribute (AD-011). The one dash of the shared viewpoint: the x,y,z graph's guide
+ * lines (`GUIDE_DASH`) are this constant, so every dashed line in it reads alike (GSS TICKET-006
+ * code review CR-001).
  */
 // @spec GSS-REQ-024
 export const HIDDEN_DASH = "4 3";

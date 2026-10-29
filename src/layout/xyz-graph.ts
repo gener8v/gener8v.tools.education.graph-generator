@@ -6,7 +6,7 @@ import { defaultStyle } from "../core/style";
 import { niceTicks } from "../core/value-scale";
 import { drawAxis, drawLine } from "./kit/axis";
 import { fmt } from "./kit/format";
-import { type Point3, isometric } from "./kit/isometric";
+import { HIDDEN_DASH, type Point3, isometric } from "./kit/isometric";
 import { type Box, type Obstacle, type PlacedLabel, type Segment, placeElementLabel, placeLabel } from "./kit/labels";
 import { MARKER_REACH, drawMarker } from "./kit/markers";
 import { textWidth } from "./kit/text";
@@ -20,8 +20,12 @@ import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 export { AXIS_LENGTH };
 /** The width an axis label wraps to, at most `AXIS_LABEL_MAX_LINES` lines. */
 export const AXIS_LABEL_WIDTH = 120;
-/** The dash pattern of a guide line (NLC-REQ-038). */
-export const GUIDE_DASH = "4 3";
+/**
+ * The dash pattern of a guide line (NLC-REQ-038): the isometric kit's one dash, which a cube's
+ * hidden edges use too, so every dashed line in the shared viewpoint reads alike (GSS TICKET-006
+ * code review CR-001).
+ */
+export const GUIDE_DASH = HIDDEN_DASH;
 /** How many rows outward from a point its label may move, to clear the labels near it. */
 const LABEL_ROWS = 2;
 /** Space between a tick, an axis's end or a marker and its label. */
