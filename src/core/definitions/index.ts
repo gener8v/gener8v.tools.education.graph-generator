@@ -1,6 +1,7 @@
 import { dataGraphProperties } from "./categories";
 import { barGraph } from "./bar-graph";
 import { circle } from "./circle";
+import { cube } from "./cube";
 import { lineGraph } from "./line-graph";
 import { numberLine } from "./number-line";
 import { pictograph } from "./pictograph";
@@ -37,6 +38,7 @@ export const definitions: Registry = /* @__PURE__ */ Object.freeze(
     ruler,
     square,
     triangle,
+    cube,
   } satisfies Partial<Record<GraphType, GraphTypeDefinition>>),
 );
 

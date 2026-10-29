@@ -63,6 +63,14 @@
       "definition": "Text shown in place of the diameter label, at most 200 characters, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
       "kind": "string"
     },
+    "edgeLabelText": {
+      "definition": "Text shown in place of the edge label, at most 200 characters, such as \"s\" or \"?\"; given alone it labels one edge, and with labelEdges \"three\" it labels all three edges meeting at the front corner. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text with no clear place beside its edge is placed below the figure, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+      "kind": "string"
+    },
+    "edgeLength": {
+      "definition": "The length of each edge of the cube, from 0.001 to 1,000,000.",
+      "kind": "number"
+    },
     "end": {
       "definition": "The ruler mark the object ends at, after its start, given as the start is.",
       "kind": "number"
@@ -74,6 +82,10 @@
     "guideLines": {
       "definition": "Whether a three-dimensional coordinate graph draws dashed guide lines from each point straight to the x,y plane, and from there to the x-axis and the y-axis, so the point's depth can be read; off unless true.",
       "kind": "boolean"
+    },
+    "hiddenEdges": {
+      "definition": "How the three edges hidden behind the cube are drawn: dashed (the default) or omitted.",
+      "kind": "enum"
     },
     "label": {
       "definition": "A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole.",
@@ -90,6 +102,10 @@
     "labelDiameter": {
       "definition": "Whether the diameter is labeled with its measurement; a labeled diameter is drawn.",
       "kind": "boolean"
+    },
+    "labelEdges": {
+      "definition": "Which edges are labeled with their length: one edge (the bottom right) or the three visible edges meeting at the front corner. Without it, no edge is labeled unless the edge label text is given.",
+      "kind": "enum"
     },
     "labelRadius": {
       "definition": "Whether the radius is labeled with its measurement; a labeled radius is drawn.",
@@ -1691,6 +1707,80 @@
         "angle B label text needs the angles labeled",
         "angle C label text needs the angles labeled"
       ]
+    },
+    "cube": {
+      "title": "Cube",
+      "description": "A cube drawn from its edge length, seen from one fixed viewpoint above a front corner (isometric), so all twelve edges are drawn the same length. Its three hidden edges are dashed, or can be left out. One edge, or the three visible edges meeting at the front corner, can be labeled with the length and unit or with custom text.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "cube"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "lineColor": {
+          "kind": "color",
+          "required": false
+        },
+        "edgeLength": {
+          "kind": "number",
+          "required": true,
+          "range": {
+            "min": 0.001,
+            "max": 1000000
+          }
+        },
+        "hiddenEdges": {
+          "kind": "enum",
+          "required": false,
+          "values": [
+            "dashed",
+            "omitted"
+          ],
+          "valueDescriptions": {
+            "dashed": "Draw the three hidden edges, behind the cube, as dashed lines.",
+            "omitted": "Leave the three hidden edges out, drawing only the nine visible edges."
+          }
+        },
+        "labelEdges": {
+          "kind": "enum",
+          "required": false,
+          "values": [
+            "one",
+            "three"
+          ],
+          "valueDescriptions": {
+            "one": "Label one edge, the bottom right edge, with its length.",
+            "three": "Label the three visible edges that meet at the front corner, each with its length."
+          }
+        },
+        "edgeLabelText": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "unit": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 20
+        }
+      },
+      "derivations": [],
+      "checks": []
     }
   },
   "colors": {

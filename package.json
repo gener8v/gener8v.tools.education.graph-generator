@@ -84,6 +84,10 @@
       "types": "./dist/triangle.d.ts",
       "default": "./dist/triangle.js"
     },
+    "./cube": {
+      "types": "./dist/cube.d.ts",
+      "default": "./dist/cube.js"
+    },
     "./xyz-graph": {
       "types": "./dist/xyz-graph.d.ts",
       "default": "./dist/xyz-graph.js"

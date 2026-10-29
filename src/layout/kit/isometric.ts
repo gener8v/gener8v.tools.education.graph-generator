@@ -65,6 +65,14 @@ export function faceVisible(normal: Point3): boolean {
   return normal[0] * VIEW_DIRECTION[0] + normal[1] * VIEW_DIRECTION[1] + normal[2] * VIEW_DIRECTION[2] > 0;
 }
 
+/**
+ * The dash pattern of a solid's hidden lines (GSS-REQ-024, GSS-REQ-028), an SVG `stroke-dasharray`
+ * presentation attribute (AD-011): the same pattern as the x,y,z graph's guide lines (`GUIDE_DASH`),
+ * so every dashed line in the solids' viewpoint reads alike.
+ */
+// @spec GSS-REQ-024
+export const HIDDEN_DASH = "4 3";
+
 /** An SVG ellipse's center and radii, unrounded. */
 export interface IsoEllipse {
   readonly cx: number;

@@ -4,6 +4,7 @@ import { unitProperty } from "../../src/core/definitions/figure";
 import { definitions, propertiesOf, scopedProperty, scopedPropertyMaps } from "../../src/core/definitions/index";
 import { type ScopedPropertySpec, sharedProperties } from "../../src/core/definitions/shared";
 import { triangle } from "../../src/core/definitions/triangle";
+import { cube } from "../../src/core/definitions/cube";
 import {
   GRAPH_TYPES,
   PROPERTY_KINDS,
@@ -857,5 +858,32 @@ describe("the triangle, registered (graph-library GSS TICKET-005)", () => {
 
   it("is frozen all the way down, with no prototypes", () => {
     expect(lockedDown(definition.properties, "triangle")).toEqual([]);
+  });
+});
+
+describe("the cube, registered (graph-library GSS TICKET-006)", () => {
+  const definition = definitions.cube!;
+
+  it("is the cube definition", () => {
+    expect(definition).toBe(cube);
+  });
+
+  it("follows the vocabulary, stage and applicability rules", () => {
+    expect(vocabularyProblems(definition.properties)).toEqual([]);
+    expect(stageProblems(definition)).toEqual([]);
+    expect(applicabilityProblems(definition)).toEqual([]);
+  });
+
+  it("takes its own terms and the shared title and line color", () => {
+    expect(Object.keys(propertiesOf("cube", definitions)).sort()).toEqual(["edgeLabelText", "edgeLength", "hiddenEdges", "labelEdges", "lineColor", "title", "unit"]);
+  });
+
+  it("defines unit once with the other figures, and every term once among the registered types (GSV-REQ-015)", () => {
+    expect(definition.properties["unit"]).toBe(unitProperty);
+    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties)])).toEqual([]);
+  });
+
+  it("is frozen all the way down, with no prototypes", () => {
+    expect(lockedDown(definition.properties, "cube")).toEqual([]);
   });
 });

@@ -72,6 +72,12 @@
     "gzip": true
   },
   {
+    "name": "./cube",
+    "path": "dist/cube.js",
+    "limit": "25 kB",
+    "gzip": true
+  },
+  {
     "name": "./triangle",
     "path": "dist/triangle.js",
     "limit": "25 kB",

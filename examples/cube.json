@@ -1,0 +1,10 @@
+{
+  "type": "cube",
+  "edgeLength": 3,
+  "hiddenEdges": "dashed",
+  "labelEdges": "three",
+  "edgeLabelText": "s",
+  "unit": "cm",
+  "title": "Find the volume",
+  "lineColor": "blue"
+}

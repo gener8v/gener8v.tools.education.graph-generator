@@ -17,6 +17,7 @@ import { NumberLineGraph as PackageNumberLineGraph } from "../../src/react/graph
 import { XyGraph as PackageXyGraph } from "../../src/react/graphs/XyGraph";
 import { SquareGraph as PackageSquareGraph } from "../../src/react/graphs/SquareGraph";
 import { TriangleGraph as PackageTriangleGraph } from "../../src/react/graphs/TriangleGraph";
+import { CubeGraph as PackageCubeGraph } from "../../src/react/graphs/CubeGraph";
 import { XyzGraph as PackageXyzGraph } from "../../src/react/graphs/XyzGraph";
 import {
   type GraphComponent,
@@ -129,6 +130,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     expect(PackageXyzGraph.displayName).toBe("XyzGraph");
     expect(PackageSquareGraph.displayName).toBe("SquareGraph");
     expect(PackageTriangleGraph.displayName).toBe("TriangleGraph");
+    expect(PackageCubeGraph.displayName).toBe("CubeGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -643,6 +645,21 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("draws a valid cube with every text at its limit in <Graph> and <CubeGraph>, never throwing (GSV-REQ-052, GSV-REQ-053)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const edges = { type: "cube", edgeLength: 3, unit: "@".repeat(UNIT_TEXT_LIMIT), labelEdges: "three", hiddenEdges: "dashed" };
+    const descriptions = [{ ...edges, title: long, edgeLabelText: long }, ...Object.values(oneClusterTexts(CALLER_TEXT_LIMIT)).map((cluster) => ({ ...edges, title: cluster, edgeLabelText: cluster }))];
+    for (const description of descriptions) {
+      for (const Component of [Graph, PackageCubeGraph]) {
+        const received: Issue[][] = [];
+        const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+        expect(received).toEqual([]);
+        // Title 3 lines, and three edge labels of at most 4 lines each.
+        expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 3 * 4);
+      }
+    }
+  });
+
   it("draws a valid x,y,z graph with every text at its limit in <Graph> and <XyzGraph>, never throwing (GSV-REQ-052)", () => {
     const long = wordsOf(CALLER_TEXT_LIMIT);
     const axis = { min: 0, max: 5, tickSpacing: 1 };
@@ -699,6 +716,9 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       ...(["sideALabelText", "sideBLabelText", "sideCLabelText", "angleALabelText", "angleBLabelText", "angleCLabelText"] as const).map(
         (term): [GraphComponent, object, string] => [PackageTriangleGraph, { type: "triangle", sideA: 3, sideB: 4, sideC: 5, [term]: over }, `/${term}`],
       ),
+      [PackageCubeGraph, { type: "cube", edgeLength: 3, title: over }, "/title"],
+      [PackageCubeGraph, { type: "cube", edgeLength: 3, edgeLabelText: over }, "/edgeLabelText"],
+      [PackageCubeGraph, { type: "cube", edgeLength: 3, unit: "@".repeat(UNIT_TEXT_LIMIT + 1) }, "/unit"],
     ];
     for (const [Component, description, path] of cases) {
       for (const Drawn of [Graph, Component]) {
@@ -882,6 +902,25 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       expect(markup.length).toBeLessThan(60_000);
       // A title of at most 3 lines, and nine labels (three names, three sides, three angles) of at most 4 each.
       expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 9 * 4);
+    }
+  });
+
+  it("keeps the cube's text alternative and markup bounded at its limits (GSS TICKET-006; GSS TICKET-002 security review SEC-002)", () => {
+    // Every caller text at 200 × `"` (quoted in the text alternative), a 20-character unit, the three
+    // front-corner edges labeled, hidden edges dashed, edge lengths with 15 significant digits.
+    // Measured 2026-10-29: at most a 552-character text alternative and 12,047 characters of markup
+    // with 15 <text> nodes, at 0.00123456789012345 as at 999999.123456789; a cube has a fixed number
+    // of texts and edges, so these do not grow.
+    const quote = '"'.repeat(CALLER_TEXT_LIMIT);
+    for (const edgeLength of [3.14159265358979, 999999.123456789, 0.00123456789012345]) {
+      const description = { type: "cube", edgeLength, title: quote, unit: '"'.repeat(UNIT_TEXT_LIMIT), labelEdges: "three", hiddenEdges: "dashed", edgeLabelText: quote };
+      const result = createGraph(description);
+      if (!result.ok) throw new Error(JSON.stringify(result.issues));
+      expect(result.scene.textAlternative.length).toBeLessThan(1_000);
+      const markup = html(<PackageCubeGraph description={description} />);
+      expect(markup.length).toBeLessThan(20_000);
+      // A title of at most 3 lines, and three edge labels of at most 4 each.
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 3 * 4);
     }
   });
 

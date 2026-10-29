@@ -65,7 +65,7 @@ describe("envelope: the graph type (GSV-REQ-002, GSV-REQ-024)", () => {
   );
 
   it("treats a declared type with no registered definition as unknown", () => {
-    expect(issuesOf(check({ type: "cube", edgeLength: 2 }))[0]).toMatchObject({ code: "unknown_graph_type" });
+    expect(issuesOf(check({ type: "cylinder", radius: 2, height: 3 }))[0]).toMatchObject({ code: "unknown_graph_type" });
   });
 
   it("lists exactly the registered types (GSV TICKET-003 code review CR-004, quality review QR-006)", () => {
