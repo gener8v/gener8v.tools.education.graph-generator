@@ -206,4 +206,8 @@ Run in the main session on 2026-10-29, after the code was written.
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-003-code-review/CR-001 — `showRightAngles` said "small square"
+
+**Change:** The term's description now says "a small right-angle mark in each corner", matching the L-shaped polyline the layout draws; `pnpm generate` carried it into the generated types, schema, tool schema and vocabulary.
+**Files:** `src/core/definitions/square.ts`, `src/generated/description.ts`, `src/generated/schema.json`, `src/generated/tool-schema.json`, `src/generated/vocabulary.json`
+**Re-verification:** full verification loop — generate, lint, typecheck, vitest ×3 (1,706 passed each), bench, build, check:dist, check:deps, check:images, check:changesets, size, publint, attw, audit, audit --prod — all exit 0; gener8v-state lint 0 errors.

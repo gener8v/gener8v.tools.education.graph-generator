@@ -160,7 +160,7 @@
       "kind": "boolean"
     },
     "showRightAngles": {
-      "definition": "Whether the four right angles are marked with a small square in each corner.",
+      "definition": "Whether the four right angles are marked, with a small right-angle mark in each corner.",
       "kind": "boolean"
     },
     "showTickLabels": {

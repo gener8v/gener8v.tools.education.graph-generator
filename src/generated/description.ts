@@ -360,7 +360,7 @@ export interface SquareDescription {
   labelSides?: "one" | "all";
   /** Text shown in place of the side label, at most 200 characters, such as "s" or "?"; given alone it labels one side, and with labelSides "all" it labels all four sides. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   sideLabelText?: string;
-  /** Whether the four right angles are marked with a small square in each corner. */
+  /** Whether the four right angles are marked, with a small right-angle mark in each corner. */
   showRightAngles?: boolean;
   /** The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative. */
   unit?: string;

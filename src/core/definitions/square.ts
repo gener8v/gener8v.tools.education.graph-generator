@@ -88,7 +88,7 @@ function defineSquare(): GraphTypeDefinition<Square> {
         term: "showRightAngles",
         kind: "boolean",
         required: false,
-        description: "Whether the four right angles are marked with a small square in each corner.",
+        description: "Whether the four right angles are marked, with a small right-angle mark in each corner.",
       },
       unit: unitProperty,
     }),
