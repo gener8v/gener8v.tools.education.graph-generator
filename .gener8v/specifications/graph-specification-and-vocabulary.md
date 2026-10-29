@@ -232,9 +232,9 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-023 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/domain.ts`:runDomainChecks |
 | GSV-REQ-028 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/index.ts`:validate, normalize |
 | GSV-REQ-035 | `src/core/definitions/types.ts`:Derivation; `src/core/schema.ts`:buildVocabulary |
-| GSV-REQ-036 | `src/core/validate/derive.ts`:checkDerivations |
+| GSV-REQ-036 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/solve.ts`:runSolver |
 | GSV-REQ-037 | `src/core/validate/derive.ts`:checkDerivations |
-| GSV-REQ-038 | `src/core/validate/derive.ts`:withinTolerance, checkDerivations |
+| GSV-REQ-038 | `src/core/validate/derive.ts`:withinTolerance, checkDerivations; `src/core/validate/solve.ts`:runSolver |
 | GSV-REQ-039 | `src/core/validate/derive.ts`:checkDerivations; `src/core/validate/index.ts`:validate |
 | GSV-REQ-007 | `src/core/schema.ts`:buildSchema |
 | GSV-REQ-008 | `src/core/schema.ts`:buildSchema |

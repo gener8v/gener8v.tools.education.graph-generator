@@ -209,4 +209,12 @@ Run in the main session on 2026-10-29, after the code was written and after the 
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-004-code-review/CR-001..CR-004 (and quality-review/QR-001)
+
+**Change:**
+- CR-001: specification coverage rows corrected (GSS-REQ-010..012 no longer list `solveTriangle`; GSV-REQ-036/038 list `runSolver`).
+- CR-002: the `vertices` description states that a list of fewer than three is an error even when sides or angles would determine the triangle.
+- CR-003 / QR-001: the GSS-NFR-002 test recomputes each value in a well-conditioned form (half-angle law of cosines for a side; for an angle, Kahan's area and `atan2` when no angle is obtuse, else 180° minus the other two) and generates angles from 0.02° (was 0.1°); the floor is stated in the test, the angle descriptions and the coverage row.
+- CR-004: TR-008's Mitigation amended through the Technical Design skill; the system design was re-approved (Architect — Thomas Eaves, 2026-10-29).
+**Files:** `.gener8v/specifications/geometric-shapes-and-solids.md`, `.gener8v/specifications/graph-specification-and-vocabulary.md`, `src/core/definitions/triangle.ts`, `tests/core/triangle-solver.property.test.ts`, `.gener8v/technical-design/system-design.md`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,814 passed each; the property test 20 times at 0.01° (1 near miss, hence 0.02°) and 6 × 10,000 per set at 0.02° (0 misses); gener8v-state lint 0 errors.

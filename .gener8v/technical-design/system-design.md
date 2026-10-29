@@ -11,7 +11,7 @@ One open-source TypeScript package, built as a pipeline of pure stages: **descri
 **Dependency Map:** `.gener8v/dependencies/dependency-map.md` (Approved)
 **System Context:** `.gener8v/context.md`
 **Status:** Approved
-**Approved by:** Architect — Thomas, 2026-10-04
+**Approved by:** Architect — Thomas Eaves, 2026-10-29
 
 Starting point (Process step 1b): the repository holds only `.gener8v/` and `CLAUDE.md`. No code, build, CI or package exists, so this design assumes no existing infrastructure; everything it names is created by tickets. Single repository: every path below is relative to the repository root.
 
@@ -512,7 +512,7 @@ The tool handler unwraps `graph` and removes `null`-valued optional properties b
 - **TR-008**: Triangle solving from angles and sides loses precision near degenerate triangles
   - *Likelihood:* Low
   - *Impact:* Round-trip error exceeds 10⁻⁹; GSS-NFR-002 fails, or near-degenerate triangles are misclassified
-  - *Mitigation:* Use the law of cosines with clamping of `acos` arguments to [−1, 1]; property tests excluding only exactly degenerate inputs
+  - *Mitigation:* Compute no angle with `acos`. Three sides: Kahan's form of Heron's area, then each angle as `atan2(4·area, (q − p)(q + p) + r²)`, which never leaves its domain and keeps a needle-thin triangle's tiny angle; two sides and the included angle: the half-angle law of cosines and `atan2`; vertices: `atan2`. A relative margin of 10⁻¹² separates flat from thin. Property tests exclude only exactly degenerate inputs; GSS-NFR-002 is verified to 10⁻⁹ for every angle at least 0.02°, below which the rounding of the inputs themselves decides the last digits *(amended 2026-10-29: the first text prescribed `acos` clamped to [−1, 1], which gives 0° for a valid needle-thin triangle and misreads it as too flat — graph-library GSS TICKET-004 DEL-005, code review CR-004)*
   - *Related Constraints:* —
   - *Related NFRs:* GSS-NFR-002
 

@@ -6,16 +6,19 @@ import { type TriangleInput, type TriangleSolution, solveTriangle } from "../../
  * GSS-NFR-002: derived sides and angles reproduce the supplied ones within 10⁻⁹ relative error
  * when recomputed, over at least 1,000 generated triangles per determining set.
  *
- * The generated triangles have every angle at least 0.1° (so at most 179.8°) and a longest side from
- * 0.01 to 1,000,000, the definition's whole range of sizes, so a side can be about 570 times
- * another. Only exactly degenerate triangles are outside the requirement (TR-008). Below about
- * 0.01° the recomputation below, not the solver, loses the last digits (measured at 1.0–1.7 × 10⁻⁹
- * during delivery), so 0.1° is the thinnest angle this test holds to 10⁻⁹.
+ * The generated triangles have every angle at least 0.02° (so at most 179.96°) and a longest side
+ * from 0.01 to 1,000,000, the definition's whole range of sizes. Each supplied value is recomputed
+ * in a form that is well conditioned for its triangle (`recomputed`). Below about 0.01° the
+ * rounding of the generated inputs themselves, not the solver, decides the last digits (measured
+ * at 1.2–2.5 × 10⁻⁹ from 0.001° down, with 5,000 triangles per set, during code review CR-003 and
+ * quality review QR-001). At 0.01° about one run in twenty missed by a hair (1.0014 × 10⁻⁹); at
+ * 0.02° none of 60,000 triangles per set did, so 0.02° is the floor this test holds. Only exactly
+ * degenerate triangles are outside the requirement (TR-008).
  */
 const RUNS = 1_000;
 const RELATIVE = 1e-9;
 const RADIANS = Math.PI / 180;
-const MIN_ANGLE = 0.1;
+const MIN_ANGLE = 0.02;
 
 const SIDES = ["sideA", "sideB", "sideC"] as const;
 const ANGLES = ["angleA", "angleB", "angleC"] as const;
@@ -28,14 +31,15 @@ interface Generated {
 
 const finite = (min: number, max: number) => fc.double({ min, max, noNaN: true, noDefaultInfinity: true });
 
-/** Angles A and B with every angle at least 5°, and a scale: the sides follow by the law of sines. */
+/** Angles A and B with every angle at least `MIN_ANGLE`, and a scale: the sides follow by the law of sines. */
 const triangles = (angleA = finite(MIN_ANGLE, 180 - 2 * MIN_ANGLE)): fc.Arbitrary<Generated> =>
   fc
     .tuple(angleA, finite(0, 1), finite(0.01, 1_000_000))
     .map(([a, share, longest]) => {
       const b = MIN_ANGLE + share * (180 - 2 * MIN_ANGLE - a);
       const angles = [a, b, 180 - a - b] as const;
-      const sines = angles.map((angle) => Math.sin(angle * RADIANS));
+      // The sine of the angle or its supplement, whichever is smaller: exact near 180° as near 0°.
+      const sines = angles.map((angle) => Math.sin(Math.min(angle, 180 - angle) * RADIANS));
       const scale = longest / Math.max(...sines);
       return { angles, sides: [scale * sines[0]!, scale * sines[1]!, scale * sines[2]!] as const };
     });
@@ -53,15 +57,28 @@ function valuesOf(solution: TriangleSolution): Record<Term, number> {
 
 /**
  * Each supplied value recomputed from the other five, which include the derived ones: a side by
- * the law of cosines from the other two sides and its opposite angle, an angle as what the other
- * two leave of 180°.
+ * the law of cosines from the other two sides and its opposite angle, in its half-angle form
+ * a² = (b − c)² + 4bc·sin²(A/2), which does not cancel for a small angle as b² + c² − 2bc·cos A does;
+ * an angle in whichever of two forms is well conditioned for the triangle. When no angle is
+ * obtuse, from the three sides, as atan2(4·area, (q − p)(q + p) + r²) with Kahan's form of Heron's
+ * area: 180° minus two angles near 90° would lose a tiny angle's digits. When one angle is obtuse,
+ * as what the other two leave of 180°: there the sides fix a tiny angle only through their small
+ * differences, so recomputing it from them would lose its digits instead.
  */
 function recomputed(values: Record<Term, number>, term: Term): number {
   const index = [...SIDES, ...ANGLES].indexOf(term) % 3;
   const [j, k] = [(index + 1) % 3, (index + 2) % 3];
-  if (term.startsWith("angle")) return 180 - values[ANGLES[j]!] - values[ANGLES[k]!];
   const [sj, sk] = [values[SIDES[j]!], values[SIDES[k]!]];
-  return Math.sqrt(sj * sj + sk * sk - 2 * sj * sk * Math.cos(values[ANGLES[index]!] * RADIANS));
+  if (term.startsWith("angle")) {
+    if (Math.max(values.angleA, values.angleB, values.angleC) > 90) return 180 - values[ANGLES[j]!] - values[ANGLES[k]!];
+    const p = values[SIDES[index]!];
+    const [a, b, c] = [p, sj, sk].sort((x, y) => y - x) as [number, number, number];
+    const area4 = Math.sqrt(Math.max(0, (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c))));
+    const [near, far] = Math.abs(sj - p) <= Math.abs(sk - p) ? [sj, sk] : [sk, sj];
+    return Math.atan2(area4, (near - p) * (near + p) + far * far) / RADIANS;
+  }
+  const half = Math.sin((values[ANGLES[index]!] / 2) * RADIANS);
+  return Math.sqrt((sj - sk) * (sj - sk) + 4 * sj * sk * half * half);
 }
 
 const relativeError = (actual: number, expected: number) => Math.abs(actual - expected) / Math.abs(expected);

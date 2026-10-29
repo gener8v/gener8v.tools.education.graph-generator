@@ -56,7 +56,7 @@ const angle = (term: (typeof ANGLE_TERMS)[number], name: string): PropertySpec =
   exclusiveMin: true,
   max: 180,
   exclusiveMax: true,
-  description: `The angle at vertex ${name}, in degrees, greater than 0 and less than 180.`,
+  description: `The angle at vertex ${name}, in degrees, greater than 0 and less than 180. Derived sides and angles are exact to about nine significant digits while every angle is at least 0.02°; a thinner triangle is accepted with fewer.`,
 });
 
 /** The range of a vertex coordinate. The shared `x` and `y` terms have no bounds of their own. */
@@ -115,7 +115,7 @@ function defineTriangle(): GraphTypeDefinition<Triangle> {
         required: false,
         maxItems: 3,
         description:
-          "The three vertices A, B and C, in that order, each an x and a y coordinate from -1,000,000 to 1,000,000; at most 3. When given, they determine the triangle, and the sides and angles are derived from them. They must not lie on one line or share a point.",
+          "The three vertices A, B and C, in that order, each an x and a y coordinate from -1,000,000 to 1,000,000; at most 3. When given, they determine the triangle, and the sides and angles are derived from them; a list of fewer than three is an error even when the sides or angles alone would determine the triangle. They must not lie on one line or share a point.",
         items: {
           kind: "object",
           description: "One vertex: its x and y coordinates.",
