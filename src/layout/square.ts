@@ -3,7 +3,7 @@ import { sourceOf } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt, fmtPoints } from "./kit/format";
-import { GAP, type LabelRequest, type LabelSize, type Point, placeLabels } from "./kit/figure-labels";
+import { GAP, type LabelRequest, type LabelSize, type Point, placeLabels, polylineNode } from "./kit/figure-labels";
 import type { Obstacle, Segment } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
 import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
@@ -77,16 +77,7 @@ export const squareLayout: Layout<Square> = (normalized: Square, provenance: Pro
       [[left + m, bottom], [left + m, bottom - m], [left, bottom - m]],
     ];
     for (const mark of marks) {
-      nodes.push({
-        kind: "polyline",
-        attrs: [
-          ["points", fmtPoints(mark)],
-          ["fill", "none"],
-          ["stroke", lineColor],
-          ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
-          ["stroke-linejoin", "miter"],
-        ],
-      });
+      nodes.push(polylineNode(mark, lineColor));
       for (let i = 0; i + 1 < mark.length; i++) {
         obstacles.push({ x1: mark[i]![0], y1: mark[i]![1], x2: mark[i + 1]![0], y2: mark[i + 1]![1] });
       }

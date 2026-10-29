@@ -1,6 +1,6 @@
 import { defaultStyle } from "../../core/style";
 import { SCENE_WIDTH, type SceneNode } from "../scene";
-import { fmt } from "./format";
+import { fmt, fmtPoints } from "./format";
 import { type Obstacle, type Segment, placeLabel } from "./labels";
 import { textBlock, textLines } from "./title";
 
@@ -64,6 +64,23 @@ export function segmentNode(s: Segment, color: string): SceneNode {
       ["stroke", color],
       ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
       ["stroke-linecap", "round"],
+    ],
+  };
+}
+
+/**
+ * A stroked, unfilled polyline through `points`, every number through `fmt()`, with mitred joins:
+ * a figure's angle and right-angle marks (GSS TICKET-005 quality review QR-002).
+ */
+export function polylineNode(points: ReadonlyArray<readonly [number, number]>, color: string): SceneNode {
+  return {
+    kind: "polyline",
+    attrs: [
+      ["points", fmtPoints(points)],
+      ["fill", "none"],
+      ["stroke", color],
+      ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
+      ["stroke-linejoin", "miter"],
     ],
   };
 }

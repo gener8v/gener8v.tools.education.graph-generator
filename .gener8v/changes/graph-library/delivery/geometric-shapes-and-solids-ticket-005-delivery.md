@@ -175,3 +175,12 @@ Run in the main session on 2026-10-29, after the code was written.
 - CR-002: correction to the `@spec Annotations` table above — the `labelSides` annotation in `src/core/definitions/figure.ts` is on `figureTerms`, not a symbol named `labelSides`.
 **Files:** `src/layout/kit/figure-labels.ts`, `src/layout/triangle.ts`, `tests/layout/kit/figure-labels.test.ts`, `tests/layout/triangle.test.ts`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 1,891 passed each; ignoring `stackedText` fails both new tests; gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-005-quality-review/QR-001..QR-003 — layout structure, shared polyline, references
+
+**Change:**
+- QR-001: `cornerGeometry`, `arcPoints`, `angleMark`, `nameCandidates`, `sideCandidates` and `angleCandidates` extracted from `triangleLayout` as module-level functions; `triangleLayout` is 92 lines.
+- QR-002: `polylineNode(points, color)` moved to `src/layout/kit/figure-labels.ts`, used by the triangle and the square.
+- QR-003: decision references in the layout and its tests qualified as GSS TICKET-002's.
+**Files:** `src/layout/triangle.ts`, `src/layout/kit/figure-labels.ts`, `src/layout/square.ts`, `tests/layout/triangle.test.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,891 passed each; a probe of 4,809 triangle and square Scenes hashes identically before and after; gener8v-state lint 0 errors.

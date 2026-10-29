@@ -229,7 +229,7 @@ describe("labels (GSS-REQ-020, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", () => {
     expect(shown).toContain("5.09");
   });
 
-  it("replaces the whole label with custom text, unit and degree sign included, while the text alternative states the value (DEL-007)", () => {
+  it("replaces the whole label with custom text, unit and degree sign included, while the text alternative states the value (GSS TICKET-002 DEL-007)", () => {
     const scene = sceneOf({ type: "triangle", sideA: 3, sideB: 4, sideC: 5, unit: "cm", sideCLabelText: "x", angleALabelText: "θ" });
     expect(labelTexts(scene).map((node) => node.text)).toEqual(["x", "θ"]);
     expect(scene.textAlternative).toContain("c 5 cm");
@@ -238,14 +238,14 @@ describe("labels (GSS-REQ-020, GSS-REQ-033, GSS-REQ-034, GSS-REQ-035)", () => {
     expect(marks(scene)).toHaveLength(1);
   });
 
-  it.each(["", "   "])("draws nothing for a blank label or name, including text blank once cleaned: %j (DEL-003)", (blank) => {
+  it.each(["", "   "])("draws nothing for a blank label or name, including text blank once cleaned: %j (GSS TICKET-002 DEL-003)", (blank) => {
     const scene = sceneOf({ type: "triangle", sideA: 3, sideB: 4, sideC: 5, sideALabelText: blank, angleBLabelText: blank, vertexNames: [blank, "Q"] });
     expect(labelTexts(scene).map((node) => node.text)).toEqual(["Q"]);
     // The blank angle label still has its arc, a place to fill in.
     expect(marks(scene)).toHaveLength(1);
   });
 
-  it("cuts a label or a name longer than LABEL_MAX_LINES lines with an ellipsis, and stacks it below the figure (SEC-001, DEL-006, DEL-008)", () => {
+  it("cuts a label or a name longer than LABEL_MAX_LINES lines with an ellipsis, and stacks it below the figure (GSS TICKET-002 security review SEC-001, DEL-006, DEL-008)", () => {
     const long = "around the triangle ".repeat(10).trim();
     for (const options of [{ sideBLabelText: long }, { angleCLabelText: long }, { vertexNames: [long] }]) {
       const scene = sceneOf({ type: "triangle", sideA: 3, sideB: 4, sideC: 5, ...options });

@@ -4,7 +4,7 @@ import { TRIANGLE_ANGLES, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleSideTe
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt, fmtPoints } from "./kit/format";
-import { GAP, type LabelRequest, type LabelSize, type Point, placeLabels } from "./kit/figure-labels";
+import { GAP, type LabelRequest, type LabelSize, type Point, placeLabels, polylineNode } from "./kit/figure-labels";
 import type { Obstacle } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
 import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
@@ -102,21 +102,107 @@ function insideTriangle(p: Vec, v: readonly [Vec, Vec, Vec]): boolean {
   return (s0 > 0 && s1 > 0 && s2 > 0) || (s0 < 0 && s1 < 0 && s2 < 0);
 }
 
-/** A stroked, unfilled polyline through `points`, every number through `fmt()`. */
-function polylineNode(points: readonly Vec[], color: string, join: "round" | "miter"): SceneNode {
-  return {
-    kind: "polyline",
-    attrs: [
-      ["points", fmtPoints(points)],
-      ["fill", "none"],
-      ["stroke", color],
-      ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
-      ["stroke-linejoin", join],
-    ],
-  };
+const rounded = (p: Vec): Vec => [fmt(p[0]), fmt(p[1])];
+
+/** One vertex's geometry: the unit vectors along its two sides, its bisectors, and how far its marks may reach. */
+interface Corner {
+  readonly u1: Vec;
+  readonly u2: Vec;
+  /** Into the angle, between its sides. */
+  readonly bisector: Vec;
+  /** Away from the triangle, opposite the bisector. */
+  readonly outward: Vec;
+  /** The vertex's distance to the opposite side. */
+  readonly height: number;
+  /** The shorter of its two sides. */
+  readonly shortest: number;
 }
 
-const rounded = (p: Vec): Vec => [fmt(p[0]), fmt(p[1])];
+/**
+ * Vertex `i`'s geometry in the drawn triangle `v`. The distance to the opposite side is a product
+ * over a side length, which a valid triangle never has at zero; guarded all the same, so marks are
+ * kept inside the triangle and nothing is divided by zero (quality review QR-001).
+ */
+function cornerGeometry(v: readonly [Vec, Vec, Vec], centroid: Vec, i: Index): Corner {
+  const u = v[((i + 1) % 3) as Index];
+  const w = v[((i + 2) % 3) as Index];
+  const toU = sub(u, v[i]);
+  const toW = sub(w, v[i]);
+  const inward = unit(sub(centroid, v[i]), [0, -1]);
+  const u1 = unit(toU, inward);
+  const u2 = unit(toW, inward);
+  const opposite = length(sub(w, u));
+  const height = opposite > 0 ? Math.abs(cross(sub(w, u), sub(v[i], u))) / opposite : 0;
+  const shortest = Math.min(length(toU), length(toW));
+  return { u1, u2, bisector: unit(add(u1, u2), inward), outward: unit(times(add(u1, u2), -1), times(inward, -1)), height, shortest };
+}
+
+/** An arc of `radius` around `vertex` from the direction `u1` to `u2`, the short way, in pieces of at most `ARC_STEP`. */
+function arcPoints(vertex: Vec, u1: Vec, u2: Vec, radius: number): Vec[] {
+  const from = Math.atan2(u1[1], u1[0]);
+  let sweep = Math.atan2(u2[1], u2[0]) - from;
+  if (sweep > Math.PI) sweep -= 2 * Math.PI;
+  if (sweep <= -Math.PI) sweep += 2 * Math.PI;
+  const pieces = Math.max(1, Math.ceil(Math.abs(sweep) / ARC_STEP));
+  const arc: Vec[] = [];
+  for (let k = 0; k <= pieces; k++) {
+    const angle = from + (sweep * k) / pieces;
+    arc.push(add(vertex, [radius * Math.cos(angle), radius * Math.sin(angle)]));
+  }
+  return arc;
+}
+
+/**
+ * A shown angle's mark at `vertex` (GSS-REQ-020, GSS-REQ-021): a right-angle mark, or an arc, each
+ * shrunk to fit a small angle's sides; with how far it reaches from the vertex, so the angle's label
+ * starts beyond it.
+ */
+// @spec GSS-REQ-020, GSS-REQ-021
+function angleMark(vertex: Vec, corner: Corner, rightAngle: boolean): { points: Vec[]; reach: number } {
+  const { u1, u2, height, shortest } = corner;
+  if (rightAngle) {
+    const m = Math.min(RIGHT_ANGLE_MARK, 0.4 * shortest, 0.6 * height);
+    return { points: [add(vertex, times(u1, m)), add(vertex, add(times(u1, m), times(u2, m))), add(vertex, times(u2, m))], reach: m * Math.SQRT2 };
+  }
+  const r = Math.min(ARC_RADIUS, 0.4 * shortest, 0.8 * height);
+  return { points: arcPoints(vertex, u1, u2, r), reach: r };
+}
+
+/** Candidates for vertex `i`'s name: outside the vertex, along its outward bisector and turned from it, then the four axis directions. */
+const nameCandidates = (v: readonly [Vec, Vec, Vec], corner: Corner, i: Index) => (size: LabelSize): Point[] => {
+  const o = corner.outward;
+  const directions: Vec[] = [o, rotate(o, Math.PI / 6), rotate(o, -Math.PI / 6), rotate(o, Math.PI / 3), rotate(o, -Math.PI / 3), rotate(o, Math.PI / 2), rotate(o, -Math.PI / 2), [0, -1], [0, 1], [-1, 0], [1, 0]];
+  return directions.map((u) => besidePoint(v[i], u, GAP, size));
+};
+
+/** Candidates for a side's label: outside the side along its outward normal, from its middle outward, at two distances. */
+const sideCandidates = (v: readonly [Vec, Vec, Vec], term: TriangleSideTerm, lineHeight: number) => (size: LabelSize): Point[] => {
+  const [p, q] = SIDE_ENDS[term];
+  const r = (3 - p - q) as Index;
+  const along = sub(v[q], v[p]);
+  let normal = unit([-along[1], along[0]], [0, 1]);
+  if (dot(normal, sub(v[r], v[p])) > 0) normal = times(normal, -1);
+  const found: Point[] = [];
+  for (const gap of [GAP, GAP + lineHeight / 2]) {
+    for (const t of [0.5, 0.35, 0.65, 0.2, 0.8]) found.push(besidePoint(add(v[p], times(along, t)), normal, gap, size));
+  }
+  return found;
+};
+
+/**
+ * Candidates for an angle's label: inside the angle along its bisector, beyond its mark, further in
+ * for a narrow angle whose sides close in on a label near it; only those whose center is inside the
+ * triangle (a box clear of the sides with its center inside lies inside).
+ */
+const angleCandidates = (v: readonly [Vec, Vec, Vec], corner: Corner, i: Index, markReach: number, lineHeight: number) => (size: LabelSize): Point[] => {
+  const found: Point[] = [];
+  for (const extra of [0, lineHeight / 2, lineHeight, 2 * lineHeight, 3 * lineHeight, 4 * lineHeight, 6 * lineHeight]) {
+    const at = besidePoint(v[i], corner.bisector, markReach + GAP + extra, size);
+    if (insideTriangle([at.x + size.width / 2, at.y + size.height / 2], v)) found.push(at);
+  }
+  return found;
+};
+
 
 /**
  * The triangle's layout (AD-002). A triangle given by sides and angles stands on its first-named
@@ -182,100 +268,38 @@ export const triangleLayout: Layout<Triangle> = (normalized: Triangle, provenanc
   }
   const pushPolyline = (points: readonly Vec[]) => {
     const marked = points.map(rounded);
-    nodes.push(polylineNode(marked, lineColor, "miter"));
+    nodes.push(polylineNode(marked, lineColor));
     for (let k = 0; k + 1 < marked.length; k++) obstacles.push({ x1: marked[k]![0], y1: marked[k]![1], x2: marked[k + 1]![0], y2: marked[k + 1]![1] });
   };
 
-  // Per vertex: the unit vectors along its two sides, and the reach of its marks, kept inside the
-  // triangle by the vertex's distance to the opposite side (a product over a side length, which a
-  // valid triangle never has at zero; guarded all the same).
-  const corner = INDICES.map((i) => {
-    const u = v[((i + 1) % 3) as Index];
-    const w = v[((i + 2) % 3) as Index];
-    const toU = sub(u, v[i]);
-    const toW = sub(w, v[i]);
-    const inward = unit(sub(centroid, v[i]), [0, -1]);
-    const u1 = unit(toU, inward);
-    const u2 = unit(toW, inward);
-    const opposite = length(sub(w, u));
-    const height = opposite > 0 ? Math.abs(cross(sub(w, u), sub(v[i], u))) / opposite : 0;
-    const shortest = Math.min(length(toU), length(toW));
-    return { u1, u2, bisector: unit(add(u1, u2), inward), outward: unit(times(add(u1, u2), -1), times(inward, -1)), height, shortest };
-  });
+  const corner = INDICES.map((i) => cornerGeometry(v, centroid, i));
 
   // Angle marks (GSS-REQ-020, GSS-REQ-021): a right-angle mark, or an arc as a short polyline.
   const markReach: number[] = [0, 0, 0];
   for (const i of INDICES) {
     const label = shown.angles[TRIANGLE_ANGLES[i]];
     if (!label.labeled) continue;
-    const { u1, u2, height, shortest } = corner[i]!;
-    if (label.rightAngle) {
-      const m = Math.min(RIGHT_ANGLE_MARK, 0.4 * shortest, 0.6 * height);
-      pushPolyline([add(v[i], times(u1, m)), add(v[i], add(times(u1, m), times(u2, m))), add(v[i], times(u2, m))]);
-      markReach[i] = m * Math.SQRT2;
-      continue;
-    }
-    const r = Math.min(ARC_RADIUS, 0.4 * shortest, 0.8 * height);
-    const from = Math.atan2(u1[1], u1[0]);
-    let sweep = Math.atan2(u2[1], u2[0]) - from;
-    if (sweep > Math.PI) sweep -= 2 * Math.PI;
-    if (sweep <= -Math.PI) sweep += 2 * Math.PI;
-    const pieces = Math.max(1, Math.ceil(Math.abs(sweep) / ARC_STEP));
-    const arc: Vec[] = [];
-    for (let k = 0; k <= pieces; k++) {
-      const angle = from + (sweep * k) / pieces;
-      arc.push(add(v[i], [r * Math.cos(angle), r * Math.sin(angle)]));
-    }
-    pushPolyline(arc);
-    markReach[i] = r;
+    const mark = angleMark(v[i], corner[i]!, label.rightAngle);
+    pushPolyline(mark.points);
+    markReach[i] = mark.reach;
   }
-
-  // Candidates, each a top-left corner for a label of the given size.
-  const nameCandidates = (i: Index) => (size: LabelSize): Point[] => {
-    const o = corner[i]!.outward;
-    const directions: Vec[] = [o, rotate(o, Math.PI / 6), rotate(o, -Math.PI / 6), rotate(o, Math.PI / 3), rotate(o, -Math.PI / 3), rotate(o, Math.PI / 2), rotate(o, -Math.PI / 2), [0, -1], [0, 1], [-1, 0], [1, 0]];
-    return directions.map((u) => besidePoint(v[i], u, GAP, size));
-  };
-  const sideCandidates = (term: TriangleSideTerm) => (size: LabelSize): Point[] => {
-    const [p, q] = SIDE_ENDS[term];
-    const r = (3 - p - q) as Index;
-    const along = sub(v[q], v[p]);
-    let normal = unit([-along[1], along[0]], [0, 1]);
-    if (dot(normal, sub(v[r], v[p])) > 0) normal = times(normal, -1);
-    const found: Point[] = [];
-    for (const gap of [GAP, GAP + lineHeight / 2]) {
-      for (const t of [0.5, 0.35, 0.65, 0.2, 0.8]) found.push(besidePoint(add(v[p], times(along, t)), normal, gap, size));
-    }
-    return found;
-  };
-  const angleCandidates = (i: Index) => (size: LabelSize): Point[] => {
-    const b = corner[i]!.bisector;
-    const found: Point[] = [];
-    // Further in along the bisector for a narrow angle, whose sides close in on a label near it.
-    for (const extra of [0, lineHeight / 2, lineHeight, 2 * lineHeight, 3 * lineHeight, 4 * lineHeight, 6 * lineHeight]) {
-      const at = besidePoint(v[i], b, markReach[i]! + GAP + extra, size);
-      // Only inside the triangle: a box clear of the sides with its center inside lies inside.
-      if (insideTriangle([at.x + size.width / 2, at.y + size.height / 2], v)) found.push(at);
-    }
-    return found;
-  };
 
   const requests: LabelRequest[] = [];
   // Each says what it labels when stacked below the figure, away from it (code review CR-001).
-  for (const i of INDICES) requests.push({ text: shown.names[i], candidates: nameCandidates(i), stackedText: `vertex ${TRIANGLE_VERTICES[i]}: ${shown.names[i]}` });
+  for (const i of INDICES) requests.push({ text: shown.names[i], candidates: nameCandidates(v, corner[i]!, i), stackedText: `vertex ${TRIANGLE_VERTICES[i]}: ${shown.names[i]}` });
   for (const term of TRIANGLE_SIDES) {
     const label = shown.sides[term];
     if (!label.labeled) continue;
-    // A blank label leaves its place empty; the text alternative still states the value (DEL-003).
+    // A blank label leaves its place empty; the text alternative still states the value (GSS TICKET-002 DEL-003).
     const text = measurementLabel(normalized[term], sourceOf(provenance, term), normalized.unit, label.customText);
-    requests.push({ text, candidates: sideCandidates(term), stackedText: `${TRIANGLE_VERTICES[TRIANGLE_SIDES.indexOf(term)]!.toLowerCase()} = ${text}` });
+    requests.push({ text, candidates: sideCandidates(v, term, lineHeight), stackedText: `${TRIANGLE_VERTICES[TRIANGLE_SIDES.indexOf(term)]!.toLowerCase()} = ${text}` });
   }
   for (const i of INDICES) {
     const term = TRIANGLE_ANGLES[i];
     const label = shown.angles[term];
     if (!label.labeled) continue;
     const text = label.customText === undefined ? `${measurementLabel(normalized[term], sourceOf(provenance, term))}°` : measurementLabel(normalized[term], sourceOf(provenance, term), undefined, label.customText);
-    requests.push({ text, candidates: angleCandidates(i), stackedText: `∠${TRIANGLE_VERTICES[i]} = ${text}` });
+    requests.push({ text, candidates: angleCandidates(v, corner[i]!, i, markReach[i]!, lineHeight), stackedText: `∠${TRIANGLE_VERTICES[i]} = ${text}` });
   }
   // Candidates must keep the label inside the drawing, between the title and the figure's bottom.
   // Labels with no clear place are stacked below the figure (GSS TICKET-002 DEL-006).
