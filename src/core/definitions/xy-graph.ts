@@ -156,22 +156,26 @@ export function planeRooms(graph: XyGraph): { x: AxisRoom | undefined; y: AxisRo
 export const quadrantCount = (xAxis: Axis, yAxis: Axis): number => (xAxis.min < 0 && xAxis.max > 0 ? 2 : 1) * (yAxis.min < 0 && yAxis.max > 0 ? 2 : 1);
 
 /**
- * The `x` and `y` terms, one definition each for a point and a segment's ends, and for the x,y,z
- * graph's points too (GSV-REQ-015). No structural bounds: a value off its axis is reported with the
- * axis's range by the domain checks, as the number line's `value` is (NLC TICKET-002 DEL-009).
+ * The `x` and `y` terms, one definition each for a point and a segment's ends, for the x,y,z
+ * graph's points, and for a triangle's vertices (GSV-REQ-015; graph-library GSS TICKET-004
+ * DEL-004). No structural bounds: a value off its axis is reported with the axis's range by the
+ * domain checks, as the number line's `value` is (NLC TICKET-002 DEL-009), and a triangle's solver
+ * reports a vertex coordinate beyond ±1,000,000.
  */
 export const coordinates = {
   x: {
     term: "x",
     kind: "number",
     required: true,
-    description: "A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included.",
+    description:
+      "The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000.",
   },
   y: {
     term: "y",
     kind: "number",
     required: true,
-    description: "A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included.",
+    description:
+      "The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward.",
   },
 } as const satisfies Record<string, PropertySpec>;
 

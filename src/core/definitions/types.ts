@@ -285,6 +285,43 @@ export interface DomainCheck<D extends DescriptionBase = DescriptionBase> {
   check(description: D): readonly Issue[];
 }
 
+/**
+ * What a solver returns: the values it determined, or the issues that stop it.
+ * - `derived`: a value for each term the supplied values determine, the supplied ones included. The
+ *   validator adds those that were not supplied, with provenance `derived`, and never changes a
+ *   supplied one; the solver has already checked the supplied ones (GSV-REQ-038).
+ * - `scale`: the supplied input whose value sets the figure's size, such as the first side of a
+ *   triangle's determining set. A derived value outside its own term's range is reported as
+ *   `out_of_range` there, with the range that keeps every `scaled` term in its own.
+ * - `issues`: built with `createIssue`, as for a domain check.
+ */
+export type SolverResult =
+  | { readonly derived: Readonly<Record<string, number>>; readonly scale: string }
+  | { readonly issues: readonly Issue[] };
+
+/**
+ * A stage-3 solver, for a figure whose values are determined by sets of terms rather than by any
+ * one member, such as a triangle's three sides, or two angles and a side (graph-library GSS
+ * TICKET-004 DEL-001). It runs after the derivation groups and before the domain checks, and only
+ * when no earlier failure touches any of its inputs, so its issues never follow from another issue
+ * (AD-004). It receives a frozen copy of the inputs that are present, must build every issue with
+ * `createIssue`, and must do a fixed amount of work. A result that breaks this contract (a derived
+ * term that is not one of its top-level number inputs, a value that is not a finite number, a
+ * `scale` that was not supplied, a hand-built issue) is a package defect, reported as
+ * `internal_error`.
+ */
+export interface Solver<D extends DescriptionBase = DescriptionBase> {
+  /** The top-level terms the solver reads; every term it derives is one of them. */
+  readonly inputs: readonly string[];
+  /**
+   * The number inputs that grow in proportion to the figure's size, such as a triangle's sides
+   * (not its angles): each has a positive `min` and a finite `max`, which the definitions test checks.
+   */
+  readonly scaled: readonly string[];
+  // Method syntax keeps the parameter bivariant, as for `DomainCheck.check`.
+  solve(values: Readonly<Partial<D>>): SolverResult;
+}
+
 /** Everything about one graph type, the single source for types, schemas, vocabulary and validation (AD-003). */
 export interface GraphTypeDefinition<D extends DescriptionBase = DescriptionBase> {
   type: D["type"];
@@ -298,6 +335,8 @@ export interface GraphTypeDefinition<D extends DescriptionBase = DescriptionBase
   properties: PropertyMap;
   derivations: readonly Derivation[];
   checks: readonly DomainCheck<D>[];
+  /** The type's stage-3 solver, for values determined by sets of terms (see `Solver`). */
+  solve?: Solver<D>;
   /**
    * Where the type's element options go, such as "each series" for a line graph: given at the top
    * level, an option that applies only to the type's elements (a series' `lineLabel`) is reported

@@ -252,7 +252,7 @@
       "kind": "integer"
     },
     "x": {
-      "definition": "A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included.",
+      "definition": "The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000.",
       "kind": "number"
     },
     "xAxis": {
@@ -264,7 +264,7 @@
       "kind": "string"
     },
     "y": {
-      "definition": "A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included.",
+      "definition": "The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward.",
       "kind": "number"
     },
     "yAxis": {

@@ -3,6 +3,7 @@ import { dataGraphProperties } from "../../src/core/definitions/categories";
 import { unitProperty } from "../../src/core/definitions/figure";
 import { definitions, propertiesOf, scopedProperty, scopedPropertyMaps } from "../../src/core/definitions/index";
 import { type ScopedPropertySpec, sharedProperties } from "../../src/core/definitions/shared";
+import { triangle } from "../../src/core/definitions/triangle";
 import {
   GRAPH_TYPES,
   PROPERTY_KINDS,
@@ -464,6 +465,33 @@ function stageProblems(definition: GraphTypeDefinition): string[] {
       }
     }
   }
+  // A solver reads top-level terms, derives only number inputs, and scales only bounded lengths
+  // (graph-library GSS TICKET-004 DEL-001).
+  if (Object.hasOwn(definition, "solve") && definition.solve !== undefined) {
+    const solver = definition.solve;
+    if (typeof solver.solve !== "function") problems.push(`${definition.type}: the solver has no solve function`);
+    if (solver.inputs.length === 0) problems.push(`${definition.type}: the solver reads no inputs`);
+    if (new Set(solver.inputs).size !== solver.inputs.length) problems.push(`${definition.type}: the solver lists an input twice`);
+    for (const input of solver.inputs) {
+      if (input.includes("/") || propertySpec(definition.properties, input) === undefined) {
+        problems.push(`${definition.type}: the solver reads ${input}, which is not one of the type's own top-level terms`);
+      }
+    }
+    for (const term of solver.scaled) {
+      const spec = propertySpec(definition.properties, term);
+      if (!solver.inputs.includes(term)) problems.push(`${definition.type}: the solver scales ${term}, which is not one of its inputs`);
+      if (spec === undefined || spec.kind !== "number") {
+        problems.push(`${definition.type}: the solver scales ${term}, which is not a top-level number property`);
+      } else if (spec.min === undefined || !(spec.min > 0) || spec.max === undefined || !Number.isFinite(spec.max)) {
+        problems.push(`${definition.type}: the solver scales ${term}, which needs a positive min and a finite max`);
+      }
+    }
+    for (const group of definition.derivations) {
+      for (const member of group.members) {
+        if (solver.inputs.includes(member)) problems.push(`${definition.type}: ${member} is both a derivation member and a solver input`);
+      }
+    }
+  }
   for (const check of definition.checks) {
     for (const input of [...check.inputs, ...(check.optionalInputs ?? [])]) {
       if (!pathExists(properties, input)) problems.push(`${definition.type}: check "${check.name}" reads ${input}, which is not a property path`);
@@ -520,6 +548,30 @@ describe("derivation groups and domain checks are well formed (GSV-REQ-035)", ()
 
     const twice = { ...circle, derivations: [circle.derivations[0]!, circle.derivations[0]!], checks: [] } as GraphTypeDefinition;
     expect(stageProblems(twice)).toContain("circle: member radius is in two groups");
+  });
+
+  it("catches a solver that reads unknown or nested terms, or scales a term that is not a bounded number input", () => {
+    const circle = validatorFixtures.circle!;
+    const bad = {
+      ...circle,
+      checks: [],
+      solve: {
+        inputs: ["radius", "radius", "sparkle", "radius/x", "showCenter", "shadedFraction"],
+        scaled: ["showCenter", "shadedFraction", "diameter"],
+        solve: () => ({ issues: [] }),
+      },
+    } as unknown as GraphTypeDefinition;
+    expect(stageProblems(bad)).toEqual([
+      "circle: the solver lists an input twice",
+      "circle: the solver reads sparkle, which is not one of the type's own top-level terms",
+      "circle: the solver reads radius/x, which is not one of the type's own top-level terms",
+      "circle: the solver scales showCenter, which is not a top-level number property",
+      "circle: the solver scales shadedFraction, which needs a positive min and a finite max",
+      "circle: the solver scales diameter, which is not one of its inputs",
+      "circle: radius is both a derivation member and a solver input",
+    ]);
+    const empty = { ...circle, checks: [], solve: { inputs: [], scaled: [] } } as unknown as GraphTypeDefinition;
+    expect(stageProblems(empty)).toEqual(["circle: the solver has no solve function", "circle: the solver reads no inputs"]);
   });
 });
 
@@ -757,5 +809,44 @@ describe("the square, registered (graph-library GSS TICKET-003)", () => {
 
   it("is frozen all the way down, with no prototypes", () => {
     expect(lockedDown(definition.properties, "square")).toEqual([]);
+  });
+});
+
+describe("the triangle, defined but not registered until TICKET-005 draws it (graph-library GSS TICKET-004 DEL-002)", () => {
+  const definition = triangle as unknown as GraphTypeDefinition;
+
+  it("is not registered yet", () => {
+    expect(Object.hasOwn(definitions, "triangle")).toBe(false);
+  });
+
+  it("follows the vocabulary, stage (its solver included) and applicability rules", () => {
+    expect(vocabularyProblems(definition.properties)).toEqual([]);
+    expect(stageProblems(definition)).toEqual([]);
+    expect(applicabilityProblems(definition)).toEqual([]);
+  });
+
+  it("takes its own terms and the shared title and line color", () => {
+    expect(Object.keys(propertiesOf("triangle", { triangle: definition })).sort()).toEqual([
+      "angleA",
+      "angleB",
+      "angleC",
+      "lineColor",
+      "sideA",
+      "sideB",
+      "sideC",
+      "title",
+      "unit",
+      "vertexNames",
+      "vertices",
+    ]);
+  });
+
+  it("defines unit, x and y once with the registered types, and every term once (GSV-REQ-015; DEL-004)", () => {
+    expect(definition.properties["unit"]).toBe(unitProperty);
+    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties), definition.properties])).toEqual([]);
+  });
+
+  it("is frozen all the way down, with no prototypes", () => {
+    expect(lockedDown(definition.properties, "triangle")).toEqual([]);
   });
 });

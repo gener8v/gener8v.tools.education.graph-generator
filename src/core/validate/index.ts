@@ -5,6 +5,7 @@ import { type ValidationResult, invalidResult, validResult } from "../result";
 import { checkDerivations } from "./derive";
 import { runDomainChecks } from "./domain";
 import { checkEnvelope } from "./envelope";
+import { runSolver } from "./solve";
 import type { StageState } from "./state";
 import { checkStructure } from "./structure";
 
@@ -31,6 +32,7 @@ export function validateWith(input: unknown, registry: Registry): ValidationResu
       issues: [...structure.issues],
     };
     checkDerivations(definition, state);
+    runSolver(definition, state);
     runDomainChecks(definition, state);
 
     if (state.issues.length > 0) return invalidResult(state.issues);

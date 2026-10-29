@@ -110,9 +110,9 @@ export interface XyGraphDescription {
   showGrid?: boolean;
   /** The points marked on the graph, each at its position (its value on a number line, its x and y on a coordinate graph) and optionally with a label and a color. Points may share a position: each is drawn, and their labels are placed apart where the drawing has room. */
   points?: ReadonlyArray<{
-    /** A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included. */
+    /** The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000. */
     x: number;
-    /** A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included. */
+    /** The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward. */
     y: number;
     /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
     label?: string;
@@ -123,16 +123,16 @@ export interface XyGraphDescription {
   segments?: ReadonlyArray<{
     /** Where a line segment starts: its x and y coordinates. */
     from: {
-      /** A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included. */
+      /** The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000. */
       x: number;
-      /** A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included. */
+      /** The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward. */
       y: number;
     };
     /** Where a line segment ends: its x and y coordinates. */
     to: {
-      /** A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included. */
+      /** The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000. */
       x: number;
-      /** A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included. */
+      /** The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward. */
       y: number;
     };
     /** A label for this one point, segment or measured object, as plain text, at most 200 characters. In the drawing, a long label is cut short with “…”; the text alternative states it whole. */
@@ -193,9 +193,9 @@ export interface XyzGraphDescription {
   guideLines?: boolean;
   /** The points marked on the graph, each at its position (its value on a number line, its x and y on a coordinate graph) and optionally with a label and a color. Points may share a position: each is drawn, and their labels are placed apart where the drawing has room. */
   points?: ReadonlyArray<{
-    /** A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included. */
+    /** The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000. */
     x: number;
-    /** A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included. */
+    /** The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward. */
     y: number;
     /** A position along the z-axis, in its own numbers: a point's z coordinate, inside the z-axis range, ends included. */
     z: number;

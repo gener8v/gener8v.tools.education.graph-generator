@@ -6,10 +6,13 @@ import { type StageState, deepFreeze, touchesFailed } from "./state";
 /** The longest message a check's issue may carry; `createIssue` keeps messages far shorter. */
 const MAX_MESSAGE_LENGTH = 2_000;
 
-/** A check's issue must be one `createIssue` could build; anything else is a package defect. */
-function assertIssue(issue: Issue, check: string): Issue {
+/**
+ * An issue from a check or a solver must be one `createIssue` could build; anything else is a
+ * package defect. `source` names where it came from, for the defect's own message.
+ */
+export function assertIssue(issue: Issue, source: string): Issue {
   if (!isIssueCode(issue.code) || typeof issue.path !== "string" || typeof issue.message !== "string" || issue.message.length > MAX_MESSAGE_LENGTH) {
-    throw new Error(`Domain check "${check}" returned an issue createIssue would not build`);
+    throw new Error(`${source} returned an issue createIssue would not build`);
   }
   return issue;
 }
@@ -38,6 +41,6 @@ export function runDomainChecks(definition: GraphTypeDefinition, state: StageSta
       check.inputs.every((input) => Object.hasOwn(state.description, input.split("/")[0]!) && !touchesFailed(input, state.failed)) &&
       optionalInputsOf(check).every((input) => !touchesFailed(input, state.failed));
     if (!ready) continue;
-    for (const issue of check.check(state.description as DescriptionBase)) state.issues.push(assertIssue(issue, check.name));
+    for (const issue of check.check(state.description as DescriptionBase)) state.issues.push(assertIssue(issue, `Domain check "${check.name}"`));
   }
 }

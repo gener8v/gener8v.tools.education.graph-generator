@@ -329,11 +329,11 @@
             "properties": {
               "x": {
                 "type": "number",
-                "description": "A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included."
+                "description": "The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000."
               },
               "y": {
                 "type": "number",
-                "description": "A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included."
+                "description": "The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward."
               },
               "label": {
                 "type": "string",
@@ -368,11 +368,11 @@
                 "properties": {
                   "x": {
                     "type": "number",
-                    "description": "A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included."
+                    "description": "The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000."
                   },
                   "y": {
                     "type": "number",
-                    "description": "A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included."
+                    "description": "The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward."
                   }
                 },
                 "required": [
@@ -387,11 +387,11 @@
                 "properties": {
                   "x": {
                     "type": "number",
-                    "description": "A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included."
+                    "description": "The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000."
                   },
                   "y": {
                     "type": "number",
-                    "description": "A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included."
+                    "description": "The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward."
                   }
                 },
                 "required": [
@@ -576,11 +576,11 @@
             "properties": {
               "x": {
                 "type": "number",
-                "description": "A position along the x-axis, in its own numbers: the x coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the x-axis range, ends included."
+                "description": "The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000."
               },
               "y": {
                 "type": "number",
-                "description": "A position along the y-axis, in its own numbers: the y coordinate of a plotted point (or, on an x,y graph, of a segment's end), inside the y-axis range, ends included."
+                "description": "The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward."
               },
               "z": {
                 "type": "number",
