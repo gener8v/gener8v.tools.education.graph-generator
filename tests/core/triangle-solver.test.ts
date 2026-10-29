@@ -95,19 +95,20 @@ describe("values beyond the determining set are statements to check within 1% (G
 });
 
 describe("near-flat triangles (TR-008)", () => {
-  it("solves a valid needle-thin triangle whose law-of-cosines cosine rounds past 1", () => {
-    // These sides give a cosine of 1.0000000000000002 for angle A: acos would be NaN, or 0° clamped,
-    // and the triangle misread as too flat; its angle A is about 6.7 × 10⁻⁷°.
-    const result = solved({ sideA: 0.010791565506400204, sideB: 922646.5594201983, sideC: 922646.5590955435 });
-    const angles = [result.angles.A, result.angles.B, result.angles.C];
-    for (const angle of angles) expect(Number.isFinite(angle)).toBe(true);
-    expect(angles[0]).toBeGreaterThan(0);
-    // Recomputed from the area, sin A = 2·area / (b·c), to 10⁻⁹.
-    const [a, b, c] = [0.010791565506400204, 922646.5594201983, 922646.5590955435];
-    const s = (a + b + c) / 2;
-    const area = Math.sqrt(s * (s - a) * (s - b) * (s - c));
-    expect(Math.abs(Math.sin((angles[0]! * Math.PI) / 180) / ((2 * area) / (b * c)) - 1)).toBeLessThan(1e-6);
-    expect(angles[0]! + angles[1]! + angles[2]!).toBeCloseTo(180, 9);
+  it("reports a needle-thin triangle whose law-of-cosines cosine rounds past 1 as too thin, not as NaN", () => {
+    // These sides give a cosine of 1.0000000000000002 for angle A, about 6.7 × 10⁻⁷°: an unclamped
+    // acos would be NaN. The angle is under the 0.02° floor (security review SEC-001).
+    expect(issuesOf({ sideA: 0.010791565506400204, sideB: 922646.5594201983, sideC: 922646.5590955435 })).toEqual([
+      expect.objectContaining({ code: "not_a_triangle", path: "" }),
+    ]);
+  });
+
+  it.each([
+    ["two sides and the angle between them", { sideB: 1, sideC: 1, angleA: 179.99999999999997 }],
+    ["two sides and the angle between them, small", { sideA: 0.001, sideB: 0.001, angleC: 179.99999999999997 }],
+    ["two angles and a side", { angleA: 1e-10, angleB: 1e-10, sideC: 1 }],
+  ])("applies the one flatness rule to %s, as to three sides (security review SEC-001)", (_, input) => {
+    expect(issuesOf(input).map((issue) => issue.code)).toEqual(["not_a_triangle"]);
   });
 });
 

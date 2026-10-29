@@ -1,5 +1,5 @@
 import { cleanText, formatList, formatMeasurement, formatSupplied, quoteText, sourceOf, stateMeasurement } from "../format";
-import { TRIANGLE_ANGLES, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleInput, solveTriangle } from "../geometry/triangle-solver";
+import { TRIANGLE_ANGLES, TRIANGLE_MIN_ANGLE, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleInput, solveTriangle } from "../geometry/triangle-solver";
 import { createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
 import { rangeBroken } from "../validate/numbers";
@@ -52,11 +52,10 @@ const angle = (term: (typeof ANGLE_TERMS)[number], name: string): PropertySpec =
   term,
   kind: "number",
   required: false,
-  min: 0,
-  exclusiveMin: true,
+  min: TRIANGLE_MIN_ANGLE,
   max: 180,
   exclusiveMax: true,
-  description: `The angle at vertex ${name}, in degrees, greater than 0 and less than 180. Derived sides and angles are exact to about nine significant digits while every angle is at least 0.02°; a thinner triangle is accepted with fewer.`,
+  description: `The angle at vertex ${name}, in degrees, at least ${TRIANGLE_MIN_ANGLE} and less than 180. A triangle whose derived angles include one under ${TRIANGLE_MIN_ANGLE}° is too thin to draw.`,
 });
 
 /** The range of a vertex coordinate. The shared `x` and `y` terms have no bounds of their own. */

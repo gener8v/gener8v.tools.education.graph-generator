@@ -18,7 +18,8 @@ import { type TriangleInput, type TriangleSolution, solveTriangle } from "../../
 const RUNS = 1_000;
 const RELATIVE = 1e-9;
 const RADIANS = Math.PI / 180;
-const MIN_ANGLE = 0.02;
+// Just above the 0.02° floor (`TRIANGLE_MIN_ANGLE`), so a derived angle at the floor cannot round under it.
+const MIN_ANGLE = 0.0201;
 
 const SIDES = ["sideA", "sideB", "sideC"] as const;
 const ANGLES = ["angleA", "angleB", "angleC"] as const;

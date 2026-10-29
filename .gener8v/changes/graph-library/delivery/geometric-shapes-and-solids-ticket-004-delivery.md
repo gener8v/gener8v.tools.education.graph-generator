@@ -229,3 +229,13 @@ Run in the main session on 2026-10-29, after the code was written and after the 
 (QR-001 was resolved with code review CR-003, above.)
 **Files:** `src/core/validate/solve.ts`, `src/core/geometry/triangle-solver.ts`, `src/core/tolerance.ts` (new), `src/core/validate/derive.ts`, `src/core/definitions/triangle.ts`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 1,814 passed each; `ssaFit` mutation-checked (three branch mutations each fail a test); gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-004-security-review/SEC-001..SEC-003 — one degeneracy rule, a 0.02° floor, own-key reads
+
+**Change:**
+- SEC-001 (angle floor: Product Owner decision, Thomas Eaves, 2026-10-29): `drawable` applies one rule to every set — the 10⁻¹² flatness margin on the derived sides and every angle at least `TRIANGLE_MIN_ANGLE` = 0.02°. The angle terms take `min: 0.02` (was exclusive 0), so a supplied angle below it is `out_of_range`; a derived one is `not_a_triangle`. The third angle is `(90 − p) + (90 − q)`. New tests: the probe cases, the 0.019° range case, and a property test that every valid triangle's normalized description validates again unchanged (1,000 per set). The needle-thin regression test now expects `not_a_triangle` (its 6.7 × 10⁻⁷° angle is under the floor), so the `acos`-mutant check of DEL-005 is no longer distinguishable by it. TICKET-005 has a Known Hazard against dividing by a triangle's height.
+- SEC-002: `scaleRange` reads ranges through `ownRange` and builds its result with own keys.
+- SEC-003: `checkedResult` checks and returns a frozen own-data snapshot of `derived` and an own-key `scale`; `runSolver` uses only the snapshot. Issue rebuild left out by agreement.
+**Files:** `src/core/geometry/triangle-solver.ts`, `src/core/definitions/triangle.ts`, `src/core/validate/solve.ts`, `tests/core/triangle-solver.test.ts`, `tests/core/triangle.test.ts`, `tests/core/triangle-solver.property.test.ts`, `tests/core/validate-solve.test.ts`, `.gener8v/changes/graph-library/tickets/geometric-shapes-and-solids/TICKET-005.md`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,827 passed each; the re-validation property 10 runs of 1,000 per set, 0 failures; mutation checks recorded in the security report (equivalent survivors: the margin and the third-angle form under the floor; the explicit accessor check, which the finite-number check backs); gener8v-state lint 0 errors.
+**Follow-up:** the specification's Edge Case "Triangle angle of 0° or ≥ 180° → out of range" now has a 0.02° floor; amend it through the Specification skill.

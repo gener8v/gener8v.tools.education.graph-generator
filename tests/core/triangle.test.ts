@@ -1,8 +1,10 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { unitProperty } from "../../src/core/definitions/figure";
 import { definitions } from "../../src/core/definitions/index";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { type Triangle, triangle } from "../../src/core/definitions/triangle";
+import { TRIANGLE_MIN_ANGLE } from "../../src/core/geometry/triangle-solver";
 import type { GraphType, GraphTypeDefinition } from "../../src/core/definitions/types";
 import { coordinates } from "../../src/core/definitions/xy-graph";
 import type { Issue, Provenance, ValidationResult } from "../../src/core/result";
@@ -109,10 +111,10 @@ describe("the triangle's failures through the validator (GSS-REQ-015..019)", () 
 });
 
 describe("ranges (GSS-REQ-010..013)", () => {
-  it.each([0, 180, -5, 200])("reports an angle of %d° as out of range, in degrees", (angleA) => {
+  it.each([0, 0.019, 180, -5, 200])("reports an angle of %d° as out of range, in degrees, from the 0.02° floor (security review SEC-001)", (angleA) => {
     const [issue, ...rest] = issuesOf(check({ sideB: 3, sideC: 4, angleA }));
     expect(rest).toEqual([]);
-    expect(issue).toMatchObject({ code: "out_of_range", path: "/angleA", range: { min: 0, exclusiveMin: true, max: 180, exclusiveMax: true } });
+    expect(issue).toMatchObject({ code: "out_of_range", path: "/angleA", range: { min: 0.02, max: 180, exclusiveMax: true } });
   });
 
   it.each([0, 0.0009, 1_000_001])("reports a side of %d as out of range", (sideA) => {
@@ -135,7 +137,7 @@ describe("ranges (GSS-REQ-010..013)", () => {
   });
 
   it("reports vertices too far apart for a side, stating the side", () => {
-    const [issue, ...rest] = issuesOf(check({ vertices: [{ x: -600_000, y: 0 }, { x: 600_000, y: 0 }, { x: 0, y: 1 }] }));
+    const [issue, ...rest] = issuesOf(check({ vertices: [{ x: -600_000, y: 0 }, { x: 600_000, y: 0 }, { x: 0, y: 600_000 }] }));
     expect(rest).toEqual([]);
     expect(issue).toMatchObject({ code: "out_of_range", path: "/vertices", range: { min: 0.001, max: 1_000_000 } });
     expect(issue!.message).toBe("sideC must be a number between 0.001 and 1000000; got 1200000.");
@@ -187,3 +189,50 @@ describe("the text alternative (GSS-REQ-033, GSS-REQ-034)", () => {
     );
   });
 });
+
+describe("a valid triangle's normalized description is valid again, unchanged (security review SEC-001)", () => {
+  const RADIANS = Math.PI / 180;
+  // Just above the floor, so no derived angle rounds under it.
+  const floor = TRIANGLE_MIN_ANGLE * 1.005;
+  const finite = (min: number, max: number) => fc.double({ min, max, noNaN: true, noDefaultInfinity: true });
+
+  /** Every side and angle of a triangle inside the definition's ranges, from two angles and the longest side. */
+  const triangles = fc
+    .tuple(finite(floor, 180 - 2 * floor), finite(0, 1), finite(0.01, 1_000_000))
+    .map(([a, share, longest]) => {
+      const b = floor + share * (180 - 2 * floor - a);
+      const angles = [a, b, 180 - a - b] as const;
+      const sines = angles.map((angle) => Math.sin(Math.min(angle, 180 - angle) * RADIANS));
+      const scale = longest / Math.max(...sines);
+      return { angles, sides: sines.map((sine) => scale * sine) as [number, number, number] };
+    })
+    // A hair inside the side range, so a derived side at the limit cannot round past it.
+    .filter(({ sides }) => sides.every((side) => side >= 0.001 * (1 + 1e-6) && side <= 1_000_000 * (1 - 1e-6)));
+
+  const sets: ReadonlyArray<readonly [string, (t: { angles: readonly number[]; sides: readonly number[] }) => object]> = [
+    ["three sides", ({ sides }) => ({ sideA: sides[0], sideB: sides[1], sideC: sides[2] })],
+    ["two sides and the angle between them", ({ sides, angles }) => ({ sideB: sides[1], sideC: sides[2], angleA: angles[0] })],
+    ["two angles and the side between them", ({ sides, angles }) => ({ angleA: angles[0], angleB: angles[1], sideC: sides[2] })],
+    ["two angles and another side", ({ sides, angles }) => ({ angleA: angles[0], angleB: angles[1], sideA: sides[0] })],
+    ["three vertices", ({ sides, angles }) => {
+      const [b, c] = [sides[1]!, sides[2]!];
+      return { vertices: [{ x: 0, y: 0 }, { x: c, y: 0 }, { x: b * Math.cos(angles[0]! * RADIANS), y: b * Math.sin(Math.min(angles[0]!, 180 - angles[0]!) * RADIANS) }] };
+    }],
+  ];
+
+  it.each(sets)("holds for %s", (_, inputOf) => {
+    fc.assert(
+      fc.property(triangles, (generated) => {
+        // Every generated triangle is inside the ranges and above the floor, so it is valid.
+        const result = check(inputOf(generated));
+        expect(result.valid).toBe(true);
+        if (!result.valid) return;
+        const again = check(result.description);
+        expect(again.valid).toBe(true);
+        if (again.valid) expect(again.description).toEqual(result.description);
+      }),
+      { numRuns: 1_000 },
+    );
+  });
+});
+

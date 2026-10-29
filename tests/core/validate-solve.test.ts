@@ -168,6 +168,18 @@ describe("the stage-3 solver (graph-library GSS TICKET-004 DEL-001; AD-004)", ()
     expect(issue!.message).toMatch(/^width must be a number between 1 and 84\.85\d*; got 100\.$/);
   });
 
+  it("reads every range bound and flag own-key, so a polluted Object.prototype changes no reported range (security review SEC-002)", () => {
+    try {
+      for (const key of ["exclusiveMin", "exclusiveMax"]) (Object.prototype as Record<string, unknown>)[key] = true;
+      const [issue] = issuesOf(check({ width: 100, height: 100 }));
+      expect(Object.hasOwn(issue!.range!, "exclusiveMin")).toBe(false);
+      expect(Object.hasOwn(issue!.range!, "exclusiveMax")).toBe(false);
+      expect(issue!.message).toMatch(/^width must be a number between 1 and 84\.85\d*; got 100\.$/);
+    } finally {
+      for (const key of ["exclusiveMin", "exclusiveMax"]) delete (Object.prototype as Record<string, unknown>)[key];
+    }
+  });
+
   it("states the derived value against its own range when no scale value would do", () => {
     // A scale that is not a number: the derived value is stated with its own range, at the scale.
     const definition = rectangle(returning({ derived: { diagonal: 500 }, scale: "height" }), {
@@ -196,6 +208,16 @@ describe("the stage-3 solver (graph-library GSS TICKET-004 DEL-001; AD-004)", ()
     ["an empty list of issues", { issues: [] }],
     ["a hand-built issue", { issues: [{ code: "not_a_code", path: "", message: "Bad." } as unknown as Issue] }],
     ["an issue with an overlong message", { issues: [{ code: "insufficient", path: "", message: "x".repeat(5_000) }] }],
+    // Security review SEC-003: the result is checked and used as a snapshot of own data properties.
+    [
+      "a derived value behind an accessor, finite when checked and NaN afterwards",
+      (() => {
+        let reads = 0;
+        const derived = Object.defineProperty({}, "diagonal", { enumerable: true, get: () => (++reads === 1 ? 5 : Number.NaN) });
+        return { derived, scale: "width" } as unknown as SolverResult;
+      })(),
+    ],
+    ["a scale inherited, not its own", Object.assign(Object.create({ scale: "width" }) as object, { derived: { diagonal: 5 } }) as unknown as SolverResult],
   ])("treats %s as a package defect, reported as internal_error", (_name, result) => {
     expect(issuesOf(check({ width: 3, height: 4 }, rectangle(returning(result))))).toEqual([expect.objectContaining({ code: "internal_error", path: "" })]);
   });
@@ -213,6 +235,14 @@ describe("the stage-3 solver (graph-library GSS TICKET-004 DEL-001; AD-004)", ()
   describe("read as the definition's own property only", () => {
     afterEach(() => {
       delete (Object.prototype as Record<string, unknown>)["solve"];
+      delete (Object.prototype as Record<string, unknown>)["scale"];
+    });
+
+    it("never takes a scale from a polluted Object.prototype (security review SEC-003)", () => {
+      (Object.prototype as Record<string, unknown>)["scale"] = "width";
+      expect(issuesOf(check({ width: 3, height: 4 }, rectangle(returning({ derived: { diagonal: 5 } } as unknown as SolverResult))))).toEqual([
+        expect.objectContaining({ code: "internal_error", path: "" }),
+      ]);
     });
 
     it("ignores a solver added to Object.prototype", () => {

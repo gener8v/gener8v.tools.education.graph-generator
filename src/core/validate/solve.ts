@@ -1,6 +1,6 @@
 import type { GraphTypeDefinition, NumberValue, Solver, SolverResult } from "../definitions/types";
 import { propertySpec } from "../definitions/types";
-import { createIssue, pointer } from "../issues";
+import { createIssue, ownRange, pointer } from "../issues";
 import type { Issue, Range } from "../result";
 import { assertIssue } from "./domain";
 import { rangeBroken, rangeOf } from "./numbers";
@@ -41,17 +41,29 @@ function checkedResult(definition: GraphTypeDefinition, solver: Solver, result: 
     if (!Array.isArray(issues) || issues.length === 0) throw new Error(`The ${definition.type} solver returned issues that are not a non-empty list`);
     return { kind: "issues", issues: issues.map((issue: Issue) => assertIssue(issue, `The ${definition.type} solver`)) };
   }
-  const solved = result as Solved;
-  for (const [term, value] of Object.entries(solved.derived)) {
+  // A snapshot of own data properties only, checked and then used in place of the live result,
+  // so an accessor cannot return a checked value first and another one later (security review
+  // SEC-003).
+  const live = result as Solved;
+  const derivedSource: unknown = Object.hasOwn(live, "derived") ? Object.getOwnPropertyDescriptor(live, "derived")?.value : undefined;
+  if (derivedSource === null || typeof derivedSource !== "object") throw new Error(`The ${definition.type} solver returned derived values that are not a record`);
+  const derived: Record<string, number> = Object.create(null) as Record<string, number>;
+  for (const term of Object.keys(derivedSource)) {
+    const descriptor = Object.getOwnPropertyDescriptor(derivedSource, term);
+    if (descriptor === undefined || !("value" in descriptor)) throw new Error(`The ${definition.type} solver derived ${term} through an accessor`);
+    const value: unknown = descriptor.value;
     if (!solver.inputs.includes(term) || numberSpec(definition, term) === undefined) {
       throw new Error(`The ${definition.type} solver derived ${term}, which is not one of its number inputs`);
     }
     if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`The ${definition.type} solver did not give a finite number for ${term}`);
+    derived[term] = value;
   }
-  if (typeof solved.scale !== "string" || !supplied.has(solved.scale)) {
+  const scaleDescriptor = Object.hasOwn(live, "scale") ? Object.getOwnPropertyDescriptor(live, "scale") : undefined;
+  const scale: unknown = scaleDescriptor !== undefined && "value" in scaleDescriptor ? scaleDescriptor.value : undefined;
+  if (typeof scale !== "string" || !supplied.has(scale)) {
     throw new Error(`The ${definition.type} solver named a scale that was not supplied`);
   }
-  return { kind: "solved", solved };
+  return { kind: "solved", solved: Object.freeze({ derived: Object.freeze(derived), scale }) };
 }
 
 /**
@@ -60,32 +72,37 @@ function checkedResult(definition: GraphTypeDefinition, solver: Solver, result: 
  * the scale. `undefined` when no scale value would do.
  */
 function scaleRange(definition: GraphTypeDefinition, solver: Solver, solved: Solved, scaleSpec: NumberValue, scaleValue: number): Range | undefined {
-  const range = rangeOf(scaleSpec);
+  // Every bound and flag read own-key (`ownRange`), so a polluted `Object.prototype.exclusiveMax`
+  // or `.min` never changes the range (security review SEC-002).
+  let { min, max, exclusiveMin, exclusiveMax } = ownRange(rangeOf(scaleSpec));
   for (const term of solver.scaled) {
     const spec = numberSpec(definition, term);
     const value = Object.hasOwn(solved.derived, term) ? solved.derived[term] : undefined;
     if (spec === undefined || value === undefined || !(value > 0)) continue;
     const ratio = value / scaleValue;
-    const own = rangeOf(spec);
+    const own = ownRange(rangeOf(spec));
     if (own.min !== undefined) {
       const low = own.min / ratio;
-      if (range.min === undefined || low > range.min) {
-        range.min = low;
-        if (own.exclusiveMin === true) range.exclusiveMin = true;
-        else delete range.exclusiveMin;
+      if (min === undefined || low > min) {
+        min = low;
+        exclusiveMin = own.exclusiveMin === true ? true : undefined;
       }
     }
     if (own.max !== undefined) {
       const high = own.max / ratio;
-      if (range.max === undefined || high < range.max) {
-        range.max = high;
-        if (own.exclusiveMax === true) range.exclusiveMax = true;
-        else delete range.exclusiveMax;
+      if (max === undefined || high < max) {
+        max = high;
+        exclusiveMax = own.exclusiveMax === true ? true : undefined;
       }
     }
   }
-  if (range.min !== undefined && range.max !== undefined && !(range.min < range.max)) return undefined;
-  return range;
+  if (min !== undefined && max !== undefined && !(min < max)) return undefined;
+  return {
+    ...(min !== undefined ? { min } : {}),
+    ...(exclusiveMin === true ? { exclusiveMin } : {}),
+    ...(max !== undefined ? { max } : {}),
+    ...(exclusiveMax === true ? { exclusiveMax } : {}),
+  };
 }
 
 /**

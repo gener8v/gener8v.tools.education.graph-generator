@@ -65,6 +65,18 @@ const INDICES: readonly Index[] = [0, 1, 2];
  */
 const DEGENERATE = 1e-12;
 
+/**
+ * The smallest angle a triangle may have, in degrees (Product Owner decision, Thomas Eaves,
+ * 2026-10-29; GSS TICKET-004 security review SEC-001). Below about 0.01° the sides, as doubles,
+ * no longer fix the angles within the 1% tolerance, so a normalized description could fail
+ * `validate` again; 0.02° is also the floor GSS-NFR-002 is verified at. A supplied angle below it
+ * is out of range; a derived one makes the triangle too thin to draw.
+ */
+export const TRIANGLE_MIN_ANGLE = 0.02;
+
+/** 180° less two angles, as (90 − p) + (90 − q): exact when both are at least 45° (Sterbenz), where 180 − p − q loses digits against a third angle near 180° (SEC-001). */
+const remainingAngle = (p: number, q: number) => (90 - p) + (90 - q);
+
 const RADIANS = Math.PI / 180;
 const DEGREES = 180 / Math.PI;
 
@@ -117,10 +129,19 @@ function valuesOf(solved: TriangleSolution): Record<TriangleSideTerm | TriangleA
   return { sideA: sides.a, sideB: sides.b, sideC: sides.c, angleA: angles.A, angleB: angles.B, angleC: angles.C };
 }
 
-/** Whether every side is a positive finite length and every angle strictly between 0° and 180°. */
+/**
+ * Whether a solved triangle can be drawn, by the one rule every determining set shares (security
+ * review SEC-001): every side a positive finite length, the longest shorter than the other two
+ * together by more than the `DEGENERATE` margin (as three sides are checked), and every angle at
+ * least `TRIANGLE_MIN_ANGLE` and below 180°.
+ */
 function drawable(solved: TriangleSolution): boolean {
   const { sides, angles } = solved;
-  return [sides.a, sides.b, sides.c].every((side) => Number.isFinite(side) && side > 0) && [angles.A, angles.B, angles.C].every((angle) => angle > 0 && angle < 180);
+  const lengths = [sides.a, sides.b, sides.c];
+  if (!lengths.every((side) => Number.isFinite(side) && side > 0)) return false;
+  const longest = Math.max(sides.a, sides.b, sides.c);
+  if (sides.a + sides.b + sides.c - 2 * longest <= DEGENERATE * longest) return false;
+  return [angles.A, angles.B, angles.C].every((angle) => angle >= TRIANGLE_MIN_ANGLE && angle < 180);
 }
 
 const terms = (list: readonly TriangleTerm[]) => list as unknown as readonly [string, ...string[]];
@@ -134,7 +155,7 @@ const pointers = (list: readonly TriangleTerm[]) => list.map((term) => pointer(t
 // @spec GSS-REQ-014, GSV-REQ-038
 function checked(input: TriangleInput, solved: TriangleSolution): TriangleSolution | Issue[] {
   if (!drawable(solved)) {
-    return [createIssue("not_a_triangle", pointer(), { term: TRIANGLE, detail: "the values give a triangle too flat to draw" })];
+    return [createIssue("not_a_triangle", pointer(), { term: TRIANGLE, detail: `the values give a triangle too flat or too thin to draw, with an angle under ${TRIANGLE_MIN_ANGLE}°` })];
   }
   const derived = valuesOf(solved);
   const issues: Issue[] = [];
@@ -243,7 +264,7 @@ function fromTwoAnglesAndSide(input: TriangleInput, p: Index, q: Index, m: Index
   const angles: number[] = [];
   angles[p] = input[ANGLES[p]]!;
   angles[q] = input[ANGLES[q]]!;
-  angles[r] = 180 - angles[p]! - angles[q]!;
+  angles[r] = remainingAngle(angles[p]!, angles[q]!);
   const side = input[SIDES[m]]!;
   const ratio = side / sinDeg(angles[m]!);
   const sides = INDICES.map((i) => (i === m ? side : ratio * sinDeg(angles[i]!)));
@@ -289,7 +310,7 @@ function fromTwoSidesAndOther(input: TriangleInput, given: readonly number[], g:
   const sides: number[] = [];
   const angles: number[] = [];
   [sides[g], sides[o], sides[t]] = [a, b, near];
-  [angles[g], angles[o], angles[t]] = [alpha, beta, 180 - alpha - beta];
+  [angles[g], angles[o], angles[t]] = [alpha, beta, remainingAngle(alpha, beta)];
   return checked(input, solution(sides, angles, "SSA", defining, SIDES[first]));
 }
 
@@ -318,7 +339,7 @@ function angleProblems(input: TriangleInput, given: readonly Index[]): Issue[] {
   if (given.length === 3) {
     const sum = value(0) + value(1) + value(2);
     if (!withinTolerance(sum, 180)) {
-      const rest = 180 - value(0) - value(1);
+      const rest = remainingAngle(value(0), value(1));
       return [
         createIssue("contradiction", pointer("angleC"), {
           term: "angleC",
