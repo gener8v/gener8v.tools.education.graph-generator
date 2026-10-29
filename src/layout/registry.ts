@@ -7,6 +7,7 @@ import { numberLineLayout } from "./number-line";
 import { pictographLayout } from "./pictograph";
 import { rulerLayout } from "./ruler";
 import { squareLayout } from "./square";
+import { triangleLayout } from "./triangle";
 import type { Scene } from "./scene";
 import { xyGraphLayout } from "./xy-graph";
 import { xyzGraphLayout } from "./xyz-graph";
@@ -46,6 +47,7 @@ export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
     circle: circleLayout,
     ruler: rulerLayout,
     square: squareLayout,
+    triangle: triangleLayout,
   } satisfies Partial<Record<GraphType, Layout>>),
 );
 

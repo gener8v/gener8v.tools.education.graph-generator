@@ -6,6 +6,7 @@ import { numberLine } from "./number-line";
 import { pictograph } from "./pictograph";
 import { ruler } from "./ruler";
 import { square } from "./square";
+import { triangle } from "./triangle";
 import { type ScopedPropertySpec, sharedProperties } from "./shared";
 import { xyGraph } from "./xy-graph";
 import { xyzGraph } from "./xyz-graph";
@@ -35,6 +36,7 @@ export const definitions: Registry = /* @__PURE__ */ Object.freeze(
     circle,
     ruler,
     square,
+    triangle,
   } satisfies Partial<Record<GraphType, GraphTypeDefinition>>),
 );
 

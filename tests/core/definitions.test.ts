@@ -812,11 +812,11 @@ describe("the square, registered (graph-library GSS TICKET-003)", () => {
   });
 });
 
-describe("the triangle, defined but not registered until TICKET-005 draws it (graph-library GSS TICKET-004 DEL-002)", () => {
-  const definition = triangle as unknown as GraphTypeDefinition;
+describe("the triangle, registered (graph-library GSS TICKET-005)", () => {
+  const definition = definitions.triangle!;
 
-  it("is not registered yet", () => {
-    expect(Object.hasOwn(definitions, "triangle")).toBe(false);
+  it("is the triangle definition", () => {
+    expect(definition).toBe(triangle);
   });
 
   it("follows the vocabulary, stage (its solver included) and applicability rules", () => {
@@ -826,14 +826,22 @@ describe("the triangle, defined but not registered until TICKET-005 draws it (gr
   });
 
   it("takes its own terms and the shared title and line color", () => {
-    expect(Object.keys(propertiesOf("triangle", { triangle: definition })).sort()).toEqual([
+    expect(Object.keys(propertiesOf("triangle", definitions)).sort()).toEqual([
       "angleA",
+      "angleALabelText",
       "angleB",
+      "angleBLabelText",
       "angleC",
+      "angleCLabelText",
+      "labelAngles",
+      "labelSides",
       "lineColor",
       "sideA",
+      "sideALabelText",
       "sideB",
+      "sideBLabelText",
       "sideC",
+      "sideCLabelText",
       "title",
       "unit",
       "vertexNames",
@@ -841,9 +849,10 @@ describe("the triangle, defined but not registered until TICKET-005 draws it (gr
     ]);
   });
 
-  it("defines unit, x and y once with the registered types, and every term once (GSV-REQ-015; DEL-004)", () => {
+  it("defines unit, labelSides, x and y once with the registered types, and every term once (GSV-REQ-015; DEL-004)", () => {
     expect(definition.properties["unit"]).toBe(unitProperty);
-    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties), definition.properties])).toEqual([]);
+    expect(definition.properties["labelSides"]).toBe(definitions.square!.properties["labelSides"]);
+    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties)])).toEqual([]);
   });
 
   it("is frozen all the way down, with no prototypes", () => {

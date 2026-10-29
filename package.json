@@ -80,6 +80,10 @@
       "types": "./dist/square.d.ts",
       "default": "./dist/square.js"
     },
+    "./triangle": {
+      "types": "./dist/triangle.d.ts",
+      "default": "./dist/triangle.js"
+    },
     "./xyz-graph": {
       "types": "./dist/xyz-graph.d.ts",
       "default": "./dist/xyz-graph.js"

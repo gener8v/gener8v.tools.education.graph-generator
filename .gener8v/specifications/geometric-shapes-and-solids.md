@@ -155,24 +155,29 @@ The type-specific vocabulary terms this area adds to the GSV single definition (
 | GSS-REQ-003 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-004 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-005 | `src/core/definitions/circle.ts`:circle; `src/layout/circle.ts`:circleLayout |
-| GSS-REQ-006 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/circle.ts`:circleLayout |
+| GSS-REQ-006 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/core/definitions/figure.ts`:agrees; `src/layout/circle.ts`:circleLayout |
 | GSS-REQ-007 | `src/core/definitions/square.ts`:square; `src/layout/square.ts`:squareLayout; `src/react/graphs/SquareGraph.tsx`:SquareGraph |
-| GSS-REQ-008 | `src/core/definitions/square.ts`:squareLabels, square; `src/layout/kit/figure-labels.ts`:labelBlock, placeLabels; `src/layout/square.ts`:squareLayout |
+| GSS-REQ-008 | `src/core/definitions/square.ts`:squareLabels, square; `src/core/definitions/figure.ts`:figureTerms (labelSides); `src/layout/kit/figure-labels.ts`:labelBlock, placeLabels; `src/layout/square.ts`:squareLayout |
 | GSS-REQ-009 | `src/core/definitions/square.ts`:square; `src/layout/square.ts`:squareLayout |
-| GSS-REQ-010 | `src/core/geometry/triangle-solver.ts`:fromThreeSides; `src/core/definitions/triangle.ts`:triangle |
+| GSS-REQ-010 | `src/core/geometry/triangle-solver.ts`:fromThreeSides; `src/core/definitions/triangle.ts`:triangle; `src/react/graphs/TriangleGraph.tsx`:TriangleGraph; `src/entries/triangle.ts` |
 | GSS-REQ-011 | `src/core/geometry/triangle-solver.ts`:fromTwoSidesAndIncluded; `src/core/definitions/triangle.ts`:triangle |
 | GSS-REQ-012 | `src/core/geometry/triangle-solver.ts`:fromTwoAnglesAndSide; `src/core/definitions/triangle.ts`:triangle |
-| GSS-REQ-013 | `src/core/geometry/triangle-solver.ts`:fromVertices; `src/core/definitions/triangle.ts`:triangle, coordinateIssues |
+| GSS-REQ-013 | `src/core/geometry/triangle-solver.ts`:fromVertices; `src/core/definitions/triangle.ts`:triangle, coordinateIssues; `src/layout/triangle.ts`:modelVertices |
 | GSS-REQ-014 | `src/core/geometry/triangle-solver.ts`:solveTriangle, checked, fromVertices, fromThreeSides, fromTwoSidesAndIncluded, fromTwoAnglesAndSide, fromTwoSidesAndOther; `src/core/validate/solve.ts`:runSolver; `src/core/definitions/triangle.ts`:triangle, triangle.describe |
 | GSS-REQ-015 | `src/core/geometry/triangle-solver.ts`:fromThreeSides |
 | GSS-REQ-016 | `src/core/geometry/triangle-solver.ts`:angleProblems, solveTriangle |
 | GSS-REQ-017 | `src/core/geometry/triangle-solver.ts`:solveTriangle |
 | GSS-REQ-018 | `src/core/geometry/triangle-solver.ts`:fromTwoSidesAndOther |
 | GSS-REQ-019 | `src/core/geometry/triangle-solver.ts`:fromVertices |
+| GSS-REQ-020 | `src/core/definitions/triangle.ts`:triangleDisplay, triangle, defineTriangle, triangle.describe, labelSentences; `src/core/definitions/figure.ts`:figureTerms (labelSides), agrees; `src/layout/triangle.ts`:triangleLayout |
+| GSS-REQ-021 | `src/core/definitions/triangle.ts`:triangleDisplay, isRightAngle, triangle, triangle.describe; `src/layout/triangle.ts`:triangleLayout |
+| GSS-REQ-022 | `src/core/definitions/triangle.ts`:triangleDisplay; `src/layout/triangle.ts`:triangleLayout, modelVertices, SIDE_ENDS |
+| GSS-REQ-030 | `src/layout/triangle.ts`:triangleLayout, fitScale (the triangle; the circle and square are drawn at a fixed size) |
+| GSS-REQ-031 | `src/layout/triangle.ts`:triangleLayout, fitScale (the triangle; the circle and square are drawn at a fixed size) |
 | GSS-REQ-032 | `src/layout/kit/isometric.ts`:isometric, faceVisible, isoEllipse (the viewpoint only; the cube and cylinder layouts, TICKET-006 and TICKET-007, draw from it) |
-| GSS-REQ-033 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout; `src/core/definitions/triangle.ts`:triangle.describe |
-| GSS-REQ-034 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout; `src/core/definitions/triangle.ts`:triangle.describe |
-| GSS-REQ-035 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout |
-| GSS-REQ-036 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout |
+| GSS-REQ-033 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout; `src/core/definitions/triangle.ts`:triangle.describe; `src/layout/triangle.ts`:triangleLayout |
+| GSS-REQ-034 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout; `src/core/definitions/triangle.ts`:triangle.describe; `src/layout/triangle.ts`:triangleLayout |
+| GSS-REQ-035 | `src/core/definitions/circle.ts`:circleDisplay, circle; `src/layout/kit/measure.ts`:measurementLabel; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout; `src/core/definitions/triangle.ts`:triangleDisplay, triangle, triangle.describe; `src/core/definitions/figure.ts`:agrees; `src/layout/triangle.ts`:triangleLayout |
+| GSS-REQ-036 | `src/core/definitions/circle.ts`:circle.describe; `src/layout/circle.ts`:circleLayout; `src/core/definitions/square.ts`:square.describe; `src/layout/square.ts`:squareLayout; `src/core/definitions/triangle.ts`:triangle.describe; `src/layout/triangle.ts`:triangleLayout |
 | GSS-NFR-001 | `tests/layout/circle.test.ts`:"draws radius : diameter within 1% of 1 : 2" (circle only; TICKET-008 covers every figure) |
 | GSS-NFR-002 | `tests/core/triangle-solver.property.test.ts`:"triangle round trip (GSS-NFR-002)" (1,000 runs per determining set, 10⁻⁹ relative, every angle ≥ 0.02°: below about 0.01° the rounding of the inputs themselves decides the last digits) |

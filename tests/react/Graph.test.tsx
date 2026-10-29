@@ -16,6 +16,7 @@ import { RulerGraph as PackageRulerGraph } from "../../src/react/graphs/RulerGra
 import { NumberLineGraph as PackageNumberLineGraph } from "../../src/react/graphs/NumberLineGraph";
 import { XyGraph as PackageXyGraph } from "../../src/react/graphs/XyGraph";
 import { SquareGraph as PackageSquareGraph } from "../../src/react/graphs/SquareGraph";
+import { TriangleGraph as PackageTriangleGraph } from "../../src/react/graphs/TriangleGraph";
 import { XyzGraph as PackageXyzGraph } from "../../src/react/graphs/XyzGraph";
 import {
   type GraphComponent,
@@ -127,6 +128,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     expect(PackageXyGraph.displayName).toBe("XyGraph");
     expect(PackageXyzGraph.displayName).toBe("XyzGraph");
     expect(PackageSquareGraph.displayName).toBe("SquareGraph");
+    expect(PackageTriangleGraph.displayName).toBe("TriangleGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -616,6 +618,31 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("draws a valid triangle with every text at its limit in <Graph> and <TriangleGraph>, never throwing (GSV-REQ-052, GSV-REQ-053)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const sides = { type: "triangle", sideA: 3, sideB: 4, sideC: 5, unit: "@".repeat(UNIT_TEXT_LIMIT), labelSides: "all", labelAngles: true };
+    const texts = (text: string) => ({
+      title: text,
+      sideALabelText: text,
+      sideBLabelText: text,
+      sideCLabelText: text,
+      angleALabelText: text,
+      angleBLabelText: text,
+      angleCLabelText: text,
+      vertexNames: [text, text, text],
+    });
+    const descriptions = [{ ...sides, ...texts(long) }, ...Object.values(oneClusterTexts(CALLER_TEXT_LIMIT)).map((cluster) => ({ ...sides, ...texts(cluster) }))];
+    for (const description of descriptions) {
+      for (const Component of [Graph, PackageTriangleGraph]) {
+        const received: Issue[][] = [];
+        const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+        expect(received).toEqual([]);
+        // Title 3 lines, and nine labels (three sides, three angles, three names) of at most 4 lines each.
+        expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 9 * 4);
+      }
+    }
+  });
+
   it("draws a valid x,y,z graph with every text at its limit in <Graph> and <XyzGraph>, never throwing (GSV-REQ-052)", () => {
     const long = wordsOf(CALLER_TEXT_LIMIT);
     const axis = { min: 0, max: 5, tickSpacing: 1 };
@@ -666,6 +693,12 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       [PackageSquareGraph, { type: "square", sideLength: 4, title: over }, "/title"],
       [PackageSquareGraph, { type: "square", sideLength: 4, sideLabelText: over }, "/sideLabelText"],
       [PackageSquareGraph, { type: "square", sideLength: 4, unit: "@".repeat(UNIT_TEXT_LIMIT + 1) }, "/unit"],
+      [PackageTriangleGraph, { type: "triangle", sideA: 3, sideB: 4, sideC: 5, title: over }, "/title"],
+      [PackageTriangleGraph, { type: "triangle", sideA: 3, sideB: 4, sideC: 5, unit: "@".repeat(UNIT_TEXT_LIMIT + 1) }, "/unit"],
+      [PackageTriangleGraph, { type: "triangle", sideA: 3, sideB: 4, sideC: 5, vertexNames: ["P", over] }, "/vertexNames/1"],
+      ...(["sideALabelText", "sideBLabelText", "sideCLabelText", "angleALabelText", "angleBLabelText", "angleCLabelText"] as const).map(
+        (term): [GraphComponent, object, string] => [PackageTriangleGraph, { type: "triangle", sideA: 3, sideB: 4, sideC: 5, [term]: over }, `/${term}`],
+      ),
     ];
     for (const [Component, description, path] of cases) {
       for (const Drawn of [Graph, Component]) {

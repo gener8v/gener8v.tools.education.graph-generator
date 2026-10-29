@@ -1,17 +1,17 @@
+import { readFileSync } from "node:fs";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { unitProperty } from "../../src/core/definitions/figure";
+import { labelSidesProperty, unitProperty } from "../../src/core/definitions/figure";
 import { definitions } from "../../src/core/definitions/index";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
-import { type Triangle, triangle } from "../../src/core/definitions/triangle";
+import { type Triangle, isRightAngle, triangle, triangleDisplay } from "../../src/core/definitions/triangle";
 import { TRIANGLE_MIN_ANGLE } from "../../src/core/geometry/triangle-solver";
-import type { GraphType, GraphTypeDefinition } from "../../src/core/definitions/types";
 import { coordinates } from "../../src/core/definitions/xy-graph";
 import type { Issue, Provenance, ValidationResult } from "../../src/core/result";
 import { validateWith } from "../../src/core/validate/index";
 
-// The triangle is not registered until TICKET-005 draws it (DEL-002): tested against its own registry.
-const registry = { triangle: triangle as unknown as GraphTypeDefinition } as Partial<Record<GraphType, GraphTypeDefinition>>;
+// Registered by graph-library GSS TICKET-005, which draws it.
+const registry = definitions;
 const check = (input: object) => validateWith({ type: "triangle", ...input }, registry);
 
 function valid(result: ValidationResult<unknown>): { description: Triangle; provenance: Provenance } {
@@ -33,9 +33,9 @@ function provenanceOf(supplied: readonly string[]): Provenance {
   return Object.fromEntries(SIX.map((term) => [`/${term}`, supplied.includes(term) ? "supplied" : "derived"]));
 }
 
-describe("the triangle is not registered yet (graph-library GSS TICKET-004 DEL-002)", () => {
-  it("is not in the package's definitions", () => {
-    expect(Object.hasOwn(definitions, "triangle")).toBe(false);
+describe("the triangle is registered (graph-library GSS TICKET-005)", () => {
+  it("is the package's triangle definition", () => {
+    expect(definitions.triangle).toBe(triangle);
   });
 });
 
@@ -155,6 +155,11 @@ describe("ranges (GSS-REQ-010..013)", () => {
 });
 
 describe("shared terms (GSV-REQ-015)", () => {
+  it("uses the one labelSides term with the square, by identity (graph-library GSS TICKET-005)", () => {
+    expect(triangle.properties["labelSides"]).toBe(labelSidesProperty);
+    expect(definitions.square!.properties["labelSides"]).toBe(labelSidesProperty);
+  });
+
   it("uses the one unit term by identity, and the one definition of x and y (graph-library GSS TICKET-004 DEL-004)", () => {
     expect(triangle.properties["unit"]).toBe(unitProperty);
     const vertices = triangle.properties["vertices"]!;
@@ -236,3 +241,111 @@ describe("a valid triangle's normalized description is valid again, unchanged (s
   });
 });
 
+
+describe("what a triangle labels (GSS-REQ-020, GSS-REQ-021, GSS-REQ-035)", () => {
+  const shown = (input: object) => {
+    const { description, provenance } = valid(check(input));
+    return triangleDisplay(description, provenance);
+  };
+  const labeled = (display: ReturnType<typeof shown>, kind: "sides" | "angles") => Object.entries(display[kind]).flatMap(([term, label]) => (label.labeled ? [term] : []));
+
+  it("labels nothing by default", () => {
+    const display = shown({ sideA: 3, sideB: 4, sideC: 5 });
+    expect(labeled(display, "sides")).toEqual([]);
+    expect(labeled(display, "angles")).toEqual([]);
+    expect(display.names).toEqual(["", "", ""]);
+  });
+
+  it.each<[object, string]>([
+    [{ sideA: 3, sideB: 4, sideC: 5 }, "sideA"],
+    [{ sideB: 4, sideC: 5, angleA: 36.87 }, "sideB"],
+    [{ angleA: RIGHT_A, angleB: 90 - RIGHT_A, sideC: 5 }, "sideC"],
+    [{ sideA: 3, sideB: 4, angleC: 90 }, "sideA"],
+    [{ vertices: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 3.2, y: 2.4 }] }, "sideA"],
+    [{ vertices: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 3.2, y: 2.4 }], sideC: 5 }, "sideA"],
+  ])("stands %j on its first given side in the order a, b, c, and labels that side for labelSides one", (input, base) => {
+    const display = shown({ ...input, labelSides: "one" });
+    expect(display.base).toBe(base);
+    expect(labeled(display, "sides")).toEqual([base]);
+  });
+
+  it("labels every side for labelSides all, and every angle for labelAngles", () => {
+    const display = shown({ sideA: 3, sideB: 4, sideC: 5, labelSides: "all", labelAngles: true });
+    expect(labeled(display, "sides")).toEqual(["sideA", "sideB", "sideC"]);
+    expect(labeled(display, "angles")).toEqual(["angleA", "angleB", "angleC"]);
+  });
+
+  it("labels a side or an angle from its custom text alone", () => {
+    const display = shown({ sideA: 3, sideB: 4, sideC: 5, sideBLabelText: "x", angleALabelText: "" });
+    expect(labeled(display, "sides")).toEqual(["sideB"]);
+    expect(display.sides.sideB.customText).toBe("x");
+    expect(labeled(display, "angles")).toEqual(["angleA"]);
+    expect(display.angles.angleA.customText).toBe("");
+  });
+
+  it("refuses angle label text with labelAngles false, as the circle refuses its label text against a false switch", () => {
+    expect(issuesOf(check({ sideA: 3, sideB: 4, sideC: 5, labelAngles: false, angleBLabelText: "θ" }))).toEqual([
+      expect.objectContaining({ code: "contradiction", path: "/angleBLabelText", conflicts: ["/labelAngles"] }),
+    ]);
+    valid(check({ sideA: 3, sideB: 4, sideC: 5, labelAngles: false, labelSides: "one", sideALabelText: "x" }));
+  });
+
+  it("marks a shown angle within 1% of 90° as a right angle, and no other", () => {
+    expect(isRightAngle(90)).toBe(true);
+    expect(isRightAngle(90.9)).toBe(true);
+    expect(isRightAngle(89.1)).toBe(true);
+    expect(isRightAngle(91)).toBe(false);
+    expect(isRightAngle(89)).toBe(false);
+    expect(shown({ sideA: 3, sideB: 4, sideC: 5, labelAngles: true }).angles.angleC.rightAngle).toBe(true);
+    expect(shown({ sideA: 3, sideB: 4, sideC: 5 }).angles.angleC.rightAngle).toBe(false);
+    expect(shown({ sideA: 3, sideB: 4, sideC: 5, labelAngles: true }).angles.angleA.rightAngle).toBe(false);
+  });
+
+  it("cleans vertex names, a blank one showing nothing", () => {
+    expect(shown({ sideA: 3, sideB: 4, sideC: 5, vertexNames: [" P ", "   ", "R"] }).names).toEqual(["P", "", "R"]);
+  });
+
+  it("holds every label text to the caller-text limit", () => {
+    for (const term of ["sideALabelText", "sideBLabelText", "sideCLabelText", "angleALabelText", "angleBLabelText", "angleCLabelText"]) {
+      expect(codesAndPaths({ sideA: 3, sideB: 4, sideC: 5, [term]: "x".repeat(CALLER_TEXT_LIMIT + 1) })).toEqual([`too_large /${term}`]);
+      valid(check({ sideA: 3, sideB: 4, sideC: 5, [term]: "x".repeat(CALLER_TEXT_LIMIT) }));
+    }
+  });
+});
+
+describe("the text alternative states the shown labels (GSS-REQ-020, GSS-REQ-035, GSS-REQ-036)", () => {
+  const alt = (input: object) => {
+    const { description, provenance } = valid(check({ sideA: 3, sideB: 4, sideC: 5, ...input }));
+    return triangle.describe(description, provenance);
+  };
+  const VALUES = "A triangle with sides a 3, b 4 and c 5, and angles A 36.87°, B 53.13° and C 90°.";
+
+  it("states labeled sides and angles, and the right-angle mark", () => {
+    expect(alt({ labelSides: "all", labelAngles: true })).toBe(
+      `${VALUES} All three sides are labeled with their lengths. All three angles are labeled with their measures. Angle C is marked as a right angle.`,
+    );
+    expect(alt({ labelSides: "one" })).toBe(`${VALUES} Side a is labeled with its length.`);
+  });
+
+  it("quotes custom text, still stating the value, and states a blank label", () => {
+    expect(alt({ labelSides: "one", sideCLabelText: "x", angleBLabelText: "θ", angleALabelText: " " })).toBe(
+      `${VALUES} Side a is labeled with its length. Side c is labeled “x”. The angle A label is left blank. Angle B is labeled “θ”.`,
+    );
+    expect(alt({ labelAngles: true, angleCLabelText: "?" })).toBe(
+      `${VALUES} Angles A and B are labeled with their measures. Angle C is labeled “?”. Angle C is marked as a right angle.`,
+    );
+  });
+});
+
+describe("triangle examples (GSV-NFR-005)", () => {
+  const example = (name: string): unknown => JSON.parse(readFileSync(`examples/${name}.json`, "utf8"));
+
+  it("each example, one per determining set, is valid", () => {
+    for (const name of ["triangle", "triangle-sas", "triangle-asa", "triangle-vertices"]) expect(validateWith(example(name), registry).valid, name).toBe(true);
+  });
+
+  it("each invalid example fails for its stated reason", () => {
+    expect(issuesOf(validateWith(example("invalid/triangle-ambiguous"), registry))).toEqual([expect.objectContaining({ code: "ambiguous", path: "" })]);
+    expect(issuesOf(validateWith(example("invalid/triangle-inequality"), registry))).toEqual([expect.objectContaining({ code: "contradiction", path: "/sideC" })]);
+  });
+});

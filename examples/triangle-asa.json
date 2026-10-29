@@ -1,0 +1,10 @@
+{
+  "type": "triangle",
+  "angleA": 45,
+  "angleB": 60,
+  "sideC": 8,
+  "labelSides": "one",
+  "labelAngles": true,
+  "vertexNames": ["A", "B", "C"],
+  "title": "Two angles and the side between them"
+}

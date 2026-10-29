@@ -72,6 +72,12 @@
     "gzip": true
   },
   {
+    "name": "./triangle",
+    "path": "dist/triangle.js",
+    "limit": "25 kB",
+    "gzip": true
+  },
+  {
     "name": "./xyz-graph",
     "path": "dist/xyz-graph.js",
     "limit": "25 kB",

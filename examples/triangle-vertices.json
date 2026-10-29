@@ -1,0 +1,11 @@
+{
+  "type": "triangle",
+  "vertices": [
+    { "x": 0, "y": 0 },
+    { "x": 6, "y": 1 },
+    { "x": 2, "y": 5 }
+  ],
+  "labelSides": "all",
+  "vertexNames": ["A", "B", "C"],
+  "title": "A triangle from its vertices"
+}

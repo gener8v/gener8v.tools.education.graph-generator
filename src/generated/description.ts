@@ -356,7 +356,7 @@ export interface SquareDescription {
   lineColor?: string;
   /** The length of each side of the square, from 0.001 to 1,000,000. */
   sideLength: number;
-  /** Which sides are labeled with the side length: one side (the bottom) or all four. Without it, no side is labeled unless sideLabelText is given. */
+  /** Which sides are labeled with their length: one side (the bottom) or every side. Without it, no side is labeled unless a side's label text is given. */
   labelSides?: "one" | "all";
   /** Text shown in place of the side label, at most 200 characters, such as "s" or "?"; given alone it labels one side, and with labelSides "all" it labels all four sides. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
   sideLabelText?: string;
@@ -366,5 +366,56 @@ export interface SquareDescription {
   unit?: string;
 }
 
+/** A triangle drawn to scale. Side a is opposite vertex A, side b opposite B and side c opposite C; angles are in degrees. Give one determining set: the three vertices; three sides; two sides and the angle between them; two angles and a side; or two sides and an angle not between them, when only one triangle fits. The vertices are used when given; otherwise the first complete set in that order. The other sides and angles are derived, and any other value given must agree within 1%. A triangle given by sides and angles stands on the first side given, in the order a, b, c, drawn horizontal at the bottom with the third vertex above it; one given by its vertices keeps their positions. Sides, angles and vertices can be labeled, and a labeled right angle is marked. */
+export interface TriangleDescription {
+  /** The graph type: which kind of graph the description draws. */
+  type: "triangle";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
+  version?: 1;
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  title?: string;
+  /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
+  lineColor?: string;
+  /** The length of side a, opposite vertex A (the side from B to C), from 0.001 to 1,000,000. */
+  sideA?: number;
+  /** The length of side b, opposite vertex B (the side from C to A), from 0.001 to 1,000,000. */
+  sideB?: number;
+  /** The length of side c, opposite vertex C (the side from A to B), from 0.001 to 1,000,000. */
+  sideC?: number;
+  /** The angle at vertex A, in degrees, at least 0.02 and less than 180. A triangle whose derived angles include one under 0.02° is too thin to draw. */
+  angleA?: number;
+  /** The angle at vertex B, in degrees, at least 0.02 and less than 180. A triangle whose derived angles include one under 0.02° is too thin to draw. */
+  angleB?: number;
+  /** The angle at vertex C, in degrees, at least 0.02 and less than 180. A triangle whose derived angles include one under 0.02° is too thin to draw. */
+  angleC?: number;
+  /** The three vertices A, B and C, in that order, each an x and a y coordinate from -1,000,000 to 1,000,000; at most 3. When given, they determine the triangle, and the sides and angles are derived from them; a list of fewer than three is an error even when the sides or angles alone would determine the triangle. They must not lie on one line or share a point. */
+  vertices?: ReadonlyArray<{
+    /** The x coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the x-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000. */
+    x: number;
+    /** The y coordinate of a point: of a plotted point or, on an x,y graph, a segment's end, in the y-axis's own numbers and inside its range, ends included; or of a triangle's vertex, from -1,000,000 to 1,000,000, with y increasing upward. */
+    y: number;
+  }>;
+  /** The names shown at the vertices A, B and C, in that order, such as "P", "Q" and "R"; at most 3 names, each at most 200 characters. Each is shown outside its vertex; a name with no clear place there is placed below the figure, and one longer than four lines is cut short with “…”. An empty name shows nothing. */
+  vertexNames?: ReadonlyArray<string>;
+  /** Which sides are labeled with their length: one side (the bottom) or every side. Without it, no side is labeled unless a side's label text is given. */
+  labelSides?: "one" | "all";
+  /** Whether the three angles are labeled with their measures in degrees, each inside its angle with an arc; an angle within 1% of 90° gets a right-angle mark instead of the arc. */
+  labelAngles?: boolean;
+  /** Text shown in place of the side a label, at most 200 characters, such as "x" or "?"; given alone it labels side a. It replaces the whole label, unit included, so add it to the text if it should show. An empty text is a blank label, for example a space to fill in. Text with no clear place beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  sideALabelText?: string;
+  /** Text shown in place of the side b label, at most 200 characters, such as "x" or "?"; given alone it labels side b. It replaces the whole label, unit included, so add it to the text if it should show. An empty text is a blank label, for example a space to fill in. Text with no clear place beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  sideBLabelText?: string;
+  /** Text shown in place of the side c label, at most 200 characters, such as "x" or "?"; given alone it labels side c. It replaces the whole label, unit included, so add it to the text if it should show. An empty text is a blank label, for example a space to fill in. Text with no clear place beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  sideCLabelText?: string;
+  /** Text shown in place of the angle A label, at most 200 characters, such as "x" or "?"; given alone it labels angle A, and must not be given with labelAngles false. It replaces the whole label, degree sign included, so add it to the text if it should show. An empty text is a blank label, for example a space to fill in. Text with no clear place beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  angleALabelText?: string;
+  /** Text shown in place of the angle B label, at most 200 characters, such as "x" or "?"; given alone it labels angle B, and must not be given with labelAngles false. It replaces the whole label, degree sign included, so add it to the text if it should show. An empty text is a blank label, for example a space to fill in. Text with no clear place beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  angleBLabelText?: string;
+  /** Text shown in place of the angle C label, at most 200 characters, such as "x" or "?"; given alone it labels angle C, and must not be given with labelAngles false. It replaces the whole label, degree sign included, so add it to the text if it should show. An empty text is a blank label, for example a space to fill in. Text with no clear place beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  angleCLabelText?: string;
+  /** The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative. */
+  unit?: string;
+}
+
 /** Any one graph description. */
-export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | XyzGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription | SquareDescription;
+export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | XyzGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription | SquareDescription | TriangleDescription;

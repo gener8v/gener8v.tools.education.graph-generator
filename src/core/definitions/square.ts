@@ -1,6 +1,6 @@
 import { cleanText, quoteText, sourceOf, stateMeasurement } from "../format";
 import type { Provenance } from "../result";
-import { unitProperty } from "./figure";
+import { labelSidesProperty, unitProperty } from "./figure";
 import { CALLER_TEXT_LIMIT } from "./shared";
 import { type DescriptionBase, type GraphTypeDefinition, defineProperties } from "./types";
 
@@ -66,17 +66,7 @@ function defineSquare(): GraphTypeDefinition<Square> {
         max: 1_000_000,
         description: "The length of each side of the square, from 0.001 to 1,000,000.",
       },
-      labelSides: {
-        term: "labelSides",
-        kind: "enum",
-        required: false,
-        values: ["one", "all"],
-        valueDescriptions: {
-          one: "Label one side, the bottom side, with the side length.",
-          all: "Label all four sides with the side length.",
-        },
-        description: "Which sides are labeled with the side length: one side (the bottom) or all four. Without it, no side is labeled unless sideLabelText is given.",
-      },
+      labelSides: labelSidesProperty,
       sideLabelText: {
         term: "sideLabelText",
         kind: "string",

@@ -1,0 +1,10 @@
+{
+  "type": "triangle",
+  "sideB": 6,
+  "sideC": 4,
+  "angleA": 50,
+  "labelSides": "all",
+  "labelAngles": true,
+  "unit": "m",
+  "title": "Two sides and the angle between them"
+}

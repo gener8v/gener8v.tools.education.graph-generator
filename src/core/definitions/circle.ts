@@ -1,9 +1,8 @@
-import { createIssue, pointer } from "../issues";
 import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
 import type { Provenance } from "../result";
-import { unitProperty } from "./figure";
+import { agrees, unitProperty } from "./figure";
 import { CALLER_TEXT_LIMIT } from "./shared";
-import { defineProperties, type DescriptionBase, type DomainCheck, type GraphTypeDefinition } from "./types";
+import { defineProperties, type DescriptionBase, type GraphTypeDefinition } from "./types";
 
 /** A normalized circle description: all three measurements are present once validated. */
 export interface Circle extends DescriptionBase {
@@ -75,25 +74,6 @@ const labelText = (term: string, measured: string) =>
     description: `Text shown in place of the ${measured} label, at most ${CALLER_TEXT_LIMIT} characters, such as "r" or "?"; it also labels the ${measured}. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.`,
   }) as const;
 
-/** A switch that custom text, or a label, turns on: giving both with the switch `false` disagrees. */
-function agrees(name: string, switchTerm: string, impliedBy: string): DomainCheck<Circle> {
-  return {
-    name,
-    inputs: [switchTerm, impliedBy],
-    check: (circle) =>
-      circle[switchTerm] === false && circle[impliedBy] !== false
-        ? [
-            createIssue("contradiction", pointer(impliedBy), {
-              term: impliedBy,
-              got: circle[impliedBy],
-              conflicts: [pointer(switchTerm)],
-              conflictTerms: [switchTerm],
-            }),
-          ]
-        : [],
-  };
-}
-
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
@@ -144,13 +124,13 @@ export const circle: GraphTypeDefinition<Circle> = {
     },
   ],
   checks: [
-    agrees("radius label text needs the radius labeled", "labelRadius", "radiusLabelText"),
-    agrees("diameter label text needs the diameter labeled", "labelDiameter", "diameterLabelText"),
-    agrees("circumference label text needs the circumference labeled", "labelCircumference", "circumferenceLabelText"),
-    agrees("a labeled radius is drawn", "showRadius", "labelRadius"),
-    agrees("radius label text draws the radius", "showRadius", "radiusLabelText"),
-    agrees("a labeled diameter is drawn", "showDiameter", "labelDiameter"),
-    agrees("diameter label text draws the diameter", "showDiameter", "diameterLabelText"),
+    agrees<Circle>("radius label text needs the radius labeled", "labelRadius", "radiusLabelText"),
+    agrees<Circle>("diameter label text needs the diameter labeled", "labelDiameter", "diameterLabelText"),
+    agrees<Circle>("circumference label text needs the circumference labeled", "labelCircumference", "circumferenceLabelText"),
+    agrees<Circle>("a labeled radius is drawn", "showRadius", "labelRadius"),
+    agrees<Circle>("radius label text draws the radius", "showRadius", "radiusLabelText"),
+    agrees<Circle>("a labeled diameter is drawn", "showDiameter", "labelDiameter"),
+    agrees<Circle>("diameter label text draws the diameter", "showDiameter", "diameterLabelText"),
   ],
   /**
    * "A circle titled “Wheel” with radius 5 cm, diameter 10 cm and circumference 31.4 cm. Its center

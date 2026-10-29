@@ -1,0 +1,14 @@
+{
+  "type": "triangle",
+  "sideA": 3,
+  "sideB": 4,
+  "sideC": 5,
+  "labelSides": "all",
+  "labelAngles": true,
+  "sideCLabelText": "x",
+  "angleALabelText": "θ",
+  "vertexNames": ["P", "Q", "R"],
+  "unit": "cm",
+  "title": "Find the hypotenuse",
+  "lineColor": "blue"
+}
