@@ -42,7 +42,10 @@ export interface CubeDisplay {
 // @spec GSS-REQ-024, GSS-REQ-025, GSS-REQ-035
 export function cubeDisplay(cube: Cube): CubeDisplay {
   const customText = cube.edgeLabelText;
-  const labeled = cube.labelEdges === "three" ? 3 : cube.labelEdges === "one" || customText !== undefined ? 1 : 0;
+  // Three edges when asked; one when asked or when custom text alone is given; else none.
+  let labeled: 0 | 1 | 3 = 0;
+  if (cube.labelEdges === "three") labeled = 3;
+  else if (cube.labelEdges === "one" || customText !== undefined) labeled = 1;
   return { hiddenDashed: cube.hiddenEdges !== "omitted", labeled, customText };
 }
 

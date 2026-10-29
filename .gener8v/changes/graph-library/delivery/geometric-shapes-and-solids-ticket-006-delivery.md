@@ -159,3 +159,12 @@ Run in the main session on 2026-10-29, after the code was written.
 **Change:** `src/layout/xyz-graph.ts`'s `GUIDE_DASH` is now the isometric kit's `HIDDEN_DASH`, the one dash of the shared viewpoint (supersedes DEL-003's two separate constants).
 **Files:** `src/layout/xyz-graph.ts`, `src/layout/kit/isometric.ts`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 1,951 passed each; 1,208 Scenes hash identically before and after; gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-006-quality-review/QR-001, QR-003 — shared vector helpers, no nested ternaries
+
+**Change:**
+- QR-001: `src/layout/kit/vec.ts` (new) holds the plane-vector helpers, and `besidePoint` moved to `src/layout/kit/figure-labels.ts`; the triangle and the cube import them.
+- QR-003: `OTHER_AXES` and `LABELED_EDGES` lookups and an `if` chain replace the nested ternaries in `src/layout/cube.ts` and `cubeDisplay`.
+(QR-002 was resolved with code review CR-001, above.)
+**Files:** `src/layout/kit/vec.ts`, `src/layout/kit/figure-labels.ts`, `src/layout/triangle.ts`, `src/layout/cube.ts`, `src/core/definitions/cube.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,951 passed each; 1,208 Scenes hash identically; gener8v-state lint 0 errors.

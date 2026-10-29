@@ -4,9 +4,10 @@ import { TRIANGLE_ANGLES, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleSideTe
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt, fmtPoints } from "./kit/format";
-import { GAP, type LabelRequest, type LabelSize, type Point, placeLabels, polylineNode } from "./kit/figure-labels";
+import { GAP, type LabelRequest, type LabelSize, type Point, besidePoint, placeLabels, polylineNode } from "./kit/figure-labels";
 import type { Obstacle } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
+import { type Vec, add, cross, dot, length, rotate, sub, times, unit } from "./kit/vec";
 import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
@@ -25,8 +26,6 @@ const RADIANS = Math.PI / 180;
 const ARC_STEP = Math.PI / 12;
 
 type Index = 0 | 1 | 2;
-type Vec = readonly [number, number];
-
 /**
  * Each side's ends, in the order they are drawn left to right when the triangle stands on that
  * side, counter-clockwise: side a from B to C, side b from C to A, side c from A to B (GSS-REQ-022).
@@ -34,20 +33,6 @@ type Vec = readonly [number, number];
 // @spec GSS-REQ-022
 export const SIDE_ENDS: Readonly<Record<TriangleSideTerm, readonly [Index, Index]>> = { sideA: [1, 2], sideB: [2, 0], sideC: [0, 1] };
 const INDICES: readonly Index[] = [0, 1, 2];
-
-const add = (p: Vec, q: Vec): Vec => [p[0] + q[0], p[1] + q[1]];
-const sub = (p: Vec, q: Vec): Vec => [p[0] - q[0], p[1] - q[1]];
-const times = (p: Vec, k: number): Vec => [p[0] * k, p[1] * k];
-const dot = (p: Vec, q: Vec) => p[0] * q[0] + p[1] * q[1];
-const cross = (p: Vec, q: Vec) => p[0] * q[1] - p[1] * q[0];
-const length = (p: Vec) => Math.hypot(p[0], p[1]);
-const rotate = (p: Vec, angle: number): Vec => [p[0] * Math.cos(angle) - p[1] * Math.sin(angle), p[0] * Math.sin(angle) + p[1] * Math.cos(angle)];
-
-/** `p` scaled to length 1, or `fallback` when it has no length: never a division by zero. */
-function unit(p: Vec, fallback: Vec): Vec {
-  const n = length(p);
-  return n > 0 && Number.isFinite(n) ? [p[0] / n, p[1] / n] : fallback;
-}
 
 /**
  * The vertices A, B and C in the description's own units, y up. A triangle given by its vertices
@@ -85,14 +70,6 @@ function fitScale(width: number, height: number): number {
   return Number.isFinite(scale) && scale > 0 ? scale : 1;
 }
 
-/** How far a box of `size`, centered on a point, reaches from it in the direction `u` (a unit vector). */
-const reach = (u: Vec, size: LabelSize) => (Math.abs(u[0]) * size.width) / 2 + (Math.abs(u[1]) * size.height) / 2;
-
-/** The top-left corner of a box of `size` whose nearest side lies `gap` from `from` in the direction `u`, centered on that line. */
-function besidePoint(from: Vec, u: Vec, gap: number, size: LabelSize): Point {
-  const center = add(from, times(u, gap + reach(u, size)));
-  return { x: center[0] - size.width / 2, y: center[1] - size.height / 2 };
-}
 
 /** Whether `p` lies strictly inside the triangle `v`. */
 function insideTriangle(p: Vec, v: readonly [Vec, Vec, Vec]): boolean {

@@ -3,11 +3,12 @@ import { sourceOf } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt } from "./kit/format";
-import { GAP, type LabelRequest, type LabelSize, type Point, placeLabels, segmentNode } from "./kit/figure-labels";
+import { GAP, type LabelRequest, type LabelSize, type Point, besidePoint, placeLabels, segmentNode } from "./kit/figure-labels";
 import { HIDDEN_DASH, ISO_SCALE, type Point3, faceVisible, isometric } from "./kit/isometric";
 import type { Obstacle, Segment } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
 import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
+import { type Vec, add, dot, sub, times } from "./kit/vec";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 
@@ -28,7 +29,6 @@ const CENTER_X = SCENE_WIDTH / 2;
 
 type Bit = 0 | 1;
 type Corner = readonly [Bit, Bit, Bit];
-type Vec = readonly [number, number];
 
 /** One of the twelve edges: its two corners, and whether a face it bounds faces the viewer. */
 export interface CubeEdge {
@@ -40,12 +40,24 @@ export interface CubeEdge {
 type Axis = 0 | 1 | 2;
 
 /** The corner with `value` on `axis` and `a`, `b` on the other two axes, in order. */
-const cornerOf = (axis: Axis, value: Bit, a: Bit, b: Bit): Corner => (axis === 0 ? [value, a, b] : axis === 1 ? [a, value, b] : [a, b, value]);
+/** The two axes other than each axis, in order (quality review QR-003: a lookup, not nested conditionals). */
+const OTHER_AXES: Readonly<Record<Axis, readonly [Axis, Axis]>> = { 0: [1, 2], 1: [0, 2], 2: [0, 1] };
+
+/** The corner with `value` on `axis` and `a`, `b` on the other two axes, in order. */
+function cornerOf(axis: Axis, value: Bit, a: Bit, b: Bit): Corner {
+  const corner: [Bit, Bit, Bit] = [0, 0, 0];
+  const [first, second] = OTHER_AXES[axis];
+  corner[axis] = value;
+  corner[first] = a;
+  corner[second] = b;
+  return corner;
+}
 
 /** The outward normal of the face at `bit` on `axis`: + for 1, − for 0. */
 const faceNormal = (axis: Axis, bit: Bit): Point3 => {
-  const sign = bit === 1 ? 1 : -1;
-  return axis === 0 ? [sign, 0, 0] : axis === 1 ? [0, sign, 0] : [0, 0, sign];
+  const normal: [number, number, number] = [0, 0, 0];
+  normal[axis] = bit === 1 ? 1 : -1;
+  return normal;
 };
 
 /** Builds `CUBE_EDGES`: along each axis, the four edges at each 0 or 1 on the other two. Marked free of side effects. */
@@ -53,7 +65,7 @@ const faceNormal = (axis: Axis, bit: Bit): Point3 => {
 function cubeEdges(): CubeEdge[] {
   const edges: CubeEdge[] = [];
   for (const axis of [0, 1, 2] as const) {
-    const [first, second] = axis === 0 ? ([1, 2] as const) : axis === 1 ? ([0, 2] as const) : ([0, 1] as const);
+    const [first, second] = OTHER_AXES[axis];
     for (const a of [0, 1] as const) {
       for (const b of [0, 1] as const) {
         const visible = faceVisible(faceNormal(first, a)) || faceVisible(faceNormal(second, b));
@@ -89,19 +101,6 @@ const FRONT_CORNER_EDGES: ReadonlyArray<readonly [Corner, Corner]> = [
   [[1, 1, 1], [1, 0, 1]],
 ];
 
-const add = (p: Vec, q: Vec): Vec => [p[0] + q[0], p[1] + q[1]];
-const sub = (p: Vec, q: Vec): Vec => [p[0] - q[0], p[1] - q[1]];
-const times = (p: Vec, k: number): Vec => [p[0] * k, p[1] * k];
-const dot = (p: Vec, q: Vec) => p[0] * q[0] + p[1] * q[1];
-
-/** How far a box of `size`, centered on a point, reaches from it in the direction `u` (a unit vector). */
-const reach = (u: Vec, size: LabelSize) => (Math.abs(u[0]) * size.width) / 2 + (Math.abs(u[1]) * size.height) / 2;
-
-/** The top-left corner of a box of `size` whose nearest side lies `gap` from `from` in the direction `u`, centered on that line. */
-function besidePoint(from: Vec, u: Vec, gap: number, size: LabelSize): Point {
-  const center = add(from, times(u, gap + reach(u, size)));
-  return { x: center[0] - size.width / 2, y: center[1] - size.height / 2 };
-}
 
 /**
  * Candidates for an edge's label: beside the edge along each of `normals`, from its middle outward,
@@ -129,6 +128,9 @@ function normalsOf(p: Vec, q: Vec, center: Vec): [Vec, Vec] {
   return [normal, times(normal, -1)];
 }
 
+
+/** The edges labeled for each `labelEdges` count: none, the bottom-right outer edge, or the three at the front corner. */
+const LABELED_EDGES: Readonly<Record<0 | 1 | 3, ReadonlyArray<readonly [Corner, Corner]>>> = { 0: [], 1: [BOTTOM_RIGHT], 3: FRONT_CORNER_EDGES };
 /**
  * The cube's layout (AD-002, AD-009). The cube is drawn at the one fixed edge `DRAWN_EDGE`,
  * whatever its edge length (GSS-REQ-031), in the solids' shared isometric viewpoint (GSS-REQ-032),
@@ -186,7 +188,7 @@ export const cubeLayout: Layout<Cube> = (normalized: Cube, provenance: Provenanc
     obstacles.push(segment);
   }
 
-  const labeled: ReadonlyArray<readonly [Corner, Corner]> = shown.labeled === 3 ? FRONT_CORNER_EDGES : shown.labeled === 1 ? [BOTTOM_RIGHT] : [];
+  const labeled = LABELED_EDGES[shown.labeled];
   // A blank label leaves its place empty; the text alternative still states the value (GSS TICKET-002 DEL-003).
   const text = measurementLabel(normalized.edgeLength, sourceOf(provenance, "edgeLength"), normalized.unit, shown.customText);
   const requests: LabelRequest[] = [];

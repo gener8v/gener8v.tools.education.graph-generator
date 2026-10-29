@@ -3,6 +3,7 @@ import { SCENE_WIDTH, type SceneNode } from "../scene";
 import { fmt, fmtPoints } from "./format";
 import { type Obstacle, type Segment, placeLabel } from "./labels";
 import { textBlock, textLines } from "./title";
+import { type Vec, add, times } from "./vec";
 
 /** Clearance between a label and the line it labels or the outline it sits by. */
 export const GAP = 6;
@@ -51,6 +52,19 @@ export const besideVertical = (x: number, ys: readonly number[], size: LabelSize
     { x: x - GAP - size.width, y: y - size.height / 2 },
     { x: x + GAP, y: y - size.height / 2 },
   ]);
+
+/** How far a box of `size`, centered on a point, reaches from it in the direction `u` (a unit vector). */
+const reach = (u: Vec, size: LabelSize) => (Math.abs(u[0]) * size.width) / 2 + (Math.abs(u[1]) * size.height) / 2;
+
+/**
+ * The top-left corner of a box of `size` whose nearest side lies `gap` from `from` in the direction
+ * `u`, centered on that line: a label candidate beside a vertex or a side, for the triangle and the
+ * cube (GSS TICKET-006 quality review QR-001).
+ */
+export function besidePoint(from: Vec, u: Vec, gap: number, size: LabelSize): Point {
+  const center = add(from, times(u, gap + reach(u, size)));
+  return { x: center[0] - size.width / 2, y: center[1] - size.height / 2 };
+}
 
 /** A figure line as a stroked Scene node. */
 export function segmentNode(s: Segment, color: string): SceneNode {
