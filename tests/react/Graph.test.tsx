@@ -854,6 +854,37 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(2 * 1000 + 3 + 6 + 3 * 101);
   });
 
+  it("keeps the triangle's text alternative and markup bounded at its limits (GSS TICKET-005 security review SEC-002)", () => {
+    // Every caller text at 200 × `"` (quoted in the text alternative), a 20-character unit, every
+    // label shown, measurements with 15 significant digits. Measured 2026-10-29: a 2,375-character
+    // text alternative and 38,948 characters of markup with 39 <text> nodes, for three sides and
+    // for a 0.02° needle alike; a triangle has a fixed number of texts, so these do not grow.
+    const quote = '"'.repeat(CALLER_TEXT_LIMIT);
+    const texts = {
+      title: quote,
+      unit: '"'.repeat(UNIT_TEXT_LIMIT),
+      vertexNames: [quote, quote, quote],
+      labelSides: "all",
+      labelAngles: true,
+      sideALabelText: quote,
+      sideBLabelText: quote,
+      sideCLabelText: quote,
+      angleALabelText: quote,
+      angleBLabelText: quote,
+      angleCLabelText: quote,
+    };
+    for (const set of [{ sideA: 3.14159265358979, sideB: 4.12345678901234, sideC: 5.98765432109876 }, { angleA: 0.0212345678, angleB: 0.0212345678, sideC: 999999.123456789 }]) {
+      const description = { type: "triangle", ...set, ...texts };
+      const result = createGraph(description);
+      if (!result.ok) throw new Error(JSON.stringify(result.issues));
+      expect(result.scene.textAlternative.length).toBeLessThan(4_000);
+      const markup = html(<PackageTriangleGraph description={description} />);
+      expect(markup.length).toBeLessThan(60_000);
+      // A title of at most 3 lines, and nine labels (three names, three sides, three angles) of at most 4 each.
+      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 9 * 4);
+    }
+  });
+
   it("lays out the x,y graph's costliest labels within a second and a half: points stacked at one spot and labeled segments (NLC TICKET-003 SEC-003)", () => {
     // Each label tries up to 12 places (points) or 8 (segments) against every obstacle placed so far,
     // the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Measured 2026-10-27:

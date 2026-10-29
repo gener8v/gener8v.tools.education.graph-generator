@@ -138,7 +138,12 @@ export function triangleDisplay(triangle: Triangle, provenance: Provenance): Tri
     return { labeled, customText, rightAngle: labeled && isRightAngle(triangle[term]) };
   };
   const names = triangle.vertexNames ?? [];
-  const name = (i: number) => (names[i] === undefined ? "" : cleanText(names[i]));
+  // Only the caller's own elements: an index past the end must not be read through a polluted
+  // `Array.prototype` (security review SEC-001).
+  const name = (i: number) => {
+    const given: unknown = Object.hasOwn(names, i) ? names[i] : undefined;
+    return typeof given === "string" ? cleanText(given) : "";
+  };
   return {
     base,
     sides: { sideA: side("sideA"), sideB: side("sideB"), sideC: side("sideC") },

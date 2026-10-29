@@ -349,3 +349,21 @@ describe("triangle examples (GSV-NFR-005)", () => {
     expect(issuesOf(validateWith(example("invalid/triangle-inequality"), registry))).toEqual([expect.objectContaining({ code: "contradiction", path: "/sideC" })]);
   });
 });
+
+describe("vertex names are read as the caller's own elements (security review SEC-001)", () => {
+  it("never draws or states a name inherited from a polluted Array.prototype", () => {
+    const proto = Array.prototype as unknown as Record<string, unknown>;
+    try {
+      proto["1"] = "INHERITED";
+      proto["2"] = "INHERITED";
+      for (const vertexNames of [undefined, ["P"]]) {
+        const { description, provenance } = valid(check({ sideA: 3, sideB: 4, sideC: 5, ...(vertexNames === undefined ? {} : { vertexNames }) }));
+        expect(triangle.describe(description, provenance)).not.toContain("INHERITED");
+      }
+    } finally {
+      delete proto["1"];
+      delete proto["2"];
+    }
+  });
+});
+

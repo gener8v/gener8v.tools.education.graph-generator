@@ -184,3 +184,11 @@ Run in the main session on 2026-10-29, after the code was written.
 - QR-003: decision references in the layout and its tests qualified as GSS TICKET-002's.
 **Files:** `src/layout/triangle.ts`, `src/layout/kit/figure-labels.ts`, `src/layout/square.ts`, `tests/layout/triangle.test.ts`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 1,891 passed each; a probe of 4,809 triangle and square Scenes hashes identically before and after; gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-005-security-review/SEC-001, SEC-002 — own-element names; size ceiling
+
+**Change:**
+- SEC-001: `triangleDisplay` reads only the caller's own `vertexNames` elements (`Object.hasOwn`), so a polluted `Array.prototype` index is never drawn or stated; a test pins it.
+- SEC-002: the worst case (every text at its limit, every label shown) measured at a 2,375-character text alternative, 38,948 characters of markup and 39 `<text>` nodes; `tests/react/Graph.test.tsx` pins under 4,000, under 60,000 and at most 3 + 9 × 4.
+**Files:** `src/core/definitions/triangle.ts`, `tests/core/triangle.test.ts`, `tests/react/Graph.test.tsx`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,893 passed each; the direct-read mutant fails the SEC-001 test; `pnpm audit` and `--prod` clean; gener8v-state lint 0 errors.
