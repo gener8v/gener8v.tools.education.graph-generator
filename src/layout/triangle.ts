@@ -1,6 +1,6 @@
 import { type Triangle, triangle as triangleDefinition, triangleDisplay } from "../core/definitions/triangle";
 import { sourceOf } from "../core/format";
-import { TRIANGLE_ANGLES, TRIANGLE_SIDES, type TriangleSideTerm } from "../core/geometry/triangle-solver";
+import { TRIANGLE_ANGLES, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleSideTerm } from "../core/geometry/triangle-solver";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt, fmtPoints } from "./kit/format";
@@ -261,19 +261,21 @@ export const triangleLayout: Layout<Triangle> = (normalized: Triangle, provenanc
   };
 
   const requests: LabelRequest[] = [];
-  for (const i of INDICES) requests.push({ text: shown.names[i], candidates: nameCandidates(i) });
+  // Each says what it labels when stacked below the figure, away from it (code review CR-001).
+  for (const i of INDICES) requests.push({ text: shown.names[i], candidates: nameCandidates(i), stackedText: `vertex ${TRIANGLE_VERTICES[i]}: ${shown.names[i]}` });
   for (const term of TRIANGLE_SIDES) {
     const label = shown.sides[term];
     if (!label.labeled) continue;
     // A blank label leaves its place empty; the text alternative still states the value (DEL-003).
-    requests.push({ text: measurementLabel(normalized[term], sourceOf(provenance, term), normalized.unit, label.customText), candidates: sideCandidates(term) });
+    const text = measurementLabel(normalized[term], sourceOf(provenance, term), normalized.unit, label.customText);
+    requests.push({ text, candidates: sideCandidates(term), stackedText: `${TRIANGLE_VERTICES[TRIANGLE_SIDES.indexOf(term)]!.toLowerCase()} = ${text}` });
   }
   for (const i of INDICES) {
     const term = TRIANGLE_ANGLES[i];
     const label = shown.angles[term];
     if (!label.labeled) continue;
     const text = label.customText === undefined ? `${measurementLabel(normalized[term], sourceOf(provenance, term))}°` : measurementLabel(normalized[term], sourceOf(provenance, term), undefined, label.customText);
-    requests.push({ text, candidates: angleCandidates(i) });
+    requests.push({ text, candidates: angleCandidates(i), stackedText: `∠${TRIANGLE_VERTICES[i]} = ${text}` });
   }
   // Candidates must keep the label inside the drawing, between the title and the figure's bottom.
   // Labels with no clear place are stacked below the figure (GSS TICKET-002 DEL-006).

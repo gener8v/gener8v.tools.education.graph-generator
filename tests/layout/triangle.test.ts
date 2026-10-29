@@ -6,6 +6,7 @@ import { type Triangle, triangle } from "../../src/core/definitions/triangle";
 import { validate } from "../../src/core/index";
 import { createGraph } from "../../src/graph";
 import { checkScene } from "../../src/layout/kit/check";
+import { GAP } from "../../src/layout/kit/figure-labels";
 import { LABEL_MAX_LINES } from "../../src/layout/kit/figure-labels";
 import { type Box, type Obstacle, placeLabel } from "../../src/layout/kit/labels";
 import { textWidth } from "../../src/layout/kit/text";
@@ -325,6 +326,17 @@ describe("thin triangles (spec Edge Case; GSS TICKET-004 SEC-001; GSS-NFR-003)",
       expect(box.x + box.width).toBeLessThanOrEqual(scene.width);
       expect(box.y + box.height).toBeLessThanOrEqual(scene.height);
     }
+  });
+
+  it("names what each stacked label labels, so a needle's labels below the figure can be told apart (code review CR-001)", () => {
+    const scene = sceneOf({ type: "triangle", angleA: 0.02, angleB: 0.02, sideC: 1_000_000, ...labeled });
+    // The stack starts below the room kept for one line of labels under the figure.
+    const stackTop = Math.max(...vertices(scene).map(([, y]) => y)) + GAP + LABEL_SIZE * LINE_HEIGHT;
+    const stacked = (node: SceneNode & { text: string }) => boxOf(node).y >= stackTop - 0.5;
+    const below = labelTexts(scene).filter(stacked);
+    expect(below.length).toBeGreaterThan(0);
+    for (const node of below) expect(node.text).toMatch(/^(∠[ABC] = |[abc] = |vertex [ABC]: )/);
+    for (const node of labelTexts(scene).filter((node) => !stacked(node))) expect(node.text).not.toMatch(/^(∠|[abc] = |vertex )/);
   });
 
   it("draws sides 1, 100, 100.5 to scale", () => {

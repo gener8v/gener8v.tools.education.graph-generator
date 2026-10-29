@@ -168,4 +168,10 @@ Run in the main session on 2026-10-29, after the code was written.
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-005-code-review/CR-001, CR-002 — stacked labels name their element; record wording
+
+**Change:**
+- CR-001: `LabelRequest` (`src/layout/kit/figure-labels.ts`) takes an optional `stackedText`, drawn when the label is stacked below the figure; the triangle passes "∠A = …", "a = …" and "vertex A: …". Placed labels, the circle and the square are unchanged.
+- CR-002: correction to the `@spec Annotations` table above — the `labelSides` annotation in `src/core/definitions/figure.ts` is on `figureTerms`, not a symbol named `labelSides`.
+**Files:** `src/layout/kit/figure-labels.ts`, `src/layout/triangle.ts`, `tests/layout/kit/figure-labels.test.ts`, `tests/layout/triangle.test.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,891 passed each; ignoring `stackedText` fails both new tests; gener8v-state lint 0 errors.

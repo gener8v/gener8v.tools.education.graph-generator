@@ -80,6 +80,12 @@ export interface Bounds {
 export interface LabelRequest {
   readonly text: string;
   readonly candidates: (size: LabelSize) => Point[];
+  /**
+   * The text drawn instead when the label has no clear place and is stacked below the figure,
+   * away from what it labels, such as "∠A = 30°" for an angle's "30°" (GSS TICKET-005 code review
+   * CR-001). Without it the stacked label shows `text`.
+   */
+  readonly stackedText?: string;
 }
 
 /**
@@ -99,7 +105,7 @@ export function placeLabels(
   const fontSize = defaultStyle.fontSizes.label;
   const color = defaultStyle.colors.text;
   const nodes: SceneNode[] = [];
-  const unplaced: LabelBlock[] = [];
+  const unplaced: string[] = [];
   for (const request of requests) {
     if (request.text === "") continue;
     const size = labelBlock(request.text, fontSize);
@@ -107,7 +113,7 @@ export function placeLabels(
       p.x >= bounds.left && p.x + size.width <= bounds.right && p.y >= bounds.top && p.y + size.height <= bounds.bottom;
     const box = placeLabel(size, request.candidates(size).filter(inside), obstacles);
     if (box === undefined) {
-      unplaced.push(size);
+      unplaced.push(request.stackedText ?? request.text);
       continue;
     }
     obstacles.push(box);
@@ -115,7 +121,8 @@ export function placeLabels(
   }
   // Outside `placeLabel`: nothing is above them to avoid.
   let bottom = stackTop;
-  for (const size of unplaced) {
+  for (const text of unplaced) {
+    const size = labelBlock(text, fontSize);
     const top = bottom + GAP;
     for (const node of textLines(size.lines, SCENE_WIDTH / 2, top, fontSize, color)) nodes.push(node);
     bottom = top + size.height;

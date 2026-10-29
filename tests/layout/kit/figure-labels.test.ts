@@ -97,6 +97,15 @@ describe("placeLabels (AD-010, DEL-006)", () => {
     expect(obstacles).toHaveLength(1);
   });
 
+  it("draws a label's stacked text when it is stacked, and its own text when it is placed (GSS TICKET-005 code review CR-001)", () => {
+    const blocked: Obstacle[] = [{ x: 0, y: 0, width: 400, height: 300 }];
+    const stacked = placeLabels([{ text: "30°", stackedText: "∠A = 30°", candidates: at(10, 10) }], blocked, bounds, 200);
+    expect(stacked.nodes.map((node) => (node as { text: string }).text)).toEqual(["∠A = 30°"]);
+    const placed = placeLabels([{ text: "30°", stackedText: "∠A = 30°", candidates: at(10, 10) }], [], bounds, 200);
+    expect(placed.nodes.map((node) => (node as { text: string }).text)).toEqual(["30°"]);
+    expect(placed.bottom).toBe(200);
+  });
+
   it("stacks a label whose candidates all lie outside the bounds", () => {
     const { bottom } = placeLabels([{ text: "a", candidates: at(390, 10) }], [], { ...bounds, right: 395 }, 200);
     expect(bottom).toBeGreaterThan(200);
