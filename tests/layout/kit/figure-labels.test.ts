@@ -97,6 +97,18 @@ describe("placeLabels (AD-010, DEL-006)", () => {
     expect(obstacles).toHaveLength(1);
   });
 
+  it("never draws a stacked text inherited from a polluted Object.prototype (GSS TICKET-006 security review SEC-001)", () => {
+    const proto = Object.prototype as Record<string, unknown>;
+    try {
+      proto["stackedText"] = "INHERITED";
+      const blocked: Obstacle[] = [{ x: 0, y: 0, width: 400, height: 300 }];
+      const { nodes } = placeLabels([{ text: "4 cm", candidates: at(10, 10) }], blocked, bounds, 200);
+      expect(nodes.map((node) => (node as { text: string }).text)).toEqual(["4 cm"]);
+    } finally {
+      delete proto["stackedText"];
+    }
+  });
+
   it("draws a label's stacked text when it is stacked, and its own text when it is placed (GSS TICKET-005 code review CR-001)", () => {
     const blocked: Obstacle[] = [{ x: 0, y: 0, width: 400, height: 300 }];
     const stacked = placeLabels([{ text: "30°", stackedText: "∠A = 30°", candidates: at(10, 10) }], blocked, bounds, 200);

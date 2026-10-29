@@ -168,3 +168,11 @@ Run in the main session on 2026-10-29, after the code was written.
 (QR-002 was resolved with code review CR-001, above.)
 **Files:** `src/layout/kit/vec.ts`, `src/layout/kit/figure-labels.ts`, `src/layout/triangle.ts`, `src/layout/cube.ts`, `src/core/definitions/cube.ts`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 1,951 passed each; 1,208 Scenes hash identically; gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-006-security-review/SEC-001, SEC-002 — own-key stacked text; the true size ceiling
+
+**Change:**
+- SEC-001: `placeLabels` (`src/layout/kit/figure-labels.ts`) reads `stackedText` own-key, so a polluted `Object.prototype.stackedText` never replaces a stacked label (the read came with the triangle's code review CR-001; this covers every figure).
+- SEC-002: the cube's size pin covers `"`, `'` and emoji texts, both hidden-edge modes and 17-digit edge lengths; text alternative bound 1,100, height under 650. Supersedes the Notes' ceiling: the true worst case is a 978-unit text alternative, 13,640 characters of markup, 15 `<text>` nodes and a height of 595.2.
+**Files:** `src/layout/kit/figure-labels.ts`, `tests/layout/kit/figure-labels.test.ts`, `tests/react/Graph.test.tsx`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,952 passed each; the prototype-reading mutant fails the SEC-001 test; 1,208 Scenes hash identically; `pnpm audit` and `--prod` clean; gener8v-state lint 0 errors.

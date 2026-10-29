@@ -144,7 +144,10 @@ export function placeLabels(
       p.x >= bounds.left && p.x + size.width <= bounds.right && p.y >= bounds.top && p.y + size.height <= bounds.bottom;
     const box = placeLabel(size, request.candidates(size).filter(inside), obstacles);
     if (box === undefined) {
-      unplaced.push(request.stackedText ?? request.text);
+      // Own key only: a polluted `Object.prototype.stackedText` must not replace a stacked label
+      // (GSS TICKET-006 security review SEC-001).
+      const stacked: unknown = Object.hasOwn(request, "stackedText") ? request.stackedText : undefined;
+      unplaced.push(typeof stacked === "string" ? stacked : request.text);
       continue;
     }
     obstacles.push(box);

@@ -906,21 +906,33 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
   });
 
   it("keeps the cube's text alternative and markup bounded at its limits (GSS TICKET-006; GSS TICKET-002 security review SEC-002)", () => {
-    // Every caller text at 200 × `"` (quoted in the text alternative), a 20-character unit, the three
-    // front-corner edges labeled, hidden edges dashed, edge lengths with 15 significant digits.
-    // Measured 2026-10-29: at most a 552-character text alternative and 12,047 characters of markup
-    // with 15 <text> nodes, at 0.00123456789012345 as at 999999.123456789; a cube has a fixed number
-    // of texts and edges, so these do not grow.
+    // Every caller text at its limit, the three front-corner edges labeled, edge lengths with 15 to 17
+    // significant digits. `"` texts are quoted and escaped in the markup; emoji are two UTF-16 units
+    // each, and a unit ending in "." is quoted in the text alternative. Measured 2026-10-29 (security
+    // review SEC-002): at most a 978-unit text alternative (emoji, hidden edges omitted), 13,640
+    // characters of markup, 15 <text> nodes and a height of 595.2. A cube has a fixed number of texts
+    // and edges, so these do not grow.
     const quote = '"'.repeat(CALLER_TEXT_LIMIT);
-    for (const edgeLength of [3.14159265358979, 999999.123456789, 0.00123456789012345]) {
-      const description = { type: "cube", edgeLength, title: quote, unit: '"'.repeat(UNIT_TEXT_LIMIT), labelEdges: "three", hiddenEdges: "dashed", edgeLabelText: quote };
-      const result = createGraph(description);
-      if (!result.ok) throw new Error(JSON.stringify(result.issues));
-      expect(result.scene.textAlternative.length).toBeLessThan(1_000);
-      const markup = html(<PackageCubeGraph description={description} />);
-      expect(markup.length).toBeLessThan(20_000);
-      // A title of at most 3 lines, and three edge labels of at most 4 each.
-      expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 3 * 4);
+    const emoji = String.fromCodePoint(0x1f600).repeat(CALLER_TEXT_LIMIT);
+    const texts = [
+      { title: quote, unit: '"'.repeat(UNIT_TEXT_LIMIT), edgeLabelText: quote },
+      { title: "'".repeat(CALLER_TEXT_LIMIT), unit: "'".repeat(UNIT_TEXT_LIMIT), edgeLabelText: "'".repeat(CALLER_TEXT_LIMIT) },
+      { title: emoji, unit: `${String.fromCodePoint(0x1f600).repeat(UNIT_TEXT_LIMIT - 1)}.`, edgeLabelText: emoji },
+    ];
+    for (const text of texts) {
+      for (const hiddenEdges of ["dashed", "omitted"]) {
+        for (const edgeLength of [3.14159265358979, 999999.123456789, 0.00123456789012345, 0.0010000000000000002]) {
+          const description = { type: "cube", edgeLength, labelEdges: "three", hiddenEdges, ...text };
+          const result = createGraph(description);
+          if (!result.ok) throw new Error(JSON.stringify(result.issues));
+          expect(result.scene.textAlternative.length).toBeLessThan(1_100);
+          expect(result.scene.height).toBeLessThan(650);
+          const markup = html(<PackageCubeGraph description={description} />);
+          expect(markup.length).toBeLessThan(20_000);
+          // A title of at most 3 lines, and three edge labels of at most 4 each.
+          expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 3 * 4);
+        }
+      }
     }
   });
 
