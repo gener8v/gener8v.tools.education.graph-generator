@@ -308,6 +308,40 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     for (const other of ["A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
   });
 
+  it("leaves every other type out of the square's entry and component, and the square out of theirs (graph-library GSS TICKET-003)", async () => {
+    for (const entry of [`export { SquareGraph } from "./src/entries/square";`, `export { SquareGraph } from "./src/react/graphs/SquareGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A square");
+      for (const other of ["A circle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple", OTHER, OTHER_DEFINITION]) {
+        expect(code, other).not.toContain(other);
+      }
+    }
+    for (const entry of [
+      `export { CircleGraph } from "./src/entries/circle";`,
+      `export { Pictograph } from "./src/entries/pictograph";`,
+      `export { LineGraph } from "./src/entries/line-graph";`,
+      `export { BarGraph } from "./src/entries/bar-graph";`,
+      `export { RulerGraph } from "./src/entries/ruler";`,
+      `export { NumberLineGraph } from "./src/entries/number-line";`,
+      `export { XyGraph } from "./src/entries/xy-graph";`,
+      `export { XyzGraph } from "./src/entries/xyz-graph";`,
+    ]) {
+      expect(await bundle(entry), entry).not.toContain("A square");
+    }
+  });
+
+  it("leaves the square out of a consumer's bundle of every other built entry, and the other types out of the built ./square", async () => {
+    for (const built of ["circle", "pictograph", "line-graph", "bar-graph", "ruler", "number-line", "xy-graph", "xyz-graph"]) {
+      const code = await consumerBundle(`export * from "./dist/${built}.js";`);
+      expect(code, built).not.toContain("A square");
+    }
+    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
+    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
+    const code = await consumerBundle(`export * from "./dist/square.js";`);
+    expect(code).toContain("A square");
+    for (const other of ["A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+  });
+
   it("keeps every type's layout and definition in the entry component's bundle", async () => {
     const code = await bundle(`export { Graph } from "./src/react/Graph";`);
     expect(code).toContain(OTHER);

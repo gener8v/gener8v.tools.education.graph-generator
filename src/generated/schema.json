@@ -1071,6 +1071,69 @@
           ]
         }
       ]
+    },
+    {
+      "type": "object",
+      "title": "Square",
+      "description": "A square drawn to scale from its side length. One side or all four can be labeled with the length and unit or with custom text, and its right angles can be marked.",
+      "properties": {
+        "type": {
+          "const": "square",
+          "description": "The graph type: which kind of graph the description draws."
+        },
+        "version": {
+          "enum": [
+            1
+          ],
+          "description": "The schema version the description is written for. Leave it out for the current version, 1."
+        },
+        "title": {
+          "type": "string",
+          "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+          "maxLength": 200
+        },
+        "lineColor": {
+          "type": "string",
+          "description": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
+          "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
+        },
+        "sideLength": {
+          "type": "number",
+          "description": "The length of each side of the square, from 0.001 to 1,000,000.",
+          "minimum": 0.001,
+          "maximum": 1000000
+        },
+        "labelSides": {
+          "type": "string",
+          "description": "Which sides are labeled with the side length: one side (the bottom) or all four. Without it, no side is labeled unless sideLabelText is given.",
+          "enum": [
+            "one",
+            "all"
+          ]
+        },
+        "sideLabelText": {
+          "type": "string",
+          "description": "Text shown in place of the side label, at most 200 characters, such as \"s\" or \"?\"; given alone it labels one side, and with labelSides \"all\" it labels all four sides. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+          "maxLength": 200
+        },
+        "showRightAngles": {
+          "type": "boolean",
+          "description": "Whether the four right angles are marked with a small square in each corner."
+        },
+        "unit": {
+          "type": "string",
+          "description": "The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative.",
+          "pattern": "^[^\\u0000-\\u001F\\u007F-\\u009F\\u2028-\\u2029\\u202A-\\u202E\\u2066-\\u2069\\u00AD\\u061C\\u180E\\u200B\\u200E-\\u200F\\u2060-\\u2065\\u206A-\\u206F\\uFEFF\\uFFF9-\\uFFFB]*$",
+          "maxLength": 20
+        }
+      },
+      "required": [
+        "type",
+        "sideLength"
+      ],
+      "additionalProperties": false
     }
   ]
 }

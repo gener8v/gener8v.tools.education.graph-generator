@@ -344,5 +344,27 @@ export interface CircleDescription {
   unit?: string;
 }
 
+/** A square drawn to scale from its side length. One side or all four can be labeled with the length and unit or with custom text, and its right angles can be marked. */
+export interface SquareDescription {
+  /** The graph type: which kind of graph the description draws. */
+  type: "square";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
+  version?: 1;
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  title?: string;
+  /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
+  lineColor?: string;
+  /** The length of each side of the square, from 0.001 to 1,000,000. */
+  sideLength: number;
+  /** Which sides are labeled with the side length: one side (the bottom) or all four. Without it, no side is labeled unless sideLabelText is given. */
+  labelSides?: "one" | "all";
+  /** Text shown in place of the side label, at most 200 characters, such as "s" or "?"; given alone it labels one side, and with labelSides "all" it labels all four sides. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  sideLabelText?: string;
+  /** Whether the four right angles are marked with a small square in each corner. */
+  showRightAngles?: boolean;
+  /** The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative. */
+  unit?: string;
+}
+
 /** Any one graph description. */
-export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | XyzGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription;
+export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | XyzGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription | SquareDescription;

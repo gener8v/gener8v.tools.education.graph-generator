@@ -3,10 +3,10 @@ import { sourceOf } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt } from "./kit/format";
-import { type Box, type Obstacle, type Segment, placeLabel } from "./kit/labels";
+import { GAP, LABEL_MAX_LINES, type LabelRequest, type Point, besideHorizontal, besideVertical, placeLabels, segmentNode } from "./kit/figure-labels";
+import type { Obstacle, Segment } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
-import { textWidth, wrap } from "./kit/text";
-import { LINE_HEIGHT, SCENE_MARGIN, textLines, titleBlock } from "./kit/title";
+import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 
@@ -14,29 +14,11 @@ import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 export const DRAWN_RADIUS = 110;
 
 const CENTER_X = SCENE_WIDTH / 2;
-/** Clearance between a label and the line it labels or the outline it sits by. */
-const GAP = 6;
-/** Labels wider than this wrap onto more lines. */
-const LABEL_MAX_WIDTH = 160;
-/**
- * A label longer than this many lines is cut, ending in "…", so caller-sized text yields a bounded
- * Scene; the text alternative still states it whole (GSS TICKET-002 security review SEC-001, DEL-008).
- */
-export const LABEL_MAX_LINES = 4;
+/** Re-exported: the label line cap now lives with the kit's label code, shared with the square. */
+export { LABEL_MAX_LINES };
 const CENTER_MARK_RADIUS = 3;
 /** The outline as this many straight pieces, as obstacles for label placement. */
 const OUTLINE_PIECES = 72;
-
-type Point = { readonly x: number; readonly y: number };
-
-/** A label's text broken into at most `LABEL_MAX_LINES` lines, with the size of its box. */
-function measure(text: string, fontSize: number): { lines: string[]; width: number; height: number } {
-  const lines = wrap(text, LABEL_MAX_WIDTH, fontSize, LABEL_MAX_LINES);
-  // A loop, not `Math.max(...)`: never spread a caller-sized array into arguments (security review SEC-001).
-  let width = 0;
-  for (const line of lines) width = Math.max(width, textWidth(line, fontSize));
-  return { lines, width, height: lines.length * fontSize * LINE_HEIGHT };
-}
 
 /**
  * The directions from the center to try a label beside the outline, as exact unit vectors (x right,
@@ -70,33 +52,6 @@ export function besideOutline(center: Point, size: { width: number; height: numb
     return { x, y };
   });
 }
-
-/** Candidates above and below a horizontal segment at `y`, centered on each of `xs`. */
-const besideHorizontal = (xs: readonly number[], y: number, size: { width: number; height: number }): Point[] =>
-  xs.flatMap((x) => [
-    { x: x - size.width / 2, y: y - GAP - size.height },
-    { x: x - size.width / 2, y: y + GAP },
-  ]);
-
-/** Candidates left and right of a vertical segment at `x`, centered on each of `ys`. */
-const besideVertical = (x: number, ys: readonly number[], size: { width: number; height: number }): Point[] =>
-  ys.flatMap((y) => [
-    { x: x - GAP - size.width, y: y - size.height / 2 },
-    { x: x + GAP, y: y - size.height / 2 },
-  ]);
-
-const line = (s: Segment, color: string): SceneNode => ({
-  kind: "line",
-  attrs: [
-    ["x1", fmt(s.x1)],
-    ["y1", fmt(s.y1)],
-    ["x2", fmt(s.x2)],
-    ["y2", fmt(s.y2)],
-    ["stroke", color],
-    ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
-    ["stroke-linecap", "round"],
-  ],
-});
 
 /**
  * The circle's layout (AD-002): the circle at a fixed drawn radius, centered below the title; the
@@ -151,11 +106,11 @@ export const circleLayout: Layout<Circle> = (normalized: Circle, provenance: Pro
     ? { x1: center.x, y1: center.y - DRAWN_RADIUS, x2: center.x, y2: center.y + DRAWN_RADIUS }
     : { x1: center.x - DRAWN_RADIUS, y1: center.y, x2: center.x + DRAWN_RADIUS, y2: center.y };
   if (shown.diameter.drawn) {
-    nodes.push(line(diameter, lineColor));
+    nodes.push(segmentNode(diameter, lineColor));
     obstacles.push(diameter);
   }
   if (shown.radius.drawn) {
-    nodes.push(line(radius, lineColor));
+    nodes.push(segmentNode(radius, lineColor));
     obstacles.push(radius);
   }
   if (normalized.showCenter === true) {
@@ -184,39 +139,24 @@ export const circleLayout: Layout<Circle> = (normalized: Circle, provenance: Pro
     }
     return besideOutline(center, size);
   };
-  // Candidates must keep the label inside the drawing, between the title and the figure's bottom.
-  const inside = (p: Point, size: { width: number; height: number }) =>
-    p.x >= SCENE_MARGIN && p.x + size.width <= SCENE_WIDTH - SCENE_MARGIN && p.y >= title.height && p.y + size.height <= figureBottom;
-
-  let bottom = figureBottom;
-  const unplaced: Array<{ lines: string[]; width: number; height: number }> = [];
+  const requests: LabelRequest[] = [];
   for (const term of ["radius", "diameter", "circumference"] as const) {
     const display = shown[term];
     if (!display.labeled) continue;
-    const text = measurementLabel(normalized[term], sourceOf(provenance, term), normalized.unit, display.customText);
     // A blank label leaves its place empty; the text alternative still states the value (DEL-003).
-    if (text === "") continue;
-    const size = measure(text, fontSize);
-    const box = placeLabel(
-      size,
-      candidatesFor(term, size).filter((p) => inside(p, size)),
-      obstacles,
-    );
-    if (box === undefined) {
-      unplaced.push(size);
-      continue;
-    }
-    obstacles.push(box);
-    for (const node of textLines(size.lines, box.x + box.width / 2, box.y, fontSize, defaultStyle.colors.text)) nodes.push(node);
+    const text = measurementLabel(normalized[term], sourceOf(provenance, term), normalized.unit, display.customText);
+    requests.push({ text, candidates: (size) => candidatesFor(term, size) });
   }
-  // Labels with no clear place beside their line, stacked below the figure, outside `placeLabel`:
-  // nothing is above them to avoid. The text alternative still says which measurement each states
-  // (GSS TICKET-002 DEL-006).
-  for (const size of unplaced) {
-    const box: Box = { x: CENTER_X - size.width / 2, y: bottom + GAP, width: size.width, height: size.height };
-    for (const node of textLines(size.lines, CENTER_X, box.y, fontSize, defaultStyle.colors.text)) nodes.push(node);
-    bottom = box.y + box.height;
-  }
+  // Candidates must keep the label inside the drawing, between the title and the figure's bottom.
+  // Labels with no clear place beside their line are stacked below the figure (DEL-006).
+  const placed = placeLabels(
+    requests,
+    obstacles,
+    { left: SCENE_MARGIN, top: title.height, right: SCENE_WIDTH - SCENE_MARGIN, bottom: figureBottom },
+    figureBottom,
+  );
+  for (const node of placed.nodes) nodes.push(node);
+  const bottom = placed.bottom;
 
   return {
     width: SCENE_WIDTH,

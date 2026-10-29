@@ -1,0 +1,119 @@
+import { defaultStyle } from "../../core/style";
+import { SCENE_WIDTH, type SceneNode } from "../scene";
+import { fmt } from "./format";
+import { type Obstacle, type Segment, placeLabel } from "./labels";
+import { textBlock, textLines } from "./title";
+
+/** Clearance between a label and the line it labels or the outline it sits by. */
+export const GAP = 6;
+/** Labels wider than this wrap onto more lines. */
+export const LABEL_MAX_WIDTH = 160;
+/**
+ * A label longer than this many lines is cut, ending in "…", so caller-sized text yields a bounded
+ * Scene; the text alternative still states it whole (GSS TICKET-002 security review SEC-001, DEL-008).
+ */
+export const LABEL_MAX_LINES = 4;
+
+/** A point in drawing units. */
+export interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** The size of a label's box. */
+export interface LabelSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+/** A label's text broken into at most `LABEL_MAX_LINES` lines, with the size of its box. */
+// @spec GSS-REQ-006, GSS-REQ-008
+export function labelSize(text: string, fontSize: number): { lines: string[]; width: number; height: number } {
+  // `textBlock` measures with a loop, never `Math.max(...)`: no caller-sized spread (SEC-001).
+  return textBlock(text, LABEL_MAX_WIDTH, fontSize, LABEL_MAX_LINES);
+}
+
+/** Candidates above and below a horizontal segment at `y`, centered on each of `xs`. */
+export const besideHorizontal = (xs: readonly number[], y: number, size: LabelSize): Point[] =>
+  xs.flatMap((x) => [
+    { x: x - size.width / 2, y: y - GAP - size.height },
+    { x: x - size.width / 2, y: y + GAP },
+  ]);
+
+/** Candidates left and right of a vertical segment at `x`, centered on each of `ys`. */
+export const besideVertical = (x: number, ys: readonly number[], size: LabelSize): Point[] =>
+  ys.flatMap((y) => [
+    { x: x - GAP - size.width, y: y - size.height / 2 },
+    { x: x + GAP, y: y - size.height / 2 },
+  ]);
+
+/** A figure line as a stroked Scene node. */
+export function segmentNode(s: Segment, color: string): SceneNode {
+  return {
+    kind: "line",
+    attrs: [
+      ["x1", fmt(s.x1)],
+      ["y1", fmt(s.y1)],
+      ["x2", fmt(s.x2)],
+      ["y2", fmt(s.y2)],
+      ["stroke", color],
+      ["stroke-width", fmt(defaultStyle.lineWidths.figure)],
+      ["stroke-linecap", "round"],
+    ],
+  };
+}
+
+/** The edges a placed label must stay within, in drawing units. */
+export interface Bounds {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+/** One label to place: its text (blank draws nothing) and where to try it, given its size. */
+export interface LabelRequest {
+  readonly text: string;
+  readonly candidates: (size: LabelSize) => Point[];
+}
+
+/**
+ * Places each label, in order, with `placeLabel` at the first of its candidates that lies inside
+ * `bounds` and clear of `obstacles` (AD-010), and pushes each placed box onto `obstacles`, so a
+ * later label clears it. A label with no clear candidate is stacked below `stackTop`, centered, in
+ * the order given (GSS TICKET-002 DEL-006), after the placed ones. Blank text draws nothing
+ * (DEL-003). Returns the text nodes and the drawing's new bottom (`stackTop` when nothing stacked).
+ */
+// @spec GSS-REQ-006, GSS-REQ-008, GSS-REQ-035
+export function placeLabels(
+  requests: readonly LabelRequest[],
+  obstacles: Obstacle[],
+  bounds: Bounds,
+  stackTop: number,
+): { nodes: SceneNode[]; bottom: number } {
+  const fontSize = defaultStyle.fontSizes.label;
+  const color = defaultStyle.colors.text;
+  const nodes: SceneNode[] = [];
+  const unplaced: Array<ReturnType<typeof labelSize>> = [];
+  for (const request of requests) {
+    if (request.text === "") continue;
+    const size = labelSize(request.text, fontSize);
+    const inside = (p: Point) =>
+      p.x >= bounds.left && p.x + size.width <= bounds.right && p.y >= bounds.top && p.y + size.height <= bounds.bottom;
+    const box = placeLabel(size, request.candidates(size).filter(inside), obstacles);
+    if (box === undefined) {
+      unplaced.push(size);
+      continue;
+    }
+    obstacles.push(box);
+    for (const node of textLines(size.lines, box.x + box.width / 2, box.y, fontSize, color)) nodes.push(node);
+  }
+  // Outside `placeLabel`: nothing is above them to avoid.
+  let bottom = stackTop;
+  for (const size of unplaced) {
+    const top = bottom + GAP;
+    for (const node of textLines(size.lines, SCENE_WIDTH / 2, top, fontSize, color)) nodes.push(node);
+    bottom = top + size.height;
+  }
+  return { nodes, bottom };
+}

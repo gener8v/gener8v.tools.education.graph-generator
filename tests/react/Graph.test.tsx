@@ -15,6 +15,7 @@ import { BarGraph as PackageBarGraph } from "../../src/react/graphs/BarGraphGrap
 import { RulerGraph as PackageRulerGraph } from "../../src/react/graphs/RulerGraph";
 import { NumberLineGraph as PackageNumberLineGraph } from "../../src/react/graphs/NumberLineGraph";
 import { XyGraph as PackageXyGraph } from "../../src/react/graphs/XyGraph";
+import { SquareGraph as PackageSquareGraph } from "../../src/react/graphs/SquareGraph";
 import { XyzGraph as PackageXyzGraph } from "../../src/react/graphs/XyzGraph";
 import {
   type GraphComponent,
@@ -35,7 +36,7 @@ import { type Circle, circle as circleFixture } from "../fixtures/definitions/ci
 import type { DescriptionBase, GraphType } from "../../src/core/definitions/types";
 import type { Layout } from "../../src/layout/registry";
 import { circleLayout, fixtureLayouts, malformedLayouts, throwingLayouts } from "../fixtures/layouts";
-import { HOSTILE_TEXT, wordsOf } from "../fixtures/plain-text";
+import { HOSTILE_TEXT, oneClusterTexts, wordsOf } from "../fixtures/plain-text";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 
 const fixtures: Registries = { definitions: fixtureRegistry, layouts: fixtureLayouts };
@@ -125,6 +126,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     expect(PackageNumberLineGraph.displayName).toBe("NumberLineGraph");
     expect(PackageXyGraph.displayName).toBe("XyGraph");
     expect(PackageXyzGraph.displayName).toBe("XyzGraph");
+    expect(PackageSquareGraph.displayName).toBe("SquareGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -590,6 +592,30 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("draws a valid square with every text at its limit in <Graph> and <SquareGraph>, never throwing (GSV-REQ-052, GSV-REQ-053)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const descriptions = [
+      { type: "square", sideLength: 4, title: long, unit: "@".repeat(UNIT_TEXT_LIMIT), labelSides: "all", sideLabelText: long, showRightAngles: true },
+      ...Object.values(oneClusterTexts(CALLER_TEXT_LIMIT)).map((cluster) => ({
+        type: "square",
+        sideLength: 4,
+        title: cluster,
+        unit: "@".repeat(UNIT_TEXT_LIMIT),
+        labelSides: "all",
+        sideLabelText: cluster,
+      })),
+    ];
+    for (const description of descriptions) {
+      for (const Component of [Graph, PackageSquareGraph]) {
+        const received: Issue[][] = [];
+        const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+        expect(received).toEqual([]);
+        // Title 3 lines and four labels of at most 4 lines each.
+        expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 4 * 4);
+      }
+    }
+  });
+
   it("draws a valid x,y,z graph with every text at its limit in <Graph> and <XyzGraph>, never throwing (GSV-REQ-052)", () => {
     const long = wordsOf(CALLER_TEXT_LIMIT);
     const axis = { min: 0, max: 5, tickSpacing: 1 };
@@ -637,6 +663,9 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, yAxisLabel: over }, "/yAxisLabel"],
       [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, zAxisLabel: over }, "/zAxisLabel"],
       [PackageXyzGraph, { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, points: [{ x: 1, y: 1, z: 1, label: over }] }, "/points/0/label"],
+      [PackageSquareGraph, { type: "square", sideLength: 4, title: over }, "/title"],
+      [PackageSquareGraph, { type: "square", sideLength: 4, sideLabelText: over }, "/sideLabelText"],
+      [PackageSquareGraph, { type: "square", sideLength: 4, unit: "@".repeat(UNIT_TEXT_LIMIT + 1) }, "/unit"],
     ];
     for (const [Component, description, path] of cases) {
       for (const Drawn of [Graph, Component]) {

@@ -66,6 +66,12 @@
     "gzip": true
   },
   {
+    "name": "./square",
+    "path": "dist/square.js",
+    "limit": "25 kB",
+    "gzip": true
+  },
+  {
     "name": "./xyz-graph",
     "path": "dist/xyz-graph.js",
     "limit": "25 kB",

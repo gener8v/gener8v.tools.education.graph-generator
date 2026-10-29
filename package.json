@@ -76,6 +76,10 @@
       "types": "./dist/xy-graph.d.ts",
       "default": "./dist/xy-graph.js"
     },
+    "./square": {
+      "types": "./dist/square.d.ts",
+      "default": "./dist/square.js"
+    },
     "./xyz-graph": {
       "types": "./dist/xyz-graph.d.ts",
       "default": "./dist/xyz-graph.js"

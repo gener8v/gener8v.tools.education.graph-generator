@@ -723,3 +723,34 @@ describe("the x,y,z graph, registered (graph-library NLC TICKET-004)", () => {
     expect(lockedDown(definition.properties, "xyz-graph")).toEqual([]);
   });
 });
+
+describe("the square, registered (graph-library GSS TICKET-003)", () => {
+  const definition = definitions.square!;
+
+  it("follows the vocabulary, stage and applicability rules", () => {
+    expect(vocabularyProblems(definition.properties)).toEqual([]);
+    expect(stageProblems(definition)).toEqual([]);
+    expect(applicabilityProblems(definition)).toEqual([]);
+  });
+
+  it("takes its own terms and the shared title and line color", () => {
+    expect(Object.keys(propertiesOf("square", definitions)).sort()).toEqual([
+      "labelSides",
+      "lineColor",
+      "showRightAngles",
+      "sideLabelText",
+      "sideLength",
+      "title",
+      "unit",
+    ]);
+  });
+
+  it("defines unit once with the circle, and every term once among the registered types (GSV-REQ-015)", () => {
+    expect(definition.properties["unit"]).toEqual(definitions.circle!.properties["unit"]);
+    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties)])).toEqual([]);
+  });
+
+  it("is frozen all the way down, with no prototypes", () => {
+    expect(lockedDown(definition.properties, "square")).toEqual([]);
+  });
+});

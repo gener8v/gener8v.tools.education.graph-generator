@@ -1,7 +1,8 @@
 import { createIssue, pointer } from "../issues";
 import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
 import type { Provenance } from "../result";
-import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "./shared";
+import { unitProperty } from "./figure";
+import { CALLER_TEXT_LIMIT } from "./shared";
 import { defineProperties, type DescriptionBase, type DomainCheck, type GraphTypeDefinition } from "./types";
 
 /** A normalized circle description: all three measurements are present once validated. */
@@ -129,13 +130,7 @@ export const circle: GraphTypeDefinition<Circle> = {
     radiusLabelText: labelText("radiusLabelText", "radius"),
     diameterLabelText: labelText("diameterLabelText", "diameter"),
     circumferenceLabelText: labelText("circumferenceLabelText", "circumference"),
-    unit: {
-      term: "unit",
-      kind: "string",
-      required: false,
-      maxLength: UNIT_TEXT_LIMIT,
-      description: `The unit of length shown after each measurement, such as cm, at most ${UNIT_TEXT_LIMIT} characters. A unit with sentence punctuation is quoted in the text alternative.`,
-    },
+    unit: unitProperty,
   }),
   derivations: [
     {

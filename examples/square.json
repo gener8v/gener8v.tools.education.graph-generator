@@ -1,0 +1,10 @@
+{
+  "type": "square",
+  "sideLength": 4,
+  "labelSides": "all",
+  "sideLabelText": "s",
+  "showRightAngles": true,
+  "unit": "cm",
+  "title": "Find the perimeter",
+  "lineColor": "blue"
+}
