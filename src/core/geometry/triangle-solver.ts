@@ -1,7 +1,7 @@
 import { formatDerived } from "../format";
 import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
-import { withinTolerance } from "../validate/derive";
+import { withinTolerance } from "../tolerance";
 
 /** A vertex, in the description's own coordinates (mathematical y-up). */
 export interface TrianglePoint {
@@ -45,9 +45,16 @@ export interface TriangleSolution {
   readonly scale: TriangleSideTerm | "vertices";
 }
 
-const SIDES = ["sideA", "sideB", "sideC"] as const;
-const ANGLES = ["angleA", "angleB", "angleC"] as const;
-const VERTEX_NAMES = ["A", "B", "C"] as const;
+/**
+ * The triangle's terms and vertex letters, in the order A, B, C: the one list the definition and
+ * the solver both read (GSS TICKET-004 quality review QR-005).
+ */
+export const TRIANGLE_SIDES = ["sideA", "sideB", "sideC"] as const satisfies readonly TriangleSideTerm[];
+export const TRIANGLE_ANGLES = ["angleA", "angleB", "angleC"] as const satisfies readonly TriangleAngleTerm[];
+export const TRIANGLE_VERTICES = ["A", "B", "C"] as const;
+const SIDES = TRIANGLE_SIDES;
+const ANGLES = TRIANGLE_ANGLES;
+const VERTEX_NAMES = TRIANGLE_VERTICES;
 type Index = 0 | 1 | 2;
 const INDICES: readonly Index[] = [0, 1, 2];
 
@@ -264,25 +271,15 @@ function fromTwoSidesAndOther(input: TriangleInput, given: readonly number[], g:
     return [createIssue("contradiction", pointer(SIDES[g]), { term: SIDES[g], got: a, conflicts: pointers(conflicting), conflictTerms: terms(conflicting) })];
   };
 
-  let reach: number; // √(a² − h²), the distance either solution's third vertex lies from the foot of the height
-  let two = false;
-  if (alpha >= 90) {
-    if (a - b <= DEGENERATE * a) return none();
-    reach = Math.sqrt((a - h) * (a + h));
-  } else if (a - b >= -DEGENERATE * a) {
-    reach = Math.sqrt((a - h) * (a + h));
-  } else if (a - h < -DEGENERATE * a) {
-    return none();
-  } else if (a - h <= DEGENERATE * a) {
-    reach = 0; // the side just reaches: one right triangle
-  } else {
-    reach = Math.sqrt((a - h) * (a + h));
-    two = true;
-  }
+  const fit = ssaFit(alpha, a, b, h);
+  if (fit === "none") return none();
+  // √(a² − h²), the distance either solution's third vertex lies from the foot of the height; 0
+  // when the side just reaches it.
+  const reach = fit === "right" ? 0 : Math.sqrt((a - h) * (a + h));
 
   const along = b * cosDeg(alpha);
   const near = along + reach;
-  if (two) {
+  if (fit === "two") {
     const far = along - reach;
     const detail = `${SIDES[g]}, ${SIDES[o]} and ${ANGLES[g]} fit two triangles, one with ${SIDES[t]} ${formatDerived(near)} and one with ${SIDES[t]} ${formatDerived(far)}`;
     return [createIssue("ambiguous", pointer(), { term: TRIANGLE, detail })];
@@ -294,6 +291,21 @@ function fromTwoSidesAndOther(input: TriangleInput, given: readonly number[], g:
   [sides[g], sides[o], sides[t]] = [a, b, near];
   [angles[g], angles[o], angles[t]] = [alpha, beta, 180 - alpha - beta];
   return checked(input, solution(sides, angles, "SSA", defining, SIDES[first]));
+}
+
+/**
+ * How many triangles fit two sides and an angle not between them (quality review QR-003): side `a`
+ * opposite the given angle `alpha`, side `b` beside it, and `h = b·sin alpha`, the height from the
+ * far end of `b`. With alpha right or obtuse, one when a > b, else none; with alpha acute, one when
+ * a ≥ b, none when a < h, one right triangle when a = h, and two when h < a < b. "Equal" is within
+ * the `DEGENERATE` margin. The one place GSS OQ-004 (choosing one of two) would change.
+ */
+function ssaFit(alpha: number, a: number, b: number, h: number): "none" | "one" | "right" | "two" {
+  if (alpha >= 90) return a - b <= DEGENERATE * a ? "none" : "one";
+  if (a - b >= -DEGENERATE * a) return "one";
+  if (a - h < -DEGENERATE * a) return "none";
+  if (a - h <= DEGENERATE * a) return "right";
+  return "two";
 }
 
 /**

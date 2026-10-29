@@ -23,20 +23,23 @@ function numberSpec(definition: GraphTypeDefinition, term: string): NumberValue 
 
 type Solved = Extract<SolverResult, { derived: unknown }>;
 
+/** A solver's result once checked: its issues, or what it solved (quality review QR-002). */
+type Checked = { readonly kind: "issues"; readonly issues: readonly Issue[] } | { readonly kind: "solved"; readonly solved: Solved };
+
 /**
  * The solver's result, checked for package defects: exactly one of `derived` and `issues`; every
  * derived term one of the solver's inputs and a top-level number property, with a finite number
  * value; a `scale` that names a supplied input; every issue one `createIssue` could build. A
  * defect throws, which the validator reports as `internal_error`.
  */
-function checkedResult(definition: GraphTypeDefinition, solver: Solver, result: SolverResult, supplied: ReadonlySet<string>): Solved | readonly Issue[] {
+function checkedResult(definition: GraphTypeDefinition, solver: Solver, result: SolverResult, supplied: ReadonlySet<string>): Checked {
   const hasDerived = result !== null && typeof result === "object" && Object.hasOwn(result, "derived");
   const hasIssues = result !== null && typeof result === "object" && Object.hasOwn(result, "issues");
   if (hasDerived === hasIssues) throw new Error(`The ${definition.type} solver returned neither derived values nor issues`);
   if (hasIssues) {
     const { issues } = result as { issues: readonly Issue[] };
     if (!Array.isArray(issues) || issues.length === 0) throw new Error(`The ${definition.type} solver returned issues that are not a non-empty list`);
-    return issues.map((issue: Issue) => assertIssue(issue, `The ${definition.type} solver`));
+    return { kind: "issues", issues: issues.map((issue: Issue) => assertIssue(issue, `The ${definition.type} solver`)) };
   }
   const solved = result as Solved;
   for (const [term, value] of Object.entries(solved.derived)) {
@@ -48,7 +51,7 @@ function checkedResult(definition: GraphTypeDefinition, solver: Solver, result: 
   if (typeof solved.scale !== "string" || !supplied.has(solved.scale)) {
     throw new Error(`The ${definition.type} solver named a scale that was not supplied`);
   }
-  return solved;
+  return { kind: "solved", solved };
 }
 
 /**
@@ -127,13 +130,13 @@ export function runSolver(definition: GraphTypeDefinition, state: StageState): v
   deepFreeze(values);
 
   const result = checkedResult(definition, solver, solver.solve(values), supplied);
-  if (Array.isArray(result)) {
-    for (const issue of result as readonly Issue[]) state.issues.push(issue);
+  if (result.kind === "issues") {
+    for (const issue of result.issues) state.issues.push(issue);
     for (const input of supplied) state.failed.add(pointer(input));
     return;
   }
 
-  const solved = result as Solved;
+  const { solved } = result;
   const toAdd = Object.keys(solved.derived).filter((term) => !supplied.has(term));
   const broken = toAdd.find((term) => rangeBroken(solved.derived[term]!, rangeOf(numberSpec(definition, term)!)) !== undefined);
   if (broken !== undefined) {

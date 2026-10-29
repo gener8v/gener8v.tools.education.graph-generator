@@ -1,5 +1,5 @@
 import { cleanText, formatList, formatMeasurement, formatSupplied, quoteText, sourceOf, stateMeasurement } from "../format";
-import { type TriangleInput, solveTriangle } from "../geometry/triangle-solver";
+import { TRIANGLE_ANGLES, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleInput, solveTriangle } from "../geometry/triangle-solver";
 import { createIssue, pointer } from "../issues";
 import type { Issue, Provenance } from "../result";
 import { rangeBroken } from "../validate/numbers";
@@ -35,9 +35,9 @@ export const TRIANGLE_LENGTH_LIMIT = 1_000_000;
 /** The shortest side. */
 export const TRIANGLE_SIDE_MIN = 0.001;
 
-const VERTEX_NAMES = ["A", "B", "C"] as const;
-const SIDE_TERMS = ["sideA", "sideB", "sideC"] as const;
-const ANGLE_TERMS = ["angleA", "angleB", "angleC"] as const;
+const VERTEX_NAMES = TRIANGLE_VERTICES;
+const SIDE_TERMS = TRIANGLE_SIDES;
+const ANGLE_TERMS = TRIANGLE_ANGLES;
 
 const side = (term: (typeof SIDE_TERMS)[number], name: string, from: string, to: string): PropertySpec => ({
   term,

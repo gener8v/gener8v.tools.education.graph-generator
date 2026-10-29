@@ -218,3 +218,14 @@ Run in the main session on 2026-10-29, after the code was written and after the 
 - CR-004: TR-008's Mitigation amended through the Technical Design skill; the system design was re-approved (Architect — Thomas Eaves, 2026-10-29).
 **Files:** `.gener8v/specifications/geometric-shapes-and-solids.md`, `.gener8v/specifications/graph-specification-and-vocabulary.md`, `src/core/definitions/triangle.ts`, `tests/core/triangle-solver.property.test.ts`, `.gener8v/technical-design/system-design.md`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 1,814 passed each; the property test 20 times at 0.01° (1 near miss, hence 0.02°) and 6 × 10,000 per set at 0.02° (0 misses); gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-004-quality-review/QR-002..QR-005 — solver structure
+
+**Change:**
+- QR-002: `checkedResult` returns a tagged `{ kind: "issues" } | { kind: "solved" }`; `runSolver` narrows on `kind`.
+- QR-003: `ssaFit(alpha, a, b, h)` classifies two sides and a non-included angle as none, one, right or two; `reach` is computed once.
+- QR-004: `TOLERANCE` and `withinTolerance` moved to `src/core/tolerance.ts`; `derive.ts` re-exports them; the solver no longer imports from the validator.
+- QR-005: `TRIANGLE_SIDES`, `TRIANGLE_ANGLES`, `TRIANGLE_VERTICES` exported by the solver and read by the definition.
+(QR-001 was resolved with code review CR-003, above.)
+**Files:** `src/core/validate/solve.ts`, `src/core/geometry/triangle-solver.ts`, `src/core/tolerance.ts` (new), `src/core/validate/derive.ts`, `src/core/definitions/triangle.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 1,814 passed each; `ssaFit` mutation-checked (three branch mutations each fail a test); gener8v-state lint 0 errors.
