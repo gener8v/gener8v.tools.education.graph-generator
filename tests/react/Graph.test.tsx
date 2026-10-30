@@ -948,7 +948,7 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
           const result = createGraph(description);
           if (!result.ok) throw new Error(JSON.stringify(result.issues));
           expect(result.scene.textAlternative.length).toBeLessThan(1_100);
-          expect(result.scene.height).toBeLessThan(650);
+          expect(result.scene.height).toBeLessThan(700);
           const markup = html(<PackageCubeGraph description={description} />);
           expect(markup.length).toBeLessThan(20_000);
           // A title of at most 3 lines, and three edge labels of at most 4 each.
@@ -962,9 +962,11 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     // Every caller text at its limit, the radius, diameter and height labeled, measurements with 15 to
     // 17 significant digits, very tall and very wide. `"` texts are quoted and escaped in the markup;
     // emoji are two UTF-16 units each, and a unit ending in "." is quoted in the text alternative.
-    // Measured 2026-10-29: at most a 1,985-unit text alternative (emoji: four quoted texts), 18,731
-    // characters of markup, 15 <text> nodes and a height of 582.73. A cylinder has a fixed number of
-    // texts and lines, so these do not grow.
+    // Both base measurements supplied (each then stated as written) and a height-bound figure with
+    // every label stacked under it are the two worst cases (security review SEC-001 on GSS TICKET-007).
+    // Measured 2026-10-29: at most a 2,003-unit text alternative (emoji, both base measurements),
+    // 18,731 characters of markup, 15 <text> nodes and a height of 638 (`"` texts, radius 2, height 5,
+    // every label stacked). A cylinder has a fixed number of texts and lines, so these do not grow.
     const quote = '"'.repeat(CALLER_TEXT_LIMIT);
     const emoji = String.fromCodePoint(0x1f600).repeat(CALLER_TEXT_LIMIT);
     const textsOf = (text: string, unit: string) => ({ title: text, unit, radiusLabelText: text, diameterLabelText: text, heightLabelText: text });
@@ -975,12 +977,14 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     ];
     for (const text of texts) {
       for (const hiddenBase of ["dashed", "omitted"]) {
-        for (const [radius, height] of [
-          [3.14159265358979, 2.71828182845905],
-          [999999.123456789, 0.00123456789012345],
-          [0.0010000000000000002, 999999.123456789],
+        for (const measurements of [
+          { radius: 3.14159265358979, height: 2.71828182845905 },
+          { radius: 999999.123456789, height: 0.00123456789012345 },
+          { radius: 0.0010000000000000002, height: 999999.123456789 },
+          { radius: 0.0012345678901234567, diameter: 0.0024691357802469134, height: 0.0012345678901234567 },
+          { radius: 2, height: 5 },
         ]) {
-          const description = { type: "cylinder", radius, height, showRadius: true, showDiameter: true, labelHeight: true, hiddenBase, ...text };
+          const description = { type: "cylinder", ...measurements, showRadius: true, showDiameter: true, labelHeight: true, hiddenBase, ...text };
           const result = createGraph(description);
           if (!result.ok) throw new Error(JSON.stringify(result.issues));
           const markup = html(<PackageCylinderGraph description={description} />);

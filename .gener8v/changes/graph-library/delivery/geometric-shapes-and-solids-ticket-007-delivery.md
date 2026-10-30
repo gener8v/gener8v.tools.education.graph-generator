@@ -174,3 +174,9 @@ Run in the main session on 2026-10-29, after the code was written.
 - QR-002: `halfEllipse` in `src/layout/cylinder.ts` builds each base half's `path` and obstacle pieces from the same angles; tests pin it.
 **Files:** `src/layout/kit/figure-labels.ts`, `src/layout/cube.ts`, `src/layout/cylinder.ts`, `tests/layout/cylinder.test.ts`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 2,041 passed each; 2,250 cube and cylinder Scenes hash identically; the swapped-angles mutant fails the new tests; gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-007-security-review/SEC-001 — the cylinder's true size ceiling
+
+**Change:** The size pin adds a set with both base measurements supplied and a height-bound set whose labels all stack; height bound 700 (was 650). Supersedes the Notes' ceiling: a 2,003-unit text alternative, 18,731 characters of markup, 15 `<text>` nodes, a height of 638.
+**Files:** `tests/react/Graph.test.tsx`
+**Re-verification:** full verification loop — every check exit 0 except two of three vitest runs and the bench, each with one timing failure while the machine's load average was 46. Captured: `tests/layout/kit/text.test.ts` "stops early, so caller-sized text costs little" at 1,017 ms against 1,000 (the known timing test). Three further full runs: 2,041, 2,041, and 2,040 of 2,041 (the same timing test); the bench rerun passed. gener8v-state lint 0 errors.
