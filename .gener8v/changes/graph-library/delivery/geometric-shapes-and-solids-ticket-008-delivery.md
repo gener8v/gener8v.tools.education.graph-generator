@@ -154,3 +154,10 @@ No source code was added, so no `@spec` comments; the coverage table names the v
 (QR-003 and QR-005 were resolved with code review CR-003 and CR-004.)
 **Files:** `tests/fixtures/scene-geometry.ts`, `tests/layout/gss-proportions.test.ts`, `tests/layout/gss-label-overlap.test.ts`
 **Re-verification:** lint, typecheck, generate, bench, build, check:dist, check:deps, check:images, check:changesets, size, publint, attw, audit, audit --prod and gener8v-state all exit 0. Full vitest: 2,202 passed in 2 of 3 runs; the third and four further runs (logs kept) each failed one test, always `tests/layout/kit/text.test.ts` "stops early, so caller-sized text costs little" (1,002 to 1,188 ms against its 1,000 ms wall-clock bound) while the machine's load average was 35 to 46; every TICKET-008 test passed in every run. That timing test is outside this ticket and needs its own fix. Mutations: half-size triangle fit (7 fail), 80% cylinder fit (6 fail), `placeLabel` accepting overlaps (42 fail).
+
+### graph-library/geometric-shapes-and-solids-ticket-008-security-review/SEC-001 — the checks fail on what they cannot read
+
+**Change:** The cross-figure helpers read coordinates strictly (`finite`, `allFinite`) and throw on an unread node kind; text is skipped as labels. Tests pin each case.
+**Files:** `tests/fixtures/scene-geometry.ts`, `tests/layout/gss-label-overlap.test.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 2,205 passed each (load average about 9; the timing test passed); the three mutants of the strict readers each fail; gener8v-state lint 0 errors.
+**Note:** `tests/setup/build.ts` runs `pnpm build` unless `GRAPH_GENERATOR_PREBUILT=1` is set; parallel reviewers should set it to avoid rebuilding `dist/` under each other.

@@ -121,3 +121,25 @@ describe("the overlap finder (GSS-NFR-003)", () => {
     expect(labelOverlaps(scene(line, text("3 cm", 200, 130), text("4 cm", 200, 60)))).toEqual([]);
   });
 });
+
+describe("the checks fail on a figure they cannot read, never pass it (GSS TICKET-008 security review SEC-001)", () => {
+  const sceneWith = (nodes: Scene["nodes"]): Scene => ({ width: SCENE_WIDTH, height: 300, textAlternative: "A figure.", nodes }) as Scene;
+  const label = { kind: "text", text: "4 cm", attrs: [["x", 200], ["y", 100], ["font-size", 14], ["text-anchor", "middle"]] } as unknown as Scene["nodes"][number];
+
+  it("throws on a line coordinate that is not a finite number, in the overlap and the viewBox checks", () => {
+    const broken = { kind: "line", attrs: [["x1", 10], ["y1", Number.NaN], ["x2", 390], ["y2", 100]] } as unknown as Scene["nodes"][number];
+    expect(() => labelOverlaps(sceneWith([broken, label]))).toThrow(/finite/);
+    expect(() => outsideViewBox(sceneWith([broken]))).toThrow(/finite/);
+  });
+
+  it("throws on a label whose position is missing", () => {
+    const unplaced = { kind: "text", text: "4 cm", attrs: [["y", 100], ["font-size", 14], ["text-anchor", "middle"]] } as unknown as Scene["nodes"][number];
+    expect(() => labelOverlaps(sceneWith([unplaced]))).toThrow(/finite x/);
+  });
+
+  it("throws on a node kind it does not read, instead of skipping it", () => {
+    const rect = { kind: "rect", attrs: [["x", 0], ["y", 0], ["width", 10], ["height", 10]] } as unknown as Scene["nodes"][number];
+    expect(() => labelOverlaps(sceneWith([rect, label]))).toThrow(/cannot read a rect/);
+    expect(() => outsideViewBox(sceneWith([rect]))).toThrow(/cannot read a rect/);
+  });
+});

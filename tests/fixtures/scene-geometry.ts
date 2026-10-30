@@ -20,6 +20,23 @@ export interface Bounds {
 export const attr = (node: SceneNode, name: string) => node.attrs.find(([key]) => key === name)?.[1];
 const num = (node: SceneNode, name: string) => Number(attr(node, name));
 
+/**
+ * A number attribute that must be there and finite: the strict reader of the cross-figure checks,
+ * which would otherwise pass a broken figure, since a `NaN` box overlaps nothing and is never outside
+ * the viewBox (GSS TICKET-008 security review SEC-001). `num` stays lenient for the older tests.
+ */
+function finite(node: SceneNode, name: string): number {
+  const value = num(node, name);
+  if (!Number.isFinite(value)) throw new Error(`${node.kind} has no finite ${name}: ${String(attr(node, name))}`);
+  return value;
+}
+
+/** Every number must be finite: a broken coordinate fails the check instead of slipping through it. */
+function allFinite<T extends number[]>(values: T, what: string): T {
+  for (const value of values) if (!Number.isFinite(value)) throw new Error(`${what} has a coordinate that is not a finite number`);
+  return values;
+}
+
 const ROTATE = /^rotate\((-?[\d.]+) (-?[\d.]+) (-?[\d.]+)\)$/;
 
 /** The box around a list of points. */
@@ -32,7 +49,7 @@ function around(points: ReadonlyArray<readonly [number, number]>, node: SceneNod
 const pointsOf = (node: SceneNode): Array<[number, number]> =>
   String(attr(node, "points"))
     .split(" ")
-    .map((pair) => pair.split(",").map(Number) as [number, number]);
+    .map((pair) => allFinite(pair.split(",").map(Number) as [number, number], `${node.kind} points`));
 
 /**
  * A node's bounding box: a nested picture's viewport, a shape's extent, or a text line's glyphs. A
@@ -140,10 +157,10 @@ export function positionOf(scene: Scene, value: number): number {
 const numbersIn = (text: string): number[] => (text.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
 
 /** The length of a `line` node's drawn segment. */
-const lengthOfLine = (node: SceneNode): number => Math.hypot(num(node, "x2") - num(node, "x1"), num(node, "y2") - num(node, "y1"));
+const lengthOfLine = (node: SceneNode): number => Math.hypot(finite(node, "x2") - finite(node, "x1"), finite(node, "y2") - finite(node, "y1"));
 
 /** A `line` node as a segment. */
-export const segmentOfLine = (node: SceneNode): Segment => ({ x1: num(node, "x1"), y1: num(node, "y1"), x2: num(node, "x2"), y2: num(node, "y2") });
+export const segmentOfLine = (node: SceneNode): Segment => ({ x1: finite(node, "x1"), y1: finite(node, "y1"), x2: finite(node, "x2"), y2: finite(node, "y2") });
 
 /** The drawn length of every `line` node of a Scene, in drawing order. */
 export const lineLengths = (scene: Scene): number[] => scene.nodes.filter((node) => node.kind === "line").map(lengthOfLine);
@@ -158,6 +175,7 @@ export function polygonSides(node: SceneNode): number[] {
 export function arcOfPath(node: SceneNode): { sx: number; ex: number; cy: number; rx: number; ry: number } {
   const [sx, cy, rx, ry, , , , ex] = numbersIn(String(attr(node, "d")));
   if (sx === undefined || cy === undefined || rx === undefined || ry === undefined || ex === undefined) throw new Error(`not an arc path: ${String(attr(node, "d"))}`);
+  allFinite([sx, cy, rx, ry, ex], "path");
   return { sx, ex, cy, rx, ry };
 }
 
@@ -172,13 +190,13 @@ export function drawnPoints(node: SceneNode): Array<[number, number]> {
       return pointsOf(node);
     case "line":
       return [
-        [num(node, "x1"), num(node, "y1")],
-        [num(node, "x2"), num(node, "y2")],
+        [finite(node, "x1"), finite(node, "y1")],
+        [finite(node, "x2"), finite(node, "y2")],
       ];
     case "circle":
     case "ellipse": {
-      const [cx, cy] = [num(node, "cx"), num(node, "cy")];
-      const [rx, ry] = node.kind === "circle" ? [num(node, "r"), num(node, "r")] : [num(node, "rx"), num(node, "ry")];
+      const [cx, cy] = [finite(node, "cx"), finite(node, "cy")];
+      const [rx, ry] = node.kind === "circle" ? [finite(node, "r"), finite(node, "r")] : [finite(node, "rx"), finite(node, "ry")];
       return [[cx - rx, cy], [cx + rx, cy], [cx, cy - ry], [cx, cy + ry]];
     }
     case "path": {
@@ -187,7 +205,8 @@ export function drawnPoints(node: SceneNode): Array<[number, number]> {
       return [[sx, cy], [ex, cy], [(sx + ex) / 2, back ? cy - ry : cy + ry], [(sx + ex) / 2 - rx, cy], [(sx + ex) / 2 + rx, cy]];
     }
     default:
-      return [];
+      // A kind this check cannot read must fail it, not be skipped (security review SEC-001).
+      throw new Error(`drawnPoints cannot read a ${node.kind} node`);
   }
 }
 
@@ -200,11 +219,11 @@ export function drawnPoints(node: SceneNode): Array<[number, number]> {
  */
 export function labelBoxOf(node: SceneNode): Box {
   if (node.kind !== "text") throw new Error(`not a text node: ${node.kind}`);
-  const size = num(node, "font-size");
+  const size = finite(node, "font-size");
   if (attr(node, "text-anchor") !== "middle") throw new Error(`label "${node.text}" is not centered on its anchor`);
   const lineHeight = size * LINE_HEIGHT;
   const width = textWidth(node.text, size);
-  return { x: num(node, "x") - width / 2 + 0.01, y: num(node, "y") - size * 0.8 - (lineHeight - size) / 2 + 0.01, width: width - 0.02, height: lineHeight - 0.02 };
+  return { x: finite(node, "x") - width / 2 + 0.01, y: finite(node, "y") - size * 0.8 - (lineHeight - size) / 2 + 0.01, width: width - 0.02, height: lineHeight - 0.02 };
 }
 
 /**
@@ -248,10 +267,10 @@ export function figureLines(scene: Scene): Segment[] {
         break;
       }
       case "circle":
-        found.push(...curve(num(node, "cx"), num(node, "cy"), num(node, "r"), num(node, "r"), 0, 2 * Math.PI, ROUND_PIECES));
+        found.push(...curve(finite(node, "cx"), finite(node, "cy"), finite(node, "r"), finite(node, "r"), 0, 2 * Math.PI, ROUND_PIECES));
         break;
       case "ellipse":
-        found.push(...curve(num(node, "cx"), num(node, "cy"), num(node, "rx"), num(node, "ry"), 0, 2 * Math.PI, ROUND_PIECES));
+        found.push(...curve(finite(node, "cx"), finite(node, "cy"), finite(node, "rx"), finite(node, "ry"), 0, 2 * Math.PI, ROUND_PIECES));
         break;
       case "path": {
         const { sx, ex, cy, rx, ry } = arcOfPath(node);
@@ -259,7 +278,12 @@ export function figureLines(scene: Scene): Segment[] {
         found.push(...(sx < ex ? curve((sx + ex) / 2, cy, rx, ry, Math.PI, 2 * Math.PI, ROUND_PIECES / 2) : curve((sx + ex) / 2, cy, rx, ry, 0, Math.PI, ROUND_PIECES / 2)));
         break;
       }
+      case "text":
+        // Labels, not figure lines.
+        break;
       default:
+        // A kind this check cannot read must fail it, not be skipped (security review SEC-001).
+        throw new Error(`figureLines cannot read a ${node.kind} node`);
     }
   }
   return found;
