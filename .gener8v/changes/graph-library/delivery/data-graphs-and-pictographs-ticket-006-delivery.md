@@ -130,4 +130,13 @@ Run in the main session on 2026-10-30, after the code was written.
 
 ## Post-Review Amendments
 
-None
+### graph-library/data-graphs-and-pictographs-ticket-006-code-review/CR-001 (with quality QR-001), CR-002, CR-003, CR-004, CR-005
+
+**Change:**
+- CR-001 / QR-001: supersedes DEL-003 — samples drawn across keep a category-axis label and written values; those are checked by proportion (every bar within 0.5 of value × length per unit) and by bounds on the implied axis length (`barGraphBounds`), the rest exactly as before. Residual: with those terms the plot's exact edges are bounded, not restated.
+- CR-002: entries are matched inside their own series sentence, in order; bar and pictograph lists likewise.
+- CR-003: `@spec DGP-REQ-036` on `lineGraphLayout`; coverage row updated.
+- CR-004: the reference's header names the `src/` helpers it shares (amends DEL-002, which named only the scale and text helpers).
+- CR-005: bars checked for category order, start at the zero baseline and one shared start edge.
+**Files:** `tests/layout/data-graph-accuracy.test.ts`, `tests/core/data-graph-text-alternative.test.ts`, `tests/fixtures/data-graph-reference.ts`, `src/layout/line-graph.ts` (comment), `.gener8v/specifications/data-graphs-and-pictographs.md`
+**Re-verification:** full verification loop — all exit 0 except one of three vitest runs, which failed only `tests/layout/nlc-accuracy.property.test.ts` (NLC TICKET-005): its unseeded x,y,z coverage counter got 49 samples with guides against a threshold of more than 50 of 200; two reruns after passed 2,311 each. That threshold sits near the generator's own rate and needs a fix ticket. The two new files: 10 runs in a row, 10 passed each. Mutants (each restored): the last series' sentence dropped; the last entry dropped from later series; room not subtracted and label depth not added in `planHorizontal`; across length ×0.97 with written values; bar `x` and `y` +1 — each fails the new tests. gener8v-state lint 0 errors.

@@ -188,6 +188,6 @@ Defines the three graph types that present data sets rather than geometry: line 
 | DGP-REQ-020 | `src/core/definitions/bar-graph.ts`:barGraph, showValues; `src/layout/bar-graph.ts`:valueLabelLines, drawVertical, drawHorizontal, barGraphLayout |
 | DGP-REQ-021 | `src/core/definitions/bar-graph.ts`:barGraph, values (from 0) |
 | DGP-REQ-022 | `src/layout/bar-graph.ts`:drawVertical, drawHorizontal, barGraphLayout |
-| DGP-REQ-036 | `src/layout/bar-graph.ts`:barLength, barGraphLayout; `src/core/definitions/bar-graph.ts`:scaleStartsAtZeroCheck; `tests/layout/data-graph-accuracy.test.ts` (verification), `tests/fixtures/data-graph-reference.ts`, `tests/fixtures/data-graphs.ts` |
+| DGP-REQ-036 | `src/layout/bar-graph.ts`:barLength, barGraphLayout; `src/core/definitions/bar-graph.ts`:scaleStartsAtZeroCheck; `src/layout/line-graph.ts`:lineGraphLayout; `tests/layout/data-graph-accuracy.test.ts` (verification), `tests/fixtures/data-graph-reference.ts`, `tests/fixtures/data-graphs.ts` |
 | DGP-NFR-001 | `tests/layout/data-graph-accuracy.test.ts` (the examples and 500 generated descriptions per type, bars and line-graph points), `tests/fixtures/data-graph-reference.ts`, `tests/fixtures/data-graphs.ts` (verification) |
 | DGP-NFR-003 | `tests/core/data-graph-text-alternative.test.ts` (the examples and 500 generated descriptions per type), `tests/fixtures/data-graphs.ts` (verification) |

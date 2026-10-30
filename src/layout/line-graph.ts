@@ -137,7 +137,7 @@ function drawLegend(g: LineGraph, top: number): { nodes: SceneNode[]; height: nu
  * for more than one series, the legend. A default scale includes every value and extends below
  * zero for negative ones. Every number goes through `fmt()` (AD-007).
  */
-// @spec DGP-REQ-010, DGP-REQ-012, DGP-REQ-014, DGP-REQ-015
+// @spec DGP-REQ-010, DGP-REQ-012, DGP-REQ-014, DGP-REQ-015, DGP-REQ-036
 export const lineGraphLayout: Layout<LineGraph> = (g: LineGraph, provenance: Provenance): Scene => {
   const nodes: SceneNode[] = [];
   const title = titleBlock(g.title);

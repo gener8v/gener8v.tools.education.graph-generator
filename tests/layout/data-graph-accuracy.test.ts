@@ -8,7 +8,7 @@ import { barGraphLayout } from "../../src/layout/bar-graph";
 import { lineGraphLayout } from "../../src/layout/line-graph";
 import { drawMarker } from "../../src/layout/kit/markers";
 import type { Scene, SceneNode } from "../../src/layout/scene";
-import { barGraphReference, horizontalBarsReferenced, lineGraphReference } from "../fixtures/data-graph-reference";
+import { barGraphBounds, barGraphReference, horizontalBarsReferenced, lineGraphReference } from "../fixtures/data-graph-reference";
 import { barGraphArb, lineGraphArb } from "../fixtures/data-graphs";
 import { loadExample } from "../fixtures/examples";
 import { attr, near as nearWithin, num } from "../fixtures/scene-readers";
@@ -18,12 +18,19 @@ import { attr, near as nearWithin, num } from "../fixtures/scene-readers";
 // for the shipped examples and for generated descriptions. The exact positions come from
 // `tests/fixtures/data-graph-reference.ts`, which works them out from the data and the layouts'
 // documented constants and the value-scale rule and reads no drawn Scene, so an axis that is shifted
-// or rescaled together with everything on it fails. Pictograph positions are not named by
+// or rescaled together with everything on it fails. Bars across with a category-axis label or written
+// values are the one exception to exact lengths: those terms narrow the plot by amounts that depend
+// on the drawn rows, so there the bars are checked for proportion and for an axis length between
+// limits the reference gives (see `checkProportionalBars`). Pictograph positions are not named by
 // DGP-NFR-001; their widths are DGP-NFR-002 (tests/layout/pictograph.test.ts). Generated
 // descriptions are filtered through `validate()`; a failing property prints fast-check's
 // counterexample, and every assertion names the description. (graph-library DGP TICKET-006.)
 const RUNS = 500;
 const TOLERANCE = 0.5;
+/** Drawn numbers are rounded to 0.01 (AD-007); a few of them added may differ by twice that. */
+const ROUNDING = 0.02;
+/** A length under this rounds to nothing, and a bar is not drawn; it is also the most rounding moves a length. */
+const HALF_HUNDREDTH = 0.005;
 
 function normalized<T>(input: unknown): { description: T; provenance: Extract<ReturnType<typeof validate>, { valid: true }>["provenance"] } {
   const result = validate(input);
@@ -72,18 +79,93 @@ function checkLinePoints(input: unknown, scene: Scene): void {
   });
 }
 
-/** Fails when a bar is not as long as the reference says, naming the description. */
+/** The bars drawn, with where each starts along its length's axis and its position among the others. */
+function barsOf(scene: Scene, horizontal: boolean) {
+  return scene.nodes
+    .filter((node) => node.kind === "rect")
+    .map((bar) => ({
+      length: num(bar, horizontal ? "width" : "height"),
+      start: horizontal ? num(bar, "x") : num(bar, "y") + num(bar, "height"),
+      along: num(bar, horizontal ? "y" : "x"),
+    }));
+}
+
+/** Fails when the bars do not come in category order, down the rows or along the columns. */
+function checkOrder(bars: ReturnType<typeof barsOf>, where: string): void {
+  bars.forEach((bar, i) => {
+    if (i > 0) expect(bar.along, `${where}: bar ${i} comes after bar ${i - 1}`).toBeGreaterThan(bars[i - 1]!.along);
+  });
+}
+
+/** Fails when a bar is not as long as the reference says, or does not start at the zero line, naming the description. */
 function checkBars(input: unknown, scene: Scene): void {
   const { description } = normalized<BarGraph>(input);
   const expected = barGraphReference(description);
   const where = JSON.stringify(input);
-  const bars = scene.nodes.filter((node) => node.kind === "rect");
+  const bars = barsOf(scene, expected.horizontal);
   // A bar that would round to no length is not drawn; the others come in category order.
   const drawnValues = description.values.filter((value) => Math.round(expected.lengthOf(value) * 100) > 0);
   expect(bars, `${where}: one bar for every value that has a length`).toHaveLength(drawnValues.length);
+  checkOrder(bars, where);
   drawnValues.forEach((value, i) => {
-    const drawn = num(bars[i]!, expected.horizontal ? "width" : "height");
-    nearWithin(drawn, expected.lengthOf(value), `${where}: bar for ${value} on ${expected.scale.minimum} to ${expected.scale.maximum}`, TOLERANCE);
+    nearWithin(bars[i]!.length, expected.lengthOf(value), `${where}: bar for ${value} on ${expected.scale.minimum} to ${expected.scale.maximum}`, TOLERANCE);
+    // Every bar grows from the zero line. With written values upright, room is added above the plot, which pushes it down.
+    if (expected.start.exact) nearWithin(bars[i]!.start, expected.start.value, `${where}: bar for ${value} starts at the zero line`, TOLERANCE);
+    else expect(bars[i]!.start, `${where}: bar for ${value} starts no higher than the zero line`).toBeGreaterThanOrEqual(expected.start.value - TOLERANCE);
+    nearWithin(bars[i]!.start, bars[0]!.start, `${where}: bar for ${value} starts where the first bar does`, ROUNDING);
+  });
+}
+
+/**
+ * Fails when bars across, with a category-axis label or written values, are not in proportion to
+ * their values, or lie on an axis outside the limits the reference gives, naming the description.
+ * Without the plot's exact edges the scale is not known either, so: (a) each bar is as long as its
+ * value times the longest bar's length per unit of value, within 0.5; (b) for some scale the layout
+ * may have chosen, the axis length that implies (length per unit times the scale's range) lies
+ * between `barGraphBounds`' least and most, widened by what rounding the longest bar to 0.01 can
+ * move it; and the bars all start at one edge, no further left than the plot can start.
+ */
+function checkProportionalBars(input: unknown, scene: Scene): void {
+  const { description } = normalized<BarGraph>(input);
+  const { left, candidates } = barGraphBounds(description);
+  const where = JSON.stringify(input);
+  const bars = barsOf(scene, true);
+  checkOrder(bars, where);
+  const positive = description.values.filter((value) => value > 0);
+  const highest = Math.max(0, ...positive);
+  const longest = Math.max(0, ...bars.map((bar) => bar.length));
+  if (longest === 0) {
+    // No bar is long enough to draw: the most the axis allows must give every value under half a hundredth.
+    expect(
+      candidates.some((candidate) => highest * (candidate.most / candidate.range) < HALF_HUNDREDTH),
+      `${where}: no bar is drawn`,
+    ).toBe(true);
+    return;
+  }
+  // The longest bar is the highest value's. The length per unit has the rounding of that bar (0.005), so a
+  // value whose bar is about half a hundredth long may or may not have been drawn: it was when a bar is left
+  // over after those that certainly were.
+  const perUnit = longest / highest;
+  const certain = positive.map((value) => ((longest - HALF_HUNDREDTH) * value) / highest >= HALF_HUNDREDTH);
+  const never = positive.map((value) => ((longest + HALF_HUNDREDTH) * value) / highest < HALF_HUNDREDTH);
+  let next = 0;
+  positive.forEach((value, i) => {
+    const laterCertain = certain.slice(i + 1).filter(Boolean).length;
+    if (never[i]) return;
+    if (!certain[i] && bars.length - next <= laterCertain) return;
+    expect(bars[next], `${where}: a bar for ${value}`).toBeDefined();
+    nearWithin(bars[next]!.length, value * perUnit, `${where}: bar for ${value} in proportion to the longest`, TOLERANCE);
+    next++;
+  });
+  expect(next, `${where}: one bar for every value that has a length`).toBe(bars.length);
+  const implied = candidates.map((candidate) => ({ ...candidate, length: perUnit * candidate.range, slack: (ROUNDING * candidate.range) / highest }));
+  expect(
+    implied.some(({ length, least, most, slack }) => least > 0 && length >= least - slack && length <= most + slack),
+    `${where}: the axis is ${[...new Set(implied.map(({ length, least, most }) => `${length} (between ${least} and ${most})`))].join(" or ")} long`,
+  ).toBe(true);
+  bars.forEach((bar, i) => {
+    nearWithin(bar.start, bars[0]!.start, `${where}: bar ${i} starts where the first bar does`, ROUNDING);
+    expect(bar.start, `${where}: bar ${i} starts no further left than the plot can`).toBeGreaterThanOrEqual(left - TOLERANCE);
   });
 }
 
@@ -154,13 +236,15 @@ describe("a bar graph's bars are drawn to scale with its values (DGP-REQ-036, DG
   it(`draws every bar within ${TOLERANCE} of its length computed from the data, over ${RUNS} generated descriptions`, () => {
     const covered = check(barGraphArb, (sample, covered) => {
       // Across, a category-axis label or written values move the plot's edges by what the drawn rows
-      // hold, which no restatement gives (see `barGraphReference`): those two terms are left out of
-      // the samples drawn across, so every sample is checked. Upright bars keep them.
-      const across = Object.fromEntries(Object.entries(sample).filter(([term]) => term !== "categoryAxisLabel" && term !== "showValues"));
-      const input = sample["orientation"] === "horizontal" ? across : sample;
-      const { description, provenance } = normalized<BarGraph>(input);
-      expect(horizontalBarsReferenced(description), JSON.stringify(input)).toBe(true);
-      checkBars(input, barGraphLayout(description, provenance));
+      // hold, which no restatement gives (see `barGraphReference`): those samples are checked for
+      // proportion and bounds instead of exact lengths.
+      const { description, provenance } = normalized<BarGraph>(sample);
+      const scene = barGraphLayout(description, provenance);
+      if (horizontalBarsReferenced(description)) checkBars(sample, scene);
+      else checkProportionalBars(sample, scene);
+      tally(covered, "across with a category-axis label", description.orientation === "horizontal" && description.categoryAxisLabel !== undefined);
+      tally(covered, "across with written values", description.orientation === "horizontal" && description.showValues === true);
+      tally(covered, "across, checked exactly", description.orientation === "horizontal" && horizontalBarsReferenced(description));
       tally(covered, "upright", description.orientation !== "horizontal");
       tally(covered, "across", description.orientation === "horizontal");
       tally(covered, "decimal values", hasDecimals(description.values));
@@ -179,6 +263,9 @@ describe("a bar graph's bars are drawn to scale with its values (DGP-REQ-036, DG
     expect(covered["a zero bar"]).toBeGreaterThan(0);
     expect(covered["written values"]).toBeGreaterThan(RUNS / 10);
     expect(covered["a category-axis label"]).toBeGreaterThan(RUNS / 10);
+    expect(covered["across with a category-axis label"]).toBeGreaterThan(RUNS / 20);
+    expect(covered["across with written values"]).toBeGreaterThan(RUNS / 20);
+    expect(covered["across, checked exactly"]).toBeGreaterThan(0);
     expect(covered["a single category"]).toBeGreaterThan(0);
     expect(covered["ten or more categories"]).toBeGreaterThan(RUNS / 10);
   });
