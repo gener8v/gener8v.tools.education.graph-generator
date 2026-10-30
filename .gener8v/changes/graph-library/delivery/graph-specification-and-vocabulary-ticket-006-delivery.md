@@ -125,4 +125,11 @@ None — implementation followed the approved plan.
 
 ## Post-Review Amendments
 
-None
+### graph-library/graph-specification-and-vocabulary-ticket-006-code-review/CR-001 (with quality QR-001, QR-002 and security SEC-001) — checks that cannot pass with nothing checked
+
+**Change:** `tests/core/completeness.test.ts`:
+- CR-001: expected terms come from the definitions (`declared()`, 92 terms plus `type` and `version`); every declared term must be in the vocabulary and documented, and the vocabulary must hold exactly them; a dropped term is reported.
+- QR-001 / SEC-001: the `maxLength` walk (`stringLimits`) counts the string values it visits and must reach the definitions' count (53); the declared term list must be non-empty; a broken copy with one `maxLength` removed is reported.
+- QR-002: the redundant length assertions on the two registry key lists and the repeated `valid` assertion are removed; the one on the schema's branches stays.
+**Files:** `tests/core/completeness.test.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 2,228 passed each; mutations of `src/generated/vocabulary.json` (a dropped term, `kind` renamed, one `maxLength` stripped) fail 4, 2 and 2 tests; gener8v-state lint 0 errors.
