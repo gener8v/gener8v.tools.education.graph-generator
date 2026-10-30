@@ -18,7 +18,7 @@ export interface Bounds {
 }
 
 export const attr = (node: SceneNode, name: string) => node.attrs.find(([key]) => key === name)?.[1];
-const num = (node: SceneNode, name: string) => Number(attr(node, name));
+export const num = (node: SceneNode, name: string) => Number(attr(node, name));
 
 /**
  * A number attribute that must be there and finite: the strict reader of the cross-figure checks,

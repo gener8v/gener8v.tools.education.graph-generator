@@ -140,4 +140,16 @@ None — implementation followed the approved plan.
 
 ## Post-Review Amendments
 
-None
+### graph-library/number-lines-and-coordinate-graphs-ticket-005 code CR-001, CR-002; quality QR-001..QR-007; security SEC-001 — independent references and checks that cannot pass empty
+
+**Change (tests, fixtures and helpers only):**
+- CR-001 / QR-001: `tests/fixtures/nlc-reference.ts` computes expected axis ends and the x,y,z translation from the layouts' constants and the description; the accuracy test checks against it (x,y,z vertical absolute when the topmost mark is geometry, guaranteed by `xyzGeometryTopArb`; the number line's height relative). Supersedes DEL-002's drawn-axis reference.
+- CR-002: 20 generated samples per type in the accessibility test.
+- QR-002 / SEC-001: the bench counts exactly 100 ticks per axis (told apart from grid lines) and 50 points, and checks the markup against the Scene.
+- QR-003: shared readers in `tests/fixtures/scene-readers.ts`; `num` exported from `tests/fixtures/scene-geometry.ts`; overlapping per-type tests named in the header.
+- QR-004: points and segments in four of five samples (`usually()`; segment ends distinct), coverage counters replace the vacuous guard. Supersedes DEL-001's generated domain.
+- QR-005: readability (typed `kinds`, `xyzReference`, `expectedMoveDown`).
+- QR-006: `tests/helpers/browser-globals.ts` (`expectNoBrowserGlobalsTouched`, also checks the global object is unchanged), used by the ruler and NLC server-render tests; the NLC test renders 5 generated descriptions per type as well as the examples.
+- QR-007: `svgAttributes` closes its JSDOM window; `loadExample` in `tests/fixtures/examples.ts`, used by the NLC and ruler tests.
+**Files:** `tests/fixtures/{nlc-reference,scene-readers,examples}.ts` (new), `tests/helpers/browser-globals.ts` (new), `tests/fixtures/{nlc-generators,scene-geometry}.ts`, `tests/layout/nlc-accuracy.property.test.ts`, `tests/layout/nlc-render.bench.ts`, `tests/react/{nlc-accessibility.test.tsx,nlc-server-render.test.ts,ruler-server-render.test.tsx,ruler.test.tsx}`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 2,301 passed each; bench p95 7.44 ms over 513 runs (load 12); the implementer ran each fix's mutation against old and new tests (old pass, new fail), and the main session reconfirmed `AXIS_LENGTH` 160 (accuracy fails) and a tickless render (bench guard fails); gener8v-state lint 0 errors. The implementing subagent was interrupted once by an expired login and resumed.

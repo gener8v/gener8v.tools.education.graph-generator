@@ -2,171 +2,252 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { validate } from "../../src/core/index";
 import type { NumberLine } from "../../src/core/definitions/number-line";
-import { type XyGraph, planeRooms } from "../../src/core/definitions/xy-graph";
-import { type XyzGraph, xyzRooms } from "../../src/core/definitions/xyz-graph";
+import type { XyGraph } from "../../src/core/definitions/xy-graph";
+import type { XyzGraph } from "../../src/core/definitions/xyz-graph";
 import { defaultStyle } from "../../src/core/style";
-import { niceTicks } from "../../src/core/value-scale";
-import { isometric } from "../../src/layout/kit/isometric";
-import { linearScale } from "../../src/layout/kit/scale";
 import { numberLineLayout } from "../../src/layout/number-line";
 import type { Scene, SceneNode } from "../../src/layout/scene";
 import { xyGraphLayout } from "../../src/layout/xy-graph";
-import { AXIS_LENGTH, xyzGraphLayout } from "../../src/layout/xyz-graph";
-import { numberLineArb, xyGraphArb, xyzGraphArb } from "../fixtures/nlc-generators";
-import { attr } from "../fixtures/scene-geometry";
+import { xyzGraphLayout } from "../../src/layout/xyz-graph";
+import { numberLineArb, xyGraphArb, xyzGeometryTopArb, xyzGraphArb } from "../fixtures/nlc-generators";
+import { numberLineReference, xyReference, xyzReference } from "../fixtures/nlc-reference";
+import { attr, circles, isTick, lengthOf, lines, near as nearWithin, num } from "../fixtures/scene-readers";
 
-// NLC-NFR-001: every tick, point and segment endpoint of a number line, x,y graph or x,y,z graph is
-// drawn within 0.5 px of the position computed from its value, at the default size (one Scene unit
-// is one pixel at the 400-unit default width). Positions are read from the Scene; the expected ones
-// are computed here from the values: a linear scale over the drawn axis, or `isometric()` of the
-// scaled value for the x,y,z graph. The existing per-type tests pin examples; these run generated
-// descriptions (graph-library NLC TICKET-005).
+// NLC-NFR-001: every axis end, tick, point and segment endpoint of a number line, x,y graph or x,y,z
+// graph is drawn within 0.5 px of the position computed from the description, at the default size
+// (one Scene unit is one pixel at the 400-unit drawing width). The expected positions come from
+// `tests/fixtures/nlc-reference.ts`, which restates the layouts' documented constants and rules and
+// reads no drawn Scene, so an axis that is shifted or shortened together with everything on it
+// fails. The one rule that no restatement can give is which x,y,z mark is topmost (it depends on
+// label placement); `expectedMoveDown` below says how that is handled and the test counts how often
+// the description alone fixed it. `isometric()` is the x,y,z
+// projection, as the ticket names it. Generated descriptions are filtered through `validate()`.
+//
+// This overlaps the per-type tests, which pin fixed examples and may be dropped in favor of this one
+// later: tests/layout/number-line.test.ts (ticks and points on the linear scale), tests/layout/
+// xy-graph.test.ts (every marker and segment end within half a unit, a 200-run marker variant) and
+// tests/layout/xyz-graph.test.ts (ticks, points and axis ends against `isometric()`).
+// (graph-library NLC TICKET-005; code review CR-001, quality review QR-001, QR-003.)
 const RUNS = 200;
 const TOLERANCE = 0.5;
+const near = (got: number, want: number, what: string) => nearWithin(got, want, what, TOLERANCE);
 
-const num = (node: SceneNode, name: string) => Number(attr(node, name));
-const lines = (scene: Scene) => scene.nodes.filter((node) => node.kind === "line");
-const lengthOf = (node: SceneNode) => Math.hypot(num(node, "x2") - num(node, "x1"), num(node, "y2") - num(node, "y1"));
-const circles = (scene: Scene) => scene.nodes.filter((node) => node.kind === "circle");
-/** The axes and their ticks: not grid lines, dashed guide lines or segments (a figure line is wider than an axis). */
-const axisNodes = (scene: Scene) =>
-  lines(scene).filter((node) => attr(node, "stroke") !== defaultStyle.colors.grid && attr(node, "stroke-dasharray") === undefined && num(node, "stroke-width") !== defaultStyle.lineWidths.figure);
-const isTick = (node: SceneNode) => lengthOf(node) <= defaultStyle.tickLength + 0.02;
-const near = (got: number, want: number, what: string) => expect(Math.abs(got - want), `${what}: drawn ${got}, computed ${want}`).toBeLessThanOrEqual(TOLERANCE);
+/** A text line's box starts 0.9 of the font size above its baseline: the baseline sits 0.8 below the glyphs' top, which are centered in a line 1.2 tall. */
+const BASELINE_BELOW_TOP = 0.9;
 
-function normalized<T>(description: unknown): { description: T; provenance: ReturnType<typeof validate> extends infer R ? (R extends { valid: true; provenance: infer P } ? P : never) : never } {
+type Normalized<T> = { description: T; provenance: Extract<ReturnType<typeof validate>, { valid: true }>["provenance"] };
+
+function normalized<T>(description: unknown): Normalized<T> {
   const result = validate(description);
   if (!result.valid) throw new Error(`the generator gave an invalid description: ${JSON.stringify(result.issues)}`);
   return { description: result.description as T, provenance: result.provenance };
 }
 
-/** Runs a property over `RUNS` valid samples and returns how many it checked. */
-function check<T>(arbitrary: fc.Arbitrary<T>, property: (sample: T) => void): number {
-  let seen = 0;
+/** What a run of generated samples covered, so a test can show each half of its property ran. */
+interface Coverage {
+  runs: number;
+  withPoints: number;
+  withSegments: number;
+  withGuides: number;
+  /** x,y,z samples whose move down the description alone fixed (a mark of geometry was topmost). */
+  moveDownFromRules: number;
+}
+
+/** Runs a property over `RUNS` valid samples and returns what they covered. */
+function check<T>(arbitrary: fc.Arbitrary<T>, property: (sample: T, covered: Coverage) => void): Coverage {
+  const covered: Coverage = { runs: 0, withPoints: 0, withSegments: 0, withGuides: 0, moveDownFromRules: 0 };
   fc.assert(
     fc.property(arbitrary, (sample) => {
-      property(sample);
-      seen++;
+      property(sample, covered);
+      covered.runs++;
     }),
     { numRuns: RUNS },
   );
-  return seen;
+  return covered;
 }
 
+/** A line with the axis style: an axis or a tick, not a grid line, a dashed guide or a figure's segment. */
+const hasAxisStyle = (node: SceneNode) => attr(node, "stroke-dasharray") === undefined && num(node, "stroke-width") === defaultStyle.lineWidths.axis;
+
 describe("a number line is drawn to scale with its values (NLC-NFR-001)", () => {
-  it(`puts every tick and point within ${TOLERANCE} of its linearly scaled value, over ${RUNS} generated descriptions`, () => {
-    const seen = check(numberLineArb, (input) => {
+  it(`puts the line's ends, every tick and every point within ${TOLERANCE} of the position computed from the description, over ${RUNS} generated descriptions`, () => {
+    const covered = check(numberLineArb, (input, covered) => {
       const { description, provenance } = normalized<NumberLine>(input);
       const scene = numberLineLayout(description, provenance);
-      const { min, max } = description.axis;
-      const axis = lines(scene).find((node) => num(node, "y1") === num(node, "y2") && num(node, "x2") - num(node, "x1") > 100)!;
-      const xOf = linearScale([min, max], [num(axis, "x1"), num(axis, "x2")]);
-      const marks = lines(scene).filter((node) => node !== axis && num(node, "x1") === num(node, "x2"));
-      const expected = niceTicks(min, max, Object.hasOwn(description.axis, "tickSpacing") ? description.axis.tickSpacing : undefined).ticks;
-      expect(marks, JSON.stringify(input)).toHaveLength(expected.length);
-      marks.forEach((mark, i) => near(num(mark, "x1"), xOf(expected[i]!), `tick ${expected[i]}`));
-      const points = description.points ?? [];
-      const drawn = circles(scene);
-      expect(drawn, JSON.stringify(input)).toHaveLength(points.length);
-      drawn.forEach((marker, i) => near(num(marker, "cx"), xOf(points[i]!.value), `point ${points[i]!.value}`));
-    });
-    expect(seen).toBeGreaterThanOrEqual(RUNS);
-  });
-});
-
-describe("an x,y graph is drawn to scale with its values (NLC-NFR-001)", () => {
-  it(`puts every tick, point and segment endpoint within ${TOLERANCE} of its linearly scaled value, over ${RUNS} generated descriptions`, () => {
-    const seen = check(xyGraphArb, (input) => {
-      const { description, provenance } = normalized<XyGraph>(input);
-      const scene = xyGraphLayout(description, provenance);
-      const { xAxis, yAxis } = description;
-      const [xLine, yLine] = axisNodes(scene).filter((node) => !isTick(node));
-      // The x-axis is drawn first, level; the y-axis second, upright, from its min (bottom) to its max (top).
-      expect([xLine && num(xLine, "y1") === num(xLine, "y2"), yLine && num(yLine, "x1") === num(yLine, "x2")], JSON.stringify(input)).toEqual([true, true]);
-      const xOf = linearScale([xAxis.min, xAxis.max], [num(xLine!, "x1"), num(xLine!, "x2")]);
-      const yOf = linearScale([yAxis.min, yAxis.max], [num(yLine!, "y1"), num(yLine!, "y2")]);
-      const rooms = planeRooms(description);
-      const own = (axis: { tickSpacing?: number }) => (Object.hasOwn(axis, "tickSpacing") ? axis.tickSpacing : undefined);
-      const [xTicks, yTicks] = [niceTicks(xAxis.min, xAxis.max, own(xAxis), rooms.x).ticks, niceTicks(yAxis.min, yAxis.max, own(yAxis), rooms.y).ticks];
-      const marks = axisNodes(scene).filter(isTick);
-      const across = marks.filter((mark) => num(mark, "y1") === num(mark, "y2"));
-      const upright = marks.filter((mark) => num(mark, "x1") === num(mark, "x2"));
-      expect(upright, JSON.stringify(input)).toHaveLength(xTicks.length);
-      expect(across, JSON.stringify(input)).toHaveLength(yTicks.length);
-      upright.forEach((mark, i) => near(num(mark, "x1"), xOf(xTicks[i]!), `x tick ${xTicks[i]}`));
-      across.forEach((mark, i) => near(num(mark, "y1"), yOf(yTicks[i]!), `y tick ${yTicks[i]}`));
+      const expected = numberLineReference(description);
+      const axisLines = lines(scene).filter(hasAxisStyle);
+      const marks = axisLines.filter(isTick);
+      const [axis] = axisLines.filter((node) => !isTick(node) && num(node, "y1") === num(node, "y2") && lengthOf(node) > 100);
+      expect(axis, JSON.stringify(input)).toBeDefined();
+      near(num(axis!, "x1"), expected.left, "line left end");
+      near(num(axis!, "x2"), expected.right, "line right end");
+      expect(marks, JSON.stringify(input)).toHaveLength(expected.ticks.length);
+      marks.forEach((mark, i) => {
+        near(num(mark, "x1"), expected.xOf(expected.ticks[i]!), `tick ${expected.ticks[i]}`);
+        near((num(mark, "y1") + num(mark, "y2")) / 2, num(axis!, "y1"), `tick ${expected.ticks[i]} on the line`);
+      });
       const points = description.points ?? [];
       const drawn = circles(scene);
       expect(drawn, JSON.stringify(input)).toHaveLength(points.length);
       drawn.forEach((marker, i) => {
-        near(num(marker, "cx"), xOf(points[i]!.x), `point ${i} x`);
-        near(num(marker, "cy"), yOf(points[i]!.y), `point ${i} y`);
+        near(num(marker, "cx"), expected.xOf(points[i]!.value), `point ${points[i]!.value}`);
+        near(num(marker, "cy"), num(axis!, "y1"), `point ${points[i]!.value} on the line`);
+      });
+      if (points.length > 0) covered.withPoints++;
+    });
+    expect(covered.runs).toBe(RUNS);
+    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
+  });
+});
+
+describe("an x,y graph is drawn to scale with its values (NLC-NFR-001)", () => {
+  it(`puts the axes' ends, every tick, point and segment endpoint within ${TOLERANCE} of the position computed from the description, over ${RUNS} generated descriptions`, () => {
+    const covered = check(xyGraphArb, (input, covered) => {
+      const { description, provenance } = normalized<XyGraph>(input);
+      const scene = xyGraphLayout(description, provenance);
+      const expected = xyReference(description);
+      // The x-axis is drawn first, level; the y-axis second, upright, from its min (bottom) to its max (top).
+      const axisLines = lines(scene).filter(hasAxisStyle);
+      const [xLine, yLine] = axisLines.filter((node) => !isTick(node));
+      expect(xLine, JSON.stringify(input)).toBeDefined();
+      expect(yLine, JSON.stringify(input)).toBeDefined();
+      for (const [line, ends, name] of [[xLine!, expected.xAxisEnds, "x-axis"], [yLine!, expected.yAxisEnds, "y-axis"]] as const) {
+        near(num(line, "x1"), ends[0][0], `${name} min end x`);
+        near(num(line, "y1"), ends[0][1], `${name} min end y`);
+        near(num(line, "x2"), ends[1][0], `${name} max end x`);
+        near(num(line, "y2"), ends[1][1], `${name} max end y`);
+      }
+      const marks = axisLines.filter(isTick);
+      const upright = marks.filter((mark) => num(mark, "x1") === num(mark, "x2"));
+      const across = marks.filter((mark) => num(mark, "y1") === num(mark, "y2"));
+      expect(upright, JSON.stringify(input)).toHaveLength(expected.xTicks.length);
+      expect(across, JSON.stringify(input)).toHaveLength(expected.yTicks.length);
+      upright.forEach((mark, i) => {
+        near(num(mark, "x1"), expected.xOf(expected.xTicks[i]!), `x tick ${expected.xTicks[i]}`);
+        near((num(mark, "y1") + num(mark, "y2")) / 2, expected.xAxisEnds[0][1], `x tick ${expected.xTicks[i]} on the x-axis`);
+      });
+      across.forEach((mark, i) => {
+        near(num(mark, "y1"), expected.yOf(expected.yTicks[i]!), `y tick ${expected.yTicks[i]}`);
+        near((num(mark, "x1") + num(mark, "x2")) / 2, expected.yAxisEnds[0][0], `y tick ${expected.yTicks[i]} on the y-axis`);
+      });
+      const points = description.points ?? [];
+      const drawn = circles(scene);
+      expect(drawn, JSON.stringify(input)).toHaveLength(points.length);
+      drawn.forEach((marker, i) => {
+        near(num(marker, "cx"), expected.xOf(points[i]!.x), `point ${i} x`);
+        near(num(marker, "cy"), expected.yOf(points[i]!.y), `point ${i} y`);
       });
       const segments = description.segments ?? [];
       const drawnSegments = lines(scene).filter((node) => num(node, "stroke-width") === defaultStyle.lineWidths.figure);
       expect(drawnSegments, JSON.stringify(input)).toHaveLength(segments.length);
       drawnSegments.forEach((node, i) => {
         const { from, to } = segments[i]!;
-        near(num(node, "x1"), xOf(from.x), `segment ${i} from x`);
-        near(num(node, "y1"), yOf(from.y), `segment ${i} from y`);
-        near(num(node, "x2"), xOf(to.x), `segment ${i} to x`);
-        near(num(node, "y2"), yOf(to.y), `segment ${i} to y`);
+        near(num(node, "x1"), expected.xOf(from.x), `segment ${i} from x`);
+        near(num(node, "y1"), expected.yOf(from.y), `segment ${i} from y`);
+        near(num(node, "x2"), expected.xOf(to.x), `segment ${i} to x`);
+        near(num(node, "y2"), expected.yOf(to.y), `segment ${i} to y`);
       });
+      if (points.length > 0) covered.withPoints++;
+      if (segments.length > 0) covered.withSegments++;
     });
-    expect(seen).toBeGreaterThanOrEqual(RUNS);
+    expect(covered.runs).toBe(RUNS);
+    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
+    expect(covered.withSegments).toBeGreaterThan(RUNS / 2);
   });
 });
 
-describe("an x,y,z graph is drawn to scale with its values (NLC-NFR-001)", () => {
-  it(`puts every axis end, tick and point within ${TOLERANCE} of isometric() of its scaled value, over ${RUNS} generated descriptions`, () => {
-    const seen = check(xyzGraphArb, (input) => {
-      const { description, provenance } = normalized<XyzGraph>(input);
-      const scene = xyzGraphLayout(description, provenance);
-      const axes = { x: description.xAxis, y: description.yAxis, z: description.zAxis };
-      const names = ["x", "y", "z"] as const;
-      // The axes meet at zero, or at the nearest end of a range that excludes it; each value is
-      // scaled from there, AXIS_LENGTH for the whole range, and projected by isometric() alone.
-      const meet = Object.fromEntries(names.map((name) => [name, Math.min(axes[name].max, Math.max(axes[name].min, 0))])) as Record<(typeof names)[number], number>;
-      const unit = (name: (typeof names)[number], value: number) => ((value - meet[name]) * AXIS_LENGTH) / (axes[name].max - axes[name].min);
-      const raw = (x: number, y: number, z: number) => isometric(unit("x", x), unit("y", y), unit("z", z));
-      const nodes = axisNodes(scene);
-      const starts = nodes.flatMap((node, i) => (isTick(node) ? [] : [i]));
-      expect(starts, JSON.stringify(input)).toHaveLength(3);
-      // The one translation: the page position of the x-axis's min end, which the layout centers.
-      const [rx, ry] = raw(axes.x.min, meet.y, meet.z);
-      const [dx, dy] = [num(nodes[starts[0]!]!, "x1") - rx, num(nodes[starts[0]!]!, "y1") - ry];
-      const at = (name: (typeof names)[number], value: number): [number, number] => {
-        const [px, py] = raw(name === "x" ? value : meet.x, name === "y" ? value : meet.y, name === "z" ? value : meet.z);
-        return [px + dx, py + dy];
-      };
-      const rooms = xyzRooms(description);
-      names.forEach((name, k) => {
-        const line = nodes[starts[k]!]!;
-        const axis = axes[name];
-        const [fromX, fromY] = at(name, axis.min);
-        const [toX, toY] = at(name, axis.max);
-        near(num(line, "x1"), fromX, `${name} min end x`);
-        near(num(line, "y1"), fromY, `${name} min end y`);
-        near(num(line, "x2"), toX, `${name} max end x`);
-        near(num(line, "y2"), toY, `${name} max end y`);
-        const ticks = niceTicks(axis.min, axis.max, Object.hasOwn(axis, "tickSpacing") ? axis.tickSpacing : undefined, rooms[name]).ticks;
-        const marks = nodes.slice(starts[k]! + 1, starts[k + 1] ?? nodes.length);
-        expect(marks, `${name} ticks of ${JSON.stringify(input)}`).toHaveLength(ticks.length);
-        marks.forEach((mark, i) => {
-          const [wantX, wantY] = at(name, ticks[i]!);
-          near((num(mark, "x1") + num(mark, "x2")) / 2, wantX, `${name} tick ${ticks[i]} x`);
-          near((num(mark, "y1") + num(mark, "y2")) / 2, wantY, `${name} tick ${ticks[i]} y`);
-        });
-      });
-      const points = description.points ?? [];
-      const drawn = circles(scene);
-      expect(drawn, JSON.stringify(input)).toHaveLength(points.length);
-      drawn.forEach((marker, i) => {
-        const [wantX, wantY] = raw(points[i]!.x, points[i]!.y, points[i]!.z);
-        near(num(marker, "cx"), wantX + dx, `point ${i} x`);
-        near(num(marker, "cy"), wantY + dy, `point ${i} y`);
-      });
+/** The top of everything drawn but the title: line ends, a marker's reach and a text line's box. */
+function drawnTops(scene: Scene): { geometry: number; all: number } {
+  const reach = (defaultStyle.markerSize / 2) * 1.5;
+  let [geometry, all] = [Infinity, Infinity];
+  for (const node of scene.nodes) {
+    const top =
+      node.kind === "line"
+        ? Math.min(num(node, "y1"), num(node, "y2"))
+        : node.kind === "circle"
+          ? num(node, "cy") - reach
+          : textTop(node) ?? Infinity;
+    if (node.kind !== "text") geometry = Math.min(geometry, top);
+    all = Math.min(all, top);
+  }
+  return { geometry, all };
+}
+
+/** The top of a text line's box, or nothing for a title line or a node that is not text. */
+const textTop = (node: SceneNode): number | undefined =>
+  node.kind === "text" && num(node, "font-size") !== defaultStyle.fontSizes.title ? num(node, "y") - BASELINE_BELOW_TOP * num(node, "font-size") : undefined;
+
+/**
+ * How far the x,y,z figure was moved down, as the layout's rule gives it: the figure's topmost mark
+ * sits one margin below the title. The topmost of all marks, labels included, must sit there. The
+ * move itself is then:
+ * - fixed by the description alone (`fromRules`) when the topmost mark is geometry (an axis end, a
+ *   tick, a marker or a guide line): `titleBottom - geometryTop`;
+ * - otherwise a label was placed above the geometry, in a place the description does not fix (the
+ *   z-axis's name above its top end, say, moved aside to clear the axes), so the move is read from
+ *   the drawn geometry's topmost mark (one mark, not the x-axis), and there only the horizontal
+ *   position, the scale and every mark's place relative to the others hold the line.
+ */
+function expectedMoveDown(scene: Scene, reference: ReturnType<typeof xyzReference>, what: string): { down: number; fromRules: boolean } {
+  const tops = drawnTops(scene);
+  near(tops.all, reference.titleBottom, `${what}: the topmost mark below the title`);
+  if (Math.abs(tops.geometry - reference.titleBottom) <= TOLERANCE) return { down: reference.titleBottom - reference.geometryTop, fromRules: true };
+  return { down: tops.geometry - reference.geometryTop, fromRules: false };
+}
+
+/** Checks one x,y,z description: its drawn axis ends, ticks and points against `isometric()` of the values scaled from where the axes meet. */
+function expectXyzDrawnToScale(input: unknown, covered: Coverage): void {
+  const { description, provenance } = normalized<XyzGraph>(input);
+  const scene = xyzGraphLayout(description, provenance);
+  const reference = xyzReference(description);
+  const { down, fromRules } = expectedMoveDown(scene, reference, JSON.stringify(input));
+  const page = (at: readonly [number, number]) => [at[0], at[1] + down] as const;
+  // Each axis is drawn as its line, then its ticks: the three lines split the axis lines into runs.
+  const drawn = lines(scene).filter(hasAxisStyle);
+  const starts = drawn.flatMap((node, i) => (isTick(node) ? [] : [i]));
+  expect(starts, JSON.stringify(input)).toHaveLength(3);
+  (["x", "y", "z"] as const).forEach((name, k) => {
+    const axis = description[`${name}Axis`];
+    const line = drawn[starts[k]!]!;
+    const [from, to] = [page(reference.onAxis(name, axis.min)), page(reference.onAxis(name, axis.max))];
+    near(num(line, "x1"), from[0], `${name} min end x`);
+    near(num(line, "y1"), from[1], `${name} min end y`);
+    near(num(line, "x2"), to[0], `${name} max end x`);
+    near(num(line, "y2"), to[1], `${name} max end y`);
+    const marks = drawn.slice(starts[k]! + 1, starts[k + 1] ?? drawn.length);
+    expect(marks, `${name} ticks of ${JSON.stringify(input)}`).toHaveLength(reference.ticks[name].length);
+    marks.forEach((mark, i) => {
+      const [wantX, wantY] = page(reference.onAxis(name, reference.ticks[name][i]!));
+      near((num(mark, "x1") + num(mark, "x2")) / 2, wantX, `${name} tick ${reference.ticks[name][i]} x`);
+      near((num(mark, "y1") + num(mark, "y2")) / 2, wantY, `${name} tick ${reference.ticks[name][i]} y`);
     });
-    expect(seen).toBeGreaterThanOrEqual(RUNS);
+  });
+  const points = description.points ?? [];
+  const markers = circles(scene);
+  expect(markers, JSON.stringify(input)).toHaveLength(points.length);
+  markers.forEach((marker, i) => {
+    const [wantX, wantY] = page(reference.at(points[i]!.x, points[i]!.y, points[i]!.z));
+    near(num(marker, "cx"), wantX, `point ${i} x`);
+    near(num(marker, "cy"), wantY, `point ${i} y`);
+  });
+  if (points.length > 0) covered.withPoints++;
+  if (description.guideLines === true) covered.withGuides++;
+  if (fromRules) covered.moveDownFromRules++;
+}
+
+describe("an x,y,z graph is drawn to scale with its values (NLC-NFR-001)", () => {
+  it(`puts every axis end, tick and point within ${TOLERANCE} of isometric() of its value scaled from where the axes meet, over ${RUNS} generated descriptions`, () => {
+    const covered = check(xyzGraphArb, expectXyzDrawnToScale);
+    expect(covered.runs).toBe(RUNS);
+    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
+    expect(covered.withGuides).toBeGreaterThan(RUNS / 4);
+  });
+
+  it(`fixes the whole figure's place, down to its height, by the description alone where geometry is topmost, over ${RUNS} generated descriptions`, () => {
+    const covered = check(xyzGeometryTopArb, expectXyzDrawnToScale);
+    expect(covered.runs).toBe(RUNS);
+    // Every sample was checked against absolute positions, none against a mark read from the Scene.
+    expect(covered.moveDownFromRules).toBe(RUNS);
+    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
   });
 });

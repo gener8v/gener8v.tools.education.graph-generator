@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, describe, expect, it } from "vitest";
@@ -6,9 +5,10 @@ import { RULER_MAX_LENGTH } from "../../src/core/ruler";
 import { createGraph } from "../../src/graph";
 import { RulerGraph } from "../../src/react/graphs/RulerGraph";
 import { SVG_IMAGE_RULES, axeSvgImage } from "../helpers/axe";
+import { loadExample } from "../fixtures/examples";
 import { EVERY_RULER, rulerSpanned } from "../fixtures/rulers";
 
-const example: unknown = JSON.parse(readFileSync(new URL("../../examples/ruler.json", import.meta.url), "utf8"));
+const example = loadExample("ruler");
 
 /** The `<svg>` of static markup, parsed outside the test's own globals. */
 const svgOf = (markup: string) => new JSDOM(markup).window.document.querySelector("svg")!;

@@ -1,7 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test } from "vitest";
+import { createGraph } from "../../src/graph";
 import { Graph } from "../../src/react/Graph";
+import { circles, isTick, lines, num } from "../fixtures/scene-readers";
 import { expectP95 } from "../helpers/bench";
 
 // NLC-NFR-004: rendering an x,y graph with 100 ticks per axis and 50 points to static markup in a
@@ -27,10 +29,18 @@ const render = () => renderToStaticMarkup(createElement(Graph, { description }))
 describe("graph rendering speed (NLC-NFR-004)", () => {
   test(`x,y graph, ${TICKS} ticks per axis and ${POINTS} points: p95 at most ${P95_LIMIT_MS} ms`, async ({ bench }) => {
     expect(typeof window).toBe("undefined");
-    // A real graph, not the placeholder for an invalid description: 50 markers and 200 ticks and axes.
+    // The workload NLC-NFR-004 names, not a lighter one: exactly 100 tick marks on each axis (told
+    // apart from the grid lines, which are a different width and color) and 50 point markers, all of
+    // them in the markup that is timed.
+    const graph = createGraph(description);
+    if (!graph.ok) throw new Error(JSON.stringify(graph.issues));
+    const ticks = lines(graph.scene).filter(isTick);
+    expect(ticks.filter((tick) => num(tick, "x1") === num(tick, "x2")), "ticks across the x-axis").toHaveLength(TICKS);
+    expect(ticks.filter((tick) => num(tick, "y1") === num(tick, "y2")), "ticks across the y-axis").toHaveLength(TICKS);
+    expect(circles(graph.scene), "point markers").toHaveLength(POINTS);
     const markup = render();
     expect(markup.match(/<circle /g)).toHaveLength(POINTS);
-    expect(markup.match(/<line /g)!.length).toBeGreaterThanOrEqual(2 * TICKS + 2);
+    expect(markup.match(/<line /g)).toHaveLength(lines(graph.scene).length);
     const name = `xy-graph ${TICKS} ticks, ${POINTS} points`;
     const result = await bench(name, () => {
       render();
