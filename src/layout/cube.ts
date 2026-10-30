@@ -3,7 +3,7 @@ import { sourceOf } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt } from "./kit/format";
-import { GAP, type LabelRequest, type LabelSize, type Point, besidePoint, placeLabels, segmentNode } from "./kit/figure-labels";
+import { GAP, type LabelRequest, besideSegment, placeLabels, segmentNode } from "./kit/figure-labels";
 import { HIDDEN_DASH, ISO_SCALE, type Point3, faceVisible, isometric } from "./kit/isometric";
 import type { Obstacle, Segment } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
@@ -108,16 +108,6 @@ const FRONT_CORNER_EDGES: ReadonlyArray<readonly [Corner, Corner]> = [
  * hexagon; an edge at the front corner takes both, so its label sits between it and the hidden
  * edges either side (GSS TICKET-001 CR-004), which are obstacles when drawn.
  */
-const edgeCandidates = (p: Vec, q: Vec, normals: readonly Vec[], lineHeight: number) => (size: LabelSize): Point[] => {
-  const along = sub(q, p);
-  const found: Point[] = [];
-  for (const gap of [GAP, GAP + lineHeight / 2]) {
-    for (const t of [0.5, 0.4, 0.6, 0.3, 0.7]) {
-      for (const normal of normals) found.push(besidePoint(add(p, times(along, t)), normal, gap, size));
-    }
-  }
-  return found;
-};
 
 /** The unit normals of the segment `p`–`q`, the one pointing away from `center` first. */
 function normalsOf(p: Vec, q: Vec, center: Vec): [Vec, Vec] {
@@ -198,7 +188,7 @@ export const cubeLayout: Layout<Cube> = (normalized: Cube, provenance: Provenanc
     const [outward, inward] = normalsOf(p, q, center);
     const outer = shown.labeled === 1;
     // Each says what it labels when stacked below the figure, away from it.
-    requests.push({ text, candidates: edgeCandidates(p, q, outer ? [outward] : [outward, inward], lineHeight), stackedText: `edge = ${text}` });
+    requests.push({ text, candidates: besideSegment(p, q, outer ? [outward] : [outward, inward], lineHeight), stackedText: `edge = ${text}` });
   }
   // Candidates must keep the label inside the drawing, between the title and the figure's bottom.
   // Labels with no clear place are stacked below the figure (GSS TICKET-002 DEL-006).

@@ -3,7 +3,7 @@ import { SCENE_WIDTH, type SceneNode } from "../scene";
 import { fmt, fmtPoints } from "./format";
 import { type Obstacle, type Segment, placeLabel } from "./labels";
 import { textBlock, textLines } from "./title";
-import { type Vec, add, times } from "./vec";
+import { type Vec, add, sub, times } from "./vec";
 
 /** Clearance between a label and the line it labels or the outline it sits by. */
 export const GAP = 6;
@@ -65,6 +65,23 @@ export function besidePoint(from: Vec, u: Vec, gap: number, size: LabelSize): Po
   const center = add(from, times(u, gap + reach(u, size)));
   return { x: center[0] - size.width / 2, y: center[1] - size.height / 2 };
 }
+
+/**
+ * Label candidates beside the segment `p`–`q`: at 0.5, 0.4, 0.6, 0.3 and 0.7 of its length, on
+ * each of `normals` in turn (unit vectors, the preferred side first), a gap away and then half a
+ * line further. Shared by the cube's edges and the cylinder's radius and diameter (GSS TICKET-007
+ * quality review QR-001).
+ */
+export const besideSegment = (p: Vec, q: Vec, normals: readonly Vec[], lineHeight: number) => (size: LabelSize): Point[] => {
+  const along = sub(q, p);
+  const found: Point[] = [];
+  for (const gap of [GAP, GAP + lineHeight / 2]) {
+    for (const t of [0.5, 0.4, 0.6, 0.3, 0.7]) {
+      for (const normal of normals) found.push(besidePoint(add(p, times(along, t)), normal, gap, size));
+    }
+  }
+  return found;
+};
 
 /** A figure line as a stroked Scene node. */
 export function segmentNode(s: Segment, color: string): SceneNode {

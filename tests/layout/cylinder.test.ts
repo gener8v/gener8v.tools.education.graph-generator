@@ -5,7 +5,7 @@ import type { Cylinder } from "../../src/core/definitions/cylinder";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { validate } from "../../src/core/index";
 import { createGraph } from "../../src/graph";
-import { FIT_HEIGHT, FIT_WIDTH, cylinderLayout } from "../../src/layout/cylinder";
+import { FIT_HEIGHT, FIT_WIDTH, cylinderLayout, halfEllipse } from "../../src/layout/cylinder";
 import { checkScene } from "../../src/layout/kit/check";
 import { LABEL_MAX_LINES } from "../../src/layout/kit/figure-labels";
 import { ELLIPSE_RATIO, HIDDEN_DASH, ISO_SCALE } from "../../src/layout/kit/isometric";
@@ -180,6 +180,34 @@ describe("the cylinder's outline (GSS-REQ-026, GSS-REQ-028, GSS-REQ-032)", () =>
     const description = { type: "cylinder", radius: 2, height: 5, labelRadius: true, labelHeight: true, unit: "cm" };
     const result = createGraph(description);
     expect(result.ok && result.scene).toEqual(sceneOf(description));
+  });
+});
+
+describe("each base half's label obstacles follow its drawn arc (quality review QR-002)", () => {
+  const [cx, cy, rx, ry] = [200, 300, 80, 46.19];
+
+  it.each(["back", "front"] as const)("puts every obstacle piece of the %s half on the ellipse, on that half's side of the page", (half) => {
+    const { d, segments } = halfEllipse(cx, cy, rx, ry, half);
+    expect(segments.length).toBeGreaterThan(0);
+    for (const s of segments) {
+      for (const [x, y] of [[s.x1, s.y1], [s.x2, s.y2]] as const) expect(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2).toBeCloseTo(1, 9);
+      // The back half is the upper half on the page (y down), the front half the lower.
+      const middle = (s.y1 + s.y2) / 2;
+      if (half === "back") expect(middle).toBeLessThanOrEqual(cy);
+      else expect(middle).toBeGreaterThanOrEqual(cy);
+    }
+    // The arc starts at the first piece's start and ends at the last piece's end.
+    const ends = d.match(/-?[\d.]+/g)!.map(Number);
+    expect(ends[0]).toBeCloseTo(segments[0]!.x1, 1);
+    expect(ends[ends.length - 2]).toBeCloseTo(segments[segments.length - 1]!.x2, 1);
+  });
+
+  it("draws the dashed back half and the solid front half from these arcs", () => {
+    const scene = sceneOf({ type: "cylinder", radius: 2, height: 5 });
+    const paths = scene.nodes.filter((node) => node.kind === "path");
+    const dashed = paths.filter((node) => node.attrs.some(([key]) => key === "stroke-dasharray"));
+    expect(dashed).toHaveLength(1);
+    expect(paths).toHaveLength(2);
   });
 });
 

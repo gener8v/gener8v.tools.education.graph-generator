@@ -3,12 +3,12 @@ import { sourceOf } from "../core/format";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt, pathData } from "./kit/format";
-import { GAP, type LabelRequest, type LabelSize, type Point, besidePoint, besideVertical, placeLabels, segmentNode } from "./kit/figure-labels";
+import { GAP, type LabelRequest, type LabelSize, type Point, besideSegment, besideVertical, placeLabels, segmentNode } from "./kit/figure-labels";
 import { ELLIPSE_RATIO, HIDDEN_DASH, ISO_SCALE, isoEllipse, isometric } from "./kit/isometric";
 import type { Obstacle, Segment } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
 import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
-import { type Vec, add, sub, times, unit } from "./kit/vec";
+import { type Vec, sub, times, unit } from "./kit/vec";
 import type { Layout } from "./registry";
 import { type AttrValue, SCENE_WIDTH, type Scene, type SceneNode, type SvgAttr } from "./scene";
 
@@ -48,6 +48,23 @@ function ellipseSegments(cx: number, cy: number, rx: number, ry: number, from: n
   return segments;
 }
 
+/**
+ * One half of the base ellipse centered at (`cx`, `cy`): its `path` data and the straight pieces
+ * that stand for it as label obstacles, both from the same angles, so they cannot disagree (quality
+ * review QR-002). The back half runs from the left end over the top to the right end (angles π to
+ * 2π, y down), the front half from the right end under the bottom to the left (0 to π); each is an
+ * arc with the sweep flag 1, the direction of increasing angle on the page.
+ */
+export function halfEllipse(cx: number, cy: number, rx: number, ry: number, half: "back" | "front"): { d: string; segments: Segment[] } {
+  const left = fmt(cx - rx);
+  const right = fmt(cx + rx);
+  const [from, to, start, end] = half === "back" ? [Math.PI, 2 * Math.PI, left, right] : [0, Math.PI, right, left];
+  return {
+    d: pathData([["M", start, cy], ["A", rx, ry, 0, 0, 1, end, cy]]),
+    segments: ellipseSegments(cx, cy, rx, ry, from, to, ELLIPSE_PIECES / 2),
+  };
+}
+
 /** A stroked, unfilled `path` node of `d`. */
 function pathNode(d: string, color: string, dashed: boolean): SceneNode {
   const attrs: Array<readonly [SvgAttr, AttrValue]> = [
@@ -61,17 +78,13 @@ function pathNode(d: string, color: string, dashed: boolean): SceneNode {
 }
 
 /** Candidates for a segment's label: beside its middle, along each normal, at two distances (as the cube's edges). */
-const segmentCandidates = (s: Segment, lineHeight: number) => (size: LabelSize): Point[] => {
+/** Candidates on both sides of a radius or diameter segment, the side its perpendicular points to first. */
+const segmentCandidates = (s: Segment, lineHeight: number) => {
   const p: Vec = [s.x1, s.y1];
-  const along = sub([s.x2, s.y2], p);
+  const q: Vec = [s.x2, s.y2];
+  const along = sub(q, p);
   const n = unit([-along[1], along[0]], [0, -1]);
-  const found: Point[] = [];
-  for (const gap of [GAP, GAP + lineHeight / 2]) {
-    for (const t of [0.5, 0.4, 0.6, 0.3, 0.7]) {
-      for (const normal of [n, times(n, -1)]) found.push(besidePoint(add(p, times(along, t)), normal, gap, size));
-    }
-  }
-  return found;
+  return besideSegment(p, q, [n, times(n, -1)], lineHeight);
 };
 
 /**
@@ -133,12 +146,14 @@ export const cylinderLayout: Layout<Cylinder> = (normalized: Cylinder, provenanc
   // The back half of the base first, so the sides are drawn over it where they meet: the base
   // ellipse's upper half on the page, from its left end over the top to its right end.
   if (shown.hiddenDashed) {
-    nodes.push(pathNode(pathData([["M", left, baseY], ["A", rx, ryDrawn, 0, 0, 1, right, baseY]]), lineColor, true));
-    for (const s of ellipseSegments(cx, baseY, rx, ryDrawn, Math.PI, 2 * Math.PI, ELLIPSE_PIECES / 2)) obstacles.push(s);
+    const back = halfEllipse(cx, baseY, rx, ryDrawn, "back");
+    nodes.push(pathNode(back.d, lineColor, true));
+    for (const s of back.segments) obstacles.push(s);
   }
   // The front half of the base: from the right end under the bottom to the left end.
-  nodes.push(pathNode(pathData([["M", right, baseY], ["A", rx, ryDrawn, 0, 0, 1, left, baseY]]), lineColor, false));
-  for (const s of ellipseSegments(cx, baseY, rx, ryDrawn, 0, Math.PI, ELLIPSE_PIECES / 2)) obstacles.push(s);
+  const front = halfEllipse(cx, baseY, rx, ryDrawn, "front");
+  nodes.push(pathNode(front.d, lineColor, false));
+  for (const s of front.segments) obstacles.push(s);
 
   const leftSide: Segment = { x1: left, y1: topY, x2: left, y2: baseY };
   const rightSide: Segment = { x1: right, y1: topY, x2: right, y2: baseY };

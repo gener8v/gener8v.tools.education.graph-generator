@@ -166,3 +166,11 @@ Run in the main session on 2026-10-29, after the code was written.
 **Change:** None to code. CR-001 (degenerate drawing at extreme proportions) was dismissed: drawn to scale is correct under GSS-REQ-030 (Engineer — Thomas Eaves, 2026-10-29).
 **Note:** The code reviewer's first full vitest run had one fast-check property failure whose output was not kept (test, seed and counterexample unknown). It did not recur in 9 further full runs, 38 runs of the cylinder tests or 15 runs of all 22 fast-check test files. It is recorded as unexplained and unreproduced, not as the known timing flake.
 **Re-verification:** not needed for a dismissal; the fast-check hunt above all passed.
+
+### graph-library/geometric-shapes-and-solids-ticket-007-quality-review/QR-001, QR-002 — one candidate generator; base halves built together
+
+**Change:**
+- QR-001: `besideSegment` in `src/layout/kit/figure-labels.ts`, used by the cube's edges and the cylinder's radius and diameter.
+- QR-002: `halfEllipse` in `src/layout/cylinder.ts` builds each base half's `path` and obstacle pieces from the same angles; tests pin it.
+**Files:** `src/layout/kit/figure-labels.ts`, `src/layout/cube.ts`, `src/layout/cylinder.ts`, `tests/layout/cylinder.test.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 2,041 passed each; 2,250 cube and cylinder Scenes hash identically; the swapped-angles mutant fails the new tests; gener8v-state lint 0 errors.
