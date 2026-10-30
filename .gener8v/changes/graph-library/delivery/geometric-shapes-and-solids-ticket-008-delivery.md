@@ -144,3 +144,13 @@ No source code was added, so no `@spec` comments; the coverage table names the v
 - CR-004: one literal text alternative per figure.
 **Files:** `.gener8v/specifications/geometric-shapes-and-solids.md`, `.gener8v/changes/graph-library/change.md`, `tests/layout/gss-proportions.test.ts`, `tests/react/gss-text-alternatives.test.tsx`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 2,201 passed each; each new assertion mutation-checked (ellipse 5% wide, edges 5% long, a reworded sentence); gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-008-quality-review/QR-001, QR-002, QR-004 — fills its frame; an independent overlap check
+
+**Change:**
+- QR-001: fill checks per figure (`expectFills`, `extentOf`) — a figure must reach its frame, not only stay inside it.
+- QR-002: `labelOverlaps` uses test-owned `boxesOverlap` and `segmentCrosses` instead of the layout's `placeLabel`.
+- QR-004: unused fixture exports removed; the two box models documented.
+(QR-003 and QR-005 were resolved with code review CR-003 and CR-004.)
+**Files:** `tests/fixtures/scene-geometry.ts`, `tests/layout/gss-proportions.test.ts`, `tests/layout/gss-label-overlap.test.ts`
+**Re-verification:** lint, typecheck, generate, bench, build, check:dist, check:deps, check:images, check:changesets, size, publint, attw, audit, audit --prod and gener8v-state all exit 0. Full vitest: 2,202 passed in 2 of 3 runs; the third and four further runs (logs kept) each failed one test, always `tests/layout/kit/text.test.ts` "stops early, so caller-sized text costs little" (1,002 to 1,188 ms against its 1,000 ms wall-clock bound) while the machine's load average was 35 to 46; every TICKET-008 test passed in every run. That timing test is outside this ticket and needs its own fix. Mutations: half-size triangle fit (7 fail), 80% cylinder fit (6 fail), `placeLabel` accepting overlaps (42 fail).

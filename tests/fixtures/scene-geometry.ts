@@ -1,5 +1,5 @@
 import { defaultStyle } from "../../src/core/style";
-import { type Box, type Obstacle, type Segment, placeLabel } from "../../src/layout/kit/labels";
+import type { Box, Segment } from "../../src/layout/kit/labels";
 import { textWidth } from "../../src/layout/kit/text";
 import { LINE_HEIGHT } from "../../src/layout/kit/title";
 import { TICK_LABEL_DROP } from "../../src/layout/kit/value-scale";
@@ -140,16 +140,13 @@ export function positionOf(scene: Scene, value: number): number {
 const numbersIn = (text: string): number[] => (text.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
 
 /** The length of a `line` node's drawn segment. */
-export const lengthOfLine = (node: SceneNode): number => Math.hypot(num(node, "x2") - num(node, "x1"), num(node, "y2") - num(node, "y1"));
+const lengthOfLine = (node: SceneNode): number => Math.hypot(num(node, "x2") - num(node, "x1"), num(node, "y2") - num(node, "y1"));
 
 /** A `line` node as a segment. */
 export const segmentOfLine = (node: SceneNode): Segment => ({ x1: num(node, "x1"), y1: num(node, "y1"), x2: num(node, "x2"), y2: num(node, "y2") });
 
 /** The drawn length of every `line` node of a Scene, in drawing order. */
 export const lineLengths = (scene: Scene): number[] => scene.nodes.filter((node) => node.kind === "line").map(lengthOfLine);
-
-/** The corners of a `polygon` or `polyline` node, in order. */
-export const polyPoints = (node: SceneNode): Array<[number, number]> => pointsOf(node);
 
 /** The drawn length of each side of a closed polygon, from corner i to corner i + 1. */
 export function polygonSides(node: SceneNode): number[] {
@@ -194,7 +191,13 @@ export function drawnPoints(node: SceneNode): Array<[number, number]> {
   }
 }
 
-/** The estimated box of a text node as the layout reserved it (centered on its anchor), shrunk by `fmt()`'s 0.01 rounding step on every side. */
+/**
+ * Which text box to use: `boundsOf` for any node's bounds (the viewBox checks and the older per-type
+ * tests; for a text it is the glyph extent). `labelBoxOf` for a label line's estimated box, as the
+ * layout reserves it (the full line height), shrunk for rounding, for the overlap checks.
+ *
+ * The estimated box of a text node as the layout reserved it (centered on its anchor), shrunk by `fmt()`'s 0.01 rounding step on every side.
+ */
 export function labelBoxOf(node: SceneNode): Box {
   if (node.kind !== "text") throw new Error(`not a text node: ${node.kind}`);
   const size = num(node, "font-size");
@@ -204,8 +207,17 @@ export function labelBoxOf(node: SceneNode): Box {
   return { x: num(node, "x") - width / 2 + 0.01, y: num(node, "y") - size * 0.8 - (lineHeight - size) / 2 + 0.01, width: width - 0.02, height: lineHeight - 0.02 };
 }
 
-/** The boxes of every text line of a Scene (labels and title). */
-export const labelBoxes = (scene: Scene): Box[] => scene.nodes.filter((node) => node.kind === "text").map(labelBoxOf);
+/**
+ * The box around everything the nodes of the given kinds draw (`drawnPoints`): the extent of a
+ * figure's outline, for checking that it fills the frame it is scaled to (GSS-REQ-031).
+ */
+export function extentOf(scene: Scene, kinds: ReadonlyArray<SceneNode["kind"]>): { width: number; height: number } {
+  const box = around(
+    scene.nodes.filter((node) => kinds.includes(node.kind)).flatMap(drawnPoints),
+    scene.nodes[0]!,
+  );
+  return { width: box.x1 - box.x0, height: box.y1 - box.y0 };
+}
 
 const ROUND_PIECES = 360;
 /** An ellipse (a half, from angle `from` to `to`, y down) as short segments. */
@@ -253,18 +265,49 @@ export function figureLines(scene: Scene): Segment[] {
   return found;
 }
 
+/** Two boxes sharing area: their interiors intersect with positive width and height (touching edges do not count). */
+const boxesOverlap = (a: Box, b: Box): boolean =>
+  Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x) > 0 && Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y) > 0;
+
+/**
+ * Whether a segment passes through the inside of a box for a positive length. The segment is clipped
+ * to the box's four sides (Liang-Barsky); it crosses the inside if the clipped piece has length and
+ * its middle is strictly inside. A segment that only touches a corner or runs along a side does not.
+ */
+function segmentCrosses(s: Segment, box: Box): boolean {
+  const [dx, dy] = [s.x2 - s.x1, s.y2 - s.y1];
+  let [t0, t1] = [0, 1];
+  const clips: Array<[number, number]> = [
+    [-dx, s.x1 - box.x],
+    [dx, box.x + box.width - s.x1],
+    [-dy, s.y1 - box.y],
+    [dy, box.y + box.height - s.y1],
+  ];
+  for (const [p, q] of clips) {
+    if (p === 0) {
+      if (q < 0) return false; // parallel to this side and outside it
+    } else if (p < 0) t0 = Math.max(t0, q / p);
+    else t1 = Math.min(t1, q / p);
+  }
+  if (!(t1 - t0 > 1e-9)) return false;
+  const [mx, my] = [s.x1 + dx * ((t0 + t1) / 2), s.y1 + dy * ((t0 + t1) / 2)];
+  return mx > box.x && mx < box.x + box.width && my > box.y && my < box.y + box.height;
+}
+
 /**
  * Every text line of a Scene that overlaps another text line or a figure line, by its estimated box
- * (GSS-NFR-003): the layout's own check, `placeLabel`, run on each rebuilt box.
+ * (GSS-NFR-003). The metrics are the layout's estimates (`textWidth`, `LINE_HEIGHT`, as AD-010
+ * requires); the overlap logic is this file's own, so it does not share a defect with the layout's
+ * `placeLabel`: box against box by interior intersection, segment against box by clipping.
  */
 export function labelOverlaps(scene: Scene): string[] {
   const found: string[] = [];
   const texts = scene.nodes.filter((node): node is Extract<SceneNode, { kind: "text" }> => node.kind === "text");
   const boxes = texts.map(labelBoxOf);
-  const lines: Obstacle[] = figureLines(scene);
+  const lines = figureLines(scene);
   boxes.forEach((box, i) => {
-    const others: Obstacle[] = [...boxes.slice(0, i), ...boxes.slice(i + 1), ...lines];
-    if (placeLabel(box, [box], others) === undefined) found.push(texts[i]!.text.slice(0, 40));
+    const onLabel = boxes.some((other, j) => j !== i && boxesOverlap(box, other));
+    if (onLabel || lines.some((line) => segmentCrosses(line, box))) found.push(texts[i]!.text.slice(0, 40));
   });
   return found;
 }

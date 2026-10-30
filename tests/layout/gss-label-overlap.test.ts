@@ -104,6 +104,18 @@ describe("the overlap finder (GSS-NFR-003)", () => {
     expect(labelOverlaps(scene(text("3 cm", 200, 50), text("4 cm", 205, 52)))).toEqual(["3 cm", "4 cm"]);
   });
 
+  it("reports a label a figure line passes through with both ends outside the box, and not one it only touches", () => {
+    // "3 cm" at 14 is about 25 wide and 17 tall: a line from far left to far right through its middle.
+    const through: Scene["nodes"][number] = { kind: "line", attrs: [["x1", fmt(10)], ["y1", fmt(100)], ["x2", fmt(390)], ["y2", fmt(100)]] };
+    expect(labelOverlaps(scene(through, text("3 cm", 200, 104)))).toEqual(["3 cm"]);
+    // A diagonal through the box, ends far outside it.
+    const diagonal: Scene["nodes"][number] = { kind: "line", attrs: [["x1", fmt(150)], ["y1", fmt(60)], ["x2", fmt(250)], ["y2", fmt(140)]] };
+    expect(labelOverlaps(scene(diagonal, text("3 cm", 200, 104)))).toEqual(["3 cm"]);
+    // The same line well below the label touches nothing.
+    const below: Scene["nodes"][number] = { kind: "line", attrs: [["x1", fmt(10)], ["y1", fmt(140)], ["x2", fmt(390)], ["y2", fmt(140)]] };
+    expect(labelOverlaps(scene(below, text("3 cm", 200, 104)))).toEqual([]);
+  });
+
   it("reports nothing for labels clear of the line and of each other", () => {
     const line: Scene["nodes"][number] = { kind: "line", attrs: [["x1", fmt(100)], ["y1", fmt(100)], ["x2", fmt(300)], ["y2", fmt(100)]] };
     expect(labelOverlaps(scene(line, text("3 cm", 200, 130), text("4 cm", 200, 60)))).toEqual([]);

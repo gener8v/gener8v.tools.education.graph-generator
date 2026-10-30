@@ -7,10 +7,14 @@ import { cylinderDisplay, type Cylinder } from "../../src/core/definitions/cylin
 import type { Square } from "../../src/core/definitions/square";
 import type { Triangle } from "../../src/core/definitions/triangle";
 import { createGraph } from "../../src/graph";
+import { DRAWN_RADIUS } from "../../src/layout/circle";
 import { DRAWN_EDGE } from "../../src/layout/cube";
+import { FIT_HEIGHT, FIT_WIDTH } from "../../src/layout/cylinder";
+import { DRAWN_SIDE } from "../../src/layout/square";
+import { FIGURE_HEIGHT, FIGURE_WIDTH } from "../../src/layout/triangle";
 import { ISO_SCALE } from "../../src/layout/kit/isometric";
 import type { Scene, SceneNode } from "../../src/layout/scene";
-import { attr, lineLengths, outsideViewBox, polygonSides, segmentOfLine } from "../fixtures/scene-geometry";
+import { attr, extentOf, lineLengths, outsideViewBox, polygonSides, segmentOfLine } from "../fixtures/scene-geometry";
 
 // GSS-REQ-030, GSS-REQ-031, GSS-NFR-001: every ratio between two drawn lengths of a figure is within
 // 1% of the ratio between the measurements, over each figure's examples and at least 200 generated
@@ -45,6 +49,19 @@ function ratioMiss(drawnLengths: readonly number[], measured: readonly number[],
 
 const expectFits = (scene: Scene) => expect(outsideViewBox(scene)).toEqual([]);
 
+/**
+ * "Scaled to fit" fills the frame (GSS-REQ-031, code review QR-001): the outline's extent reaches the
+ * frame's width or its height, whichever binds, within 1%, and exceeds neither beyond the 0.02 that
+ * rounding both ends to the 0.01 grid can add.
+ */
+function expectFills(extent: { width: number; height: number }, frame: { width: number; height: number }, what: string): void {
+  const message = `${what}: extent ${extent.width} x ${extent.height} in a frame of ${frame.width} x ${frame.height}`;
+  expect(extent.width, message).toBeLessThanOrEqual(frame.width + 0.02);
+  expect(extent.height, message).toBeLessThanOrEqual(frame.height + 0.02);
+  const reaches = extent.width >= frame.width * (1 - TOLERANCE) || extent.height >= frame.height * (1 - TOLERANCE);
+  expect(reaches, message).toBe(true);
+}
+
 /** A positive measurement from 0.001 to 1,000,000, spread evenly by magnitude. */
 const measurement = fc.double({ min: -3, max: 6, noNaN: true }).map((exponent) => 10 ** exponent);
 /** A positive ratio of at most `limit` : 1 either way, spread evenly by magnitude. */
@@ -70,6 +87,8 @@ describe("circle proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
     // The diameter is also twice the outline's own radius.
     const outline = scene.nodes.find((node) => node.kind === "circle" && Number(attr(node, "r")) > 0 && Number(attr(node, "r")) >= diameter / 2 - 0.01)!;
     expect(2 * Number(attr(outline, "r")) / diameter).toBeCloseTo(1, 2);
+    // And the outline fills its frame: its radius is the one fixed DRAWN_RADIUS, whatever the measurement.
+    expect(Math.abs(Number(attr(outline, "r")) / DRAWN_RADIUS - 1), JSON.stringify(description)).toBeLessThanOrEqual(TOLERANCE);
     expectFits(scene);
   };
 
@@ -99,6 +118,8 @@ describe("square proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
     expect(sides).toHaveLength(4);
     // One measurement: every ratio between two sides is 1.
     expect(ratioMiss(sides, [1, 1, 1, 1], ["top", "right", "bottom", "left"])).toBeUndefined();
+    // And each side is the one fixed DRAWN_SIDE, whatever the side length.
+    for (const side of sides) expect(Math.abs(side / DRAWN_SIDE - 1), JSON.stringify(description)).toBeLessThanOrEqual(TOLERANCE);
     expectFits(scene);
   };
 
@@ -126,6 +147,7 @@ describe("triangle proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
   const check = (description: unknown) => {
     const { scene, normalized } = drawn<Triangle>(description);
     expect(ratioMiss(triangleSides(scene), [normalized.sideA, normalized.sideB, normalized.sideC], ["a", "b", "c"]), JSON.stringify(description)).toBeUndefined();
+    expectFills(extentOf(scene, ["polygon"]), { width: FIGURE_WIDTH, height: FIGURE_HEIGHT }, `triangle ${JSON.stringify(description)}`);
     expectFits(scene);
   };
 
@@ -151,6 +173,7 @@ describe("triangle proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
       expect(ratioMiss(long.map((i) => sides[i]!), long.map((i) => measured[i]!), ["long", "long"])).toBeUndefined();
       const scale = sides[long[0]!]! / measured[long[0]!]!;
       expect(Math.abs(sides[shortest]! - measured[shortest]! * scale)).toBeLessThanOrEqual(0.01 * measured[shortest]! * scale + 0.0142);
+      expectFills(extentOf(scene, ["polygon"]), { width: FIGURE_WIDTH, height: FIGURE_HEIGHT }, `needle ${JSON.stringify(description)}`);
       expectFits(scene);
     }
   });
@@ -311,6 +334,8 @@ describe("cylinder proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
       expect(ratioMiss(lengths, measured, names), JSON.stringify(description)).toBeUndefined();
       expectFacesAgree(scene, normalized, drawnLengths.side);
     }
+    // The outline is 2 rx wide and side + 2 ry tall on the page (top ellipse and base arcs).
+    expectFills(extentOf(scene, ["ellipse", "path"]), { width: FIT_WIDTH, height: FIT_HEIGHT }, `cylinder ${JSON.stringify(description)}`);
     expectFits(scene);
   };
 
