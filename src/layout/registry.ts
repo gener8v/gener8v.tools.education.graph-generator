@@ -38,7 +38,7 @@ export type LayoutRegistry = Readonly<Partial<Record<GraphType, Layout>>>;
 // Marked pure so a bundler drops the table, and every layout in it, wherever nothing reads it:
 // per-type components draw with their own layout only (code review CR-002).
 // @spec CPSE-REQ-007, CPSE-REQ-008
-export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
+export const layouts: Readonly<Record<GraphType, Layout>> = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, Layout>>, {
     "number-line": numberLineLayout,
     "xy-graph": xyGraphLayout,
@@ -52,7 +52,7 @@ export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
     triangle: triangleLayout,
     cube: cubeLayout,
     cylinder: cylinderLayout,
-  } satisfies Partial<Record<GraphType, Layout>>),
+  } satisfies Record<GraphType, Layout>),
 );
 
 /**

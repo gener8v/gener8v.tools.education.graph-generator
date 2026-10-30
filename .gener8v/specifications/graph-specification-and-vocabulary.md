@@ -204,7 +204,7 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-032 | `src/core/result.ts`:Issue; `src/core/issues.ts`:IssueParamsByCode, createIssue |
 | GSV-REQ-033 | `src/core/result.ts`:Issue, ValidationResult; `src/core/issues.ts`:createIssue |
 | GSV-REQ-034 | `src/core/issues.ts`:ISSUE_CODES |
-| GSV-REQ-003 | `src/core/definitions/types.ts`:GRAPH_TYPES; `src/core/definitions/index.ts`:definitions |
+| GSV-REQ-003 | `src/core/definitions/types.ts`:GRAPH_TYPES; `src/core/definitions/index.ts`:definitions; `src/layout/registry.ts`:layouts; `tests/core/completeness.test.ts` (verification: registries, schema branches and examples cover exactly `GRAPH_TYPES`) |
 | GSV-REQ-012 | `src/core/definitions/types.ts`:PropertySpec; `src/core/definitions/index.ts`:definitions, propertiesOf; `src/core/schema.ts`:buildVocabulary |
 | GSV-REQ-040 | `src/core/definitions/types.ts`:PresentationOption; `src/core/definitions/shared.ts`:sharedProperties; `src/core/definitions/index.ts`:propertiesOf; `src/core/definitions/ruler.ts`:defineRulerProperties (the measured object's label and color; ruler part; published since rulers NLC TICKET-003 registered it) |
 | GSV-REQ-042 | `src/core/style.ts`:namedColors, resolveColor |
@@ -246,6 +246,7 @@ Description (raw) → validate → Invalid (issues listed) → caller corrects �
 | GSV-REQ-015 | `src/core/schema.ts`:buildSchema, buildToolSchema, buildVocabulary, buildDescriptionTypes |
 | GSV-NFR-002 | `tests/core/schema-meta.test.ts` (verification) |
 | GSV-NFR-003 | `tests/core/schema-agreement.test.ts` (verification) |
+| GSV-NFR-005 | `tests/core/completeness.test.ts` (verification: fails on any undocumented term, issue code or graph type) |
 | GSV-REQ-046 | `src/core/definitions/ruler.ts`:defineRulerProperties (`rulerUnit` and `length`, with their limits and the unit value descriptions; published by `src/core/schema.ts`:buildVocabulary) |
 | GSV-REQ-047 | `src/core/definitions/ruler.ts`:defineRulerProperties (`smallestDivision`: inch rulers only, sixteenth when left out, with its division value descriptions) |
 | GSV-REQ-048 | `src/core/definitions/ruler.ts`:defineRulerProperties (`measuredObject`, `start`, `end`; verified with the ruler's other terms by `tests/core/schema-shape.test.ts`) |

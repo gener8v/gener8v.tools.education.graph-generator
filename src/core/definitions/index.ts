@@ -27,7 +27,7 @@ export type Registry = Readonly<Partial<Record<GraphType, GraphTypeDefinition>>>
 // per-type components validate with their own definition only (GSS TICKET-002 DEL-002; CPSE
 // TICKET-003 code review CR-002).
 // @spec GSV-REQ-003, GSV-REQ-012
-export const definitions: Registry = /* @__PURE__ */ Object.freeze(
+export const definitions: Readonly<Record<GraphType, GraphTypeDefinition>> = /* @__PURE__ */ Object.freeze(
   /* @__PURE__ */ Object.assign(/* @__PURE__ */ Object.create(null) as Partial<Record<GraphType, GraphTypeDefinition>>, {
     "number-line": numberLine,
     "xy-graph": xyGraph,
@@ -41,7 +41,7 @@ export const definitions: Registry = /* @__PURE__ */ Object.freeze(
     triangle,
     cube,
     cylinder,
-  } satisfies Partial<Record<GraphType, GraphTypeDefinition>>),
+  } satisfies Record<GraphType, GraphTypeDefinition>),
 );
 
 /** Schema versions this package accepts; a description without `version` is the current one. */
