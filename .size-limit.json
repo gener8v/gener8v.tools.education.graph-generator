@@ -78,6 +78,12 @@
     "gzip": true
   },
   {
+    "name": "./cylinder",
+    "path": "dist/cylinder.js",
+    "limit": "25 kB",
+    "gzip": true
+  },
+  {
     "name": "./triangle",
     "path": "dist/triangle.js",
     "limit": "25 kB",

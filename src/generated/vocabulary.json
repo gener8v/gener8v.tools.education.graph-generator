@@ -56,7 +56,7 @@
       "kind": "color"
     },
     "diameter": {
-      "definition": "The distance across the circle through its center, twice the radius, from 0.002 to 2,000,000.",
+      "definition": "The diameter of a circle, or of a cylinder's base: the distance across through the center, twice the radius, from 0.002 to 2,000,000.",
       "kind": "number"
     },
     "diameterLabelText": {
@@ -83,6 +83,18 @@
       "definition": "Whether a three-dimensional coordinate graph draws dashed guide lines from each point straight to the x,y plane, and from there to the x-axis and the y-axis, so the point's depth can be read; off unless true.",
       "kind": "boolean"
     },
+    "height": {
+      "definition": "The height of the cylinder, from its base to its top face, from 0.001 to 1,000,000.",
+      "kind": "number"
+    },
+    "heightLabelText": {
+      "definition": "Text shown in place of the height label, at most 200 characters, such as \"r\" or \"?\"; it also labels the height. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+      "kind": "string"
+    },
+    "hiddenBase": {
+      "definition": "How the half of the base hidden behind the cylinder is drawn: dashed (the default) or omitted.",
+      "kind": "enum"
+    },
     "hiddenEdges": {
       "definition": "How the three edges hidden behind the cube are drawn: dashed (the default) or omitted.",
       "kind": "enum"
@@ -106,6 +118,10 @@
     "labelEdges": {
       "definition": "Which edges are labeled with their length: one edge (the bottom right) or the three visible edges meeting at the front corner. Without it, no edge is labeled unless the edge label text is given.",
       "kind": "enum"
+    },
+    "labelHeight": {
+      "definition": "Whether the height is labeled with its measurement, beside the right side of the cylinder.",
+      "kind": "boolean"
     },
     "labelRadius": {
       "definition": "Whether the radius is labeled with its measurement; a labeled radius is drawn.",
@@ -164,7 +180,7 @@
       "kind": "array"
     },
     "radius": {
-      "definition": "The distance from the center to the circle, from 0.001 to 1,000,000.",
+      "definition": "The radius of a circle, or of a cylinder's base: the distance from the center to the edge, from 0.001 to 1,000,000.",
       "kind": "number"
     },
     "radiusLabelText": {
@@ -192,7 +208,7 @@
       "kind": "boolean"
     },
     "showDiameter": {
-      "definition": "Whether the diameter is drawn through the center; it never lies on the radius.",
+      "definition": "Whether the diameter is drawn: on a circle, through its center; on a cylinder, across its top face through the center. It never lies on the radius.",
       "kind": "boolean"
     },
     "showGrid": {
@@ -200,7 +216,7 @@
       "kind": "boolean"
     },
     "showRadius": {
-      "definition": "Whether the radius is drawn, from the center horizontally to the right.",
+      "definition": "Whether the radius is drawn: on a circle, from the center horizontally to the right; on a cylinder, on its top face, from the center toward the lower right.",
       "kind": "boolean"
     },
     "showRightAngles": {
@@ -1781,6 +1797,131 @@
       },
       "derivations": [],
       "checks": []
+    },
+    "cylinder": {
+      "title": "Cylinder",
+      "description": "An upright cylinder drawn to scale from its radius or diameter (give one; if both are given they must agree within 1%) and its height, seen from one fixed viewpoint above (isometric), the same as the cube's. The hidden half of its base is dashed, or can be left out. The radius or the diameter can be drawn and labeled on the top face, and the height labeled beside the side, with the value and unit or with custom text.",
+      "properties": {
+        "type": {
+          "kind": "enum",
+          "required": true,
+          "values": [
+            "cylinder"
+          ]
+        },
+        "version": {
+          "kind": "integer",
+          "required": false,
+          "range": {
+            "min": 1,
+            "max": 1
+          }
+        },
+        "title": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "lineColor": {
+          "kind": "color",
+          "required": false
+        },
+        "radius": {
+          "kind": "number",
+          "required": false,
+          "range": {
+            "min": 0.001,
+            "max": 1000000
+          }
+        },
+        "diameter": {
+          "kind": "number",
+          "required": false,
+          "range": {
+            "min": 0.002,
+            "max": 2000000
+          }
+        },
+        "height": {
+          "kind": "number",
+          "required": true,
+          "range": {
+            "min": 0.001,
+            "max": 1000000
+          }
+        },
+        "hiddenBase": {
+          "kind": "enum",
+          "required": false,
+          "values": [
+            "dashed",
+            "omitted"
+          ],
+          "valueDescriptions": {
+            "dashed": "Draw the half of the base hidden behind the cylinder as a dashed curve.",
+            "omitted": "Leave the hidden half of the base out, drawing only its front half."
+          }
+        },
+        "showRadius": {
+          "kind": "boolean",
+          "required": false
+        },
+        "showDiameter": {
+          "kind": "boolean",
+          "required": false
+        },
+        "labelRadius": {
+          "kind": "boolean",
+          "required": false
+        },
+        "labelDiameter": {
+          "kind": "boolean",
+          "required": false
+        },
+        "labelHeight": {
+          "kind": "boolean",
+          "required": false
+        },
+        "radiusLabelText": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "diameterLabelText": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "heightLabelText": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 200
+        },
+        "unit": {
+          "kind": "string",
+          "required": false,
+          "maxLength": 20
+        }
+      },
+      "derivations": [
+        {
+          "members": [
+            "radius",
+            "diameter"
+          ],
+          "description": "diameter = 2 × radius",
+          "required": true
+        }
+      ],
+      "checks": [
+        "radius label text needs the radius labeled",
+        "diameter label text needs the diameter labeled",
+        "height label text needs the height labeled",
+        "a labeled radius is drawn",
+        "radius label text draws the radius",
+        "a labeled diameter is drawn",
+        "diameter label text draws the diameter"
+      ]
     }
   },
   "colors": {

@@ -88,6 +88,10 @@
       "types": "./dist/cube.d.ts",
       "default": "./dist/cube.js"
     },
+    "./cylinder": {
+      "types": "./dist/cylinder.d.ts",
+      "default": "./dist/cylinder.js"
+    },
     "./xyz-graph": {
       "types": "./dist/xyz-graph.d.ts",
       "default": "./dist/xyz-graph.js"

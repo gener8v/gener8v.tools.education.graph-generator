@@ -1310,7 +1310,7 @@
                 "number",
                 "null"
               ],
-              "description": "The distance from the center to the circle, from 0.001 to 1,000,000.",
+              "description": "The radius of a circle, or of a cylinder's base: the distance from the center to the edge, from 0.001 to 1,000,000.",
               "minimum": 0.001,
               "maximum": 1000000
             },
@@ -1319,7 +1319,7 @@
                 "number",
                 "null"
               ],
-              "description": "The distance across the circle through its center, twice the radius, from 0.002 to 2,000,000.",
+              "description": "The diameter of a circle, or of a cylinder's base: the distance across through the center, twice the radius, from 0.002 to 2,000,000.",
               "minimum": 0.002,
               "maximum": 2000000
             },
@@ -1337,14 +1337,14 @@
                 "boolean",
                 "null"
               ],
-              "description": "Whether the radius is drawn, from the center horizontally to the right."
+              "description": "Whether the radius is drawn: on a circle, from the center horizontally to the right; on a cylinder, on its top face, from the center toward the lower right."
             },
             "showDiameter": {
               "type": [
                 "boolean",
                 "null"
               ],
-              "description": "Whether the diameter is drawn through the center; it never lies on the radius."
+              "description": "Whether the diameter is drawn: on a circle, through its center; on a cylinder, across its top face through the center. It never lies on the radius."
             },
             "showCenter": {
               "type": [
@@ -1851,6 +1851,170 @@
             "hiddenEdges",
             "labelEdges",
             "edgeLabelText",
+            "unit"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "title": "Cylinder",
+          "description": "An upright cylinder drawn to scale from its radius or diameter (give one; if both are given they must agree within 1%) and its height, seen from one fixed viewpoint above (isometric), the same as the cube's. The hidden half of its base is dashed, or can be left out. The radius or the diameter can be drawn and labeled on the top face, and the height labeled beside the side, with the value and unit or with custom text. Give one of radius or diameter; the others are worked out from it.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "cylinder"
+              ],
+              "description": "The graph type: which kind of graph the description draws."
+            },
+            "version": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "enum": [
+                1,
+                null
+              ],
+              "description": "The schema version the description is written for. Leave it out for the current version, 1. Null means the current version."
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole.",
+              "maxLength": 200
+            },
+            "lineColor": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2.",
+              "pattern": "^(?:#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})|[Bb][Ll][Aa][Cc][Kk]|[Gg][Rr][Aa][Yy]|[Rr][Ee][Dd]|[Oo][Rr][Aa][Nn][Gg][Ee]|[Gg][Rr][Ee][Ee][Nn]|[Bb][Ll][Uu][Ee]|[Pp][Uu][Rr][Pp][Ll][Ee]|[Bb][Rr][Oo][Ww][Nn])$"
+            },
+            "radius": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The radius of a circle, or of a cylinder's base: the distance from the center to the edge, from 0.001 to 1,000,000.",
+              "minimum": 0.001,
+              "maximum": 1000000
+            },
+            "diameter": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "The diameter of a circle, or of a cylinder's base: the distance across through the center, twice the radius, from 0.002 to 2,000,000.",
+              "minimum": 0.002,
+              "maximum": 2000000
+            },
+            "height": {
+              "type": "number",
+              "description": "The height of the cylinder, from its base to its top face, from 0.001 to 1,000,000.",
+              "minimum": 0.001,
+              "maximum": 1000000
+            },
+            "hiddenBase": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "How the half of the base hidden behind the cylinder is drawn: dashed (the default) or omitted.",
+              "enum": [
+                "dashed",
+                "omitted",
+                null
+              ]
+            },
+            "showRadius": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the radius is drawn: on a circle, from the center horizontally to the right; on a cylinder, on its top face, from the center toward the lower right."
+            },
+            "showDiameter": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the diameter is drawn: on a circle, through its center; on a cylinder, across its top face through the center. It never lies on the radius."
+            },
+            "labelRadius": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the radius is labeled with its measurement; a labeled radius is drawn."
+            },
+            "labelDiameter": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the diameter is labeled with its measurement; a labeled diameter is drawn."
+            },
+            "labelHeight": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "Whether the height is labeled with its measurement, beside the right side of the cylinder."
+            },
+            "radiusLabelText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Text shown in place of the radius label, at most 200 characters, such as \"r\" or \"?\"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+              "maxLength": 200
+            },
+            "diameterLabelText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Text shown in place of the diameter label, at most 200 characters, such as \"r\" or \"?\"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+              "maxLength": 200
+            },
+            "heightLabelText": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Text shown in place of the height label, at most 200 characters, such as \"r\" or \"?\"; it also labels the height. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.",
+              "maxLength": 200
+            },
+            "unit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative.",
+              "maxLength": 20
+            }
+          },
+          "required": [
+            "type",
+            "version",
+            "title",
+            "lineColor",
+            "radius",
+            "diameter",
+            "height",
+            "hiddenBase",
+            "showRadius",
+            "showDiameter",
+            "labelRadius",
+            "labelDiameter",
+            "labelHeight",
+            "radiusLabelText",
+            "diameterLabelText",
+            "heightLabelText",
             "unit"
           ],
           "additionalProperties": false

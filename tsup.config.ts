@@ -21,6 +21,7 @@ export default defineConfig({
     square: "src/entries/square.ts",
     triangle: "src/entries/triangle.ts",
     cube: "src/entries/cube.ts",
+    cylinder: "src/entries/cylinder.ts",
   },
   format: ["esm"],
   // tsup sets the `baseUrl` option for declaration builds, which TypeScript 6 reports as deprecated.

@@ -1,7 +1,6 @@
 import { cleanText, formatList, quoteText, sourceOf, stateMeasurement } from "../format";
 import type { Provenance } from "../result";
-import { agrees, unitProperty } from "./figure";
-import { CALLER_TEXT_LIMIT } from "./shared";
+import { agrees, measurementLabelText, radiusProperties, unitProperty } from "./figure";
 import { defineProperties, type DescriptionBase, type GraphTypeDefinition } from "./types";
 
 /** A normalized circle description: all three measurements are present once validated. */
@@ -59,20 +58,11 @@ export function circleDisplay(circle: Circle): Readonly<Record<CircleMeasurement
 
 // Curriculum-sized limits that agree: each member's bounds are what the radius bounds derive,
 // rounded outward, so no radius in range derives a diameter or circumference out of range
-// (GSV TICKET-004 code review CR-001).
+// (GSV TICKET-004 code review CR-001). The radius and diameter bounds are in `figure.ts`.
 const measurement = (term: CircleMeasurement, min: number, max: number, description: string) =>
   ({ term, kind: "number", required: false, min, max, description }) as const;
 
 const flag = (term: string, description: string) => ({ term, kind: "boolean", required: false, description }) as const;
-
-const labelText = (term: string, measured: string) =>
-  ({
-    term,
-    kind: "string",
-    required: false,
-    maxLength: CALLER_TEXT_LIMIT,
-    description: `Text shown in place of the ${measured} label, at most ${CALLER_TEXT_LIMIT} characters, such as "r" or "?"; it also labels the ${measured}. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value.`,
-  }) as const;
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -87,29 +77,26 @@ export const circle: GraphTypeDefinition<Circle> = {
   title: "Circle",
   description:
     "A circle drawn to scale from its radius, diameter or circumference (give one; any other given must agree within 1%). The radius, the diameter and the center can be drawn, and each measurement labeled with its value and unit or with custom text.",
+  // The radius and diameter terms are shared by identity with the cylinder (graph-library GSS
+  // TICKET-007): one definition per term (GSV-REQ-015). The order is the circle's published one.
   properties: defineProperties({
-    radius: measurement("radius", 0.001, 1_000_000, "The distance from the center to the circle, from 0.001 to 1,000,000."),
-    diameter: measurement(
-      "diameter",
-      0.002,
-      2_000_000,
-      "The distance across the circle through its center, twice the radius, from 0.002 to 2,000,000.",
-    ),
+    radius: radiusProperties.radius,
+    diameter: radiusProperties.diameter,
     circumference: measurement(
       "circumference",
       0.006,
       6_283_186,
       "The distance around the circle, 2π times the radius, from 0.006 to 6,283,186.",
     ),
-    showRadius: flag("showRadius", "Whether the radius is drawn, from the center horizontally to the right."),
-    showDiameter: flag("showDiameter", "Whether the diameter is drawn through the center; it never lies on the radius."),
+    showRadius: radiusProperties.showRadius,
+    showDiameter: radiusProperties.showDiameter,
     showCenter: flag("showCenter", "Whether the center is marked with a point."),
-    labelRadius: flag("labelRadius", "Whether the radius is labeled with its measurement; a labeled radius is drawn."),
-    labelDiameter: flag("labelDiameter", "Whether the diameter is labeled with its measurement; a labeled diameter is drawn."),
+    labelRadius: radiusProperties.labelRadius,
+    labelDiameter: radiusProperties.labelDiameter,
     labelCircumference: flag("labelCircumference", "Whether the circumference is labeled with its measurement, next to the circle."),
-    radiusLabelText: labelText("radiusLabelText", "radius"),
-    diameterLabelText: labelText("diameterLabelText", "diameter"),
-    circumferenceLabelText: labelText("circumferenceLabelText", "circumference"),
+    radiusLabelText: radiusProperties.radiusLabelText,
+    diameterLabelText: radiusProperties.diameterLabelText,
+    circumferenceLabelText: measurementLabelText("circumferenceLabelText", "circumference"),
     unit: unitProperty,
   }),
   derivations: [

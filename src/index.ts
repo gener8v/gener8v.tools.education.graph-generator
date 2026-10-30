@@ -11,6 +11,7 @@ export { RulerGraph } from "./react/graphs/RulerGraph";
 export { SquareGraph } from "./react/graphs/SquareGraph";
 export { TriangleGraph } from "./react/graphs/TriangleGraph";
 export { CubeGraph } from "./react/graphs/CubeGraph";
+export { CylinderGraph } from "./react/graphs/CylinderGraph";
 export { XyGraph } from "./react/graphs/XyGraph";
 export { XyzGraph } from "./react/graphs/XyzGraph";
 export type { Fallback, GraphComponent, GraphProps } from "./react/createGraphComponent";

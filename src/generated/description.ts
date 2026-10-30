@@ -316,15 +316,15 @@ export interface CircleDescription {
   title?: string;
   /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
   lineColor?: string;
-  /** The distance from the center to the circle, from 0.001 to 1,000,000. */
+  /** The radius of a circle, or of a cylinder's base: the distance from the center to the edge, from 0.001 to 1,000,000. */
   radius?: number;
-  /** The distance across the circle through its center, twice the radius, from 0.002 to 2,000,000. */
+  /** The diameter of a circle, or of a cylinder's base: the distance across through the center, twice the radius, from 0.002 to 2,000,000. */
   diameter?: number;
   /** The distance around the circle, 2π times the radius, from 0.006 to 6,283,186. */
   circumference?: number;
-  /** Whether the radius is drawn, from the center horizontally to the right. */
+  /** Whether the radius is drawn: on a circle, from the center horizontally to the right; on a cylinder, on its top face, from the center toward the lower right. */
   showRadius?: boolean;
-  /** Whether the diameter is drawn through the center; it never lies on the radius. */
+  /** Whether the diameter is drawn: on a circle, through its center; on a cylinder, across its top face through the center. It never lies on the radius. */
   showDiameter?: boolean;
   /** Whether the center is marked with a point. */
   showCenter?: boolean;
@@ -439,5 +439,43 @@ export interface CubeDescription {
   unit?: string;
 }
 
+/** An upright cylinder drawn to scale from its radius or diameter (give one; if both are given they must agree within 1%) and its height, seen from one fixed viewpoint above (isometric), the same as the cube's. The hidden half of its base is dashed, or can be left out. The radius or the diameter can be drawn and labeled on the top face, and the height labeled beside the side, with the value and unit or with custom text. */
+export interface CylinderDescription {
+  /** The graph type: which kind of graph the description draws. */
+  type: "cylinder";
+  /** The schema version the description is written for. Leave it out for the current version, 1. */
+  version?: 1;
+  /** A title shown above the graph, as plain text, at most 200 characters. In the drawing, a title longer than three lines is cut short with “…”; the text alternative states it whole. */
+  title?: string;
+  /** The color of a line: the number line itself, a figure's outline, or one series of a line graph. A color name or a hex code such as #0072b2. */
+  lineColor?: string;
+  /** The radius of a circle, or of a cylinder's base: the distance from the center to the edge, from 0.001 to 1,000,000. */
+  radius?: number;
+  /** The diameter of a circle, or of a cylinder's base: the distance across through the center, twice the radius, from 0.002 to 2,000,000. */
+  diameter?: number;
+  /** The height of the cylinder, from its base to its top face, from 0.001 to 1,000,000. */
+  height: number;
+  /** How the half of the base hidden behind the cylinder is drawn: dashed (the default) or omitted. */
+  hiddenBase?: "dashed" | "omitted";
+  /** Whether the radius is drawn: on a circle, from the center horizontally to the right; on a cylinder, on its top face, from the center toward the lower right. */
+  showRadius?: boolean;
+  /** Whether the diameter is drawn: on a circle, through its center; on a cylinder, across its top face through the center. It never lies on the radius. */
+  showDiameter?: boolean;
+  /** Whether the radius is labeled with its measurement; a labeled radius is drawn. */
+  labelRadius?: boolean;
+  /** Whether the diameter is labeled with its measurement; a labeled diameter is drawn. */
+  labelDiameter?: boolean;
+  /** Whether the height is labeled with its measurement, beside the right side of the cylinder. */
+  labelHeight?: boolean;
+  /** Text shown in place of the radius label, at most 200 characters, such as "r" or "?"; it also labels the radius. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  radiusLabelText?: string;
+  /** Text shown in place of the diameter label, at most 200 characters, such as "r" or "?"; it also labels the diameter. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  diameterLabelText?: string;
+  /** Text shown in place of the height label, at most 200 characters, such as "r" or "?"; it also labels the height. It replaces the whole label, unit included, so add the unit to the text if it should show. An empty text is a blank label, for example a space to fill in. Text too long to fit beside the figure is placed below it, and text longer than four lines is cut short with “…”. The text alternative still states the value. */
+  heightLabelText?: string;
+  /** The unit of length shown after each measurement, such as cm, at most 20 characters. A unit with sentence punctuation is quoted in the text alternative. */
+  unit?: string;
+}
+
 /** Any one graph description. */
-export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | XyzGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription | SquareDescription | TriangleDescription | CubeDescription;
+export type GraphDescription = NumberLineDescription | RulerDescription | XyGraphDescription | XyzGraphDescription | LineGraphDescription | BarGraphDescription | PictographDescription | CircleDescription | SquareDescription | TriangleDescription | CubeDescription | CylinderDescription;

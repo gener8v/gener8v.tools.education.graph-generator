@@ -2,6 +2,7 @@ import { dataGraphProperties } from "./categories";
 import { barGraph } from "./bar-graph";
 import { circle } from "./circle";
 import { cube } from "./cube";
+import { cylinder } from "./cylinder";
 import { lineGraph } from "./line-graph";
 import { numberLine } from "./number-line";
 import { pictograph } from "./pictograph";
@@ -39,6 +40,7 @@ export const definitions: Registry = /* @__PURE__ */ Object.freeze(
     square,
     triangle,
     cube,
+    cylinder,
   } satisfies Partial<Record<GraphType, GraphTypeDefinition>>),
 );
 

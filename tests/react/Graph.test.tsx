@@ -18,6 +18,7 @@ import { XyGraph as PackageXyGraph } from "../../src/react/graphs/XyGraph";
 import { SquareGraph as PackageSquareGraph } from "../../src/react/graphs/SquareGraph";
 import { TriangleGraph as PackageTriangleGraph } from "../../src/react/graphs/TriangleGraph";
 import { CubeGraph as PackageCubeGraph } from "../../src/react/graphs/CubeGraph";
+import { CylinderGraph as PackageCylinderGraph } from "../../src/react/graphs/CylinderGraph";
 import { XyzGraph as PackageXyzGraph } from "../../src/react/graphs/XyzGraph";
 import {
   type GraphComponent,
@@ -131,6 +132,7 @@ describe("dispatch and equal output (CPSE-REQ-007, CPSE-REQ-008, CPSE-REQ-010)",
     expect(PackageSquareGraph.displayName).toBe("SquareGraph");
     expect(PackageTriangleGraph.displayName).toBe("TriangleGraph");
     expect(PackageCubeGraph.displayName).toBe("CubeGraph");
+    expect(PackageCylinderGraph.displayName).toBe("CylinderGraph");
   });
 
   it("types a layout by its graph type's description (QR-002; pnpm typecheck fails if these stop being errors)", () => {
@@ -660,6 +662,22 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
+  it("draws a valid cylinder with every text at its limit in <Graph> and <CylinderGraph>, never throwing (GSV-REQ-052, GSV-REQ-053)", () => {
+    const long = wordsOf(CALLER_TEXT_LIMIT);
+    const base = { type: "cylinder", radius: 2, height: 5, unit: "@".repeat(UNIT_TEXT_LIMIT), showRadius: true, showDiameter: true, labelHeight: true, hiddenBase: "dashed" };
+    const textsOf = (text: string) => ({ title: text, radiusLabelText: text, diameterLabelText: text, heightLabelText: text });
+    const descriptions = [{ ...base, ...textsOf(long) }, ...Object.values(oneClusterTexts(CALLER_TEXT_LIMIT)).map((cluster) => ({ ...base, ...textsOf(cluster) }))];
+    for (const description of descriptions) {
+      for (const Component of [Graph, PackageCylinderGraph]) {
+        const received: Issue[][] = [];
+        const markup = html(<Component description={description} fallback={(issues: Issue[]) => (received.push(issues), null)} />);
+        expect(received).toEqual([]);
+        // Title 3 lines, and three labels (radius, diameter, height) of at most 4 lines each.
+        expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 3 * 4);
+      }
+    }
+  });
+
   it("draws a valid x,y,z graph with every text at its limit in <Graph> and <XyzGraph>, never throwing (GSV-REQ-052)", () => {
     const long = wordsOf(CALLER_TEXT_LIMIT);
     const axis = { min: 0, max: 5, tickSpacing: 1 };
@@ -719,6 +737,10 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
       [PackageCubeGraph, { type: "cube", edgeLength: 3, title: over }, "/title"],
       [PackageCubeGraph, { type: "cube", edgeLength: 3, edgeLabelText: over }, "/edgeLabelText"],
       [PackageCubeGraph, { type: "cube", edgeLength: 3, unit: "@".repeat(UNIT_TEXT_LIMIT + 1) }, "/unit"],
+      ...(["title", "radiusLabelText", "diameterLabelText", "heightLabelText"] as const).map(
+        (term): [GraphComponent, object, string] => [PackageCylinderGraph, { type: "cylinder", radius: 2, height: 5, [term]: over }, `/${term}`],
+      ),
+      [PackageCylinderGraph, { type: "cylinder", radius: 2, height: 5, unit: "@".repeat(UNIT_TEXT_LIMIT + 1) }, "/unit"],
     ];
     for (const [Component, description, path] of cases) {
       for (const Drawn of [Graph, Component]) {
@@ -931,6 +953,43 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
           expect(markup.length).toBeLessThan(20_000);
           // A title of at most 3 lines, and three edge labels of at most 4 each.
           expect(markup.match(/<text /g)!.length).toBeLessThanOrEqual(3 + 3 * 4);
+        }
+      }
+    }
+  });
+
+  it("keeps the cylinder's text alternative and markup bounded at its limits (GSS TICKET-007; GSS TICKET-002 security review SEC-002)", () => {
+    // Every caller text at its limit, the radius, diameter and height labeled, measurements with 15 to
+    // 17 significant digits, very tall and very wide. `"` texts are quoted and escaped in the markup;
+    // emoji are two UTF-16 units each, and a unit ending in "." is quoted in the text alternative.
+    // Measured 2026-10-29: at most a 1,985-unit text alternative (emoji: four quoted texts), 18,731
+    // characters of markup, 15 <text> nodes and a height of 582.73. A cylinder has a fixed number of
+    // texts and lines, so these do not grow.
+    const quote = '"'.repeat(CALLER_TEXT_LIMIT);
+    const emoji = String.fromCodePoint(0x1f600).repeat(CALLER_TEXT_LIMIT);
+    const textsOf = (text: string, unit: string) => ({ title: text, unit, radiusLabelText: text, diameterLabelText: text, heightLabelText: text });
+    const texts = [
+      textsOf(quote, '"'.repeat(UNIT_TEXT_LIMIT)),
+      textsOf("'".repeat(CALLER_TEXT_LIMIT), "'".repeat(UNIT_TEXT_LIMIT)),
+      textsOf(emoji, `${String.fromCodePoint(0x1f600).repeat(UNIT_TEXT_LIMIT - 1)}.`),
+    ];
+    for (const text of texts) {
+      for (const hiddenBase of ["dashed", "omitted"]) {
+        for (const [radius, height] of [
+          [3.14159265358979, 2.71828182845905],
+          [999999.123456789, 0.00123456789012345],
+          [0.0010000000000000002, 999999.123456789],
+        ]) {
+          const description = { type: "cylinder", radius, height, showRadius: true, showDiameter: true, labelHeight: true, hiddenBase, ...text };
+          const result = createGraph(description);
+          if (!result.ok) throw new Error(JSON.stringify(result.issues));
+          const markup = html(<PackageCylinderGraph description={description} />);
+          const count = markup.match(/<text /g)!.length;
+          expect(result.scene.textAlternative.length).toBeLessThan(2_200);
+          expect(result.scene.height).toBeLessThan(650);
+          expect(markup.length).toBeLessThan(22_000);
+          // A title of at most 3 lines, and three labels of at most 4 each.
+          expect(count).toBeLessThanOrEqual(3 + 3 * 4);
         }
       }
     }

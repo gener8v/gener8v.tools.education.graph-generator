@@ -14,8 +14,10 @@ const OTHER = "OTHER_TYPE_LAYOUT_MARKER";
 const OTHER_DEFINITION = "OTHER_TYPE_DEFINITION_MARKER";
 const OWN = "OWN_TYPE_LAYOUT_MARKER";
 const UNUSED = "UNUSED_COMPONENT_LAYOUT_MARKER";
-// A graph type that is never given a real layout here, so the marker cannot clash with one.
-const OTHER_TYPE = "cylinder";
+// A key outside GRAPH_TYPES, so no real type's entry can overwrite the injected one: every graph
+// type now has a layout (graph-library GSS TICKET-007). Injected with `as never`, since the
+// tables' keys are typed by GraphType.
+const OTHER_TYPE = "not-a-graph-type";
 
 /** Puts a layout for another type, carrying a marker, into `src/layout/registry.ts`'s table. */
 const withOtherLayout: Plugin = {
@@ -27,7 +29,7 @@ const withOtherLayout: Plugin = {
       // (quality review QR-001). The marker goes first, so it works for an empty table too.
       const opening = /(Object\.create\(null\) as Partial<Record<GraphType, Layout>>,\s*\{)/;
       if (!opening.test(source)) throw new Error("the layout table's shape changed; update this test");
-      const filled = source.replace(opening, `$1 "${OTHER_TYPE}": () => { throw new Error("${OTHER}"); },`);
+      const filled = source.replace(opening, `$1 "${OTHER_TYPE}": (() => { throw new Error("${OTHER}"); }) as never,`);
       return { contents: filled, loader: "ts" };
     });
   },
@@ -413,6 +415,44 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
     const code = await consumerBundle(`export * from "./dist/cube.js";`);
     expect(code).toContain("A cube");
     for (const other of ["A square", "A triangle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+  });
+
+  it("leaves every other type out of the cylinder's entry and component, and the cylinder out of theirs (graph-library GSS TICKET-007)", async () => {
+    for (const entry of [`export { CylinderGraph } from "./src/entries/cylinder";`, `export { CylinderGraph } from "./src/react/graphs/CylinderGraph";`]) {
+      const code = await bundle(entry);
+      expect(code).toContain("A cylinder");
+      // The cylinder shares the circle's radius terms (figure.ts) and the isometric kit, never the circle's definition.
+      for (const other of ["A circle", "A square", "A triangle", "A cube", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple", OTHER, OTHER_DEFINITION]) {
+        expect(code, other).not.toContain(other);
+      }
+    }
+    for (const entry of [
+      `export { CircleGraph } from "./src/entries/circle";`,
+      `export { Pictograph } from "./src/entries/pictograph";`,
+      `export { LineGraph } from "./src/entries/line-graph";`,
+      `export { BarGraph } from "./src/entries/bar-graph";`,
+      `export { RulerGraph } from "./src/entries/ruler";`,
+      `export { NumberLineGraph } from "./src/entries/number-line";`,
+      `export { XyGraph } from "./src/entries/xy-graph";`,
+      `export { XyzGraph } from "./src/entries/xyz-graph";`,
+      `export { SquareGraph } from "./src/entries/square";`,
+      `export { TriangleGraph } from "./src/entries/triangle";`,
+      `export { CubeGraph } from "./src/entries/cube";`,
+    ]) {
+      expect(await bundle(entry), entry).not.toContain("A cylinder");
+    }
+  });
+
+  it("leaves the cylinder out of a consumer's bundle of every other built entry, and the other types out of the built ./cylinder", async () => {
+    for (const built of ["circle", "pictograph", "line-graph", "bar-graph", "ruler", "number-line", "xy-graph", "xyz-graph", "square", "triangle", "cube"]) {
+      const code = await consumerBundle(`export * from "./dist/${built}.js";`);
+      expect(code, built).not.toContain("A cylinder");
+    }
+    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
+    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
+    const code = await consumerBundle(`export * from "./dist/cylinder.js";`);
+    expect(code).toContain("A cylinder");
+    for (const other of ["A square", "A triangle", "A cube", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
   });
 
   it("keeps every type's layout and definition in the entry component's bundle", async () => {

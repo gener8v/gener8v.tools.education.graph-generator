@@ -9,6 +9,7 @@ import { rulerLayout } from "./ruler";
 import { squareLayout } from "./square";
 import { triangleLayout } from "./triangle";
 import { cubeLayout } from "./cube";
+import { cylinderLayout } from "./cylinder";
 import type { Scene } from "./scene";
 import { xyGraphLayout } from "./xy-graph";
 import { xyzGraphLayout } from "./xyz-graph";
@@ -50,6 +51,7 @@ export const layouts: LayoutRegistry = /* @__PURE__ */ Object.freeze(
     square: squareLayout,
     triangle: triangleLayout,
     cube: cubeLayout,
+    cylinder: cylinderLayout,
   } satisfies Partial<Record<GraphType, Layout>>),
 );
 

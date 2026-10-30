@@ -1,0 +1,18 @@
+{
+  "type": "cylinder",
+  "radius": 2,
+  "diameter": 4,
+  "height": 5,
+  "hiddenBase": "dashed",
+  "showRadius": true,
+  "showDiameter": true,
+  "labelRadius": true,
+  "labelDiameter": true,
+  "labelHeight": true,
+  "radiusLabelText": "r",
+  "diameterLabelText": "d",
+  "heightLabelText": "h = ?",
+  "unit": "cm",
+  "title": "Find the volume",
+  "lineColor": "blue"
+}

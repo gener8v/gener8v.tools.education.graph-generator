@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { dataGraphProperties } from "../../src/core/definitions/categories";
-import { unitProperty } from "../../src/core/definitions/figure";
+import { radiusProperties, unitProperty } from "../../src/core/definitions/figure";
 import { definitions, propertiesOf, scopedProperty, scopedPropertyMaps } from "../../src/core/definitions/index";
 import { type ScopedPropertySpec, sharedProperties } from "../../src/core/definitions/shared";
 import { triangle } from "../../src/core/definitions/triangle";
 import { cube } from "../../src/core/definitions/cube";
+import { cylinder } from "../../src/core/definitions/cylinder";
 import {
   GRAPH_TYPES,
   PROPERTY_KINDS,
@@ -885,5 +886,60 @@ describe("the cube, registered (graph-library GSS TICKET-006)", () => {
 
   it("is frozen all the way down, with no prototypes", () => {
     expect(lockedDown(definition.properties, "cube")).toEqual([]);
+  });
+});
+
+describe("the cylinder, registered (graph-library GSS TICKET-007)", () => {
+  const definition = definitions.cylinder!;
+
+  it("is the cylinder definition", () => {
+    expect(definition).toBe(cylinder);
+  });
+
+  it("follows the vocabulary, stage (its derivation group included) and applicability rules", () => {
+    expect(vocabularyProblems(definition.properties)).toEqual([]);
+    expect(stageProblems(definition)).toEqual([]);
+    expect(applicabilityProblems(definition)).toEqual([]);
+  });
+
+  it("takes its own terms, the circle's radius terms and the shared title and line color", () => {
+    expect(Object.keys(propertiesOf("cylinder", definitions)).sort()).toEqual([
+      "diameter",
+      "diameterLabelText",
+      "height",
+      "heightLabelText",
+      "hiddenBase",
+      "labelDiameter",
+      "labelHeight",
+      "labelRadius",
+      "lineColor",
+      "radius",
+      "radiusLabelText",
+      "showDiameter",
+      "showRadius",
+      "title",
+      "unit",
+    ]);
+  });
+
+  it("shares the radius terms with the circle by identity, and defines every term once (GSV-REQ-015)", () => {
+    const circle = definitions.circle!;
+    for (const [term, spec] of Object.entries(radiusProperties)) {
+      expect(definition.properties[term], term).toBe(spec);
+      expect(circle.properties[term], term).toBe(spec);
+      expect(Object.isFrozen(spec), term).toBe(true);
+      expect(Object.getPrototypeOf(spec), term).toBeNull();
+    }
+    expect(definition.properties["unit"]).toBe(unitProperty);
+    expect(consistencyProblems([...scopedPropertyMaps, ...Object.values(definitions).map((d) => d!.properties)])).toEqual([]);
+  });
+
+  it("keeps the circle's radius and diameter ranges, which agree (GSV TICKET-004 code review CR-001)", () => {
+    expect(radiusProperties.radius).toMatchObject({ kind: "number", min: 0.001, max: 1_000_000 });
+    expect(radiusProperties.diameter).toMatchObject({ kind: "number", min: 0.002, max: 2_000_000 });
+  });
+
+  it("is frozen all the way down, with no prototypes", () => {
+    expect(lockedDown(definition.properties, "cylinder")).toEqual([]);
   });
 });

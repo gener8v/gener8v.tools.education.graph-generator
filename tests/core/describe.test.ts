@@ -36,8 +36,8 @@ describe("describe", () => {
 
   it("is the public entry, against the registered types", () => {
     expect(describeGraph({ type: "circle", radius: 5, unit: "cm" })).toBe("A circle with radius 5 cm.");
-    // The cylinder is not registered yet.
-    expect(() => describeGraph({ type: "cylinder", radius: 1 })).toThrow(/not valid/);
+    // A type the package does not have (every graph type is registered now).
+    expect(() => describeGraph({ type: "hexagon", side: 1 })).toThrow(/not valid/);
   });
 
   it("passes the provenance on, so supplied values read as written and derived ones rounded (GSS TICKET-002 DEL-001)", () => {
