@@ -31,6 +31,8 @@ const TOLERANCE = 0.5;
 const ROUNDING = 0.02;
 /** A length under this rounds to nothing, and a bar is not drawn; it is also the most rounding moves a length. */
 const HALF_HUNDREDTH = 0.005;
+/** Whether a bar of this length is drawn: the layout rounds lengths to the 0.01 grid (AD-007) and leaves out one that rounds to nothing (quality review QR-004). */
+const isDrawn = (length: number): boolean => Math.round(length * 100) > 0;
 
 function normalized<T>(input: unknown): { description: T; provenance: Extract<ReturnType<typeof validate>, { valid: true }>["provenance"] } {
   const result = validate(input);
@@ -104,7 +106,7 @@ function checkBars(input: unknown, scene: Scene): void {
   const where = JSON.stringify(input);
   const bars = barsOf(scene, expected.horizontal);
   // A bar that would round to no length is not drawn; the others come in category order.
-  const drawnValues = description.values.filter((value) => Math.round(expected.lengthOf(value) * 100) > 0);
+  const drawnValues = description.values.filter((value) => isDrawn(expected.lengthOf(value)));
   expect(bars, `${where}: one bar for every value that has a length`).toHaveLength(drawnValues.length);
   checkOrder(bars, where);
   drawnValues.forEach((value, i) => {

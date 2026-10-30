@@ -22,8 +22,10 @@ import { loadExample } from "../fixtures/examples";
 // sentence starts with its own label (or "Series N"), so the sentences are located by their known
 // heads in order, ending where the text ends, never by searching for the entries anywhere. The
 // alternative read is the Scene's, so it is what a rendered graph carries. Generated descriptions
-// are filtered through `validate()`; every assertion names the description. (graph-library DGP
-// TICKET-006.)
+// are filtered through `validate()`; every assertion names the description. The entries and their
+// joins restate `describe`'s sentence format on purpose, so each series' entries are found in its own
+// sentence (code review CR-002): a change to that wording is made here too (quality review QR-002).
+// (graph-library DGP TICKET-006.)
 const RUNS = 500;
 
 interface Entry {

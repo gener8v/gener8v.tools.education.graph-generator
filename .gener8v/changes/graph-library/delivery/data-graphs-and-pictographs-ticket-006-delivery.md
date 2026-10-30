@@ -140,3 +140,9 @@ Run in the main session on 2026-10-30, after the code was written.
 - CR-005: bars checked for category order, start at the zero baseline and one shared start edge.
 **Files:** `tests/layout/data-graph-accuracy.test.ts`, `tests/core/data-graph-text-alternative.test.ts`, `tests/fixtures/data-graph-reference.ts`, `src/layout/line-graph.ts` (comment), `.gener8v/specifications/data-graphs-and-pictographs.md`
 **Re-verification:** full verification loop — all exit 0 except one of three vitest runs, which failed only `tests/layout/nlc-accuracy.property.test.ts` (NLC TICKET-005): its unseeded x,y,z coverage counter got 49 samples with guides against a threshold of more than 50 of 200; two reruns after passed 2,311 each. That threshold sits near the generator's own rate and needs a fix ticket. The two new files: 10 runs in a row, 10 passed each. Mutants (each restored): the last series' sentence dropped; the last entry dropped from later series; room not subtracted and label depth not added in `planHorizontal`; across length ×0.97 with written values; bar `x` and `y` +1 — each fails the new tests. gener8v-state lint 0 errors.
+
+### graph-library/data-graphs-and-pictographs-ticket-006-quality-review/QR-002, QR-004 (QR-001 closed by code review CR-001; QR-003 dismissed)
+
+**Change:** QR-002: the text-alternative test's header says it restates `describe`'s sentence format on purpose (per-series scoping depends on it). QR-004: the drawn-bar rule is the named `isDrawn`, tied to the 0.01 grid. QR-003 dismissed: the next property suite should extract a shared run-and-count helper.
+**Files:** `tests/core/data-graph-text-alternative.test.ts`, `tests/layout/data-graph-accuracy.test.ts`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 2,311 passed each; gener8v-state lint 0 errors.
