@@ -161,4 +161,8 @@ Run in the main session on 2026-10-29, after the code was written.
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-007-code-review — CR-001 dismissed; an unexplained property failure
+
+**Change:** None to code. CR-001 (degenerate drawing at extreme proportions) was dismissed: drawn to scale is correct under GSS-REQ-030 (Engineer — Thomas Eaves, 2026-10-29).
+**Note:** The code reviewer's first full vitest run had one fast-check property failure whose output was not kept (test, seed and counterexample unknown). It did not recur in 9 further full runs, 38 runs of the cylinder tests or 15 runs of all 22 fast-check test files. It is recorded as unexplained and unreproduced, not as the known timing flake.
+**Re-verification:** not needed for a dismissal; the fast-check hunt above all passed.
