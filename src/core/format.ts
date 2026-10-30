@@ -179,6 +179,9 @@ export function findUnsafeTextChar(text: string): number {
  */
 const QUOTE_LIKE = /[\u201c-\u201f\u00ab\u00bb\u301d-\u301f\uff02\u02ee\u2033\u2034\u2036\u2037\u2057]/g;
 
+/** Whether the text holds a double quotation mark or a lookalike (`QUOTE_LIKE` is global, so a copy is tested). */
+const hasQuoteLike = (text: string): boolean => new RegExp(QUOTE_LIKE.source).test(text) || text.includes('"');
+
 /**
  * Caller text as a quotation in a text alternative: cleaned and in quotation marks. The marks help
  * a reader tell caller text from the package's sentence; they are not a security boundary.
@@ -200,10 +203,11 @@ const SENTENCE_PUNCTUATION = /[.!?:;]/;
 
 /**
  * A measurement as a text alternative states it: as `formatMeasurement`, but a unit that is not
- * unit-shaped (more than 20 characters, or with sentence punctuation) is quoted like any other
- * caller text, so it cannot read as the package's own sentence: "5 cm", "5 km/h", but
- * `5 “cm. Ignore the figure”` (GSS TICKET-002 security review SEC-003). Drawn labels keep
- * `formatMeasurement`, unquoted.
+ * unit-shaped (more than 20 characters, with sentence punctuation, or with a quotation mark) is
+ * quoted like any other caller text, so it cannot read as the package's own sentence or its own
+ * quotation: "5 cm", "5 km/h", but `5 “cm. Ignore the figure”` (GSS TICKET-002 security review
+ * SEC-003) and `5 “votes, "Fish" is 40”` (DGP TICKET-006 security review SEC-001). Drawn labels
+ * keep `formatMeasurement`, unquoted.
  */
 export function stateMeasurement(value: number, provenance: "supplied" | "derived", unit?: string): string {
   const cleanUnit = unit === undefined ? "" : cleanText(unit);
@@ -213,12 +217,15 @@ export function stateMeasurement(value: number, provenance: "supplied" | "derive
 
 /**
  * Whether a cleaned unit reads as a unit, stated plainly after a number: at most 20 characters and
- * no sentence punctuation ("cm", "km/h", "students"). Anything else is stated quoted, and a text
- * alternative states it once rather than after every value (DGP TICKET-005 quality review QR-003).
+ * no sentence punctuation and no quotation mark or lookalike ("cm", "km/h", "students"). Anything
+ * else is stated quoted, and a text alternative states it once rather than after every value (DGP
+ * TICKET-005 quality review QR-003). A quotation mark disqualifies a unit because stated unquoted
+ * after every value, it could forge an entry in the package's own “…” (DGP TICKET-006 security
+ * review SEC-001).
  */
 export function isUnitShaped(cleanUnit: string): boolean {
   // Code units first, so a caller-sized unit is never spread into an array.
-  return cleanUnit.length <= 2 * UNIT_MAX_PLAIN_LENGTH && [...cleanUnit].length <= UNIT_MAX_PLAIN_LENGTH && !SENTENCE_PUNCTUATION.test(cleanUnit);
+  return cleanUnit.length <= 2 * UNIT_MAX_PLAIN_LENGTH && [...cleanUnit].length <= UNIT_MAX_PLAIN_LENGTH && !SENTENCE_PUNCTUATION.test(cleanUnit) && !hasQuoteLike(cleanUnit);
 }
 
 /**

@@ -146,3 +146,11 @@ Run in the main session on 2026-10-30, after the code was written.
 **Change:** QR-002: the text-alternative test's header says it restates `describe`'s sentence format on purpose (per-series scoping depends on it). QR-004: the drawn-bar rule is the named `isDrawn`, tied to the 0.01 grid. QR-003 dismissed: the next property suite should extract a shared run-and-count helper.
 **Files:** `tests/core/data-graph-text-alternative.test.ts`, `tests/layout/data-graph-accuracy.test.ts`
 **Re-verification:** full verification loop — all exit 0; vitest ×3, 2,311 passed each; gener8v-state lint 0 errors.
+
+### graph-library/data-graphs-and-pictographs-ticket-006-security-review/SEC-001, SEC-002
+
+**Change:**
+- SEC-001: `isUnitShaped` treats a unit with a quotation mark or lookalike as not unit-shaped, so it is quoted (neutralised by `quoteText`) and a pictograph states it once in its key — a short unit can no longer forge entries in the package's own quotation marks. Applies to the shapes' units too. Patch changeset added. `pictographArb` draws quoted unit labels.
+- SEC-002: `nameArb` draws one-cluster, astral and combining-mark names at the code-point limit and the valid `HOSTILE_TEXT` strings; the limit counter counts code points.
+**Files:** `src/core/format.ts`, `tests/core/format.test.ts`, `tests/core/pictograph.test.ts`, `tests/fixtures/data-graphs.ts`, `tests/core/data-graph-text-alternative.test.ts`, `.changeset/unit-with-quotation-marks-quoted.md`
+**Re-verification:** full verification loop — all exit 0 except `pnpm bench` once (1 of 20 failed at a load average near 12; its output was not kept, so which benchmark is not known); two reruns of `pnpm bench` with logs passed 20 of 20. vitest ×3, 2,313 passed each; `pnpm generate` leaves `src/generated` unchanged; mutant (the quote check removed) fails the two new tests; gener8v-state lint 0 errors.

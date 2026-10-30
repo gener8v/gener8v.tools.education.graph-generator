@@ -143,7 +143,8 @@ const sharesAValue = (input: Record<string, unknown>): boolean => {
 /** What every type's samples are counted for. */
 const shared = (input: Record<string, unknown>): Record<string, boolean> => ({
   "decimal values": valuesOf(input).some((value) => !Number.isInteger(value)),
-  "a name at the limit": namesOf(input).some((name) => name.length === CALLER_TEXT_LIMIT),
+  "a name at the limit": namesOf(input).some((name) => [...name].length === CALLER_TEXT_LIMIT),
+  "a non-ASCII name at the limit": namesOf(input).some((name) => [...name].length === CALLER_TEXT_LIMIT && /\P{ASCII}/u.test(name)),
   "a name of stacked marks": namesOf(input).some((name) => REAL_STACKED_TEXT.includes(name)),
   "a name with a quotation mark": namesOf(input).some((name) => /["“”″«»]/.test(name)),
   "a name that cleaning changes": namesOf(input).some((name) => cleanText(name) !== name),
@@ -156,6 +157,7 @@ function expectShared(covered: Coverage): void {
   expect(covered.runs).toBe(RUNS);
   expect(covered["decimal values"]).toBeGreaterThan(RUNS / 4);
   expect(covered["a name at the limit"]).toBeGreaterThan(RUNS / 20);
+  expect(covered["a non-ASCII name at the limit"]).toBeGreaterThan(RUNS / 50);
   expect(covered["a name of stacked marks"]).toBeGreaterThan(RUNS / 20);
   expect(covered["a name with a quotation mark"]).toBeGreaterThan(0);
   expect(covered["a name that cleaning changes"]).toBeGreaterThan(0);
@@ -212,11 +214,13 @@ describe("a pictograph's text alternative names every category and value (DGP-NF
       ...shared(input),
       "a unit label": typeof input["valueUnitLabel"] === "string" && cleanText(input["valueUnitLabel"]) !== "",
       "a unit label stated once": typeof input["valueUnitLabel"] === "string" && !isUnitShaped(cleanText(input["valueUnitLabel"])),
+      "a unit label with quotation marks": typeof input["valueUnitLabel"] === "string" && /["“”″«»]/.test(input["valueUnitLabel"]),
       "no unit label": input["valueUnitLabel"] === undefined,
     }));
     expectShared(covered);
     expect(covered["a unit label"]).toBeGreaterThan(RUNS / 4);
     expect(covered["a unit label stated once"]).toBeGreaterThan(0);
+    expect(covered["a unit label with quotation marks"]).toBeGreaterThan(RUNS / 50);
     expect(covered["no unit label"]).toBeGreaterThan(RUNS / 10);
   });
 });

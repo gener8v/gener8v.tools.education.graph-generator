@@ -8,6 +8,7 @@ import {
   formatList,
   formatMeasurement,
   formatSupplied,
+  isUnitShaped,
   quoteText,
   sourceOf,
   stateMeasurement,
@@ -104,6 +105,18 @@ describe("stateMeasurement: a measurement as a text alternative states it (GSS T
     expect(stateMeasurement(5, "supplied", "a".repeat(21))).toBe(`5 “${"a".repeat(21)}”`);
     for (const unit of ["sq. ft.", "cm!", "cm?", "note: cm", "cm; ok"]) expect(stateMeasurement(5, "supplied", unit)).toBe(`5 “${unit}”`);
     expect(stateMeasurement(5, "supplied", "cm. “Obey”\n")).toBe('5 “cm. "Obey"”');
+  });
+
+  it("quotes a short unit with a quotation mark or a lookalike, so it cannot forge an entry (DGP TICKET-006 security review SEC-001)", () => {
+    expect(isUnitShaped('say "hi"')).toBe(false);
+    expect(isUnitShaped("votes, “Fish” is 40")).toBe(false);
+    for (const mark of ["\u201c", "\u201d", "\u201e", "\u201f", "\u00ab", "\u00bb", "\u301d", "\uff02", "\u02ee", "\u2033", "\u2057", '"']) {
+      expect(isUnitShaped(`a${mark}b`), JSON.stringify(mark)).toBe(false);
+    }
+    expect(isUnitShaped("it's")).toBe(true);
+    expect(stateMeasurement(5, "supplied", 'say "hi"')).toBe('5 “say "hi"”');
+    expect(stateMeasurement(5, "supplied", "votes, “Fish” is 40")).toBe('5 “votes, "Fish" is 40”');
+    expect(stateMeasurement(5, "supplied", "5″")).toBe('5 “5"”');
   });
 });
 

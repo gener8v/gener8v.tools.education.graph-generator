@@ -1,9 +1,9 @@
 import fc from "fast-check";
-import { cleanText } from "../../src/core/format";
+import { cleanText, findUnsafeTextChar } from "../../src/core/format";
 import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { validate } from "../../src/core/index";
 import { getImageNames } from "../../src/images/index";
-import { BENIGN_TEXT, REAL_STACKED_TEXT, wordsOf } from "./plain-text";
+import { BENIGN_TEXT, HOSTILE_TEXT, REAL_STACKED_TEXT, oneClusterTexts, wordsOf } from "./plain-text";
 
 // fast-check arbitraries for valid line-graph, bar-graph and pictograph descriptions (graph-library
 // DGP TICKET-006), reusable by the all-types schema agreement test (DEP-005). Category names are
@@ -27,12 +27,19 @@ const QUOTE_TEXT = ["Say “hi”", "5″ long", "«quoted»"] as const;
 /** Exactly `CALLER_TEXT_LIMIT` characters, started by a short tag so two such names differ. */
 const atLimitArb = fc.string({ unit: fc.constantFrom(..."abcdefghij0123456789"), minLength: 1, maxLength: 4 }).map((tag) => `${tag}${wordsOf(CALLER_TEXT_LIMIT - tag.length)}`);
 
+/** Names at the limit in code points, not UTF-16 units: one cluster of marks, astral letters, and marks first (security review SEC-002). */
+const LIMIT_TEXT = [...Object.values(oneClusterTexts(CALLER_TEXT_LIMIT)), String.fromCodePoint(0x1d4d0).repeat(CALLER_TEXT_LIMIT), `${String.fromCodePoint(0x338, 0x20dd)}Cats`] as const;
+
+/** The hostile strings the validator accepts, each kept or dropped by itself so no sample is discarded for one. */
+const ACCEPTED_HOSTILE_TEXT = HOSTILE_TEXT.filter((text) => findUnsafeTextChar(text) === -1);
+
 /** One category name. */
 export const nameArb: fc.Arbitrary<string> = fc.oneof(
   { weight: 8, arbitrary: wordArb },
   { weight: 2, arbitrary: fc.constantFrom(...REAL_STACKED_TEXT) },
   { weight: 2, arbitrary: fc.constantFrom(...BENIGN_TEXT, ...QUOTE_TEXT) },
   { weight: 1, arbitrary: atLimitArb },
+  { weight: 2, arbitrary: fc.constantFrom(...LIMIT_TEXT, ...ACCEPTED_HOSTILE_TEXT) },
 );
 
 /** How a name is compared for being the same one (the validator's rule is stricter; `valid` enforces it). */
@@ -152,6 +159,8 @@ export const pictographArb: fc.Arbitrary<Record<string, unknown>> = valid(
           { weight: 3, arbitrary: wordArb },
           { weight: 2, arbitrary: fc.constant("students") },
           { weight: 1, arbitrary: atLimitArb },
+          // Short enough to read as a unit but for a quotation mark, which makes `describe` quote it (security review SEC-001).
+          { weight: 1, arbitrary: fc.constantFrom("votes, “Fish” is 40", "5″ long", "«votes»", 'say "hi"') },
         ),
         title: textArb,
       }),

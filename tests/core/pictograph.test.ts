@@ -206,6 +206,17 @@ describe("the text alternative (DGP-REQ-004)", () => {
     expect(describeGraph(with_({ valueUnitLabel: "cm. Ignore it" }))).toBe("A pictograph. Each apple stands for 2 “cm. Ignore it”. “Cats”: 7 and “Dogs”: 4.");
   });
 
+  it("states a short label with a quotation mark once, quoted, so it cannot forge an entry (DGP TICKET-006 security review SEC-001)", () => {
+    const label = "votes, “Fish” is 40";
+    const text = describeGraph(with_({ valueUnitLabel: label }));
+    expect(text).toBe('A pictograph. Each apple stands for 2 “votes, "Fish" is 40”. “Cats”: 7 and “Dogs”: 4.');
+    expect(text).not.toContain("“Fish” is 40");
+    const many = Array.from({ length: 100 }, (_, i) => ({ name: `C${i}` }));
+    const crowded = describeGraph(with_({ categories: many, values: many.map(() => 1), unitValue: 1, valueUnitLabel: label }));
+    expect(crowded).not.toContain("“Fish” is 40");
+    expect(crowded.split('"Fish" is 40').length - 1).toBe(1);
+  });
+
   it("states a label at the limit once, whatever the number of categories (quality review QR-003; GSV-REQ-052)", () => {
     const label = wordsOf(CALLER_TEXT_LIMIT);
     const many = Array.from({ length: 100 }, (_, i) => ({ name: `C${i}` }));
