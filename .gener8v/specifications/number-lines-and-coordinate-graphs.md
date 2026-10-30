@@ -237,6 +237,10 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-040 | `src/layout/ruler.ts`:rulerLayout; `src/react/graphs/RulerGraph.tsx`:RulerGraph |
 | NLC-REQ-050 | `src/layout/ruler.ts`:rulerLayout (the bar from its located start mark to its located end mark) |
 | NLC-REQ-055 | `src/layout/ruler.ts`:rulerLayout (no text but the whole-unit numbers, the title and the label) |
+| NLC-NFR-001 | `tests/layout/nlc-accuracy.property.test.ts` (200 generated descriptions per type), `tests/fixtures/nlc-generators.ts` (verification) |
+| NLC-NFR-002 | `tests/react/nlc-server-render.test.ts` (verification) |
+| NLC-NFR-003 | `tests/react/nlc-accessibility.test.tsx`, `tests/helpers/axe.ts` (verification) |
+| NLC-NFR-004 | `tests/layout/nlc-render.bench.ts` (verification) |
 | NLC-NFR-005 | `tests/layout/ruler.test.ts` "drawn to scale with itself" property test (verification) |
 | NLC-NFR-006 | `tests/react/ruler-server-render.test.tsx` (verification) |
 | NLC-NFR-007 | `tests/react/ruler.test.tsx` "every ruler is named for assistive technology", `tests/helpers/axe.ts` (verification) |
