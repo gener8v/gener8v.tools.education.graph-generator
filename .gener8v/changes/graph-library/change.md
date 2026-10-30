@@ -58,3 +58,4 @@ Curricular materials need many small mathematical figures, and producing them by
 - 2026-10-04 — GSS specification amended: adds GSS-REQ-001..036, GSS-NFR-001..004, modifies —, withdraws — (Specification)
 - 2026-10-04 — CPSE specification amended: adds CPSE-REQ-001..046, CPSE-NFR-001..008, modifies —, withdraws — (Specification)
 - 2026-10-21 — GSV specification amended: adds GSV-REQ-052..054 (caller text length limits, GSV OQ-009), modifies —, withdraws — (Specification)
+- 2026-10-29 — GSS specification amended: adds —, modifies GSS-NFR-001 (sub-grid lengths; generated domains) and the triangle angle Edge Case (a 0.02° floor, Product Owner 2026-10-29), withdraws — (Specification)

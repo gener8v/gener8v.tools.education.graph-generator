@@ -153,3 +153,23 @@ describe("every figure's text alternative names the figure and states every show
     });
   }
 });
+
+describe("each figure's text alternative, word for word (code review CR-004, quality review QR-005)", () => {
+  // Written by hand, not built from the display rules or `stateMeasurement`, so a change to those
+  // rules that alters what a reader hears fails here even when the rule-built checks above agree.
+  it.each<[string, Record<string, unknown>, string]>([
+    ["circle", { type: "circle", radius: 5, unit: "cm", showDiameter: true }, "A circle with radius 5 cm and diameter 10 cm. Its diameter is drawn."],
+    ["square", { type: "square", sideLength: 4, unit: "cm", labelSides: "all", showRightAngles: true }, "A square with side length 4 cm. Its right angles are marked. All four sides are labeled."],
+    [
+      "triangle",
+      { type: "triangle", sideA: 3, sideB: 4, sideC: 5, unit: "cm", vertexNames: ["P", "Q", "R"] },
+      "A triangle with sides a 3 cm, b 4 cm and c 5 cm, and angles A 36.87°, B 53.13° and C 90°. Its vertices are named “P”, “Q” and “R”.",
+    ],
+    ["cube", { type: "cube", edgeLength: 3, unit: "cm", labelEdges: "three" }, "A cube with edge length 3 cm. Its hidden edges are dashed. Three edges meeting at a corner are labeled."],
+    ["cylinder", { type: "cylinder", radius: 2, height: 5, unit: "cm", showRadius: true, labelHeight: true }, "A cylinder with radius 2 cm and height 5 cm. Its radius is drawn. Its hidden base is dashed."],
+  ])("reads the %s exactly", (_figure, description, expected) => {
+    const { label, title } = renderedName(description);
+    expect(label).toBe(expected);
+    expect(title).toBe(expected);
+  });
+});

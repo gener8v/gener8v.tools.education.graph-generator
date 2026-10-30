@@ -7,6 +7,7 @@ import { cylinderDisplay, type Cylinder } from "../../src/core/definitions/cylin
 import type { Square } from "../../src/core/definitions/square";
 import type { Triangle } from "../../src/core/definitions/triangle";
 import { createGraph } from "../../src/graph";
+import { DRAWN_EDGE } from "../../src/layout/cube";
 import { ISO_SCALE } from "../../src/layout/kit/isometric";
 import type { Scene, SceneNode } from "../../src/layout/scene";
 import { attr, lineLengths, outsideViewBox, polygonSides, segmentOfLine } from "../fixtures/scene-geometry";
@@ -216,7 +217,8 @@ describe("cube proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
     expect(ratioMiss(lengths, lengths.map(() => 1), lengths.map((_, i) => `edge ${i}`))).toBeUndefined();
     // Every edge runs along a projected axis, each foreshortened by the same ISO_SCALE.
     for (const node of lines) expect(AXES.some((axis) => Math.abs(pageAngle(node) - axis) < 0.5)).toBe(true);
-    expect(lengths[0]! / ISO_SCALE).toBeGreaterThan(0);
+    // And each is the cube's one drawn edge length, whatever the edge length given (GSS-REQ-031; code review CR-003).
+    for (const length of lengths) expect(Math.abs(length / DRAWN_EDGE - 1)).toBeLessThan(0.01);
     expectFits(scene);
   };
 
@@ -263,6 +265,30 @@ function cylinderLengths(scene: Scene, normalized: Cylinder): { side: number; ra
   return lengthsOf;
 }
 
+/**
+ * The cylinder's faces agree with its measurements (code review CR-002): the top ellipse's `rx` is
+ * the radius at full length, so `rx × ISO_SCALE` is the radius drawn along a projected axis, in the
+ * measurements' ratio to the side line; both base arcs have the top's radii; and the base's centre
+ * line lies one side-line length below the top's centre. Compared here, never used to recover a
+ * length for the ratios above (GSS TICKET-001 CR-003).
+ */
+function expectFacesAgree(scene: Scene, normalized: Cylinder, side: number): void {
+  const top = scene.nodes.find((node) => node.kind === "ellipse")!;
+  const [rx, ry, cy] = [Number(attr(top, "rx")), Number(attr(top, "ry")), Number(attr(top, "cy"))];
+  const expectedRx = (side / ISO_SCALE) * (normalized.radius / normalized.height);
+  expect(Math.abs((rx * ISO_SCALE) / side - normalized.radius / normalized.height) / (normalized.radius / normalized.height)).toBeLessThan(0.01);
+  expect(Math.abs(rx - expectedRx)).toBeLessThan(Math.max(0.01 * expectedRx, 0.02));
+  const arcs = scene.nodes.filter((node) => node.kind === "path");
+  expect(arcs.length).toBeGreaterThan(0);
+  for (const arc of arcs) {
+    // "M x y A rx ry 0 0 1 x y"
+    const numbers = String(attr(arc, "d")).match(/-?[\d.]+(?:e-?\d+)?/g)!.map(Number);
+    expect(numbers[2]).toBeCloseTo(rx, 1);
+    expect(numbers[3]).toBeCloseTo(ry, 1);
+    expect(Math.abs(numbers[1]! - cy - side)).toBeLessThan(0.05);
+  }
+}
+
 describe("cylinder proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
   const check = (description: Record<string, unknown>, proportions = true) => {
     const { scene, normalized } = drawn<Cylinder>(description);
@@ -283,6 +309,7 @@ describe("cylinder proportions (GSS-REQ-030, GSS-REQ-031, GSS-NFR-001)", () => {
       }
       expect(lengths.length).toBeGreaterThan(1);
       expect(ratioMiss(lengths, measured, names), JSON.stringify(description)).toBeUndefined();
+      expectFacesAgree(scene, normalized, drawnLengths.side);
     }
     expectFits(scene);
   };

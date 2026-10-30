@@ -9,7 +9,7 @@ Defines how the system draws the five geometric figures of this change — circl
 **Parent PRD:** Curricular Graph Generator
 **Requirement prefix:** GSS
 **Status:** Approved
-**Approved by:** Product Owner — Thomas, 2026-10-04
+**Approved by:** Product Owner — Thomas Eaves, 2026-10-29
 **Related Capabilities:** Graph Specification & Vocabulary (description, validation GSV-REQ-016..026, derived values GSV-REQ-035..039, presentation GSV-REQ-040..045); Component Packaging & Source Export (delivers these figures as components and exported source)
 
 ## Functional Requirements
@@ -70,7 +70,7 @@ Defines how the system draws the five geometric figures of this change — circl
 
 ## Non-Functional Requirements
 
-- **GSS-NFR-001** *(must · change: graph-library)*: For every figure, each ratio between two drawn lengths is within 1% of the ratio between the corresponding measurements — **verified by:** a geometry test that renders a fixture set of every figure type and measures the rendered coordinates
+- **GSS-NFR-001** *(must · change: graph-library)* *(amended 2026-10-29 by graph-library)*: For every figure, each ratio between two drawn lengths is within 1% of the ratio between the corresponding measurements; a drawn length shorter than a few steps of the 0.01-unit grid Scene coordinates are rounded to (such as the short side of a 0.02° triangle, about 0.03 units) is held to 1% plus the grid's largest error, 0.0142 units — **verified by:** a geometry test that renders a fixture set of every figure type and measures the rendered coordinates, with generated triangles kept to a shortest side of at least 1/30 of the longest and generated cylinders to at most 30 : 1, and thinner and more extreme figures as explicit cases
 - **GSS-NFR-002** *(must · change: graph-library)*: Derived triangle sides and angles reproduce the supplied ones within 10⁻⁹ relative error when recomputed — **verified by:** a property-based round-trip test over at least 1,000 generated valid triangles per determining set
 - **GSS-NFR-003** *(must · change: graph-library)*: No measurement label overlaps another label, and no label overlaps a figure line, for every documented example — **verified by:** a bounding-box overlap test over the rendered examples
 - **GSS-NFR-004** *(must · change: graph-library)*: Every rendered figure carries a non-empty text alternative naming the figure and every shown measurement — **verified by:** a render test over the fixture set of every figure type
@@ -107,7 +107,7 @@ Defines how the system draws the five geometric figures of this change — circl
 | Triangle with angles summing to 180° and no side | Reported as insufficient to determine size |
 | Two sides and non-included angle with exactly one solution (right triangle or obtuse angle) | Drawn; not reported as ambiguous |
 | Two sides and non-included angle with no solution | Reported as a contradiction |
-| Triangle angle of 0° or ≥ 180° | Reported as out of range |
+| Triangle angle below 0.02° or ≥ 180° *(amended 2026-10-29 by graph-library)* | A supplied angle is reported as out of range; a triangle whose derived angles include one below 0.02° is reported as not forming a triangle (too thin to draw) |
 | Very thin triangle (for example, sides 1, 100, 100.5) | Drawn to scale; labels must still not overlap (GSS-NFR-003) |
 | Cylinder far taller than it is wide (or the reverse) | Drawn to scale within the drawing area |
 | Circle given radius 5 and circumference 31.4 | Accepted (within tolerance); circumference label shows 31.4 as supplied |

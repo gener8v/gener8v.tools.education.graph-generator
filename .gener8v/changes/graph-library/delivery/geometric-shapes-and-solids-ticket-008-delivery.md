@@ -135,4 +135,12 @@ No source code was added, so no `@spec` comments; the coverage table names the v
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-008-code-review/CR-001..CR-004 (CR-003 = quality QR-003, CR-004 = quality QR-005)
+
+**Change:**
+- CR-001: specification amended — GSS-NFR-001 (sub-grid lengths; generated domains) and the triangle angle Edge Case (0.02° floor); re-approved by the Product Owner, 2026-10-29.
+- CR-002: the cylinder's top ellipse and base arcs are checked against its radius and height (`expectFacesAgree`).
+- CR-003: the cube's vacuous assertion replaced by every edge within 1% of `DRAWN_EDGE`.
+- CR-004: one literal text alternative per figure.
+**Files:** `.gener8v/specifications/geometric-shapes-and-solids.md`, `.gener8v/changes/graph-library/change.md`, `tests/layout/gss-proportions.test.ts`, `tests/react/gss-text-alternatives.test.tsx`
+**Re-verification:** full verification loop — all exit 0; vitest ×3, 2,201 passed each; each new assertion mutation-checked (ellipse 5% wide, edges 5% long, a reworded sentence); gener8v-state lint 0 errors.
