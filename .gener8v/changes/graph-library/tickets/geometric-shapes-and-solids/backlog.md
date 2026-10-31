@@ -9,6 +9,8 @@ Eight tickets cover every requirement and NFR the `graph-library` change adds fo
 **Specification:** Geometric Shapes & Solids Specification · **Constraints Analysis:** Curricular Graph Generator — Constraints Analysis (prd) · **Dependency Map:** Curricular Graph Generator — Dependency Map · **Technical Design:** Curricular Graph Generator — Technical Design (system-design)
 **Change brief:** changes/graph-library/change.md (Priority Cut applied)
 
+**Added 2026-10-31:** TICKET-009 removes the one cross-engine residual accepted under AD-007 in graph-library/component-packaging-and-source-export-ticket-004-code-review/CR-002: a three-sides triangle's third vertex is placed from the sides, not with trigonometry (amends TR-008).
+
 ## Ticket Dependency Chain
 
 ```
@@ -41,8 +43,9 @@ Cross-area: all tickets wait on component-packaging-and-source-export TICKET-001
 | TICKET-006 | Cube graph type | Must | Medium | TICKET-001, TICKET-002 | Blocked |
 | TICKET-007 | Cylinder graph type | Must | Medium | TICKET-001, TICKET-002 | Blocked |
 | TICKET-008 | Proportion, label-overlap and text-alternative checks across figures | Must | Small | TICKET-003, TICKET-005, TICKET-006, TICKET-007 | Blocked |
+| TICKET-009 | Build a three-sides triangle's third vertex without trigonometry | Must | Small | TICKET-004, TICKET-005 | Ready |
 
-**Total Tickets:** 8
+**Total Tickets:** 9
 **Ready to Start:** 3 (in-area; all wait on cross-area foundation tickets first)
 
 *Status here is as of this breakdown. Live status (delivered, reviewed, done) is derived from delivery records and reviews into `.gener8v/pipeline-state.yaml`; this table is not updated as tickets progress.*

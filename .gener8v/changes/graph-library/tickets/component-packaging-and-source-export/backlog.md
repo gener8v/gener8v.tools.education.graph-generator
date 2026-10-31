@@ -9,6 +9,8 @@ Nine tickets covering all 46 CPSE requirements and 8 NFRs added by the `graph-li
 **Specification:** Component Packaging & Source Export Specification · **Constraints Analysis:** Curricular Graph Generator — Constraints Analysis (constraints/prd.md) · **Dependency Map:** Curricular Graph Generator — Dependency Map · **Technical Design:** Curricular Graph Generator — Technical Design (system-design.md)
 **Change brief:** changes/graph-library/change.md (Priority Cut applied)
 
+**Added 2026-10-31:** TICKET-010 makes the benchmarks, wall-clock assertions and coverage counters deterministic on CI (CI on `main` failed 8 of 10 pushes on them, never on a wrong result; found under CPSE TICKET-004 code review CR-001). It verifies NLC-NFR-004, NLC-NFR-008 and GSV-NFR-001 through the shared benchmark helper and keeps their limits. Deliver it before further tickets so a red `main` means a regression.
+
 ## Ticket Dependency Chain
 
 ```
@@ -46,8 +48,9 @@ Cross-area: GSV TICKET-003/004 (validator) → TICKET-003, TICKET-007
 | TICKET-007 | Provide the model tool definition and the never-throwing tool handler | Must | Medium | TICKET-001 | Blocked |
 | TICKET-008 | Publish the documentation site with a working example of every graph type | Must | Medium | TICKET-003 | Blocked |
 | TICKET-009 | Set up the release pipeline with provenance and the versioning policy | Must | Small | TICKET-001 | Blocked |
+| TICKET-010 | Make the time-dependent checks deterministic on CI | Must | Medium | TICKET-004 | Ready |
 
-**Total Tickets:** 9
+**Total Tickets:** 10
 **Ready to Start:** 1
 
 *Status here is as of this breakdown. Live status (delivered, reviewed, done) is derived from delivery records and reviews into `.gener8v/pipeline-state.yaml`; this table is not updated as tickets progress.*
