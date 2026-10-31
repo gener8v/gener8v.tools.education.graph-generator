@@ -269,11 +269,9 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       const code = await consumerBundle(`export * from "./dist/${built}.js";`);
       for (const text of ["A coordinate graph", "To fit, one y unit"]) expect(code, `${built}: ${text}`).not.toContain(text);
     }
-    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
-    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
     const code = await consumerBundle(`export * from "./dist/xy-graph.js";`);
     expect(code).toContain("A coordinate graph");
-    for (const other of ["A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A red apple"]) expect(code, other).not.toContain(other);
+    for (const other of ["A circle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A red apple"]) expect(code, other).not.toContain(other);
   });
 
   it("leaves every other type out of the x,y,z graph's entry and component, and the x,y,z graph out of theirs (graph-library NLC TICKET-004)", async () => {
@@ -303,11 +301,9 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       const code = await consumerBundle(`export * from "./dist/${built}.js";`);
       for (const text of ["A three-dimensional coordinate graph", "so one unit is not drawn the same length"]) expect(code, `${built}: ${text}`).not.toContain(text);
     }
-    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
-    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
     const code = await consumerBundle(`export * from "./dist/xyz-graph.js";`);
     expect(code).toContain("A three-dimensional coordinate graph");
-    for (const other of ["A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+    for (const other of ["A circle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
   });
 
   it("leaves every other type out of the square's entry and component, and the square out of theirs (graph-library GSS TICKET-003)", async () => {
@@ -337,11 +333,9 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       const code = await consumerBundle(`export * from "./dist/${built}.js";`);
       expect(code, built).not.toContain("A square");
     }
-    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
-    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
     const code = await consumerBundle(`export * from "./dist/square.js";`);
     expect(code).toContain("A square");
-    for (const other of ["A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+    for (const other of ["A circle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
   });
 
   it("leaves every other type out of the triangle's entry and component, and the triangle out of theirs (graph-library GSS TICKET-005)", async () => {
@@ -373,11 +367,9 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       const code = await consumerBundle(`export * from "./dist/${built}.js";`);
       expect(code, built).not.toContain("A triangle");
     }
-    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
-    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
     const code = await consumerBundle(`export * from "./dist/triangle.js";`);
     expect(code).toContain("A triangle");
-    for (const other of ["A square", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+    for (const other of ["A circle", "A square", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
   });
 
   it("leaves every other type out of the cube's entry and component, and the cube out of theirs (graph-library GSS TICKET-006)", async () => {
@@ -410,11 +402,9 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       const code = await consumerBundle(`export * from "./dist/${built}.js";`);
       expect(code, built).not.toContain("A cube");
     }
-    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
-    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
     const code = await consumerBundle(`export * from "./dist/cube.js";`);
     expect(code).toContain("A cube");
-    for (const other of ["A square", "A triangle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+    for (const other of ["A circle", "A square", "A triangle", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
   });
 
   it("leaves every other type out of the cylinder's entry and component, and the cylinder out of theirs (graph-library GSS TICKET-007)", async () => {
@@ -448,11 +438,20 @@ describe("per-type components bundle only their own type (AD-001, CPSE-REQ-004)"
       const code = await consumerBundle(`export * from "./dist/${built}.js";`);
       expect(code, built).not.toContain("A cylinder");
     }
-    // "A circle" is left unasserted: the circle's definition is a plain object a bundler cannot drop,
-    // so it reaches every built per-type entry (a known problem, recorded in the delivery record).
     const code = await consumerBundle(`export * from "./dist/cylinder.js";`);
     expect(code).toContain("A cylinder");
-    for (const other of ["A square", "A triangle", "A cube", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+    for (const other of ["A circle", "A square", "A triangle", "A cube", "A pictograph", "A line graph", "A bar graph", "A ruler", "A number line", "A coordinate graph", "A three-dimensional coordinate graph", "A red apple"]) expect(code, other).not.toContain(other);
+  });
+
+  // @spec CPSE-NFR-002
+  it("leaves the circle out of a consumer's bundle of every other built entry (CPSE TICKET-004; ready-tickets reconciliation)", async () => {
+    // The circle's definition is built by a side-effect-free factory, as every other type's is, so
+    // a consumer's bundler drops it from every entry that never reads it, and each `./<type>`
+    // size-limit figure leaves it out (CPSE-NFR-002).
+    expect(await consumerBundle(`export * from "./dist/circle.js";`)).toContain("A circle");
+    for (const built of ["pictograph", "line-graph", "bar-graph", "ruler", "number-line", "xy-graph", "xyz-graph", "square", "triangle", "cube", "cylinder"]) {
+      expect(await consumerBundle(`export * from "./dist/${built}.js";`), built).not.toContain("A circle");
+    }
   });
 
   it("keeps every type's layout and definition in the entry component's bundle", async () => {

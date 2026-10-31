@@ -97,3 +97,79 @@ jobs:
 
       - name: Changesets carry a changelog category
         run: pnpm check:changesets
+
+  # CPSE-NFR-005 and TR-002: every example hydrates in Chromium and WebKit with no warning, and
+  # Node.js, Chromium and WebKit render the examples and generated descriptions to the same markup
+  # (graph-library CPSE TICKET-004).
+  e2e:
+    name: Browsers · React ${{ matrix.react }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        react: [19, 18]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The version matches package.json `packageManager`.
+      - name: Install pnpm
+        run: npm install --global pnpm@10.28.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Use React 18
+        if: matrix.react == 18
+        run: pnpm add --save-dev --save-exact react@18.3.1 react-dom@18.3.1 @types/react@18.3.31 @types/react-dom@18.3.7
+
+      - name: Install Chromium and WebKit
+        run: pnpm exec playwright install --with-deps chromium webkit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Hydration and cross-engine markup (CPSE-NFR-005, TR-002)
+        run: pnpm test:e2e
+
+  # CPSE-NFR-003: the packed package installs into fresh React 18 and React 19 projects and renders
+  # every example (graph-library CPSE TICKET-004).
+  smoke:
+    name: Install smoke · Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The version matches package.json `packageManager`.
+      - name: Install pnpm
+        run: npm install --global pnpm@10.28.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Pack, install and render in React 18 and React 19 projects (CPSE-NFR-003)
+        run: pnpm test:smoke
+        env:
+          GRAPH_GENERATOR_PREBUILT: "1"

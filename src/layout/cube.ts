@@ -109,12 +109,20 @@ const FRONT_CORNER_EDGES: ReadonlyArray<readonly [Corner, Corner]> = [
  * edges either side (GSS TICKET-001 CR-004), which are obstacles when drawn.
  */
 
+/**
+ * How far below zero the side test must be before a normal is flipped. An edge from the hexagon's
+ * centre (the front corner's three) has its middle in line with the centre, so the test is zero
+ * up to rounding, and engines differ in the last bit of `Math.hypot`: such an edge keeps its
+ * first normal in every engine instead of one chosen by rounding noise (CPSE TICKET-004, TR-002).
+ */
+const SIDE_TOLERANCE = 1e-6;
+
 /** The unit normals of the segment `p`–`q`, the one pointing away from `center` first. */
 function normalsOf(p: Vec, q: Vec, center: Vec): [Vec, Vec] {
   const along = sub(q, p);
   const n = Math.hypot(along[0], along[1]);
   let normal: Vec = [-along[1] / n, along[0] / n];
-  if (dot(normal, sub(add(p, times(along, 0.5)), center)) < 0) normal = times(normal, -1);
+  if (dot(normal, sub(add(p, times(along, 0.5)), center)) < -SIDE_TOLERANCE) normal = times(normal, -1);
   return [normal, times(normal, -1)];
 }
 

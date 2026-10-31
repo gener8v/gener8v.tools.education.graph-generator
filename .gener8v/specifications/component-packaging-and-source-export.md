@@ -195,3 +195,6 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-007 | `src/react/graphs/RulerGraph.tsx`:RulerGraph (rulers/number-lines-and-coordinate-graphs/TICKET-003) |
 | CPSE-REQ-004 | `src/entries/number-line.ts` (the `./number-line` entry; graph-library/number-lines-and-coordinate-graphs/TICKET-002) |
 | CPSE-REQ-007 | `src/react/graphs/NumberLineGraph.tsx`:NumberLineGraph (graph-library/number-lines-and-coordinate-graphs/TICKET-002) |
+| CPSE-NFR-002 | `.size-limit.json` (a budget per entry, `.` with one named import); `tests/package/per-type-bundle.test.ts`:"leaves the circle out of a consumer's bundle of every other built entry"; `src/core/definitions/circle.ts`:circle, defineCircle (graph-library/component-packaging-and-source-export/TICKET-004) |
+| CPSE-NFR-003 | `tests/smoke/run.ts`; `tests/smoke/render.mjs`; `tests/smoke/react18/package.json`; `tests/smoke/react19/package.json`; `.github/workflows/ci.yml`:smoke (graph-library/component-packaging-and-source-export/TICKET-004) |
+| CPSE-NFR-005 | `tests/e2e/hydration.spec.ts`; `tests/e2e/cross-engine.spec.ts`; `playwright.config.ts`; `.github/workflows/ci.yml`:e2e; `src/layout/cube.ts`:normalsOf, SIDE_TOLERANCE (graph-library/component-packaging-and-source-export/TICKET-004) |

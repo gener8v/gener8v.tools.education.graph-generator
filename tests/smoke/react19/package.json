@@ -1,0 +1,10 @@
+{
+  "name": "graph-generator-smoke-react19",
+  "private": true,
+  "type": "module",
+  "description": "A fresh React 19 project the smoke check installs the packed package into (tests/smoke/run.ts).",
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

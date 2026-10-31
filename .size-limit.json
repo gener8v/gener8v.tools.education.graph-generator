@@ -6,6 +6,13 @@
     "gzip": true
   },
   {
+    "name": ". importing only { CircleGraph }",
+    "path": "dist/index.js",
+    "import": "{ CircleGraph }",
+    "limit": "25 kB",
+    "gzip": true
+  },
+  {
     "name": "./core",
     "path": "dist/core/index.js",
     "limit": "40 kB",

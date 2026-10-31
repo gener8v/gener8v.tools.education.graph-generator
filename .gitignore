@@ -5,3 +5,5 @@ coverage/
 .DS_Store
 *.log
 storybook-static/
+test-results/
+playwright-report/

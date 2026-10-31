@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Cube } from "../../src/core/definitions/cube";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { validate } from "../../src/core/index";
@@ -291,4 +291,29 @@ describe("cube Scene (prd/TC-002, prd/TC-003 / AD-008, prd/CC-002)", () => {
     const example: unknown = JSON.parse(readFileSync("examples/cube.json", "utf8"));
     expect(sceneOf(example)).toEqual(sceneOf(example));
   });
+});
+
+describe("cube Scene in every engine (CPSE TICKET-004, TR-002)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** `Math.hypot`, its result moved by `steps` units in the last place, as another engine may compute it. */
+  function hypotOff(steps: number): void {
+    const hypot = Math.hypot.bind(Math);
+    vi.spyOn(Math, "hypot").mockImplementation((...values: number[]) => {
+      const exact = hypot(...values);
+      return exact + steps * exact * Number.EPSILON;
+    });
+  }
+
+  for (const labelEdges of ["one", "three"] as const) {
+    it(`keeps every label in place when Math.hypot differs in its last bit, labeling ${labelEdges} edge(s)`, () => {
+      const description = { type: "cube", edgeLength: 4, unit: "cm", labelEdges };
+      const exact = sceneOf(description);
+      for (const steps of [-1, 1]) {
+        hypotOff(steps);
+        expect(sceneOf(description), `${steps} in the last place`).toEqual(exact);
+        vi.restoreAllMocks();
+      }
+    });
+  }
 });
