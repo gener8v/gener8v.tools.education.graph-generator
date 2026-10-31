@@ -28,15 +28,41 @@ const TEMPLATES = ["react18", "react19"] as const;
  */
 const PUBLISHED_EXPORTS: readonly string[] = [".", "./core", "./tool", "./export", ...GRAPH_TYPES.map((type) => `./${type}`), "./schema.json", "./vocabulary.json", "./package.json"];
 
-const run = (command: string, args: readonly string[], cwd: string) => execFileSync(command, args, { cwd, stdio: "inherit" });
+/** How long one registry install may take before it counts as failed (quality review QR-003). */
+const INSTALL_TIMEOUT_MS = 120_000;
+
+const run = (command: string, args: readonly string[], cwd: string, timeout?: number) => execFileSync(command, args, { cwd, stdio: "inherit", timeout });
+const messageOf = (error: unknown) => (error instanceof Error ? error.message.split("\n")[0] : String(error));
+
+/** Installs from the registry, once more if the first attempt fails, so a passing registry hiccup is not a packaging fault. */
+function install(args: readonly string[], cwd: string): void {
+  try {
+    run("npm", args, cwd, INSTALL_TIMEOUT_MS);
+  } catch (error) {
+    console.warn(`npm install failed (${messageOf(error)}); trying once more`);
+    run("npm", args, cwd, INSTALL_TIMEOUT_MS);
+  }
+}
 
 function main(): number {
-  if (process.env.GRAPH_GENERATOR_PREBUILT !== "1" || !existsSync(join(root, "dist", "index.js"))) run("pnpm", ["build"], root);
+  if (process.env.GRAPH_GENERATOR_PREBUILT !== "1" || !existsSync(join(root, "dist", "index.js"))) {
+    try {
+      run("pnpm", ["build"], root);
+    } catch (error) {
+      console.error(`\nSmoke check failed: pnpm build failed (${messageOf(error)})`);
+      return 1;
+    }
+  }
 
   const work = mkdtempSync(join(tmpdir(), "graph-generator-smoke-"));
   const failures: string[] = [];
   try {
-    run("pnpm", ["pack", "--pack-destination", work], root);
+    try {
+      run("pnpm", ["pack", "--pack-destination", work], root);
+    } catch (error) {
+      console.error(`\nSmoke check failed: pnpm pack failed (${messageOf(error)})`);
+      return 1;
+    }
     const tarballs = readdirSync(work).filter((file) => file.endsWith(".tgz"));
     if (tarballs.length !== 1) throw new Error(`pnpm pack made ${tarballs.length} tarballs in ${work}`);
     const tarball = join(work, tarballs[0]!);
@@ -48,15 +74,15 @@ function main(): number {
       console.log(`\n${template}: installing ${tarballs[0]} into a fresh project`);
       try {
         // No install scripts: the package has none, and React's need none.
-        run("npm", ["install", "--no-audit", "--no-fund", "--ignore-scripts", "--package-lock=false", tarball], project);
-      } catch {
-        failures.push(`${template}: npm install failed`);
+        install(["install", "--no-audit", "--no-fund", "--ignore-scripts", "--package-lock=false", tarball], project);
+      } catch (error) {
+        failures.push(`${template}: npm install failed twice (${messageOf(error)})`);
         continue;
       }
       try {
         run(process.execPath, ["render.mjs", join(root, "examples"), JSON.stringify(PUBLISHED_EXPORTS)], project);
-      } catch {
-        failures.push(`${template}: rendering the examples failed (see above)`);
+      } catch (error) {
+        failures.push(`${template}: rendering the examples failed (${messageOf(error)}; see above)`);
       }
     }
   } finally {

@@ -43,6 +43,18 @@ pnpm check:images     # every pictograph image has an allowed, recorded license 
 pnpm check:changesets # changesets carry a changelog category
 ```
 
+Browser and install checks that CI runs in their own jobs:
+
+```sh
+pnpm exec playwright install chromium webkit   # once: the browsers the browser checks use
+pnpm test:e2e         # every example hydrates in Chromium and WebKit, and Node.js, Chromium and
+                      # WebKit render the examples and generated descriptions to the same markup
+pnpm test:smoke       # packs the package, installs it into fresh React 18 and React 19 projects
+                      # from the npm registry, and renders every example
+```
+
+`pnpm test:smoke` builds first; set `GRAPH_GENERATOR_PREBUILT=1` to use an existing `dist/` instead.
+
 ## Code rules the linter enforces
 
 - Code under `src/core`, `src/tool`, `src/export`, `src/layout` and `src/images` must not import React or

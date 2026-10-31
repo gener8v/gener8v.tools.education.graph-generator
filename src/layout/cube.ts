@@ -106,6 +106,8 @@ const FRONT_CORNER_EDGES: ReadonlyArray<readonly [Corner, Corner]> = [
  * centre (the front corner's three) has its middle in line with the centre, so the test is zero
  * up to rounding, and engines differ in the last bit of `Math.hypot`: such an edge keeps its
  * first normal in every engine instead of one chosen by rounding noise (CPSE TICKET-004, TR-002).
+ * In drawing units: it assumes the cube's fixed drawn size, where a real side test is tens of units
+ * (CPSE TICKET-004 quality review QR-005).
  */
 const SIDE_TOLERANCE = 1e-6;
 

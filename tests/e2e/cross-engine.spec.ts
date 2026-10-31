@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { GRAPH_TYPES } from "../../src/core/definitions/types";
 import { Graph } from "../../src/index";
-import { ONE_CLUSTER_TEXTS_AT_LIMIT, sampleDescriptions, textsOf } from "../fixtures/descriptions";
+import { CROSS_ENGINE_SAMPLE, ONE_CLUSTER_TEXTS_AT_LIMIT, sampleDescriptions, textsOf } from "../fixtures/descriptions";
 import type { RenderAllResult } from "./page-api";
 import { firstDifference, loadExamples, preparePage } from "./bundle";
 
@@ -19,8 +19,7 @@ import { firstDifference, loadExamples, preparePage } from "./bundle";
 // (TR-002 mitigation); never loosen this comparison.
 
 /** How many generated descriptions each engine renders, from `SEED`. */
-const GENERATED = 240;
-const SEED = 20261030;
+const { count: GENERATED, seed: SEED } = CROSS_ENGINE_SAMPLE;
 
 interface Case {
   name: string;
@@ -28,7 +27,7 @@ interface Case {
 }
 
 /** Each description's mismatches between Node's markup and an engine's, as readable lines. */
-async function mismatches(page: import("@playwright/test").Page, cases: readonly Case[]): Promise<string[]> {
+async function mismatches(page: Page, cases: readonly Case[]): Promise<string[]> {
   const nodeMarkup = cases.map(({ description }) => renderToStaticMarkup(createElement(Graph, { description })));
   // Every case is drawn: a valid description gives an <svg>, not the placeholder.
   for (const [i, markup] of nodeMarkup.entries()) expect(markup, cases[i]!.name).toMatch(/^<svg /);

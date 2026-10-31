@@ -232,6 +232,9 @@ export const DESCRIPTION_ARBS: Readonly<Record<GraphType, fc.Arbitrary<Record<st
 /** A valid description of any graph type, each type equally likely. */
 export const descriptionArb: fc.Arbitrary<Record<string, unknown>> = fc.oneof(...GRAPH_TYPES.map((type) => DESCRIPTION_ARBS[type]));
 
+/** The sample the cross-engine check renders in every engine: its size and seed (tests/e2e/cross-engine.spec.ts). */
+export const CROSS_ENGINE_SAMPLE = { count: 240, seed: 20261030 } as const;
+
 /**
  * `count` valid descriptions from a fixed seed, the same on every run. Throws when a graph type in
  * `GRAPH_TYPES` is not reached, so a check that runs over the sample covers every type.
