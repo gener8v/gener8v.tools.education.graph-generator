@@ -6,9 +6,9 @@
     "gzip": true
   },
   {
-    "name": ". importing only { CircleGraph }",
+    "name": ". importing only { XyGraph }, the largest type",
     "path": "dist/index.js",
-    "import": "{ CircleGraph }",
+    "import": "{ XyGraph }",
     "limit": "25 kB",
     "gzip": true
   },

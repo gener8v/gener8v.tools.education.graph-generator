@@ -72,14 +72,14 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
  * measurement with its value and unit or custom text. Built by a function free of side effects, so
  * a bundle that never reads the circle drops it, as the other types' are dropped (CPSE TICKET-004).
  */
-// @spec GSS-REQ-001, GSS-REQ-002, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005, GSS-REQ-006, GSS-REQ-035, GSV-REQ-052, GSV-REQ-053
+// @spec GSS-REQ-001, GSS-REQ-002, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005, GSS-REQ-006, GSS-REQ-035, GSV-REQ-052, GSV-REQ-053, CPSE-NFR-002
 export const circle: GraphTypeDefinition<Circle> = /* @__PURE__ */ defineCircle();
 
 /**
  * Builds the circle definition. A function marked free of side effects, so a bundle that never
  * reads the definition drops it.
  */
-// @spec GSS-REQ-001, GSS-REQ-002, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005, GSS-REQ-006, GSS-REQ-035
+// @spec GSS-REQ-001, GSS-REQ-002, GSS-REQ-003, GSS-REQ-004, GSS-REQ-005, GSS-REQ-006, GSS-REQ-035, CPSE-NFR-002
 /* @__NO_SIDE_EFFECTS__ */
 function defineCircle(): GraphTypeDefinition<Circle> {
   return {

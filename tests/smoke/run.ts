@@ -3,12 +3,15 @@ import { copyFileSync, cpSync, existsSync, mkdtempSync, readdirSync, rmSync } fr
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { GRAPH_TYPES } from "../../src/core/definitions/types";
 
 // CPSE-NFR-003: the packed package installs into a fresh React project and renders every
 // documented example, on each supported React major (graph-library CPSE TICKET-004). Packs the
 // package with `pnpm pack`, copies each template (tests/smoke/react18/, tests/smoke/react19/: a
 // package.json with exact React versions) and tests/smoke/render.mjs into a fresh temporary
-// directory, installs the tarball there with npm from the registry, and runs render.mjs with Node.
+// directory, installs the tarball there with npm from the registry, and runs render.mjs with Node,
+// passing it the entry points the package must publish (`PUBLISHED_EXPORTS`), so an entry dropped
+// from package.json's exports fails here too (CPSE TICKET-004 code review CR-004).
 // Builds first unless GRAPH_GENERATOR_PREBUILT=1 and dist/ exists, as the test setup does.
 // Exits non-zero, naming what failed, when any project fails to install or render.
 // @spec CPSE-NFR-003
@@ -17,6 +20,13 @@ const root = fileURLToPath(new URL("../..", import.meta.url));
 const here = fileURLToPath(new URL(".", import.meta.url));
 /** One fresh project per supported React major. */
 const TEMPLATES = ["react18", "react19"] as const;
+
+/**
+ * The exports map's keys the installed package must have, exactly: the entry component, the core,
+ * tool and export entries, one entry per graph type in `GRAPH_TYPES` (AD-001), and the JSON files.
+ * Fixed here, not read from the package.json under test, so removing an entry fails.
+ */
+const PUBLISHED_EXPORTS: readonly string[] = [".", "./core", "./tool", "./export", ...GRAPH_TYPES.map((type) => `./${type}`), "./schema.json", "./vocabulary.json", "./package.json"];
 
 const run = (command: string, args: readonly string[], cwd: string) => execFileSync(command, args, { cwd, stdio: "inherit" });
 
@@ -44,7 +54,7 @@ function main(): number {
         continue;
       }
       try {
-        run(process.execPath, ["render.mjs", join(root, "examples")], project);
+        run(process.execPath, ["render.mjs", join(root, "examples"), JSON.stringify(PUBLISHED_EXPORTS)], project);
       } catch {
         failures.push(`${template}: rendering the examples failed (see above)`);
       }

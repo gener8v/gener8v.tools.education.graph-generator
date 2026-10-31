@@ -7,6 +7,7 @@ import { DEFAULT_FONT_STACK, textWidth } from "./text";
 import { isTickValue, tickLabel } from "./ticks";
 import { BASELINE } from "./title";
 import { TICK_LABEL_DROP } from "./value-scale";
+import { length as vectorLength } from "./vec";
 
 /**
  * Which side of an axis its tick labels are written on, on the page: `below` or `above` for an axis
@@ -99,14 +100,15 @@ export const drawLine = (x1: number, y1: number, x2: number, y2: number, width: 
  * width (`textWidth`, prd/TC-001). Every number passes through `fmt()` (AD-007). Throws on options
  * no validated axis gives (`checkedLabels`).
  */
-// @spec NLC-REQ-004, NLC-REQ-006, NLC-REQ-007, NLC-REQ-019
+// @spec NLC-REQ-004, NLC-REQ-006, NLC-REQ-007, NLC-REQ-019, CPSE-NFR-005
 export function drawAxis(options: AxisOptions): SceneNode[] {
   const labels = checkedLabels(options);
   const { from, to, domain, ticks, spacing, showTickLabels, side } = options;
   const color = (Object.hasOwn(options, "lineColor") ? options.lineColor : undefined) ?? defaultStyle.colors.line;
   const [x0, y0] = from;
   const [x1, y1] = to;
-  const length = Math.hypot(x1 - x0, y1 - y0);
+  // Exact on a horizontal or vertical axis, in every engine: a tick's end can sit on a rounding boundary (CPSE TICKET-004 code review CR-002).
+  const length = vectorLength([x1 - x0, y1 - y0]);
   // The unit normal: ticks run along it, half on each side of the line.
   const [nx, ny] = length > 0 ? [-(y1 - y0) / length, (x1 - x0) / length] : [0, 1];
   const half = defaultStyle.tickLength / 2;

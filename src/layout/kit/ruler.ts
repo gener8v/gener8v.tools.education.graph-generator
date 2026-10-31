@@ -7,6 +7,7 @@ import { linearScale } from "./scale";
 import { DEFAULT_FONT_STACK, textWidth } from "./text";
 import { LINE_HEIGHT } from "./title";
 import { TICK_LABEL_DROP } from "./value-scale";
+import { length as vectorLength, sub } from "./vec";
 
 /**
  * Each rank's mark length, in drawing units, longest first (NLC-REQ-045, NLC-REQ-048): on a
@@ -79,6 +80,7 @@ interface CheckedOptions {
  * failure is a layout bug, so it throws `RangeError`, which `createGraph` turns into the fixed
  * `internal_error` rather than a wrong ruler (quality review QR-008).
  */
+// @spec CPSE-NFR-005
 function checkedOptions(options: RulerMarksOptions): CheckedOptions {
   const refuse = (problem: string) => new RangeError(`drawRulerMarks(): ${problem}`);
   const { side, unit, length } = options;
@@ -88,7 +90,8 @@ function checkedOptions(options: RulerMarksOptions): CheckedOptions {
   const from = pointOf(options.from);
   const to = pointOf(options.to);
   if (from === undefined || to === undefined) throw refuse(`from and to must each be two finite numbers within ±${maxCoordinate()}`);
-  const edge = Math.hypot(to[0] - from[0], to[1] - from[1]);
+  // Exact on a horizontal edge, in every engine: a mark's width can sit on a rounding boundary (CPSE TICKET-004 code review CR-002).
+  const edge = vectorLength(sub(to, from));
   if (!(edge > 0)) throw refuse("from and to must be different points");
   if (side !== "left" && side !== "right") throw refuse(`side must be "left" or "right", got ${describeValue(side)}`);
   checkFontSize(fontSize, refuse);

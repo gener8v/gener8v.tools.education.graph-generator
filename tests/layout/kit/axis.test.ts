@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultStyle } from "../../../src/core/style";
 import { type AxisOptions, type AxisSide, drawAxis } from "../../../src/layout/kit/axis";
 import { checkScene } from "../../../src/layout/kit/check";
@@ -7,6 +7,7 @@ import { fmt } from "../../../src/layout/kit/format";
 import { linearScale } from "../../../src/layout/kit/scale";
 import { niceTicks } from "../../../src/layout/kit/ticks";
 import type { SceneNode } from "../../../src/layout/scene";
+import { mathOff } from "../../fixtures/engine-math";
 import { attr, boundsOf } from "../../fixtures/scene-geometry";
 
 const num = (node: SceneNode, name: string) => Number(attr(node, name));
@@ -193,5 +194,21 @@ describe("the axis's line color (graph-library NLC TICKET-002 DEL-001)", () => {
     expect(drawAxis(axisOf([20, 100], [380, 100], -10, 10, { lineColor: undefined }))).toEqual(plain);
     const inherited = Object.assign(Object.create({ lineColor: "#c62828" }) as AxisOptions, axisOf([20, 100], [380, 100], -10, 10));
     expect(drawAxis(inherited)).toEqual(plain);
+  });
+});
+
+describe("ticks in every engine (CPSE TICKET-004 code review CR-002, TR-002)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("keeps tick ends on a rounding boundary whatever the last bit of Math.hypot, on a horizontal and a vertical axis", () => {
+    // A tick reaches 3 units each side of an axis at 62.915: its ends sit on rounding boundaries.
+    for (const options of [axisOf([70.21, 62.915], [379.5, 62.915], 110, 420), axisOf([62.915, 300], [62.915, 20], 110, 420, { side: "left" })]) {
+      const exact = drawAxis(options);
+      for (const steps of [-3, -1, 1, 3]) {
+        mathOff(steps, ["hypot"]);
+        expect(drawAxis(options), `${steps} in the last place`).toEqual(exact);
+        vi.restoreAllMocks();
+      }
+    }
   });
 });

@@ -171,4 +171,14 @@ Run in the main session on 2026-10-30, after the code was written.
 
 ## Post-Review Amendments
 
-None
+### graph-library/component-packaging-and-source-export-ticket-004-code-review/CR-002, CR-003, CR-004, CR-006, CR-007 (CR-001 and CR-005 accepted)
+
+**Change:**
+- CR-002 (TR-002): layouts no longer let the last bit of an engine's `Math` decide their output. `length()` measures horizontal and vertical vectors exactly (ruler edge, axes, cube normals); `placeLabels` bounds take a 1e-6 tolerance; a triangle arc's piece count a 1e-9 tolerance. New property test `tests/layout/engine-math.test.ts` renders 3,000 generated descriptions of every type with the 22 approximated `Math` functions ±1 ulp; focused regression tests per fix. Node output changes for some triangles (30 of 87,000 sampled; patch changeset `.changeset/triangle-labels-and-arcs-same-in-every-engine.md`). Residual accepted under AD-007 and pinned by a test: a three-sides triangle vertex exactly on a rounding boundary (sides 18, 19.98, 14.13), about 1 in 25,000; algebraic construction is a follow-up ticket (TR-008).
+- CR-003: `@spec CPSE-NFR-002` on the circle definition; `@spec CPSE-NFR-005` on each stabilized function.
+- CR-004: the smoke check requires the installed `exports` to match a fixed published list.
+- CR-006: the named-import budget uses `XyGraph`, the largest type.
+- CR-007: the cube's detached comment moved to its call site; the cube regression test widened.
+- CR-001: CI jobs checked after the push (recorded below when run). CR-005: browser checks stay on `src/`; `dist/` is covered by the smoke check.
+**Files:** `src/layout/kit/vec.ts`, `src/layout/kit/ruler.ts`, `src/layout/kit/axis.ts`, `src/layout/kit/figure-labels.ts`, `src/layout/triangle.ts`, `src/layout/cube.ts`, `src/core/definitions/circle.ts`, `tests/layout/engine-math.test.ts`, `tests/fixtures/engine-math.ts`, `tests/layout/kit/vec.test.ts`, `tests/layout/kit/{axis,figure-labels,ruler}.test.ts`, `tests/layout/{cube,triangle}.test.ts`, `tests/smoke/run.ts`, `tests/smoke/render.mjs`, `.size-limit.json`, `tests/package/entries.test.ts`, `.changeset/triangle-labels-and-arcs-same-in-every-engine.md`
+**Re-verification:** full verification loop — all exit 0 except `pnpm audit` (the `minimatch` advisory through `eslint`, security review SEC-002); vitest ×3, 2,328 passed each; `pnpm test:e2e` 36 passed; `pnpm test:smoke` passed on React 18 and 19; `pnpm size` 17 budgets pass. Mutants (each restored): every stabilizing fix reverted → its focused test and the property test fail; `./core` removed from `exports` → smoke fails. gener8v-state lint 0 errors.

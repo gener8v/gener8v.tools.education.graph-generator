@@ -24,6 +24,13 @@ const CENTER_X = SCENE_WIDTH / 2;
 const RADIANS = Math.PI / 180;
 /** An arc is drawn as straight pieces of at most this angle. */
 const ARC_STEP = Math.PI / 12;
+/**
+ * How far past a whole number of `ARC_STEP`s an angle may be and still take that many pieces. An
+ * angle of 15°, 30°, 45° and so on is a whole number of steps, and the last bit of `Math.atan2`,
+ * which engines compute differently, decided whether it took one piece more (CPSE TICKET-004 code
+ * review CR-002, TR-002).
+ */
+const PIECE_TOLERANCE = 1e-9;
 
 type Index = 0 | 1 | 2;
 /**
@@ -115,12 +122,13 @@ function cornerGeometry(v: readonly [Vec, Vec, Vec], centroid: Vec, i: Index): C
 }
 
 /** An arc of `radius` around `vertex` from the direction `u1` to `u2`, the short way, in pieces of at most `ARC_STEP`. */
+// @spec CPSE-NFR-005
 function arcPoints(vertex: Vec, u1: Vec, u2: Vec, radius: number): Vec[] {
   const from = Math.atan2(u1[1], u1[0]);
   let sweep = Math.atan2(u2[1], u2[0]) - from;
   if (sweep > Math.PI) sweep -= 2 * Math.PI;
   if (sweep <= -Math.PI) sweep += 2 * Math.PI;
-  const pieces = Math.max(1, Math.ceil(Math.abs(sweep) / ARC_STEP));
+  const pieces = Math.max(1, Math.ceil(Math.abs(sweep) / ARC_STEP - PIECE_TOLERANCE));
   const arc: Vec[] = [];
   for (let k = 0; k <= pieces; k++) {
     const angle = from + (sweep * k) / pieces;

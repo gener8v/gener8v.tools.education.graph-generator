@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { type Triangle, triangle } from "../../src/core/definitions/triangle";
 import { validate } from "../../src/core/index";
@@ -13,6 +13,7 @@ import { textWidth } from "../../src/layout/kit/text";
 import { LINE_HEIGHT, TITLE_MAX_LINES } from "../../src/layout/kit/title";
 import type { Scene, SceneNode } from "../../src/layout/scene";
 import { ARC_RADIUS, FIGURE_HEIGHT, FIGURE_WIDTH, RIGHT_ANGLE_MARK, triangleLayout } from "../../src/layout/triangle";
+import { mathOff } from "../fixtures/engine-math";
 import { oneClusterTexts, wordsOf } from "../fixtures/plain-text";
 
 const LABEL_SIZE = 14;
@@ -439,5 +440,51 @@ describe("triangle Scene (prd/TC-002, prd/TC-003 / AD-008, prd/CC-002)", () => {
     const description: unknown = JSON.parse(readFileSync("examples/triangle.json", "utf8"));
     const result = createGraph(description);
     expect(result.ok && result.scene).toEqual(sceneOf(description));
+  });
+});
+
+describe("triangle Scene in every engine (CPSE TICKET-004 code review CR-002, TR-002)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** The Scene for `description` is the same with every approximated Math function 1 or 3 units in the last place off, each way. */
+  function sameInEveryEngine(description: Record<string, unknown>): void {
+    const exact = sceneOf({ type: "triangle", ...description });
+    for (const steps of [-3, -1, 1, 3]) {
+      mathOff(steps);
+      expect(sceneOf({ type: "triangle", ...description }), `${JSON.stringify(description)}, ${steps} in the last place`).toEqual(exact);
+      vi.restoreAllMocks();
+    }
+  }
+
+  it("keeps a label below the bottom side in place, though it meets the drawing's bottom exactly", () => {
+    for (const description of [
+      { sideB: 793, sideC: 48.9, angleA: 92.4, labelSides: "one", unit: "m" },
+      { sideB: 199.5, sideC: 48.9, angleA: 17.7, labelSides: "one" },
+      { sideB: 1229, sideC: 103.9, angleA: 123.6, labelSides: "one", unit: "m" },
+      { sideB: 11.01, sideC: 1, angleA: 32.8, labelSides: "all", unit: "mm" },
+      { vertices: [{ x: 4, y: 4 }, { x: -4, y: 1 }, { x: -11, y: 1 }], labelSides: "all" },
+    ]) {
+      sameInEveryEngine(description);
+    }
+  });
+
+  it("draws an angle of a whole multiple of 15° with the same number of arc pieces", () => {
+    for (const description of [
+      { sideB: 2, sideC: 12.91, angleA: 165, labelAngles: true },
+      { angleA: 120, angleB: 30, sideC: 10, labelAngles: true },
+      { angleA: 45, angleB: 60, sideC: 10, labelAngles: true },
+      { angleA: 120, angleB: 58, sideC: 356, labelAngles: true },
+      { sideA: 3, sideB: 3, sideC: 3, labelAngles: true },
+      { vertices: [{ x: 4, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 3 }], labelAngles: true },
+    ]) {
+      sameInEveryEngine(description);
+    }
+  });
+
+  it("draws a 120° angle in 8 arc pieces of 15°, not 9", () => {
+    const scene = sceneOf({ type: "triangle", angleA: 120, angleB: 30, sideC: 10, labelAngles: true });
+    const arcs = scene.nodes.filter((node) => node.kind === "polyline").map((node) => node.attrs.find(([key]) => key === "points")![1].toString().split(" ").length - 1);
+    expect(arcs).toContain(8);
+    expect(arcs).not.toContain(9);
   });
 });

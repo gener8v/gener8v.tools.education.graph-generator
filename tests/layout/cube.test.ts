@@ -13,6 +13,7 @@ import { type Box, type Obstacle, type Segment, placeLabel } from "../../src/lay
 import { textWidth } from "../../src/layout/kit/text";
 import { LINE_HEIGHT, TITLE_MAX_LINES } from "../../src/layout/kit/title";
 import type { Scene, SceneNode } from "../../src/layout/scene";
+import { mathOff } from "../fixtures/engine-math";
 import { wordsOf } from "../fixtures/plain-text";
 
 const LABEL_SIZE = 14;
@@ -296,23 +297,27 @@ describe("cube Scene (prd/TC-002, prd/TC-003 / AD-008, prd/CC-002)", () => {
 describe("cube Scene in every engine (CPSE TICKET-004, TR-002)", () => {
   afterEach(() => vi.restoreAllMocks());
 
-  /** `Math.hypot`, its result moved by `steps` units in the last place, as another engine may compute it. */
-  function hypotOff(steps: number): void {
-    const hypot = Math.hypot.bind(Math);
-    vi.spyOn(Math, "hypot").mockImplementation((...values: number[]) => {
-      const exact = hypot(...values);
-      return exact + steps * exact * Number.EPSILON;
-    });
-  }
+  /**
+   * Edge lengths and label texts whose labels sit at different places; the custom texts are ones
+   * whose labels beside a vertical edge land on a rounding boundary (code review CR-002, CR-007).
+   */
+  const EDGE_LENGTHS = [0.0123, 0.1, 4, 12.53, 182.1];
+  const LABEL_TEXTS = [undefined, "^3JQ2T'z(2", "O*-b3hB@", "YjYW>-V`)", "v#TvV@&eO"];
 
   for (const labelEdges of ["one", "three"] as const) {
-    it(`keeps every label in place when Math.hypot differs in its last bit, labeling ${labelEdges} edge(s)`, () => {
-      const description = { type: "cube", edgeLength: 4, unit: "cm", labelEdges };
-      const exact = sceneOf(description);
-      for (const steps of [-1, 1]) {
-        hypotOff(steps);
-        expect(sceneOf(description), `${steps} in the last place`).toEqual(exact);
-        vi.restoreAllMocks();
+    it(`keeps every label in place when Math differs in its last bit, labeling ${labelEdges} edge(s), at several edge lengths, with and without a title`, () => {
+      for (const edgeLength of EDGE_LENGTHS) {
+        for (const title of [undefined, "A cube"]) {
+          for (const edgeLabelText of LABEL_TEXTS) {
+            const description = { type: "cube", edgeLength, unit: "cm", labelEdges, ...(title === undefined ? {} : { title }), ...(edgeLabelText === undefined ? {} : { edgeLabelText }) };
+            const exact = sceneOf(description);
+            for (const steps of [-3, -1, 1, 3]) {
+              mathOff(steps);
+              expect(sceneOf(description), `${JSON.stringify(description)}, ${steps} in the last place`).toEqual(exact);
+              vi.restoreAllMocks();
+            }
+          }
+        }
       }
     });
   }

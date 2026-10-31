@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { RULER_MAX_LENGTH, type RulerUnit, rulerScale } from "../../../src/core/ruler";
 import { defaultStyle } from "../../../src/core/style";
 import { checkScene } from "../../../src/layout/kit/check";
@@ -13,6 +13,7 @@ import {
 } from "../../../src/layout/kit/ruler";
 import { linearScale } from "../../../src/layout/kit/scale";
 import type { SceneNode } from "../../../src/layout/scene";
+import { mathOff } from "../../fixtures/engine-math";
 import { EVERY_RULER } from "../../fixtures/rulers";
 import { attr, boundsOf, overlap } from "../../fixtures/scene-geometry";
 
@@ -300,6 +301,22 @@ describe("options no validated ruler gives", () => {
       const nodes = drawRulerMarks(ruler(unit, RULER_MAX_LENGTH[unit]));
       expect(lines(nodes)).toHaveLength(count);
       expect(checkScene({ width: 400, height: fmt(200), textAlternative: "A ruler.", nodes })).toEqual([]);
+    }
+  });
+});
+
+describe("mark widths in every engine (CPSE TICKET-004 code review CR-002, TR-002)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("keeps a width on a rounding boundary whatever the last bit of Math.hypot: an 8 in ruler's sixteenths across 352 units", () => {
+    // 352 units / 128 sixteenths / 2 = 1.375, exactly between 1.37 and 1.38.
+    const options = ruler("inches", 8, { from: [24, 92.4], to: [376, 92.4], smallestDivision: "sixteenth" });
+    const exact = drawRulerMarks(options);
+    expect(num(lines(exact)[0]!, "stroke-width")).toBe(1.38);
+    for (const steps of [-3, -1, 1, 3]) {
+      mathOff(steps, ["hypot"]);
+      expect(drawRulerMarks(options), `${steps} in the last place`).toEqual(exact);
+      vi.restoreAllMocks();
     }
   });
 });

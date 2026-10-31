@@ -25,7 +25,7 @@ describe("entry points agree across package.json, tsup and size-limit (QR-006)",
 
   it("every code export has a size budget, and no budget points at an unexported file", () => {
     // One whole-entry budget per export; a budget for named imports from an entry (`import`, such as
-    // `.` importing only `{ CircleGraph }`; CPSE TICKET-004) is extra, and points at an export too.
+    // `.` importing only `{ XyGraph }`; CPSE TICKET-004) is extra, and points at an export too.
     const whole = sizeLimit.filter((entry) => entry.import === undefined);
     expect(whole.map((entry) => distKey(entry.path)).sort()).toEqual(tsupKeys);
     for (const entry of sizeLimit) expect(tsupKeys, entry.path).toContain(distKey(entry.path));

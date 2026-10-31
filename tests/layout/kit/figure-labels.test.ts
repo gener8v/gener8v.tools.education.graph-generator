@@ -87,6 +87,26 @@ describe("placeLabels (AD-010, DEL-006)", () => {
     expect((obstacles[1] as { y: number }).y).toBe(100);
   });
 
+  it("counts a candidate within rounding noise of the bounds as inside, and one a hundredth past them as outside (CPSE TICKET-004 code review CR-002)", () => {
+    const height = fontSize * LINE_HEIGHT;
+    // Placed, its box joins the obstacles; else it is stacked below the figure.
+    const placedAt = (y: number, x = 100) => {
+      const obstacles: Obstacle[] = [];
+      placeLabels([{ text: "5", candidates: at(x, y) }], obstacles, bounds, 300);
+      return obstacles.length;
+    };
+    // A label whose box ends at the bottom bound give or take one or three units in the last place, as a sine's last bit moves it.
+    for (const y of [300 - height, 300 - height + 1e-13, 300 - height + 4e-13]) expect(placedAt(y), String(y)).toBe(1);
+    expect(placedAt(-1e-13)).toBe(1);
+    expect(placedAt(300 - height + 0.01)).toBe(0);
+    expect(placedAt(-0.01)).toBe(0);
+    const width = textWidth("5", fontSize);
+    expect(placedAt(10, 400 - width + 1e-13)).toBe(1);
+    expect(placedAt(10, 400 - width + 0.01)).toBe(0);
+    expect(placedAt(10, -1e-13)).toBe(1);
+    expect(placedAt(10, -0.01)).toBe(0);
+  });
+
   it("stacks a label with no clear place below the stack top, centered, and reports the new bottom", () => {
     const obstacles: Obstacle[] = [{ x: 0, y: 0, width: 400, height: 300 }];
     const { nodes, bottom } = placeLabels([{ text: "a", candidates: at(10, 10) }, { text: "b", candidates: at(10, 10) }], obstacles, bounds, 200);

@@ -8,7 +8,7 @@ import { HIDDEN_DASH, ISO_SCALE, type Point3, faceVisible, isometric } from "./k
 import type { Obstacle, Segment } from "./kit/labels";
 import { measurementLabel } from "./kit/measure";
 import { LINE_HEIGHT, SCENE_MARGIN, titleBlock } from "./kit/title";
-import { type Vec, add, dot, sub, times } from "./kit/vec";
+import { type Vec, add, dot, length, sub, times } from "./kit/vec";
 import type { Layout } from "./registry";
 import { SCENE_WIDTH, type Scene, type SceneNode } from "./scene";
 
@@ -101,14 +101,6 @@ const FRONT_CORNER_EDGES: ReadonlyArray<readonly [Corner, Corner]> = [
   [[1, 1, 1], [1, 0, 1]],
 ];
 
-
-/**
- * Candidates for an edge's label: beside the edge along each of `normals`, from its middle outward,
- * at two distances. An outer edge takes its outward normal only, so its label sits outside the
- * hexagon; an edge at the front corner takes both, so its label sits between it and the hidden
- * edges either side (GSS TICKET-001 CR-004), which are obstacles when drawn.
- */
-
 /**
  * How far below zero the side test must be before a normal is flipped. An edge from the hexagon's
  * centre (the front corner's three) has its middle in line with the centre, so the test is zero
@@ -117,10 +109,14 @@ const FRONT_CORNER_EDGES: ReadonlyArray<readonly [Corner, Corner]> = [
  */
 const SIDE_TOLERANCE = 1e-6;
 
-/** The unit normals of the segment `p`–`q`, the one pointing away from `center` first. */
+/**
+ * The unit normals of the segment `p`–`q`, the one pointing away from `center` first. A vertical
+ * edge is measured exactly (`length`), so its normals are exactly ±1 across in every engine.
+ */
+// @spec CPSE-NFR-005
 function normalsOf(p: Vec, q: Vec, center: Vec): [Vec, Vec] {
   const along = sub(q, p);
-  const n = Math.hypot(along[0], along[1]);
+  const n = length(along);
   let normal: Vec = [-along[1] / n, along[0] / n];
   if (dot(normal, sub(add(p, times(along, 0.5)), center)) < -SIDE_TOLERANCE) normal = times(normal, -1);
   return [normal, times(normal, -1)];
@@ -195,7 +191,10 @@ export const cubeLayout: Layout<Cube> = (normalized: Cube, provenance: Provenanc
     const q = at(to);
     const [outward, inward] = normalsOf(p, q, center);
     const outer = shown.labeled === 1;
-    // Each says what it labels when stacked below the figure, away from it.
+    // Candidates beside the edge, from its middle outward, at two distances. An outer edge takes its
+    // outward normal only, so its label sits outside the hexagon; an edge at the front corner takes
+    // both, so its label sits between it and the hidden edges either side (GSS TICKET-001 CR-004),
+    // which are obstacles when drawn. Each says what it labels when stacked below the figure, away from it.
     requests.push({ text, candidates: besideSegment(p, q, outer ? [outward] : [outward, inward], lineHeight), stackedText: `edge = ${text}` });
   }
   // Candidates must keep the label inside the drawing, between the title and the figure's bottom.

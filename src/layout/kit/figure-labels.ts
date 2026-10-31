@@ -124,6 +124,15 @@ export interface Bounds {
   readonly bottom: number;
 }
 
+/**
+ * How far past `placeLabels`' bounds, in drawing units, a candidate may reach and still count as
+ * inside. A layout's bounds are made to hold a label exactly (the line of labels below a figure's
+ * bottom edge), so the test is a tie, which the last bit of a sine or `Math.hypot` decided, and
+ * engines differ there. Far below anything drawn: `fmt()` keeps hundredths (CPSE TICKET-004 code
+ * review CR-002, TR-002).
+ */
+const BOUNDS_TOLERANCE = 1e-6;
+
 /** One label to place: its text (blank draws nothing) and where to try it, given its size. */
 export interface LabelRequest {
   readonly text: string;
@@ -143,7 +152,7 @@ export interface LabelRequest {
  * the order given (GSS TICKET-002 DEL-006), after the placed ones. Blank text draws nothing
  * (DEL-003). Returns the text nodes and the drawing's new bottom (`stackTop` when nothing stacked).
  */
-// @spec GSS-REQ-006, GSS-REQ-008, GSS-REQ-035
+// @spec GSS-REQ-006, GSS-REQ-008, GSS-REQ-035, CPSE-NFR-005
 export function placeLabels(
   requests: readonly LabelRequest[],
   obstacles: Obstacle[],
@@ -158,7 +167,10 @@ export function placeLabels(
     if (request.text === "") continue;
     const size = labelBlock(request.text, fontSize);
     const inside = (p: Point) =>
-      p.x >= bounds.left && p.x + size.width <= bounds.right && p.y >= bounds.top && p.y + size.height <= bounds.bottom;
+      p.x >= bounds.left - BOUNDS_TOLERANCE &&
+      p.x + size.width <= bounds.right + BOUNDS_TOLERANCE &&
+      p.y >= bounds.top - BOUNDS_TOLERANCE &&
+      p.y + size.height <= bounds.bottom + BOUNDS_TOLERANCE;
     const box = placeLabel(size, request.candidates(size).filter(inside), obstacles);
     if (box === undefined) {
       // Own key only: a polluted `Object.prototype.stackedText` must not replace a stacked label
