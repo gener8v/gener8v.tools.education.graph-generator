@@ -7,3 +7,6 @@ coverage/
 storybook-static/
 test-results/
 playwright-report/
+
+# Personal Claude Code permissions
+.claude/settings.local.json

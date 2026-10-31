@@ -1,7 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defaultStyle } from "../../../src/core/style";
 import { DEFAULT_FONT_STACK, MAX_CLUSTER_LENGTH, MAX_STACKED_MARKS, TEXT_WIDTH_SAFETY, textWidth, widestWord, wrap } from "../../../src/layout/kit/text";
 import { BENIGN_TEXT, HOSTILE_TEXT, REAL_STACKED_TEXT, oneClusterTexts } from "../../fixtures/plain-text";
+
+// The work checks count what `wrap` reads rather than time it (graph-library CPSE TICKET-010). The
+// text kit reads every word, cluster and line it measures with `forEachCodePoint`: each call is one
+// measuring pass, over that many code units. The real function still does the reading.
+const reading = vi.hoisted(() => ({ passes: 0, codeUnits: 0 }));
+vi.mock("../../../src/core/format", async (importOriginal) => {
+  const format = await importOriginal<typeof import("../../../src/core/format")>();
+  const forEachCodePoint: typeof format.forEachCodePoint = (text, visit) => {
+    reading.passes++;
+    reading.codeUnits += text.length;
+    format.forEachCodePoint(text, visit);
+  };
+  return { ...format, forEachCodePoint };
+});
+
+/** The measuring passes the text kit makes while `run` runs, and the code units they read. */
+function work(run: () => void): { passes: number; codeUnits: number } {
+  Object.assign(reading, { passes: 0, codeUnits: 0 });
+  run();
+  return { ...reading };
+}
 
 describe("textWidth (AD-010)", () => {
   it("uses the system font stack from the default style", () => {
@@ -106,11 +127,17 @@ describe("wrap (prd/TC-011)", () => {
   });
 
   it("handles very long text in linear time", () => {
+    // Counted, not timed (CPSE TICKET-010): each code unit is read a bounded number of times (a word
+    // for its marks, its clusters and its width, an over-wide one's clusters again; 3.1 times on
+    // average here), so twice the text is twice the reading.
     const text = "word ".repeat(100_000) + "x".repeat(200_000);
-    const start = performance.now();
-    const lines = wrap(text, 200, 14);
-    expect(performance.now() - start).toBeLessThan(2_000);
+    let lines: string[] = [];
+    const once = work(() => (lines = wrap(text, 200, 14)));
+    const twice = work(() => wrap(`${text} ${text}`, 200, 14));
     expect(lines.length).toBeGreaterThan(1000);
+    expect(once.codeUnits).toBeGreaterThan(text.length);
+    expect(once.codeUnits).toBeLessThanOrEqual(5 * text.length);
+    expect(twice.codeUnits).toBeLessThanOrEqual(2 * once.codeUnits);
   });
 });
 
@@ -141,10 +168,15 @@ describe("wrap with maxLines (GSS TICKET-002 security review SEC-001)", () => {
   });
 
   it("stops early, so caller-sized text costs little", () => {
-    for (const huge of ["word ".repeat(400_000), "@".repeat(2_000_000)]) {
-      const start = performance.now();
-      expect(wrap(huge, 160, 14, 4)).toHaveLength(4);
-      expect(performance.now() - start).toBeLessThan(1_000);
+    // Counted, not timed (CPSE TICKET-010): once its lines are full, `wrap` measures no more words or
+    // clusters, so 2,000,000 characters take the same measuring passes as 20,000. One unbroken word
+    // is still read whole to find its clusters, but its clusters are measured only until then.
+    for (const unit of ["word ", "@"]) {
+      const [short, huge] = [20_000, 2_000_000].map((characters) => unit.repeat(characters / unit.length));
+      const few = work(() => expect(wrap(short!, 160, 14, 4)).toHaveLength(4));
+      const many = work(() => expect(wrap(huge!, 160, 14, 4)).toHaveLength(4));
+      expect(few.passes, unit).toBeGreaterThan(0);
+      expect(many.passes, unit).toBe(few.passes);
     }
   });
 

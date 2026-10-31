@@ -34,9 +34,11 @@ describe("ruler rendering speed (NLC-NFR-008)", () => {
     test(`${name}: p95 at most ${P95_LIMIT_MS} ms`, async ({ bench }) => {
       // A render that fell back to the invalid-description placeholder would time the wrong thing.
       expect(renderToStaticMarkup(createElement(RulerGraph, { description }))).toMatch(/^<svg role="img" aria-label="A ruler titled/);
+      // Run by iterations alone (`time: 0`): exactly 200 timed runs on any runner, however slow, so the
+      // p95 is always taken over enough of them (CPSE TICKET-010).
       const result = await bench(name, () => {
         renderToStaticMarkup(createElement(RulerGraph, { description }));
-      }).run({ time: 500, warmupTime: 100 });
+      }).run({ time: 0, iterations: 200, warmupTime: 100 });
       // Vitest warns that the render reads module export getters many times: the package's own
       // modules, as Vitest transforms them. The printed line says so, so the log explains itself.
       expectP95(result, {

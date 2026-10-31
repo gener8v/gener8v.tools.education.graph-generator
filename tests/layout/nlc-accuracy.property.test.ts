@@ -29,6 +29,14 @@ import { attr, circles, isTick, lengthOf, lines, near as nearWithin, num } from 
 // tests/layout/xyz-graph.test.ts (ticks, points and axis ends against `isometric()`).
 // (graph-library NLC TICKET-005; code review CR-001, quality review QR-001, QR-003.)
 const RUNS = 200;
+/**
+ * The seed of the x,y,z property, so its count of samples with guide lines is fixed (64 of 200 from
+ * this seed). Unseeded, at the generator's rate of 0.33 (measured over 6,000 samples, 2026-10-31),
+ * five standard deviations below the expected 66 leaves 32, and 49 had been seen against the
+ * threshold of 50 (CPSE TICKET-010). Every other count here is unseeded, its threshold at least
+ * five standard deviations below its measured rate (each stated beside it).
+ */
+const XYZ_SEED = 20_261_031;
 const TOLERANCE = 0.5;
 const near = (got: number, want: number, what: string) => nearWithin(got, want, what, TOLERANCE);
 
@@ -53,15 +61,15 @@ interface Coverage {
   moveDownFromRules: number;
 }
 
-/** Runs a property over `RUNS` valid samples and returns what they covered. */
-function check<T>(arbitrary: fc.Arbitrary<T>, property: (sample: T, covered: Coverage) => void): Coverage {
+/** Runs a property over `RUNS` valid samples, from `seed` when given, and returns what they covered. */
+function check<T>(arbitrary: fc.Arbitrary<T>, property: (sample: T, covered: Coverage) => void, seed?: number): Coverage {
   const covered: Coverage = { runs: 0, withPoints: 0, withSegments: 0, withGuides: 0, moveDownFromRules: 0 };
   fc.assert(
     fc.property(arbitrary, (sample) => {
       property(sample, covered);
       covered.runs++;
     }),
-    { numRuns: RUNS },
+    { numRuns: RUNS, ...(seed !== undefined && { seed }) },
   );
   return covered;
 }
@@ -96,6 +104,7 @@ describe("a number line is drawn to scale with its values (NLC-NFR-001)", () => 
       if (points.length > 0) covered.withPoints++;
     });
     expect(covered.runs).toBe(RUNS);
+    // Measured rate 0.81 (2026-10-31): 162 expected, 134 five standard deviations below.
     expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
   });
 });
@@ -151,6 +160,7 @@ describe("an x,y graph is drawn to scale with its values (NLC-NFR-001)", () => {
       if (segments.length > 0) covered.withSegments++;
     });
     expect(covered.runs).toBe(RUNS);
+    // Measured rates 0.80 and 0.80 (2026-10-31): 160 expected, 132 five standard deviations below.
     expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
     expect(covered.withSegments).toBeGreaterThan(RUNS / 2);
   });
@@ -237,9 +247,10 @@ function expectXyzDrawnToScale(input: unknown, covered: Coverage): void {
 
 describe("an x,y,z graph is drawn to scale with its values (NLC-NFR-001)", () => {
   it(`puts every axis end, tick and point within ${TOLERANCE} of isometric() of its value scaled from where the axes meet, over ${RUNS} generated descriptions`, () => {
-    const covered = check(xyzGraphArb, expectXyzDrawnToScale);
+    const covered = check(xyzGraphArb, expectXyzDrawnToScale, XYZ_SEED);
     expect(covered.runs).toBe(RUNS);
     expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
+    // From `XYZ_SEED`, so a fixed count: see there.
     expect(covered.withGuides).toBeGreaterThan(RUNS / 4);
   });
 
@@ -248,6 +259,7 @@ describe("an x,y,z graph is drawn to scale with its values (NLC-NFR-001)", () =>
     expect(covered.runs).toBe(RUNS);
     // Every sample was checked against absolute positions, none against a mark read from the Scene.
     expect(covered.moveDownFromRules).toBe(RUNS);
+    // Measured rate 0.80 (2026-10-31): 159 expected, 130 five standard deviations below.
     expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
   });
 });

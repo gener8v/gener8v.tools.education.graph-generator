@@ -2,7 +2,7 @@ import fc from "fast-check";
 import { JSDOM } from "jsdom";
 import { act, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createGraph, createGraphWith } from "../../src/graph";
 import type { Issue } from "../../src/core/result";
 import { Graph } from "../../src/react/Graph";
@@ -41,6 +41,81 @@ import type { Layout } from "../../src/layout/registry";
 import { circleLayout, fixtureLayouts, malformedLayouts, throwingLayouts } from "../fixtures/layouts";
 import { HOSTILE_TEXT, oneClusterTexts, wordsOf } from "../fixtures/plain-text";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
+
+// The layout-cost tests count the label placer's work rather than time it (graph-library CPSE
+// TICKET-010). While `placement.counting` is set, each call to `placeLabel` or `placeElementLabel`
+// from a layout records how many candidates it was given and how many obstacles were placed before
+// it. Every `PLACEMENT_SAMPLE`th call also reads its obstacles through a view that counts each one
+// read, one per overlap test: counting every call would make these tests several times slower. The
+// real placer does the work; the package itself is unchanged.
+const PLACEMENT_SAMPLE = 10;
+interface PlacementCall {
+  candidates: number;
+  obstacles: number;
+  /** Obstacles read, on a counted call. */
+  reads?: number;
+}
+const placement = vi.hoisted(() => ({ counting: false, calls: [] as PlacementCall[] }));
+vi.mock("../../src/layout/kit/labels", async (importOriginal) => {
+  const labels = await importOriginal<typeof import("../../src/layout/kit/labels")>();
+  /** Runs `place` on `obstacles`, through a counting view on every `PLACEMENT_SAMPLE`th call. */
+  const record = <T extends readonly unknown[], R>(call: PlacementCall, obstacles: T, place: (obstacles: T) => R): R => {
+    placement.calls.push(call);
+    if (placement.calls.length % PLACEMENT_SAMPLE !== 1) return place(obstacles);
+    let reads = 0;
+    const counted = new Proxy(obstacles, {
+      get(target, key) {
+        if (typeof key === "string") {
+          const first = key.charCodeAt(0);
+          if (first >= 48 && first <= 57) reads++;
+        }
+        return target[key as keyof T];
+      },
+    });
+    try {
+      return place(counted);
+    } finally {
+      call.reads = reads;
+    }
+  };
+  const placeLabel: typeof labels.placeLabel = (size, candidates, obstacles, padding) => {
+    if (!placement.counting) return labels.placeLabel(size, candidates, obstacles, padding);
+    return record({ candidates: candidates.length, obstacles: obstacles.length }, obstacles, (seen) => labels.placeLabel(size, candidates, seen, padding));
+  };
+  const placeElementLabel: typeof labels.placeElementLabel = (text, candidates, obstacles) => {
+    if (!placement.counting) return labels.placeElementLabel(text, candidates, obstacles);
+    const call: PlacementCall = { candidates: 0, obstacles: obstacles.length };
+    const tried = (width: number, height: number) => {
+      const places = candidates(width, height);
+      call.candidates = places.length;
+      return places;
+    };
+    return record(call, obstacles, (seen) => labels.placeElementLabel(text, tried, seen));
+  };
+  return { ...labels, placeLabel, placeElementLabel };
+});
+
+/** The label placer's calls while `run` lays out a graph. */
+function placementCalls(run: () => void): PlacementCall[] {
+  Object.assign(placement, { counting: true, calls: [] });
+  try {
+    run();
+  } finally {
+    placement.counting = false;
+  }
+  return placement.calls;
+}
+
+/**
+ * The counted calls that read more obstacles than `most(i)` candidates, each tested against every
+ * obstacle placed before it, allow: the accepted cost of `placeLabel` (CPSE TICKET-002 SEC-004).
+ */
+function overBudget(calls: readonly PlacementCall[], most: (i: number) => number): string[] {
+  const counted = calls.flatMap((call, i) => (call.reads === undefined ? [] : [{ ...call, reads: call.reads, i }]));
+  expect(counted.length).toBeGreaterThanOrEqual(Math.floor(calls.length / PLACEMENT_SAMPLE));
+  expect(counted.some((call) => call.reads > 0)).toBe(true);
+  return counted.filter((call) => call.reads > most(call.i) * call.obstacles).map((call) => `call ${call.i}: ${call.reads} reads of ${call.obstacles} obstacles`);
+}
 
 const fixtures: Registries = { definitions: fixtureRegistry, layouts: fixtureLayouts };
 // `Graph` with the test-only definitions and layouts: the same render routine `Graph` calls.
@@ -999,31 +1074,42 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     }
   });
 
-  it("lays out the x,y graph's costliest labels within a second and a half: points stacked at one spot and labeled segments (NLC TICKET-003 SEC-003)", () => {
+  it("lays out the x,y graph's costliest labels within their accepted placement cost: points stacked at one spot and labeled segments (NLC TICKET-003 SEC-003)", () => {
     // Each label tries up to 12 places (points) or 8 (segments) against every obstacle placed so far,
-    // the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Measured 2026-10-27:
-    // 0.37 to 0.53 s for this 69 KB description, against its forecast of about half a second.
+    // the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Counted, not timed (CPSE
+    // TICKET-010): this 69 KB description took 0.37 to 0.53 s alone, and up to 4 s on a loaded runner.
     const points = Array.from({ length: 1000 }, () => ({ x: 5, y: 5, label: "a" }));
     const segments = Array.from({ length: 700 }, (_, i) => ({ from: { x: 5, y: 5 }, to: { x: 5 + (i + 1) / 1000, y: 5 }, label: "a" }));
     const description = { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, points, segments };
-    const started = performance.now();
-    const result = createGraph(description);
-    const elapsed = performance.now() - started;
-    if (!result.ok) throw new Error(JSON.stringify(result.issues));
-    expect(elapsed).toBeLessThan(1_500);
+    let result: ReturnType<typeof createGraph> | undefined;
+    const calls = placementCalls(() => (result = createGraph(description)));
+    if (!result?.ok) throw new Error(JSON.stringify(result?.issues));
+    // The segment labels, then the point labels, after both axes, every segment and every marker,
+    // each label one more obstacle for the next.
+    const most = (i: number) => (i < segments.length ? 8 : 12);
+    expect(calls.map(({ candidates, obstacles }) => ({ candidates, obstacles }))).toEqual(
+      calls.map((_, i) => ({ candidates: most(i), obstacles: 2 + segments.length + points.length + i })),
+    );
+    expect(overBudget(calls, most)).toEqual([]);
   });
 
-  it("lays out the x,y,z graph's costliest labels within a second and a half: 1,000 labeled points stacked at one spot, with guide lines (NLC TICKET-004)", () => {
+  it("lays out the x,y,z graph's costliest labels within their accepted placement cost: 1,000 labeled points stacked at one spot, with guide lines (NLC TICKET-004)", () => {
     // Each label tries up to 12 places against every obstacle placed so far, the guide lines among
-    // them, the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Measured
-    // 2026-10-27: about 0.6 s.
+    // them, the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Counted, not timed
+    // (CPSE TICKET-010): about 0.6 s alone, and up to 4 s on a loaded runner.
     const points = Array.from({ length: 1000 }, () => ({ x: 3, y: 2, z: 4, label: "a" }));
     const description = { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, guideLines: true, points };
-    const started = performance.now();
-    const result = createGraph(description);
-    const elapsed = performance.now() - started;
-    if (!result.ok) throw new Error(JSON.stringify(result.issues));
-    expect(elapsed).toBeLessThan(1_500);
+    let result: ReturnType<typeof createGraph> | undefined;
+    const calls = placementCalls(() => (result = createGraph(description)));
+    if (!result?.ok) throw new Error(JSON.stringify(result?.issues));
+    // The axis names and tick labels first, then the point labels, after three guide lines and a
+    // marker per point, each label one more obstacle for the next.
+    expect(calls.filter((call) => call.candidates > 12)).toEqual([]);
+    const labels = calls.slice(-points.length);
+    const first = labels[0]!.obstacles;
+    expect(first).toBeGreaterThan(4 * points.length);
+    expect(labels.map(({ candidates, obstacles }) => ({ candidates, obstacles }))).toEqual(labels.map((_, i) => ({ candidates: 12, obstacles: first + i })));
+    expect(overBudget(calls, () => 12)).toEqual([]);
   });
 
   it("reports a category name over the limit rather than drawing it, so a megabyte of names never reaches the renderer (DGP TICKET-005 SEC-001)", () => {

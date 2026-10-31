@@ -153,6 +153,12 @@ const shared = (input: Record<string, unknown>): Record<string, boolean> => ({
   "a zero value": valuesOf(input).includes(0),
 });
 
+// Each threshold below is at least five standard deviations below the generator's rate, measured
+// over 15,000 samples of each type (2026-10-31; CPSE TICKET-010). Shared, the lowest of the three
+// types: decimal values 0.49, a name at the limit 0.41, a non-ASCII one 0.18, a name of stacked
+// marks 0.46, a quotation mark 0.36, a name that cleaning changes 0.073 (none in 500 about 1 in
+// 10^16), a single category 0.13, ten or more categories 0.13 (65 expected, 27 five deviations
+// below), a zero value 0.14.
 function expectShared(covered: Coverage): void {
   expect(covered.runs).toBe(RUNS);
   expect(covered["decimal values"]).toBeGreaterThan(RUNS / 4);
@@ -180,6 +186,8 @@ describe("a line graph's text alternative names every category and value (DGP-NF
       "two series share a value at a category": sharesAValue(input),
     }));
     expectShared(covered);
+    // Measured: several series 0.75, negative values 0.95, a labeled series 0.95, two series sharing
+    // a value 0.16 (79 expected, 38 five deviations below).
     expect(covered["several series"]).toBeGreaterThan(RUNS / 4);
     expect(covered["negative values"]).toBeGreaterThan(RUNS / 4);
     expect(covered["a labeled series"]).toBeGreaterThan(RUNS / 4);
@@ -199,6 +207,7 @@ describe("a bar graph's text alternative names every category and value (DGP-NFR
       "upright bars": input["orientation"] !== "horizontal",
     }));
     expectShared(covered);
+    // Measured: bars across 0.33 (166 expected, 113 five deviations below), upright bars 0.67.
     expect(covered["bars across"]).toBeGreaterThan(RUNS / 5);
     expect(covered["upright bars"]).toBeGreaterThan(RUNS / 4);
   });
@@ -218,6 +227,8 @@ describe("a pictograph's text alternative names every category and value (DGP-NF
       "no unit label": input["valueUnitLabel"] === undefined,
     }));
     expectShared(covered);
+    // Measured: a unit label 0.78, stated once 0.33, with quotation marks 0.14 (68 expected, 29 five
+    // deviations below), no unit label 0.22 (111 expected, 64 five deviations below).
     expect(covered["a unit label"]).toBeGreaterThan(RUNS / 4);
     expect(covered["a unit label stated once"]).toBeGreaterThan(0);
     expect(covered["a unit label with quotation marks"]).toBeGreaterThan(RUNS / 50);

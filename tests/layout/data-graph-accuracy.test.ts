@@ -217,12 +217,17 @@ describe("a line graph's points are drawn to scale with its values (DGP-REQ-036,
       tally(covered, "a title", description.title !== undefined);
     });
     expect(covered.runs).toBe(RUNS);
+    // Each threshold is at least five standard deviations below the generator's rate, measured over
+    // 15,000 samples (2026-10-31; CPSE TICKET-010): several series 0.75, negative values 0.95,
+    // decimal values 0.49, a given scale 0.43, a single category 0.12 (none in 500 about 1 in 10^28),
+    // ten or more categories 0.17 (86 expected, 43 five deviations below), a value-axis label and a
+    // title 0.83.
     expect(covered["several series"]).toBeGreaterThan(RUNS / 4);
     expect(covered["negative values"]).toBeGreaterThan(RUNS / 4);
     expect(covered["decimal values"]).toBeGreaterThan(RUNS / 4);
     expect(covered["a given scale"]).toBeGreaterThan(RUNS / 10);
     expect(covered["a single category"]).toBeGreaterThan(0);
-    expect(covered["ten or more categories"]).toBeGreaterThan(RUNS / 10);
+    expect(covered["ten or more categories"]).toBeGreaterThan(RUNS / 12);
     expect(covered["a value-axis label"]).toBeGreaterThan(RUNS / 4);
     expect(covered["a title"]).toBeGreaterThan(RUNS / 4);
   });
@@ -258,6 +263,13 @@ describe("a bar graph's bars are drawn to scale with its values (DGP-REQ-036, DG
       tally(covered, "ten or more categories", description.categories.length >= 10);
     });
     expect(covered.runs).toBe(RUNS);
+    // Each threshold is at least five standard deviations below the generator's rate, measured over
+    // 15,000 samples (2026-10-31; CPSE TICKET-010): upright 0.66, across 0.34 (168 expected, 114 five
+    // deviations below), decimal values 0.49, a given scale 0.44, a zero bar 0.21, written values
+    // 0.33, a category-axis label 0.83, across with a category-axis label 0.28, across with written
+    // values 0.11 (57 expected, 21 five deviations below), across and checked exactly 0.037 (none in
+    // 500 about 1 in 140 million), a single category 0.12, ten or more categories 0.17 (85 expected,
+    // 43 five deviations below).
     expect(covered["upright"]).toBeGreaterThan(RUNS / 4);
     expect(covered["across"]).toBeGreaterThan(RUNS / 5);
     expect(covered["decimal values"]).toBeGreaterThan(RUNS / 4);
@@ -266,9 +278,9 @@ describe("a bar graph's bars are drawn to scale with its values (DGP-REQ-036, DG
     expect(covered["written values"]).toBeGreaterThan(RUNS / 10);
     expect(covered["a category-axis label"]).toBeGreaterThan(RUNS / 10);
     expect(covered["across with a category-axis label"]).toBeGreaterThan(RUNS / 20);
-    expect(covered["across with written values"]).toBeGreaterThan(RUNS / 20);
+    expect(covered["across with written values"]).toBeGreaterThan(RUNS / 25);
     expect(covered["across, checked exactly"]).toBeGreaterThan(0);
     expect(covered["a single category"]).toBeGreaterThan(0);
-    expect(covered["ten or more categories"]).toBeGreaterThan(RUNS / 10);
+    expect(covered["ten or more categories"]).toBeGreaterThan(RUNS / 12);
   });
 });

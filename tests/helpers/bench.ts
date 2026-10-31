@@ -10,7 +10,10 @@ export interface P95Check {
   requirement: string;
   name: string;
   limitMs: number;
-  /** The fewest timed runs a p95 is taken over. */
+  /**
+   * The fewest timed runs a p95 is taken over. The benchmarks run a fixed number of iterations
+   * (`time: 0`), so this fails only on a misconfigured run, never on a slow runner (CPSE TICKET-010).
+   */
   minSamples?: number;
   /** Printed after the measurement, for anything the log should explain. */
   note?: string;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { GraphType, GraphTypeDefinition, PropertyMap, StringValue } from "../../src/core/definitions/types";
 import { definitions, registeredTypes, scopedPropertyMaps } from "../../src/core/definitions/index";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
@@ -15,6 +15,31 @@ import { defineProperties, describeCondition } from "../../src/core/definitions/
 import { BENIGN_TEXT, HOSTILE_TEXT, SMUGGLED_TEXT, UNSAFE_CHARS } from "../fixtures/plain-text";
 
 const check = (input: unknown) => validateWith(input, fixtureRegistry);
+
+// The 1 MB check counts the validator's work rather than time it (graph-library CPSE TICKET-010):
+// every issue the validator makes, kept or not, goes through `createIssue`. The real function still
+// makes each one.
+const made = vi.hoisted(() => ({ issues: 0 }));
+vi.mock("../../src/core/issues", async (importOriginal) => {
+  const issues = await importOriginal<typeof import("../../src/core/issues")>();
+  const createIssue: typeof issues.createIssue = (code, path, params) => {
+    made.issues++;
+    return issues.createIssue(code, path, params);
+  };
+  return { ...issues, createIssue };
+});
+
+/** `value` read through a view that counts its own-property reads, the only way the validator reads a value. */
+function countingReads<T extends object>(value: T): { value: T; reads: () => number } {
+  let reads = 0;
+  const view = new Proxy(value, {
+    getOwnPropertyDescriptor(target, key) {
+      reads++;
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+  });
+  return { value: view, reads: () => reads };
+}
 
 function issuesOf(result: ValidationResult<unknown>): Issue[] {
   if (result.valid) throw new Error(`expected an invalid result, got ${JSON.stringify(result)}`);
@@ -420,14 +445,23 @@ describe("size limits (Product Owner decision on GSV TICKET-003 SEC-001)", () =>
   });
 
   it("answers a 1 MB hostile description quickly, with a bounded issue list", () => {
+    // Counted, not timed (CPSE TICKET-010): each key is read once and no issue is made for any of
+    // them, and a list over its limit is never read, so the answer costs one pass over the keys.
     const keys = Object.fromEntries(Array.from({ length: 60_000 }, (_, i) => [`k${i}`, 0]));
-    const lists = { ...NUMBER_LINE, points: Array.from({ length: 500_000 }, () => 0) };
-    for (const input of [{ type: "circle", radius: 1, ...keys }, lists]) {
+    const many = countingReads({ type: "circle", radius: 1, ...keys });
+    const list = countingReads(Array.from({ length: 500_000 }, () => 0));
+    const lists = { ...NUMBER_LINE, points: list.value };
+    for (const [input, reads, most] of [
+      [many.value, many.reads, Object.keys(many.value).length],
+      [lists, list.reads, 0],
+    ] as const) {
       expect(JSON.stringify(input).length).toBeGreaterThan(500_000);
-      const start = performance.now();
+      made.issues = 0;
+      const before = reads();
       const issues = issuesOf(check(input));
-      expect(performance.now() - start).toBeLessThan(250);
       expect(issues).toHaveLength(1);
+      expect(made.issues).toBe(1);
+      expect(reads() - before).toBeLessThanOrEqual(most);
     }
   });
 });

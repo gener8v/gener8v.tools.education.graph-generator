@@ -42,9 +42,11 @@ describe("graph rendering speed (NLC-NFR-004)", () => {
     expect(markup.match(/<circle /g)).toHaveLength(POINTS);
     expect(markup.match(/<line /g)).toHaveLength(lines(graph.scene).length);
     const name = `xy-graph ${TICKS} ticks, ${POINTS} points`;
+    // Run by iterations alone (`time: 0`): exactly 200 timed runs on any runner, however slow, so the
+    // p95 is always taken over enough of them (CPSE TICKET-010).
     const result = await bench(name, () => {
       render();
-    }).run({ time: 2000, warmupTime: 500, iterations: 200, warmupIterations: 20 });
+    }).run({ time: 0, iterations: 200, warmupTime: 500, warmupIterations: 20 });
     expectP95(result, { requirement: "NLC-NFR-004", name, limitMs: P95_LIMIT_MS, minSamples: 100 });
   });
 });
