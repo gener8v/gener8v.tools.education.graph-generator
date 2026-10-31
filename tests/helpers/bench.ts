@@ -6,7 +6,11 @@ interface BenchResult {
 }
 
 export interface P95Check {
-  /** The requirement the benchmark verifies, printed first on its line, e.g. "NLC-NFR-008". */
+  /**
+   * The requirement the benchmark verifies, printed first on its line, e.g. "NLC-NFR-008"; or, for a
+   * bound no requirement states, the constraint or security finding it comes from, e.g. "GSS TICKET-002
+   * SEC-001".
+   */
   requirement: string;
   name: string;
   limitMs: number;

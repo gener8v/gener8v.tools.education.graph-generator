@@ -30,11 +30,13 @@ import { attr, circles, isTick, lengthOf, lines, near as nearWithin, num } from 
 // (graph-library NLC TICKET-005; code review CR-001, quality review QR-001, QR-003.)
 const RUNS = 200;
 /**
- * The seed of the x,y,z property, so its count of samples with guide lines is fixed (64 of 200 from
- * this seed). Unseeded, at the generator's rate of 0.33 (measured over 6,000 samples, 2026-10-31),
- * five standard deviations below the expected 66 leaves 32, and 49 had been seen against the
- * threshold of 50 (CPSE TICKET-010). Every other count here is unseeded, its threshold at least
- * five standard deviations below its measured rate (each stated beside it).
+ * The seed of a sample of the x,y,z generator that shows it gives guide lines often enough: 64 of
+ * 200 from this seed. Counted in the unseeded property instead, at the generator's rate of 0.34
+ * (measured over 20,000 samples, 2026-10-31), five standard deviations below the expected 67 would
+ * leave 34, short of the threshold of 50, and 49 had been seen against it (CPSE TICKET-010). The
+ * property itself runs unseeded, so it meets new descriptions on every run (CPSE TICKET-010 code
+ * review CR-003). Every count in a property here is unseeded, its threshold at least five standard
+ * deviations below its measured rate (each stated beside it).
  */
 const XYZ_SEED = 20_261_031;
 const TOLERANCE = 0.5;
@@ -56,20 +58,19 @@ interface Coverage {
   runs: number;
   withPoints: number;
   withSegments: number;
-  withGuides: number;
   /** x,y,z samples whose move down the description alone fixed (a mark of geometry was topmost). */
   moveDownFromRules: number;
 }
 
-/** Runs a property over `RUNS` valid samples, from `seed` when given, and returns what they covered. */
-function check<T>(arbitrary: fc.Arbitrary<T>, property: (sample: T, covered: Coverage) => void, seed?: number): Coverage {
-  const covered: Coverage = { runs: 0, withPoints: 0, withSegments: 0, withGuides: 0, moveDownFromRules: 0 };
+/** Runs a property over `RUNS` valid samples and returns what they covered. */
+function check<T>(arbitrary: fc.Arbitrary<T>, property: (sample: T, covered: Coverage) => void): Coverage {
+  const covered: Coverage = { runs: 0, withPoints: 0, withSegments: 0, moveDownFromRules: 0 };
   fc.assert(
     fc.property(arbitrary, (sample) => {
       property(sample, covered);
       covered.runs++;
     }),
-    { numRuns: RUNS, ...(seed !== undefined && { seed }) },
+    { numRuns: RUNS },
   );
   return covered;
 }
@@ -241,17 +242,22 @@ function expectXyzDrawnToScale(input: unknown, covered: Coverage): void {
     near(num(marker, "cy"), wantY, `point ${i} y`);
   });
   if (points.length > 0) covered.withPoints++;
-  if (description.guideLines === true) covered.withGuides++;
   if (fromRules) covered.moveDownFromRules++;
 }
 
 describe("an x,y,z graph is drawn to scale with its values (NLC-NFR-001)", () => {
   it(`puts every axis end, tick and point within ${TOLERANCE} of isometric() of its value scaled from where the axes meet, over ${RUNS} generated descriptions`, () => {
-    const covered = check(xyzGraphArb, expectXyzDrawnToScale, XYZ_SEED);
+    const covered = check(xyzGraphArb, expectXyzDrawnToScale);
     expect(covered.runs).toBe(RUNS);
+    // Measured rate 0.80 (20,000 samples, 2026-10-31): 160 expected, 131 five standard deviations below.
     expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
-    // From `XYZ_SEED`, so a fixed count: see there.
-    expect(covered.withGuides).toBeGreaterThan(RUNS / 4);
+  });
+
+  it(`gives that property guide lines in about a third of its descriptions (a sample of ${RUNS} from a fixed seed)`, () => {
+    // From `XYZ_SEED`, so a fixed count (64): see there. Apart from the property, so the property keeps
+    // its run-to-run variety (code review CR-003).
+    const withGuides = fc.sample(xyzGraphArb, { seed: XYZ_SEED, numRuns: RUNS }).filter((input) => normalized<XyzGraph>(input).description.guideLines === true);
+    expect(withGuides.length).toBeGreaterThan(RUNS / 4);
   });
 
   it(`fixes the whole figure's place, down to its height, by the description alone where geometry is topmost, over ${RUNS} generated descriptions`, () => {

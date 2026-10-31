@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { defaultStyle } from "../../../src/core/style";
 import { DEFAULT_FONT_STACK, MAX_CLUSTER_LENGTH, MAX_STACKED_MARKS, TEXT_WIDTH_SAFETY, textWidth, widestWord, wrap } from "../../../src/layout/kit/text";
 import { BENIGN_TEXT, HOSTILE_TEXT, REAL_STACKED_TEXT, oneClusterTexts } from "../../fixtures/plain-text";
+import { CALLER_TEXT_UNITS, LONG_TEXT, callerText } from "../../fixtures/costly-inputs";
 
 // The work checks count what `wrap` reads rather than time it (graph-library CPSE TICKET-010). The
 // text kit reads every word, cluster and line it measures with `forEachCodePoint`: each call is one
@@ -129,8 +130,9 @@ describe("wrap (prd/TC-011)", () => {
   it("handles very long text in linear time", () => {
     // Counted, not timed (CPSE TICKET-010): each code unit is read a bounded number of times (a word
     // for its marks, its clusters and its width, an over-wide one's clusters again; 3.1 times on
-    // average here), so twice the text is twice the reading.
-    const text = "word ".repeat(100_000) + "x".repeat(200_000);
+    // average here), so twice the text is twice the reading. Its time is bounded as a p95 in
+    // tests/layout/hostile-cost.bench.ts (code review CR-001).
+    const text = LONG_TEXT;
     let lines: string[] = [];
     const once = work(() => (lines = wrap(text, 200, 14)));
     const twice = work(() => wrap(`${text} ${text}`, 200, 14));
@@ -170,9 +172,11 @@ describe("wrap with maxLines (GSS TICKET-002 security review SEC-001)", () => {
   it("stops early, so caller-sized text costs little", () => {
     // Counted, not timed (CPSE TICKET-010): once its lines are full, `wrap` measures no more words or
     // clusters, so 2,000,000 characters take the same measuring passes as 20,000. One unbroken word
-    // is still read whole to find its clusters, but its clusters are measured only until then.
-    for (const unit of ["word ", "@"]) {
-      const [short, huge] = [20_000, 2_000_000].map((characters) => unit.repeat(characters / unit.length));
+    // is still read whole to find its clusters, but its clusters are measured only until then. The
+    // 2,000,000-character texts' time is bounded as a p95 in tests/layout/hostile-cost.bench.ts (code
+    // review CR-001).
+    for (const unit of CALLER_TEXT_UNITS) {
+      const [short, huge] = [20_000, 2_000_000].map((characters) => callerText(unit, characters));
       const few = work(() => expect(wrap(short!, 160, 14, 4)).toHaveLength(4));
       const many = work(() => expect(wrap(huge!, 160, 14, 4)).toHaveLength(4));
       expect(few.passes, unit).toBeGreaterThan(0);

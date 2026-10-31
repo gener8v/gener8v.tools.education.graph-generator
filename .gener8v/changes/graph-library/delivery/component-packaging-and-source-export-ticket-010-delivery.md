@@ -144,4 +144,11 @@ Run in the main session on 2026-10-31, after the code was written; logs kept per
 
 ## Post-Review Amendments
 
-None
+### graph-library/component-packaging-and-source-export-ticket-010-code-review/CR-001 (with security SEC-001), CR-003, CR-005 (CR-002 and CR-004 accepted)
+
+**Change:**
+- CR-001 / SEC-001: the work counts see only the functions they wrap, so a slower operation passed them. `tests/layout/hostile-cost.bench.ts` times the hostile inputs in the isolated bench step, by iterations (21 samples): the costly x,y and x,y,z descriptions at 1,500 ms p95 (NLC TICKET-003 SEC-003), `wrap` cut to 4 lines at 1,000 ms (GSS TICKET-002 SEC-001), `wrap` of the long text at 2,000 ms (prd/TC-011). `tests/fixtures/costly-inputs.ts` builds the inputs for the tests and the bench alike. Residual: `wrap` splitting its text 40× stays within the old limits.
+- CR-003: the x,y,z accuracy property is unseeded again; its guides coverage is a separate seeded sample.
+- CR-005: a retained title renamed.
+**Files:** `tests/layout/hostile-cost.bench.ts`, `tests/fixtures/costly-inputs.ts`, `tests/react/Graph.test.tsx`, `tests/layout/kit/text.test.ts`, `tests/helpers/bench.ts`, `tests/layout/nlc-accuracy.property.test.ts`, `tests/core/validate-structure.test.ts`
+**Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (the accepted `minimatch` advisory); vitest ×3, 2,342 passed each; `pnpm bench` 25 passed (load average 10 to 14). Mutants (each restored): every overlap test 30× slower → both layout benches fail; `wrap` split 40× → passes (the residual). gener8v-state lint 0 errors.

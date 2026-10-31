@@ -40,6 +40,7 @@ import type { DescriptionBase, GraphType } from "../../src/core/definitions/type
 import type { Layout } from "../../src/layout/registry";
 import { circleLayout, fixtureLayouts, malformedLayouts, throwingLayouts } from "../fixtures/layouts";
 import { HOSTILE_TEXT, oneClusterTexts, wordsOf } from "../fixtures/plain-text";
+import { costlyXyDescription, costlyXyzDescription } from "../fixtures/costly-inputs";
 import { CALLER_TEXT_LIMIT, UNIT_TEXT_LIMIT } from "../../src/core/definitions/shared";
 
 // The layout-cost tests count the label placer's work rather than time it (graph-library CPSE
@@ -1078,9 +1079,9 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     // Each label tries up to 12 places (points) or 8 (segments) against every obstacle placed so far,
     // the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Counted, not timed (CPSE
     // TICKET-010): this 69 KB description took 0.37 to 0.53 s alone, and up to 4 s on a loaded runner.
-    const points = Array.from({ length: 1000 }, () => ({ x: 5, y: 5, label: "a" }));
-    const segments = Array.from({ length: 700 }, (_, i) => ({ from: { x: 5, y: 5 }, to: { x: 5 + (i + 1) / 1000, y: 5 }, label: "a" }));
-    const description = { type: "xy-graph", xAxis: { min: 0, max: 10 }, yAxis: { min: 0, max: 10 }, points, segments };
+    // Its time is bounded as a p95 in tests/layout/hostile-cost.bench.ts (code review CR-001).
+    const description = costlyXyDescription();
+    const { points, segments } = description;
     let result: ReturnType<typeof createGraph> | undefined;
     const calls = placementCalls(() => (result = createGraph(description)));
     if (!result?.ok) throw new Error(JSON.stringify(result?.issues));
@@ -1096,9 +1097,10 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
   it("lays out the x,y,z graph's costliest labels within their accepted placement cost: 1,000 labeled points stacked at one spot, with guide lines (NLC TICKET-004)", () => {
     // Each label tries up to 12 places against every obstacle placed so far, the guide lines among
     // them, the accepted quadratic cost of placeLabel (CPSE TICKET-002 SEC-004). Counted, not timed
-    // (CPSE TICKET-010): about 0.6 s alone, and up to 4 s on a loaded runner.
-    const points = Array.from({ length: 1000 }, () => ({ x: 3, y: 2, z: 4, label: "a" }));
-    const description = { type: "xyz-graph", xAxis: { min: 0, max: 5 }, yAxis: { min: 0, max: 5 }, zAxis: { min: 0, max: 5 }, guideLines: true, points };
+    // (CPSE TICKET-010): about 0.6 s alone, and up to 4 s on a loaded runner. Its time is bounded as a
+    // p95 in tests/layout/hostile-cost.bench.ts (code review CR-001).
+    const description = costlyXyzDescription();
+    const { points } = description;
     let result: ReturnType<typeof createGraph> | undefined;
     const calls = placementCalls(() => (result = createGraph(description)));
     if (!result?.ok) throw new Error(JSON.stringify(result?.issues));

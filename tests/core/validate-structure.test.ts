@@ -444,7 +444,7 @@ describe("size limits (Product Owner decision on GSV TICKET-003 SEC-001)", () =>
     expect(codesAndPaths(xy)).toEqual(["too_large "]);
   });
 
-  it("answers a 1 MB hostile description quickly, with a bounded issue list", () => {
+  it("answers a 1 MB hostile description with bounded work and a bounded issue list", () => {
     // Counted, not timed (CPSE TICKET-010): each key is read once and no issue is made for any of
     // them, and a list over its limit is never read, so the answer costs one pass over the keys.
     const keys = Object.fromEntries(Array.from({ length: 60_000 }, (_, i) => [`k${i}`, 0]));
