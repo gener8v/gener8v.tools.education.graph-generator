@@ -8,8 +8,10 @@ import { GRAPH_TYPES } from "../../src/core/definitions/types";
 // CPSE-NFR-003: the packed package installs into a fresh React project and renders every
 // documented example, on each supported React major (graph-library CPSE TICKET-004). Packs the
 // package with `pnpm pack`, copies each template (tests/smoke/react18/, tests/smoke/react19/: a
-// package.json with exact React versions) and tests/smoke/render.mjs into a fresh temporary
-// directory, installs the tarball there with npm from the registry, and runs render.mjs with Node,
+// package.json with exact React versions and the package-lock.json that pins React's own
+// dependencies with their integrity hashes) and tests/smoke/render.mjs into a fresh temporary
+// directory, installs React there with `npm ci` from that lockfile and then the tarball, which has
+// no dependencies, without re-resolving anything (security review SEC-001), and runs render.mjs with Node,
 // passing it the entry points the package must publish (`PUBLISHED_EXPORTS`), so an entry dropped
 // from package.json's exports fails here too (CPSE TICKET-004 code review CR-004).
 // Builds first unless GRAPH_GENERATOR_PREBUILT=1 and dist/ exists, as the test setup does.
@@ -73,8 +75,10 @@ function main(): number {
       copyFileSync(join(here, "render.mjs"), join(project, "render.mjs"));
       console.log(`\n${template}: installing ${tarballs[0]} into a fresh project`);
       try {
-        // No install scripts: the package has none, and React's need none.
-        install(["install", "--no-audit", "--no-fund", "--ignore-scripts", "--package-lock=false", tarball], project);
+        // No install scripts: the package has none, and React's need none. React and its dependencies
+        // come from the template's lockfile, checked against its integrity hashes; then the tarball.
+        install(["ci", "--no-audit", "--no-fund", "--ignore-scripts"], project);
+        install(["install", "--no-save", "--no-audit", "--no-fund", "--ignore-scripts", "--package-lock=false", tarball], project);
       } catch (error) {
         failures.push(`${template}: npm install failed twice (${messageOf(error)})`);
         continue;
