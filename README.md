@@ -30,6 +30,15 @@ as a cut-off picture, a nested `<svg>` that relies on the browser's default `ove
 Do not apply `overflow: visible` to every `svg` on the page. Scope such a rule away from the graphs
 (for example `svg:not(.your-icon-class)`), or a value of 2.5 pictures is drawn as 3.
 
+A ruler also needs a minimum shown width. It keeps 3:1 contrast for its finest marks (WCAG 1.4.11)
+when shown at least about 11 px wide per centimetre of its length: about 330 px for a 30 cm ruler
+and 164 px for a 15 cm one. A 12 in ruler marked to sixteenths keeps it down to about 210 px.
+Narrower than that, the finest marks render lighter than 3:1 against white. This applies to
+`<Graph>`, the per-type components and `createGraph` with your own printer. The figures are
+arithmetic, not a browser measurement, so treat them as a floor to stay above, not a guarantee.
+Show the ruler at least that wide, or scale it up, for example on a phone or in a two-column
+worksheet.
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).

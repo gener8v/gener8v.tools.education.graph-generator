@@ -54,6 +54,13 @@ describe("repository files (CPSE-REQ-037, CPSE-REQ-039)", () => {
     expect(readme).toContain(pkg.homepage);
   });
 
+  it("README Styling section names the ruler's minimum shown width (NLC TICKET-008)", () => {
+    const readme = readFileSync("README.md", "utf8");
+    const styling = /^## Styling\n([\s\S]*?)(?=^## )/m.exec(readme)?.[1] ?? "";
+    expect(styling).toMatch(/ruler/i);
+    expect(styling).toContain("330 px");
+  });
+
   it("CONTRIBUTING covers issues, changes and the local checks", () => {
     expect(contributing).toContain("## Reporting issues");
     expect(contributing).toContain("## Proposing changes");

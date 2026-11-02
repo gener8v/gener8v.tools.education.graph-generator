@@ -25,7 +25,10 @@ const NUMBER_GAP = 3;
 /**
  * The narrowest a mark is drawn, in drawing units, however close the marks: never 0 after `fmt()`
  * (code review CR-004). Whether marks this narrow keep 3:1 contrast depends on the size the ruler
- * is shown at, which the ruler's layout decides.
+ * is shown at, which is the caller's: the scene scales to its container and the layout names no
+ * minimum. The minimum is documented, not enforced (rulers NLC TICKET-003 DEL-002, in
+ * .gener8v/changes/rulers/delivery/number-lines-and-coordinate-graphs-ticket-003-delivery.md; the
+ * README's Styling section).
  */
 export const RULER_MIN_MARK_WIDTH = 0.25;
 

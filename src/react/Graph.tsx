@@ -14,6 +14,10 @@ const packageRegistries: Registries = { definitions, layouts };
  * (CPSE-REQ-018); its output for a valid description is exactly the per-type component's
  * (CPSE-REQ-010).
  *
+ * Show a ruler at least about 330 px wide (30 cm; about 11 px per centimetre, so 164 px for 15 cm,
+ * and 210 px for 12 in marked to sixteenths): narrower, its finest marks render lighter than 3:1
+ * contrast (WCAG 1.4.11). See the README's Styling section and `RulerGraph`.
+ *
  * The validator bounds its own work, but it still reads the whole input object: a server that
  * renders descriptions from requests must keep its own request-body size limit (GSV TICKET-003
  * security review SEC-001).
