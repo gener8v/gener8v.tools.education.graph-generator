@@ -114,4 +114,8 @@ None — documentation and comments only; existing `@spec` lines unchanged.
 
 ## Post-Review Amendments
 
-None
+### graph-library/number-lines-and-coordinate-graphs-ticket-008-code-review/CR-001, CR-002
+
+**Change:** `RulerGraph.tsx` states the figure as "at least about 330 px" with 164 px for 15 cm and points to the README; `Graph.tsx` says "about 210 px". The README test checks the README Styling section, `Graph.tsx` and `RulerGraph.tsx` alike for "about 330 px", "164 px" and "about 210 px", whitespace-normalized.
+**Files:** `src/react/graphs/RulerGraph.tsx`, `src/react/Graph.tsx` (comments only), `tests/package/checks.test.ts`
+**Re-verification:** `pnpm lint` 0; `tests/package/checks.test.ts` 26 passed. Mutant: the README's 15 cm figure changed → the test fails.

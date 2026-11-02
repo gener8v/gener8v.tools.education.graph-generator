@@ -54,11 +54,19 @@ describe("repository files (CPSE-REQ-037, CPSE-REQ-039)", () => {
     expect(readme).toContain(pkg.homepage);
   });
 
-  it("README Styling section names the ruler's minimum shown width (NLC TICKET-008)", () => {
+  it("states the ruler's minimum shown width alike in the README Styling section, Graph and RulerGraph (NLC TICKET-008; code review CR-002)", () => {
+    // Words only, whatever the line breaks; every place gives every figure, hedged with "about".
+    const words = (text: string) => text.replace(/\s*\*\s*/g, " ").replace(/\s+/g, " ");
     const readme = readFileSync("README.md", "utf8");
-    const styling = /^## Styling\n([\s\S]*?)(?=^## )/m.exec(readme)?.[1] ?? "";
-    expect(styling).toMatch(/ruler/i);
-    expect(styling).toContain("330 px");
+    const places = {
+      "README Styling": words(/^## Styling\n([\s\S]*?)(?=^## )/m.exec(readme)?.[1] ?? ""),
+      "src/react/Graph.tsx": words(readFileSync("src/react/Graph.tsx", "utf8")),
+      "src/react/graphs/RulerGraph.tsx": words(readFileSync("src/react/graphs/RulerGraph.tsx", "utf8")),
+    };
+    for (const [place, text] of Object.entries(places)) {
+      expect(text, place).toMatch(/ruler/i);
+      for (const figure of ["about 330 px", "164 px", "about 210 px"]) expect(text, `${place}: ${figure}`).toContain(figure);
+    }
   });
 
   it("CONTRIBUTING covers issues, changes and the local checks", () => {
