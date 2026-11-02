@@ -29,13 +29,26 @@ vi.mock("../../src/core/issues", async (importOriginal) => {
   return { ...issues, createIssue };
 });
 
-/** `value` read through a view that counts its own-property reads, the only way the validator reads a value. */
+/**
+ * `value` read through a view that counts every read of one of its properties: a descriptor (how the
+ * validator reads a value), a `get` or an `in` test. `length` and symbol keys are not counted: a list's
+ * size check reads `length`, and neither reveals an entry (CPSE TICKET-010 security review SEC-002).
+ */
 function countingReads<T extends object>(value: T): { value: T; reads: () => number } {
   let reads = 0;
+  const counts = (key: string | symbol) => typeof key === "string" && key !== "length";
   const view = new Proxy(value, {
     getOwnPropertyDescriptor(target, key) {
-      reads++;
+      if (counts(key)) reads++;
       return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+    get(target, key, receiver) {
+      if (counts(key)) reads++;
+      return Reflect.get(target, key, receiver) as unknown;
+    },
+    has(target, key) {
+      if (counts(key)) reads++;
+      return Reflect.has(target, key);
     },
   });
   return { value: view, reads: () => reads };

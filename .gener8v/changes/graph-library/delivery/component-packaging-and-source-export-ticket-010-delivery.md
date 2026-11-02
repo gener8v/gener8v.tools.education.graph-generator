@@ -158,3 +158,9 @@ Run in the main session on 2026-10-31, after the code was written; logs kept per
 **Change:** `isIndex` and a defined "read" in the layout-cost counting (QR-001); `tests/helpers/sampling.ts` with `fiveSigmaFloor` and `expectCovered`, through which every coverage threshold is checked against its stated rate (QR-002); first-mismatch reporting and a named constant (QR-003); `fixedRuns(n)` shared by the bench files (QR-004); seed comments and messages (QR-006).
 **Files:** `tests/helpers/sampling.ts`, `tests/helpers/bench.ts`, `tests/react/Graph.test.tsx`, the four coverage suites, the four bench files
 **Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,342 passed each; `pnpm bench` 25 passed (load average 6.6 to 12.8). Mutants: a stated rate lowered → `expectCovered` fails; the expected obstacle count broken → one first-mismatch failure; `isIndex` matching nothing → both cost tests fail. gener8v-state lint 0 errors.
+
+### graph-library/component-packaging-and-source-export-ticket-010-security-review/SEC-002 (SEC-001 fixed under code review CR-001)
+
+**Change:** `countingReads` counts `get` and `in` reads as well as descriptors (any string key but `length`), so the 1 MB hostile check sees any read of the over-limit list.
+**Files:** `tests/core/validate-structure.test.ts`
+**Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,342 passed each; `pnpm bench` 25 passed. Mutant: a loop over the list before the `maxItems` check → the hostile check fails (500,000 reads against 0). gener8v-state lint 0 errors.
