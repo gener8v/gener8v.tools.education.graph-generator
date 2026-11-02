@@ -130,3 +130,9 @@ None — implementation followed the approved plan.
 **Change:** QR-001 and QR-002 by the code-review change (`thirdVertexFromSides`, geometric test). QR-003: the needle-thin test checks the helper's height against the isosceles height; a new test asserts three sides plus an agreeing angle are placed from the sides (same polygon, same Scene at ±1 and ±3 ulp).
 **Files:** `tests/layout/triangle.test.ts`
 **Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,346 passed each. Mutant: the agreeing-angle triangle sent down the `cos`/`sin` path → the new test fails. gener8v-state lint 0 errors.
+
+### graph-library/geometric-shapes-and-solids-ticket-009-security-review/SEC-001
+
+**Change:** `thirdVertexFromSides`' comment states its precondition (validated sides, 0.001 to 1,000,000, triangle inequality: no zero base, no overflow) and that `fmt()` refuses unvalidated non-finite input. Comment only.
+**Files:** `src/layout/triangle.ts`
+**Re-verification:** `pnpm lint` / `pnpm typecheck` / `pnpm build` 0; vitest 2,346 passed.

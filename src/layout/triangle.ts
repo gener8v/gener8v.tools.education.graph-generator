@@ -48,7 +48,10 @@ const INDICES: readonly Index[] = [0, 1, 2];
  * and `sin` of an angle from `atan2` put the vertex's last bit where an engine's own functions decide
  * it, and a vertex on a rounding boundary was drawn one way in one engine and the other in another;
  * arithmetic and `sqrt` are the same in every engine (CPSE TICKET-004 code review CR-002, AD-007,
- * TR-002, graph-library GSS TICKET-009).
+ * TR-002, graph-library GSS TICKET-009). The sides must be validated: each from 0.001 to 1,000,000
+ * and meeting the triangle inequality, so `b` is never 0 and the squares never overflow (GSS
+ * TICKET-009 security review SEC-001); unvalidated input is not drawn (`fmt()` refuses a
+ * non-finite number).
  */
 // @spec GSS-REQ-010, CPSE-NFR-005
 export function thirdVertexFromSides(b: number, s: number, t: number): Vec {
