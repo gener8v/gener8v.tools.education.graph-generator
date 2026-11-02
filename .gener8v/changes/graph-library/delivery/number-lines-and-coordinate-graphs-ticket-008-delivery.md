@@ -119,3 +119,9 @@ None — documentation and comments only; existing `@spec` lines unchanged.
 **Change:** `RulerGraph.tsx` states the figure as "at least about 330 px" with 164 px for 15 cm and points to the README; `Graph.tsx` says "about 210 px". The README test checks the README Styling section, `Graph.tsx` and `RulerGraph.tsx` alike for "about 330 px", "164 px" and "about 210 px", whitespace-normalized.
 **Files:** `src/react/graphs/RulerGraph.tsx`, `src/react/Graph.tsx` (comments only), `tests/package/checks.test.ts`
 **Re-verification:** `pnpm lint` 0; `tests/package/checks.test.ts` 26 passed. Mutant: the README's 15 cm figure changed → the test fails.
+
+### graph-library/number-lines-and-coordinate-graphs-ticket-008-security-review/SEC-001
+
+**Change:** The per-centimetre rule alone allowed too narrow a width for rulers of 11 cm or less, whose marks are all drawn at full tick width (about 128 px each under DEL-002's model). All three places now state a floor of about 130 px whatever the length, and about 11 px per centimetre for a centimetre ruler longer than about 12 cm; the test requires "about 130 px" everywhere.
+**Files:** `README.md`, `src/react/Graph.tsx`, `src/react/graphs/RulerGraph.tsx` (comments), `tests/package/checks.test.ts`
+**Re-verification:** `pnpm lint` 0; `tests/package/checks.test.ts` 26 passed.

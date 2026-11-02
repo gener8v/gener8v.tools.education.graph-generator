@@ -65,7 +65,7 @@ describe("repository files (CPSE-REQ-037, CPSE-REQ-039)", () => {
     };
     for (const [place, text] of Object.entries(places)) {
       expect(text, place).toMatch(/ruler/i);
-      for (const figure of ["about 330 px", "164 px", "about 210 px"]) expect(text, `${place}: ${figure}`).toContain(figure);
+      for (const figure of ["about 130 px", "about 330 px", "164 px", "about 210 px"]) expect(text, `${place}: ${figure}`).toContain(figure);
     }
   });
 
