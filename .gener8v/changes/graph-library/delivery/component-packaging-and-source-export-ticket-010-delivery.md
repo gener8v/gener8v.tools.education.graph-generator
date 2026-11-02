@@ -164,3 +164,9 @@ Run in the main session on 2026-10-31, after the code was written; logs kept per
 **Change:** `countingReads` counts `get` and `in` reads as well as descriptors (any string key but `length`), so the 1 MB hostile check sees any read of the over-limit list.
 **Files:** `tests/core/validate-structure.test.ts`
 **Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,342 passed each; `pnpm bench` 25 passed. Mutant: a loop over the list before the `maxItems` check → the hostile check fails (500,000 reads against 0). gener8v-state lint 0 errors.
+
+### graph-library/component-packaging-and-source-export-ticket-010-code-review/CR-002 — CI on main
+
+**Change:** none; the check the resolution promised. CI run 41513107700 on `main` at `9c055c3` (2026-11-02): every cell succeeded — `Node 22/24 · React 18/19` (lint, typecheck, tests, benchmarks, package checks), `Browsers · React 18/19`, `Install smoke · Node 22/24`. The first green `main` run since GSS TICKET-003; acceptance criterion 6 is met.
+**Files:** none
+**Re-verification:** `gh run view 41513107700` — all eight jobs `success`.
