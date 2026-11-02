@@ -1,6 +1,6 @@
 import { type Triangle, triangle as triangleDefinition, triangleDisplay } from "../core/definitions/triangle";
 import { sourceOf } from "../core/format";
-import { TRIANGLE_ANGLES, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleSideTerm } from "../core/geometry/triangle-solver";
+import { TRIANGLE_ANGLES, TRIANGLE_SIDES, TRIANGLE_VERTICES, type TriangleSideTerm, fourTimesArea } from "../core/geometry/triangle-solver";
 import type { Provenance } from "../core/result";
 import { defaultStyle } from "../core/style";
 import { fmt, fmtPoints } from "./kit/format";
@@ -45,21 +45,33 @@ const INDICES: readonly Index[] = [0, 1, 2];
  * The vertices A, B and C in the description's own units, y up. A triangle given by its vertices
  * keeps them. Otherwise it stands on `base`: its ends at (0, 0) and (length, 0), counter-clockwise
  * (`SIDE_ENDS`), and the third vertex above, at its side's length and the base's first angle from
- * the first end (GSS-REQ-022). Only cosines and sines are taken: nothing is divided.
+ * the first end (GSS-REQ-022). A triangle given by its three sides (`bySides`) has the third vertex
+ * from the sides alone, x = (s² + b² − t²) ÷ 2b and y = 4·area ÷ 2b, with arithmetic and `sqrt`,
+ * which every engine computes alike; any other set takes cosines and sines.
  */
-// @spec GSS-REQ-013, GSS-REQ-022
-function modelVertices(triangle: Triangle, base: TriangleSideTerm): [Vec, Vec, Vec] {
+// @spec GSS-REQ-013, GSS-REQ-022, CPSE-NFR-005
+function modelVertices(triangle: Triangle, base: TriangleSideTerm, bySides: boolean): [Vec, Vec, Vec] {
   const given = triangle.vertices;
   if (given !== undefined && given.length === 3) return [[given[0]!.x, given[0]!.y], [given[1]!.x, given[1]!.y], [given[2]!.x, given[2]!.y]];
   const [p, q] = SIDE_ENDS[base];
   const r = (3 - p - q) as Index;
   const points: Vec[] = [];
-  const angle = triangle[TRIANGLE_ANGLES[p]] * RADIANS;
   // The side between p and r is the one opposite q.
   const reach = triangle[TRIANGLE_SIDES[q]];
   points[p] = [0, 0];
   points[q] = [triangle[base], 0];
-  points[r] = [reach * Math.cos(angle), reach * Math.sin(angle)];
+  if (bySides) {
+    // The sides are known, so no angle is taken: `cos` and `sin` of an angle from `atan2` put the
+    // vertex's last bit where an engine's own functions decide it, and a vertex on a rounding
+    // boundary was drawn one way in one engine and the other in another (CPSE TICKET-004 code
+    // review CR-002, AD-007, TR-002). Kahan's area keeps a needle-thin triangle's height (TR-008).
+    const b = triangle[base];
+    const t = triangle[TRIANGLE_SIDES[p]];
+    points[r] = [(reach * reach + b * b - t * t) / (2 * b), fourTimesArea([triangle.sideA, triangle.sideB, triangle.sideC]) / (2 * b)];
+  } else {
+    const angle = triangle[TRIANGLE_ANGLES[p]] * RADIANS;
+    points[r] = [reach * Math.cos(angle), reach * Math.sin(angle)];
+  }
   return [points[0]!, points[1]!, points[2]!];
 }
 
@@ -214,7 +226,8 @@ export const triangleLayout: Layout<Triangle> = (normalized: Triangle, provenanc
 
   // Scale the description's y-up vertices to the drawing, y down, centered below the title with
   // room for one line of labels above and below.
-  const model = modelVertices(normalized, shown.base);
+  const bySides = normalized.vertices === undefined && TRIANGLE_SIDES.every((side) => sourceOf(provenance, side) === "supplied");
+  const model = modelVertices(normalized, shown.base, bySides);
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;

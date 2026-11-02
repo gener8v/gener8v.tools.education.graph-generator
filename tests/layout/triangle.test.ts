@@ -117,6 +117,30 @@ describe("orientation of a triangle given by sides and angles (GSS-REQ-022)", ()
   });
 });
 
+describe("the third vertex of a triangle given by three sides (GSS-REQ-010, GSS-REQ-022; GSS TICKET-009)", () => {
+  const labeled = { labelSides: "all", labelAngles: true, vertexNames: ["A", "B", "C"], unit: "cm" };
+
+  it("is at x = (s² + b² − t²) ÷ 2b and y = 4·area ÷ 2b from the base's first end, to scale", () => {
+    // Stands on side a, B at the left: the vertex A is at |BA| = c from B and |CA| = b from C.
+    const [a, b, c] = [18, 19.98, 14.13];
+    const v = vertices(sceneOf({ type: "triangle", sideA: a, sideB: b, sideC: c }));
+    const scale = (v[2][0] - v[1][0]) / a;
+    const x = (c * c + a * a - b * b) / (2 * a);
+    const y = Math.sqrt((a + b + c) * (b + c - a) * (a + c - b) * (a + b - c)) / (2 * a);
+    expect(v[0][0] - v[1][0]).toBeCloseTo(scale * x, 1);
+    expect(v[1][1] - v[0][1]).toBeCloseTo(scale * y, 1);
+  });
+
+  it("keeps a needle-thin triangle's height, with its labels clear", () => {
+    // The apex is 0.02°: 2 · 10⁶ · sin(0.01°) = 349.07.
+    const scene = sceneOf({ type: "triangle", sideA: 349.07, sideB: 1_000_000, sideC: 1_000_000, ...labeled });
+    const v = vertices(scene);
+    expect(v[0]![1]).toBeLessThan(v[1]![1]);
+    expect(v[1]![1]).toBe(v[2]![1]);
+    expect(overlaps(scene)).toEqual([]);
+  });
+});
+
 describe("a triangle given by its vertices (GSS-REQ-013, GSS-REQ-031)", () => {
   // The drawing is y-down: a vertex higher in the description is drawn higher, never mirrored.
   it.each<[string, Vec[]]>([

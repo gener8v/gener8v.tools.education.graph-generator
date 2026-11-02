@@ -89,7 +89,7 @@ const cosDeg = (degrees: number) => Math.cos(degrees * RADIANS);
  * accurate for a needle-thin triangle where the plain form cancels to 0 (TR-008). The sides must
  * satisfy the triangle inequality; a product rounded below 0 counts as 0.
  */
-function fourTimesArea(sides: readonly number[]): number {
+export function fourTimesArea(sides: readonly number[]): number {
   const [a, b, c] = [...sides].sort((x, y) => y - x) as [number, number, number];
   const product = (a + (b + c)) * (c - (a - b)) * (c + (a - b)) * (a + (b - c));
   return product > 0 ? Math.sqrt(product) : 0;
