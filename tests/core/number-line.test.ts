@@ -127,6 +127,13 @@ describe("custom labels off a tick (NLC-REQ-020)", () => {
     expect(codesAndPaths(line({ tickLabels: [{ value: 4, text: "four" }, { value: 3, text: "x" }] }))).toEqual(["tick_label_not_on_tick /tickLabels/1/value"]);
   });
 
+  it("leaves labels to the axis checks when the axis has too many ticks or a bad spacing, never failing itself", () => {
+    expect(codesAndPaths(line({ axis: { min: 0, max: 10, tickSpacing: 0.01 }, tickLabels: [{ value: 0.5, text: "x" }] }))).toEqual(["too_many_ticks /axis/tickSpacing"]);
+    expect(codesAndPaths(line({ axis: { min: 0, max: 10, tickSpacing: -1 }, tickLabels: [{ value: 0.5, text: "x" }] }))).toEqual(["tick_spacing_invalid /axis/tickSpacing"]);
+  });
+});
+
+describe("a tick spacing leaving fewer than two ticks (NLC TICKET-007)", () => {
   it("rejects a tick spacing leaving fewer than two ticks, so no figure is left ticked every 10 with no ticks (DS-002)", () => {
     const description = { type: "number-line", axis: { min: 1, max: 9, tickSpacing: 10 } };
     const result = validate(description);
@@ -143,7 +150,7 @@ describe("custom labels off a tick (NLC-REQ-020)", () => {
     if (!created.ok) expect(created.issues.map((issue) => `${issue.code} ${issue.path}`)).toEqual(["too_few_ticks /axis/tickSpacing"]);
   });
 
-  it("applies the spacing the message names, and allows a line with one tick fewer than the default only at two", () => {
+  it("accepts the spacing the message names; one tick is rejected, two accepted", () => {
     expect(issuesOf(validate({ type: "number-line", axis: { min: 1, max: 9, tickSpacing: 0.5 } }))).toEqual([]);
     expect(codesAndPaths({ type: "number-line", axis: { min: 0.5, max: 1.5, tickSpacing: 1 } })).toEqual(["too_few_ticks /axis/tickSpacing"]);
     expect(codesAndPaths({ type: "number-line", axis: { min: 0, max: 10, tickSpacing: 10 } })).toEqual([]);
@@ -161,11 +168,6 @@ describe("custom labels off a tick (NLC-REQ-020)", () => {
       "too_few_ticks /axis/tickSpacing",
       "tick_label_not_on_tick /tickLabels/0/value",
     ]);
-  });
-
-  it("leaves labels to the axis checks when the axis has too many ticks or a bad spacing, never failing itself", () => {
-    expect(codesAndPaths(line({ axis: { min: 0, max: 10, tickSpacing: 0.01 }, tickLabels: [{ value: 0.5, text: "x" }] }))).toEqual(["too_many_ticks /axis/tickSpacing"]);
-    expect(codesAndPaths(line({ axis: { min: 0, max: 10, tickSpacing: -1 }, tickLabels: [{ value: 0.5, text: "x" }] }))).toEqual(["tick_spacing_invalid /axis/tickSpacing"]);
   });
 });
 

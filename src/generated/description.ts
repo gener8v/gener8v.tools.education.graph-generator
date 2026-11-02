@@ -18,7 +18,7 @@ export interface NumberLineDescription {
     min: number;
     /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
     max: number;
-    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at least 2 and at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
     tickSpacing?: number;
     /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
     showTickLabels?: boolean;
@@ -90,7 +90,7 @@ export interface XyGraphDescription {
     min: number;
     /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
     max: number;
-    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at least 2 and at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
     tickSpacing?: number;
     /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
     showTickLabels?: boolean;
@@ -101,7 +101,7 @@ export interface XyGraphDescription {
     min: number;
     /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
     max: number;
-    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at least 2 and at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
     tickSpacing?: number;
     /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
     showTickLabels?: boolean;
@@ -162,7 +162,7 @@ export interface XyzGraphDescription {
     min: number;
     /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
     max: number;
-    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at least 2 and at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
     tickSpacing?: number;
     /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
     showTickLabels?: boolean;
@@ -173,7 +173,7 @@ export interface XyzGraphDescription {
     min: number;
     /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
     max: number;
-    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at least 2 and at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
     tickSpacing?: number;
     /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
     showTickLabels?: boolean;
@@ -184,7 +184,7 @@ export interface XyzGraphDescription {
     min: number;
     /** The highest value on an axis: negative, zero or positive, whole or decimal, from -1000000000 to 1000000000, and above the axis's min by at least a billionth of the larger end's size (and at least 0.000000001). */
     max: number;
-    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
+    /** The distance between neighbouring ticks on an axis: greater than 0 and at most 2000000000, giving at least 2 and at most 100 ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart. */
     tickSpacing?: number;
     /** Whether an axis's ticks are labeled with their values; shown unless false. A label shows no more decimal places than the tick spacing needs. */
     showTickLabels?: boolean;

@@ -186,8 +186,11 @@ export interface IssueParamsByCode {
    * stated exactly, never rounded: 2.0625 is a mark and 2.063 is not (code review CR-001).
    */
   not_on_mark: { term: Term; got: unknown; below: number; above: number };
-  /** `fittingSpacing` is a tick spacing that would draw at least `minTicks` ticks. */
-  too_few_ticks: { term: Term; tickCount: number; minTicks: number; fittingSpacing: number };
+  /**
+   * `fittingSpacing` is a tick spacing that would draw at least `minTicks` ticks; absent where
+   * none does (a range a few billionths wide), and the message says to leave the spacing out.
+   */
+  too_few_ticks: { term: Term; tickCount: number; minTicks: number; fittingSpacing?: number };
 }
 
 const MAX_VALUE_CHARS = 40;
@@ -409,7 +412,8 @@ const templates: Templates = {
   not_on_mark: (p) =>
     `${describeTerm(p.term)} must be on a mark of the ruler; got ${describeValue(p.got)}, between the marks at ${formatSupplied(p.below)} and ${formatSupplied(p.above)}.`,
   too_few_ticks: (p) =>
-    `${describeTerm(p.term)} would draw ${count(p.tickCount, "tick", "ticks")}, fewer than the minimum of ${p.minTicks}; use a smaller tick spacing, such as ${describeNumber(p.fittingSpacing)}.`,
+    `${describeTerm(p.term)} would draw ${count(p.tickCount, "tick", "ticks")}, fewer than the minimum of ${p.minTicks}; ` +
+    (p.fittingSpacing === undefined ? "leave the tick spacing out." : `use a smaller tick spacing, such as ${describeNumber(p.fittingSpacing)}.`),
 };
 
 /**

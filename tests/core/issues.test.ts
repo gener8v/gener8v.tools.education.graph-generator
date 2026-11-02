@@ -428,6 +428,10 @@ describe("issues and results are plain JSON data (GSV-REQ-029, GSV-REQ-032, GSV-
     expect(issueMessage("too_few_ticks", { ...SAMPLES.too_few_ticks, tickCount: 1, fittingSpacing: 0.1 })).toBe(
       "axis.tickSpacing would draw 1 tick, fewer than the minimum of 2; use a smaller tick spacing, such as 0.1.",
     );
+    // No spacing fits a range a few billionths wide: the message says to leave the spacing out.
+    expect(issueMessage("too_few_ticks", { term: "axis.tickSpacing", tickCount: 0, minTicks: 2 })).toBe(
+      "axis.tickSpacing would draw 0 ticks, fewer than the minimum of 2; leave the tick spacing out.",
+    );
     expect(sampleIssue("series_length_mismatch", "/series/1/values")).toEqual({
       code: "series_length_mismatch",
       path: "/series/1/values",

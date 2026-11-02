@@ -145,4 +145,13 @@ None — implementation followed the approved plan, with DEL-001.
 
 ## Post-Review Amendments
 
-None
+### graph-library/number-lines-and-coordinate-graphs-ticket-007 code review CR-001..CR-003, quality review QR-001..QR-003, security review SEC-001, SEC-002 (one commit: the fixes share lines)
+
+**Change:**
+- SEC-001: "fewer than two" is decided by the ticks `drawableTicks` lists (at most 100 after the count check), the drawing's own rule. **DEL-002 is corrected:** the count and the drawing do disagree at a count of two (10 cases in about 760,000 ranges, e.g. `{ min: 2635.2, max: 2641.2999999973586, tickSpacing: 6.1 }`: counted 2, drawn 1); those axes are now reported.
+- SEC-002: when the default spacing itself draws fewer than two ticks (ranges about 1e-9 to 2e-9 wide), the message says to leave the tick spacing out; a property applies every suggestion and asserts it validates.
+- CR-003 / QR-001: **DEL-001 is superseded:** the `tickSpacing` description and the check's name state "at least 2 and at most 100 ticks", and `src/generated/description.ts`, `schema.json`, `tool-schema.json`, `vocabulary.json` are regenerated (those strings only) — a deliberate vocabulary change models read.
+- CR-001: the NLC-REQ-004 coverage row lists `axisChecks`, `axisSpacingIssues`. CR-002: the `@spec` line sits on `axisChecks`, not `axisSpacingIssues` as this record's table said.
+- QR-002: the tests have their own `describe`; QR-003 / CR-003: the 50 ms wall-clock assertions are work counts.
+**Files:** `src/core/definitions/axis.ts`, `src/core/issues.ts`, `src/generated/*` (4), `tests/core/axis.test.ts`, `tests/core/issues.test.ts`, `tests/core/number-line.test.ts`, `.gener8v/specifications/number-lines-and-coordinate-graphs.md`
+**Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,360 passed each; `pnpm bench` 25 passed; `pnpm generate` leaves only the 4 regenerated files. Mutants: deciding by the count → 3 tests fail; always naming a spacing → the apply-every-suggestion property fails. gener8v-state lint 0 errors.

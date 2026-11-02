@@ -1,6 +1,6 @@
 import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
-import { MAX_VALUE_TICKS, SCALE_RESOLUTION, VALUE_LIMIT, axisSpacing, axisTooNarrow, tickCount, tooManyTicks } from "../value-scale";
+import { MAX_VALUE_TICKS, SCALE_RESOLUTION, VALUE_LIMIT, axisSpacing, axisTooNarrow, drawableTicks, tickCount, tooManyTicks } from "../value-scale";
 import { type DescriptionBase, type DomainCheck, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 /**
@@ -25,7 +25,8 @@ export interface Axis {
 /**
  * The terms of one axis (NLC-REQ-002..006), shared by every axis of every type, so each term has
  * one definition in the vocabulary. `tickSpacing` has no lower bound here: one of 0 or less is
- * reported by `axisChecks` as `tick_spacing_invalid`, naming the axis (NLC-REQ-009).
+ * reported by `axisChecks` as `tick_spacing_invalid`, naming the axis (NLC-REQ-009), and one leaving
+ * fewer than `MIN_AXIS_TICKS` ticks in the range as `too_few_ticks`.
  */
 // @spec NLC-REQ-002, NLC-REQ-003, NLC-REQ-004, NLC-REQ-005, NLC-REQ-006
 export const axisProperties: PropertyMap = /* @__PURE__ */ defineProperties({
@@ -50,7 +51,7 @@ export const axisProperties: PropertyMap = /* @__PURE__ */ defineProperties({
     kind: "number",
     required: false,
     max: 2 * AXIS_LIMIT,
-    description: `The distance between neighbouring ticks on an axis: greater than 0 and at most ${2 * AXIS_LIMIT}, giving at most ${MAX_VALUE_TICKS} ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart.`,
+    description: `The distance between neighbouring ticks on an axis: greater than 0 and at most ${2 * AXIS_LIMIT}, giving at least ${MIN_AXIS_TICKS} and at most ${MAX_VALUE_TICKS} ticks. Ticks fall at every whole multiple of it inside the range, so zero is always ticked when the range includes it, and an end that is not a multiple has no tick. When it is left out, the spacing is 1, 2 or 5 times a power of ten, chosen to give between 5 and 20 ticks on a range at least 0.001 wide (fewer on a narrower one), or coarser, down to two ticks, where the axis is drawn too short for its tick labels to stand apart.`,
   },
   showTickLabels: {
     term: "showTickLabels",
@@ -110,7 +111,8 @@ function narrowRange(term: string, min: number, max: number): Issue {
  *   `too_many_ticks`, with the limit and a spacing that fits (NLC-REQ-008), counted
  *   arithmetically, never listed;
  * - on a range that can be drawn, a tick spacing giving fewer than `MIN_AXIS_TICKS` ticks:
- *   `too_few_ticks`, with the count, the minimum and the axis's default spacing, which fits.
+ *   `too_few_ticks`, decided by the ticks the kit draws (`drawableTicks`), with the count, the minimum
+ *   and the axis's default spacing when that draws the minimum, else nothing: leave the spacing out.
  * Work is constant, whatever the numbers.
  */
 // @spec NLC-REQ-004, NLC-REQ-008, NLC-REQ-009
@@ -137,10 +139,20 @@ function axisSpacingIssues(term: string, axis: Axis): Issue[] {
   if (axisTooNarrow(min, max)) return [];
   const count = tickCount(min, max, tickSpacing);
   if (count > MAX_VALUE_TICKS) return [tooManyTicks(pointer(term, "tickSpacing"), spacingTerm, count, max - min)];
-  // The default spacing always gives 7 to 20 ticks, so it is a spacing that fits.
-  return count < MIN_AXIS_TICKS
-    ? [createIssue("too_few_ticks", pointer(term, "tickSpacing"), { term: spacingTerm, tickCount: count, minTicks: MIN_AXIS_TICKS, fittingSpacing: axisSpacing(min, max) })]
-    : [];
+  // At most MAX_VALUE_TICKS ticks, so listing them is bounded. The ticks drawn decide, not the count:
+  // at the edge of the count's tolerance the two can differ by one (security review SEC-001).
+  const drawn = drawnTicks(min, max, tickSpacing);
+  if (drawn >= MIN_AXIS_TICKS) return [];
+  // The default spacing is a spacing that fits, but not on a range a few billionths wide, which it
+  // draws one tick on: there only leaving the spacing out is a fix (security review SEC-002).
+  const fitting = axisSpacing(min, max);
+  const params = { term: spacingTerm, tickCount: drawn, minTicks: MIN_AXIS_TICKS };
+  return [createIssue("too_few_ticks", pointer(term, "tickSpacing"), drawnTicks(min, max, fitting) >= MIN_AXIS_TICKS ? { ...params, fittingSpacing: fitting } : params)];
+}
+
+/** The number of ticks the axis draws at `spacing`: `drawableTicks`, 0 where it cannot be drawn. */
+function drawnTicks(min: number, max: number, spacing: number): number {
+  return drawableTicks(min, max, spacing)?.ticks.length ?? 0;
 }
 
 /**
@@ -156,7 +168,7 @@ export function axisDomainChecks(term: string): readonly DomainCheck[] {
       check: (description: DescriptionBase) => axisRangeIssues(term, description[term] as Axis),
     },
     {
-      name: `the ${term} tick spacing is greater than 0 and gives at most ${MAX_VALUE_TICKS} ticks`,
+      name: `the ${term} tick spacing is greater than 0 and gives at least ${MIN_AXIS_TICKS} and at most ${MAX_VALUE_TICKS} ticks`,
       inputs: [`${term}/min`, `${term}/max`, `${term}/tickSpacing`],
       check: (description: DescriptionBase) => axisSpacingIssues(term, description[term] as Axis),
     },
