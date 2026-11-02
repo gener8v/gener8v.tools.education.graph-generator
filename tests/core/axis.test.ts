@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { AXIS_LIMIT, axisChecks, axisDomainChecks, axisProperties, axisProperty } from "../../src/core/definitions/axis";
 import { type GraphType, type GraphTypeDefinition, defineProperties } from "../../src/core/definitions/types";
 import type { Issue, ValidationResult } from "../../src/core/result";
+import { drawableTicks, tickCount } from "../../src/core/value-scale";
 import { validateWith } from "../../src/core/validate/index";
 
 /** A test-only graph with two axes built from the real axis group and its checks. */
@@ -96,6 +97,71 @@ describe("tick spacing checks (NLC-REQ-008, NLC-REQ-009)", () => {
     expect(performance.now() - started).toBeLessThan(50);
     expect(issue).toMatchObject({ code: "too_many_ticks", path: "/xAxis/tickSpacing" });
     expect(issue!.message).toMatch(/would draw \d+ ticks/);
+  });
+
+  it("reports fewer than two ticks as too_few_ticks, stating the count, the minimum and a spacing that fits", () => {
+    const [none, ...rest] = issuesOf(check({ min: 1, max: 9, tickSpacing: 10 }));
+    expect(rest).toEqual([]);
+    expect(none).toMatchObject({ code: "too_few_ticks", path: "/xAxis/tickSpacing" });
+    expect(none!.message).toBe("xAxis.tickSpacing would draw 0 ticks, fewer than the minimum of 2; use a smaller tick spacing, such as 0.5.");
+    const [one, ...more] = issuesOf(check({ min: 0.5, max: 1.5, tickSpacing: 1 }));
+    expect(more).toEqual([]);
+    expect(one).toMatchObject({ code: "too_few_ticks", path: "/xAxis/tickSpacing" });
+    expect(one!.message).toContain("would draw 1 tick, fewer");
+    // The spacing named fits: it is the axis's default, 7 to 20 ticks.
+    expect(issuesOf(check({ min: 1, max: 9, tickSpacing: 0.5 }))).toEqual([]);
+    expect(issuesOf(check({ min: 0.5, max: 1.5, tickSpacing: 0.1 }))).toEqual([]);
+  });
+
+  it("allows exactly two ticks, and counts by the multiples in range, not by the range's width", () => {
+    expect(issuesOf(check({ min: 0, max: 10, tickSpacing: 10 }))).toEqual([]);
+    expect(issuesOf(check({ min: 0, max: 10, tickSpacing: 8 }))).toEqual([]);
+    expect(issuesOf(check({ min: 0, max: 1, tickSpacing: 1 }))).toEqual([]);
+    // 0.5 to 1.5 is as wide as 0 to 1, but holds one multiple of 1.
+    expect(codesAndPaths({ min: 0.5, max: 1.5, tickSpacing: 1 })).toEqual(["too_few_ticks /xAxis/tickSpacing"]);
+    expect(codesAndPaths({ min: 0, max: 10, tickSpacing: 11 })).toEqual(["too_few_ticks /xAxis/tickSpacing"]);
+  });
+
+  it("never reports a missing tick spacing, as the default always gives ticks", () => {
+    for (const axis of [{ min: 1, max: 9 }, { min: 0.5, max: 1.5 }, { min: 1, max: 9, showTickLabels: false }]) expect(issuesOf(check(axis))).toEqual([]);
+  });
+
+  it("gives one spacing issue at most: 0 or less, over 100 ticks, or a range too narrow to draw win over too few", () => {
+    expect(codesAndPaths({ min: 1, max: 9, tickSpacing: 0 })).toEqual(["tick_spacing_invalid /xAxis/tickSpacing"]);
+    expect(codesAndPaths({ min: 1, max: 9, tickSpacing: -10 })).toEqual(["tick_spacing_invalid /xAxis/tickSpacing"]);
+    expect(codesAndPaths({ min: 0, max: 10, tickSpacing: 0.01 })).toEqual(["too_many_ticks /xAxis/tickSpacing"]);
+    expect(codesAndPaths({ min: 0, max: 1e-10, tickSpacing: 1 })).toEqual(["out_of_range /xAxis/max"]);
+  });
+
+  it("counts a huge or tiny spacing arithmetically, in constant time", () => {
+    const started = performance.now();
+    expect(codesAndPaths({ min: 1, max: 9, tickSpacing: 2e9 })).toEqual(["too_few_ticks /xAxis/tickSpacing"]);
+    expect(codesAndPaths({ min: 1, max: 9, tickSpacing: 2.1e9 })).toEqual(["out_of_range /xAxis/tickSpacing"]);
+    expect(codesAndPaths({ min: -AXIS_LIMIT, max: AXIS_LIMIT, tickSpacing: AXIS_LIMIT })).toEqual([]);
+    expect(codesAndPaths({ min: -AXIS_LIMIT, max: AXIS_LIMIT, tickSpacing: 2 * AXIS_LIMIT })).toEqual(["too_few_ticks /xAxis/tickSpacing"]);
+    expect(codesAndPaths({ min: 1, max: 9, tickSpacing: 1e-300 })).toEqual(["too_many_ticks /xAxis/tickSpacing"]);
+    expect(performance.now() - started).toBeLessThan(50);
+  });
+
+  it("follows tickCount at the edge of the 1e-12 tolerance, where it can differ from the ticks drawn by one, but not at two (NLC TICKET-006 SEC-001)", () => {
+    // tickCount matches an end within 1e-12 of a multiple, relative to the multiple; drawableTicks
+    // keeps a tick within 1e-12 of the larger end. At exactly 1e-12 short of the 17th multiple of 57.8
+    // they differ (counted 18, drawn 17), accepted as recorded, since it cannot move a count across
+    // the minimum: 1.5 million ranges of two counted ticks at that edge all draw two.
+    const drawn = (min: number, max: number, spacing: number) => drawableTicks(min, max, spacing)?.ticks.length;
+    const edge = 57.8 * 17 * (1 - 1e-12);
+    expect([tickCount(0, edge, 57.8), drawn(0, edge, 57.8)]).toEqual([18, 17]);
+    for (const spacing of [57.8, 0.3, 0.1, 1 / 3, 123.456]) {
+      for (const nudge of [1e-13, 9.9992e-13, 1e-12, 1.0001e-12, 2e-12].flatMap((e) => [e, -e])) {
+        for (const min of [0, -spacing]) {
+          const max = min + spacing * (min === 0 ? 1 : 2) * (1 - nudge);
+          const counted = tickCount(min, max, spacing);
+          if (counted <= 2) expect(drawn(min, max, spacing), `${spacing} from ${min} to ${max}`).toBe(counted);
+          // Validation follows the count.
+          expect(codesAndPaths({ min, max, tickSpacing: spacing }).length === 1, `${spacing} from ${min} to ${max}`).toBe(counted < 2);
+        }
+      }
+    }
   });
 
   it("reports a range too narrow to tell its ticks apart at max, as for a value scale", () => {

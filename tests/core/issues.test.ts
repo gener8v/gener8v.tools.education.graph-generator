@@ -84,6 +84,7 @@ describe("issue-code set (GSV-REQ-030, GSV-REQ-034)", () => {
         "too_large",
         "duplicate_name",
         "not_on_mark",
+        "too_few_ticks",
       ]
     `);
   });
@@ -154,6 +155,7 @@ const SAMPLES: Samples = {
   too_large: { term: "points", limit: 1000, unit: "items", count: 5000 },
   duplicate_name: { term: "categories[2].name", got: "Mon", conflicts: ["/categories/0/name"], conflictTerms: ["categories[0].name"] },
   not_on_mark: { term: "measuredObject.end", got: 2.1, below: 2.0625, above: 2.125 },
+  too_few_ticks: { term: "axis.tickSpacing", tickCount: 0, minTicks: 2, fittingSpacing: 0.5 },
 };
 
 const sampleMessage = <C extends IssueCode>(code: C) => issueMessage(code, SAMPLES[code]);
@@ -183,6 +185,7 @@ describe("issue messages (GSV-REQ-031)", () => {
         "tick_interval_not_dividing": "valueScale.tickInterval must divide the value scale into whole intervals; got 7. Use a value that divides the scale range exactly.",
         "tick_label_not_on_tick": "tickLabels[0].value is at 2.5, which is not a tick position; use a tick: a multiple of 1 from 0 to 10.",
         "tick_spacing_invalid": "xAxis.tickSpacing must be a number greater than 0; got 0.",
+        "too_few_ticks": "axis.tickSpacing would draw 0 ticks, fewer than the minimum of 2; use a smaller tick spacing, such as 0.5.",
         "too_large": "points has 5000 items, more than the limit of 1000; use fewer.",
         "too_many_ticks": "xAxis.tickSpacing would draw 20001 ticks, more than the limit of 100; use a larger tick spacing, such as 0.2.",
         "unknown_color": "lineColor must be a color name (black, blue, red) or a hex code such as #0072b2; got "blurple".",
@@ -417,6 +420,14 @@ describe("issues and results are plain JSON data (GSV-REQ-029, GSV-REQ-032, GSV-
       message:
         "xAxis.tickSpacing would draw 20001 ticks, more than the limit of 100; use a larger tick spacing, such as 0.2.",
     });
+    expect(sampleIssue("too_few_ticks", "/axis/tickSpacing")).toEqual({
+      code: "too_few_ticks",
+      path: "/axis/tickSpacing",
+      message: "axis.tickSpacing would draw 0 ticks, fewer than the minimum of 2; use a smaller tick spacing, such as 0.5.",
+    });
+    expect(issueMessage("too_few_ticks", { ...SAMPLES.too_few_ticks, tickCount: 1, fittingSpacing: 0.1 })).toBe(
+      "axis.tickSpacing would draw 1 tick, fewer than the minimum of 2; use a smaller tick spacing, such as 0.1.",
+    );
     expect(sampleIssue("series_length_mismatch", "/series/1/values")).toEqual({
       code: "series_length_mismatch",
       path: "/series/1/values",

@@ -35,6 +35,7 @@ export const ISSUE_CODES = Object.freeze([
   "too_large",
   "duplicate_name",
   "not_on_mark",
+  "too_few_ticks",
 ] as const);
 
 export type IssueCode = (typeof ISSUE_CODES)[number];
@@ -83,6 +84,7 @@ export const issueDocs: Readonly<Record<IssueCode, string>> = Object.freeze(
     too_large: "A list, or the whole description, holds more values than its documented limit, or a text has more characters than its limit.",
     duplicate_name: "Two entries of a list that must be told apart by name, such as two categories, have the same name.",
     not_on_mark: "A value that must be one of a ruler's drawn marks lies between two of them; the issue names both.",
+    too_few_ticks: "An axis would draw fewer ticks than the required minimum, so it would have no scale to read.",
   } satisfies Record<IssueCode, string>),
 );
 
@@ -184,6 +186,8 @@ export interface IssueParamsByCode {
    * stated exactly, never rounded: 2.0625 is a mark and 2.063 is not (code review CR-001).
    */
   not_on_mark: { term: Term; got: unknown; below: number; above: number };
+  /** `fittingSpacing` is a tick spacing that would draw at least `minTicks` ticks. */
+  too_few_ticks: { term: Term; tickCount: number; minTicks: number; fittingSpacing: number };
 }
 
 const MAX_VALUE_CHARS = 40;
@@ -404,6 +408,8 @@ const templates: Templates = {
     `${describeTerm(p.term)} (${describeValue(p.got)}) repeats ${list(p.conflictTerms)}; give each one a different name.`,
   not_on_mark: (p) =>
     `${describeTerm(p.term)} must be on a mark of the ruler; got ${describeValue(p.got)}, between the marks at ${formatSupplied(p.below)} and ${formatSupplied(p.above)}.`,
+  too_few_ticks: (p) =>
+    `${describeTerm(p.term)} would draw ${count(p.tickCount, "tick", "ticks")}, fewer than the minimum of ${p.minTicks}; use a smaller tick spacing, such as ${describeNumber(p.fittingSpacing)}.`,
 };
 
 /**

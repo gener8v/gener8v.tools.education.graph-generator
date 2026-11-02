@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { describe as describeGraph, validate } from "../../src/core/index";
+import { createGraph } from "../../src/graph";
 import { NUMBER_LINE_POINT_LIMIT, type NumberLine, hasArrow, numberLine } from "../../src/core/definitions/number-line";
 import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import type { Issue, ValidationResult } from "../../src/core/result";
@@ -124,6 +125,42 @@ describe("custom labels off a tick (NLC-REQ-020)", () => {
   it("checks labels against the default spacing when none is given", () => {
     // -10..10 by default ticks every 2: every 1 would give 21 ticks, past the 20 the default aims at.
     expect(codesAndPaths(line({ tickLabels: [{ value: 4, text: "four" }, { value: 3, text: "x" }] }))).toEqual(["tick_label_not_on_tick /tickLabels/1/value"]);
+  });
+
+  it("rejects a tick spacing leaving fewer than two ticks, so no figure is left ticked every 10 with no ticks (DS-002)", () => {
+    const description = { type: "number-line", axis: { min: 1, max: 9, tickSpacing: 10 } };
+    const result = validate(description);
+    expect(result.valid).toBe(false);
+    expect(issuesOf(result)).toEqual([
+      {
+        code: "too_few_ticks",
+        path: "/axis/tickSpacing",
+        message: "axis.tickSpacing would draw 0 ticks, fewer than the minimum of 2; use a smaller tick spacing, such as 0.5.",
+      },
+    ]);
+    const created = createGraph(description);
+    expect(created.ok).toBe(false);
+    if (!created.ok) expect(created.issues.map((issue) => `${issue.code} ${issue.path}`)).toEqual(["too_few_ticks /axis/tickSpacing"]);
+  });
+
+  it("applies the spacing the message names, and allows a line with one tick fewer than the default only at two", () => {
+    expect(issuesOf(validate({ type: "number-line", axis: { min: 1, max: 9, tickSpacing: 0.5 } }))).toEqual([]);
+    expect(codesAndPaths({ type: "number-line", axis: { min: 0.5, max: 1.5, tickSpacing: 1 } })).toEqual(["too_few_ticks /axis/tickSpacing"]);
+    expect(codesAndPaths({ type: "number-line", axis: { min: 0, max: 10, tickSpacing: 10 } })).toEqual([]);
+    expect(codesAndPaths({ type: "number-line", axis: { min: 0, max: 10, tickSpacing: 8 } })).toEqual([]);
+  });
+
+  it("never reports an axis with no tick spacing, with hidden tick labels or custom labels", () => {
+    expect(codesAndPaths({ type: "number-line", axis: { min: 1, max: 9 } })).toEqual([]);
+    expect(codesAndPaths({ type: "number-line", axis: { min: 1, max: 9, showTickLabels: false } })).toEqual([]);
+    expect(codesAndPaths({ type: "number-line", axis: { min: 1, max: 9 }, tickLabels: [{ value: 4, text: "four" }] })).toEqual([]);
+  });
+
+  it("reports a custom tick label on an axis with no ticks beside the spacing, which is intended", () => {
+    expect(codesAndPaths(line({ axis: { min: 1, max: 9, tickSpacing: 10 }, tickLabels: [{ value: 5, text: "five" }] }))).toEqual([
+      "too_few_ticks /axis/tickSpacing",
+      "tick_label_not_on_tick /tickLabels/0/value",
+    ]);
   });
 
   it("leaves labels to the axis checks when the axis has too many ticks or a bad spacing, never failing itself", () => {

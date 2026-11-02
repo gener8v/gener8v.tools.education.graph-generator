@@ -1,6 +1,6 @@
 import { createIssue, pointer } from "../issues";
 import type { Issue } from "../result";
-import { MAX_VALUE_TICKS, SCALE_RESOLUTION, VALUE_LIMIT, axisTooNarrow, tickCount, tooManyTicks } from "../value-scale";
+import { MAX_VALUE_TICKS, SCALE_RESOLUTION, VALUE_LIMIT, axisSpacing, axisTooNarrow, tickCount, tooManyTicks } from "../value-scale";
 import { type DescriptionBase, type DomainCheck, type PropertyMap, type PropertySpec, defineProperties } from "./types";
 
 /**
@@ -9,6 +9,9 @@ import { type DescriptionBase, type DomainCheck, type PropertyMap, type Property
  * SEC-002).
  */
 export const AXIS_LIMIT = VALUE_LIMIT;
+
+/** The fewest ticks a given tick spacing may leave in an axis range: with fewer, the axis has no scale to read. */
+const MIN_AXIS_TICKS = 2;
 
 /** One axis of a number line, x,y graph or x,y,z graph, as a normalized description holds it. */
 export interface Axis {
@@ -105,10 +108,12 @@ function narrowRange(term: string, min: number, max: number): Issue {
  * - a tick spacing of 0 or less: `tick_spacing_invalid` (NLC-REQ-009);
  * - on a range that can be drawn, a tick spacing giving more than `MAX_VALUE_TICKS` ticks:
  *   `too_many_ticks`, with the limit and a spacing that fits (NLC-REQ-008), counted
- *   arithmetically, never listed.
+ *   arithmetically, never listed;
+ * - on a range that can be drawn, a tick spacing giving fewer than `MIN_AXIS_TICKS` ticks:
+ *   `too_few_ticks`, with the count, the minimum and the axis's default spacing, which fits.
  * Work is constant, whatever the numbers.
  */
-// @spec NLC-REQ-008, NLC-REQ-009
+// @spec NLC-REQ-004, NLC-REQ-008, NLC-REQ-009
 export function axisChecks(term: string, axis: Axis): Issue[] {
   return [...axisRangeIssues(term, axis), ...axisSpacingIssues(term, axis)];
 }
@@ -131,7 +136,11 @@ function axisSpacingIssues(term: string, axis: Axis): Issue[] {
   if (!(tickSpacing > 0)) return [createIssue("tick_spacing_invalid", pointer(term, "tickSpacing"), { term: spacingTerm, got: tickSpacing })];
   if (axisTooNarrow(min, max)) return [];
   const count = tickCount(min, max, tickSpacing);
-  return count > MAX_VALUE_TICKS ? [tooManyTicks(pointer(term, "tickSpacing"), spacingTerm, count, max - min)] : [];
+  if (count > MAX_VALUE_TICKS) return [tooManyTicks(pointer(term, "tickSpacing"), spacingTerm, count, max - min)];
+  // The default spacing always gives 7 to 20 ticks, so it is a spacing that fits.
+  return count < MIN_AXIS_TICKS
+    ? [createIssue("too_few_ticks", pointer(term, "tickSpacing"), { term: spacingTerm, tickCount: count, minTicks: MIN_AXIS_TICKS, fittingSpacing: axisSpacing(min, max) })]
+    : [];
 }
 
 /**
