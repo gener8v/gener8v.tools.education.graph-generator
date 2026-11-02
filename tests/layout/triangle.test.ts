@@ -12,7 +12,7 @@ import { type Box, type Obstacle, placeLabel } from "../../src/layout/kit/labels
 import { textWidth } from "../../src/layout/kit/text";
 import { LINE_HEIGHT, TITLE_MAX_LINES } from "../../src/layout/kit/title";
 import type { Scene, SceneNode } from "../../src/layout/scene";
-import { ARC_RADIUS, FIGURE_HEIGHT, FIGURE_WIDTH, RIGHT_ANGLE_MARK, triangleLayout } from "../../src/layout/triangle";
+import { ARC_RADIUS, FIGURE_HEIGHT, FIGURE_WIDTH, RIGHT_ANGLE_MARK, thirdVertexFromSides, triangleLayout } from "../../src/layout/triangle";
 import { mathOff } from "../fixtures/engine-math";
 import { oneClusterTexts, wordsOf } from "../fixtures/plain-text";
 
@@ -129,6 +129,23 @@ describe("the third vertex of a triangle given by three sides (GSS-REQ-010, GSS-
     const y = Math.sqrt((a + b + c) * (b + c - a) * (a + c - b) * (a + b - c)) / (2 * a);
     expect(v[0][0] - v[1][0]).toBeCloseTo(scale * x, 1);
     expect(v[1][1] - v[0][1]).toBeCloseTo(scale * y, 1);
+  });
+
+  it("puts the vertex s from the base's first end and t from its second, above the base, for any valid sides (code review CR-002)", () => {
+    // The geometry, not the formula restated: drawn coordinates are rounded to 0.01, where the
+    // construction this replaced agrees to 10⁻¹⁴, so the helper itself is what can be told apart.
+    const side = fc.double({ min: 0.001, max: 1_000_000, noNaN: true });
+    fc.assert(
+      fc.property(side, side, side, (b, s, t) => {
+        fc.pre(s + t > b * (1 + 1e-9) && b + t > s * (1 + 1e-9) && b + s > t * (1 + 1e-9));
+        const [x, y] = thirdVertexFromSides(b, s, t);
+        const longest = Math.max(b, s, t);
+        expect(y).toBeGreaterThan(0);
+        expect(Math.abs(Math.hypot(x, y) - s) / longest).toBeLessThan(1e-9);
+        expect(Math.abs(Math.hypot(x - b, y) - t) / longest).toBeLessThan(1e-9);
+      }),
+      { numRuns: 2_000 },
+    );
   });
 
   it("keeps a needle-thin triangle's height, with its labels clear", () => {

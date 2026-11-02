@@ -159,7 +159,7 @@ The type-specific vocabulary terms this area adds to the GSV single definition (
 | GSS-REQ-007 | `src/core/definitions/square.ts`:square; `src/layout/square.ts`:squareLayout; `src/react/graphs/SquareGraph.tsx`:SquareGraph |
 | GSS-REQ-008 | `src/core/definitions/square.ts`:squareLabels, square; `src/core/definitions/figure.ts`:figureTerms (labelSides); `src/layout/kit/figure-labels.ts`:labelBlock, placeLabels; `src/layout/square.ts`:squareLayout |
 | GSS-REQ-009 | `src/core/definitions/square.ts`:square; `src/layout/square.ts`:squareLayout |
-| GSS-REQ-010 | `src/core/geometry/triangle-solver.ts`:fromThreeSides; `src/core/definitions/triangle.ts`:triangle; `src/react/graphs/TriangleGraph.tsx`:TriangleGraph; `src/entries/triangle.ts`; `src/layout/triangle.ts`:modelVertices (three sides placed from the sides alone, graph-library GSS TICKET-009) |
+| GSS-REQ-010 | `src/core/geometry/triangle-solver.ts`:fromThreeSides; `src/core/definitions/triangle.ts`:triangle; `src/react/graphs/TriangleGraph.tsx`:TriangleGraph; `src/entries/triangle.ts`; `src/layout/triangle.ts`:thirdVertexFromSides, modelVertices (three sides placed from the sides alone, graph-library GSS TICKET-009) |
 | GSS-REQ-011 | `src/core/geometry/triangle-solver.ts`:fromTwoSidesAndIncluded; `src/core/definitions/triangle.ts`:triangle |
 | GSS-REQ-012 | `src/core/geometry/triangle-solver.ts`:fromTwoAnglesAndSide; `src/core/definitions/triangle.ts`:triangle |
 | GSS-REQ-013 | `src/core/geometry/triangle-solver.ts`:fromVertices; `src/core/definitions/triangle.ts`:triangle, coordinateIssues; `src/layout/triangle.ts`:modelVertices |

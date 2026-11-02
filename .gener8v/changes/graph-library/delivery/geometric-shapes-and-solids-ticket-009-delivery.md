@@ -57,7 +57,7 @@
 - [x] `tests/layout/engine-math.test.ts`
 - [x] `tests/layout/triangle.test.ts`
 - [x] Changed-output count and changeset
-- [ ] TR-008 amendment
+- [x] TR-008 amendment
 
 ## Delivery Summary
 
@@ -119,4 +119,8 @@ None — implementation followed the approved plan.
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-009-code-review/CR-001, CR-002 (CR-003 noted, CR-004 accepted)
+
+**Change:** The construction moved into the exported `thirdVertexFromSides(b, s, t)` (`src/layout/triangle.ts`), tested by its geometry: over 2,000 generated side triples the vertex lies s and t from the base's ends within 10⁻⁹ of the longest side, above the base. `@spec` GSS-REQ-010 added to `modelVertices` and the helper (correcting this record's `@spec` table, which listed it before it was there); coverage rows updated in both specifications. The Progress line for TR-008 ticked. Three-sides triangles stand on side a, so the other bases are unreachable today; sets with a derived side keep `cos`/`sin` (no change at ±1 ulp over 10,000 samples).
+**Files:** `src/layout/triangle.ts`, `tests/layout/triangle.test.ts`, `.gener8v/specifications/component-packaging-and-source-export.md`, `.gener8v/specifications/geometric-shapes-and-solids.md`
+**Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,345 passed each; `pnpm bench` 25 passed. Mutant: the height off by 1 in 10⁷ → the distance test fails. gener8v-state lint 0 errors.

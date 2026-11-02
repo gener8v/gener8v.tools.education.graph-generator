@@ -42,14 +42,27 @@ export const SIDE_ENDS: Readonly<Record<TriangleSideTerm, readonly [Index, Index
 const INDICES: readonly Index[] = [0, 1, 2];
 
 /**
+ * The third vertex of a triangle standing on a base of length `b` from (0, 0) to (b, 0): `s` from
+ * the first end and `t` from the second, above the base. x = (s² + b² − t²) ÷ 2b and y = 4·area ÷ 2b,
+ * with Kahan's area, which keeps a needle-thin triangle's height (TR-008). No angle is taken: `cos`
+ * and `sin` of an angle from `atan2` put the vertex's last bit where an engine's own functions decide
+ * it, and a vertex on a rounding boundary was drawn one way in one engine and the other in another;
+ * arithmetic and `sqrt` are the same in every engine (CPSE TICKET-004 code review CR-002, AD-007,
+ * TR-002, graph-library GSS TICKET-009).
+ */
+// @spec GSS-REQ-010, CPSE-NFR-005
+export function thirdVertexFromSides(b: number, s: number, t: number): Vec {
+  return [(s * s + b * b - t * t) / (2 * b), fourTimesArea([b, s, t]) / (2 * b)];
+}
+
+/**
  * The vertices A, B and C in the description's own units, y up. A triangle given by its vertices
  * keeps them. Otherwise it stands on `base`: its ends at (0, 0) and (length, 0), counter-clockwise
  * (`SIDE_ENDS`), and the third vertex above, at its side's length and the base's first angle from
  * the first end (GSS-REQ-022). A triangle given by its three sides (`bySides`) has the third vertex
- * from the sides alone, x = (s² + b² − t²) ÷ 2b and y = 4·area ÷ 2b, with arithmetic and `sqrt`,
- * which every engine computes alike; any other set takes cosines and sines.
+ * from the sides alone (`thirdVertexFromSides`); any other set takes cosines and sines.
  */
-// @spec GSS-REQ-013, GSS-REQ-022, CPSE-NFR-005
+// @spec GSS-REQ-010, GSS-REQ-013, GSS-REQ-022, CPSE-NFR-005
 function modelVertices(triangle: Triangle, base: TriangleSideTerm, bySides: boolean): [Vec, Vec, Vec] {
   const given = triangle.vertices;
   if (given !== undefined && given.length === 3) return [[given[0]!.x, given[0]!.y], [given[1]!.x, given[1]!.y], [given[2]!.x, given[2]!.y]];
@@ -61,13 +74,7 @@ function modelVertices(triangle: Triangle, base: TriangleSideTerm, bySides: bool
   points[p] = [0, 0];
   points[q] = [triangle[base], 0];
   if (bySides) {
-    // The sides are known, so no angle is taken: `cos` and `sin` of an angle from `atan2` put the
-    // vertex's last bit where an engine's own functions decide it, and a vertex on a rounding
-    // boundary was drawn one way in one engine and the other in another (CPSE TICKET-004 code
-    // review CR-002, AD-007, TR-002). Kahan's area keeps a needle-thin triangle's height (TR-008).
-    const b = triangle[base];
-    const t = triangle[TRIANGLE_SIDES[p]];
-    points[r] = [(reach * reach + b * b - t * t) / (2 * b), fourTimesArea([triangle.sideA, triangle.sideB, triangle.sideC]) / (2 * b)];
+    points[r] = thirdVertexFromSides(triangle[base], reach, triangle[TRIANGLE_SIDES[p]]);
   } else {
     const angle = triangle[TRIANGLE_ANGLES[p]] * RADIANS;
     points[r] = [reach * Math.cos(angle), reach * Math.sin(angle)];
