@@ -154,7 +154,30 @@ describe("the third vertex of a triangle given by three sides (GSS-REQ-010, GSS-
     const v = vertices(scene);
     expect(v[0]![1]).toBeLessThan(v[1]![1]);
     expect(v[1]![1]).toBe(v[2]![1]);
+    // The construction keeps its height: an isosceles triangle's apex is √(s² − (b/2)²) above the
+    // base, here computed apart from Kahan's area (quality review QR-003).
+    const [, height] = thirdVertexFromSides(349.07, 1_000_000, 1_000_000);
+    expect(height).toBeCloseTo(Math.sqrt(1e12 - (349.07 / 2) ** 2), 3);
     expect(overlaps(scene)).toEqual([]);
+  });
+
+  it("is placed from the sides when an agreeing angle is supplied too, the same with Math a unit in the last place off (quality review QR-003)", () => {
+    // Three sides and an angle are solved from the sides, the angle only checked, so the sides
+    // place the vertex: the triangle whose vertex lands on a rounding boundary draws the same in
+    // every engine with its angle supplied as without it.
+    const sides = { type: "triangle", sideA: 18, sideB: 19.98, sideC: 14.13 } as const;
+    const solved = validate(sides);
+    if (!solved.valid) throw new Error(JSON.stringify(solved.issues));
+    const withAngle = { ...sides, angleA: (solved.description as Triangle).angleA };
+    const exact = sceneOf(withAngle);
+    // The same polygon; the text differs only in stating the angle as supplied.
+    expect(vertices(exact)).toEqual(vertices(sceneOf(sides)));
+    for (const steps of [-3, -1, 1, 3]) {
+      mathOff(steps);
+      const off = sceneOf(withAngle);
+      vi.restoreAllMocks();
+      expect(off, `Math ${steps} in the last place`).toEqual(exact);
+    }
   });
 });
 
