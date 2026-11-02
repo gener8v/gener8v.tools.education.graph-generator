@@ -56,6 +56,8 @@ interface PlacementCall {
   /** Obstacles read, on a counted call. */
   reads?: number;
 }
+/** Whether a Proxy key is an array index; the placer reads obstacles by index, and `length` and method lookups are not reads. */
+const isIndex = (key: string): boolean => /^\d+$/.test(key);
 const placement = vi.hoisted(() => ({ counting: false, calls: [] as PlacementCall[] }));
 vi.mock("../../src/layout/kit/labels", async (importOriginal) => {
   const labels = await importOriginal<typeof import("../../src/layout/kit/labels")>();
@@ -66,10 +68,7 @@ vi.mock("../../src/layout/kit/labels", async (importOriginal) => {
     let reads = 0;
     const counted = new Proxy(obstacles, {
       get(target, key) {
-        if (typeof key === "string") {
-          const first = key.charCodeAt(0);
-          if (first >= 48 && first <= 57) reads++;
-        }
+        if (typeof key === "string" && isIndex(key)) reads++;
         return target[key as keyof T];
       },
     });
@@ -107,9 +106,21 @@ function placementCalls(run: () => void): PlacementCall[] {
   return placement.calls;
 }
 
+/** The first call whose candidates or obstacles differ from `expected(i)`, as a message; none when all match (the whole list is too long to read as a diff). */
+function firstMismatch(calls: readonly PlacementCall[], expected: (i: number) => { candidates: number; obstacles: number }): string[] {
+  const i = calls.findIndex((call, at) => call.candidates !== expected(at).candidates || call.obstacles !== expected(at).obstacles);
+  if (i < 0) return [];
+  const { candidates, obstacles } = calls[i]!;
+  const want = expected(i);
+  return [`call ${i} of ${calls.length}: ${candidates} candidates and ${obstacles} obstacles, not ${want.candidates} and ${want.obstacles}`];
+}
+
 /**
  * The counted calls that read more obstacles than `most(i)` candidates, each tested against every
- * obstacle placed before it, allow: the accepted cost of `placeLabel` (CPSE TICKET-002 SEC-004).
+ * obstacle placed before it, allow. One "read" is one overlap test of one obstacle for one candidate,
+ * so `placeLabel` is within budget while it reads each obstacle at most once per candidate; reading
+ * them twice (say, an array method after a loop) fails here, and so would a refactor to a different
+ * loop shape that does. `length` and method lookups are not reads. The accepted cost: the accepted cost of `placeLabel` (CPSE TICKET-002 SEC-004).
  */
 function overBudget(calls: readonly PlacementCall[], most: (i: number) => number): string[] {
   const counted = calls.flatMap((call, i) => (call.reads === undefined ? [] : [{ ...call, reads: call.reads, i }]));
@@ -1088,9 +1099,7 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     // The segment labels, then the point labels, after both axes, every segment and every marker,
     // each label one more obstacle for the next.
     const most = (i: number) => (i < segments.length ? 8 : 12);
-    expect(calls.map(({ candidates, obstacles }) => ({ candidates, obstacles }))).toEqual(
-      calls.map((_, i) => ({ candidates: most(i), obstacles: 2 + segments.length + points.length + i })),
-    );
+    expect(firstMismatch(calls, (i) => ({ candidates: most(i), obstacles: 2 + segments.length + points.length + i }))).toEqual([]);
     expect(overBudget(calls, most)).toEqual([]);
   });
 
@@ -1105,12 +1114,14 @@ describe("components never throw because of the description (CPSE-REQ-018)", () 
     const calls = placementCalls(() => (result = createGraph(description)));
     if (!result?.ok) throw new Error(JSON.stringify(result?.issues));
     // The axis names and tick labels first, then the point labels, after three guide lines and a
-    // marker per point, each label one more obstacle for the next.
+    // marker per point (the obstacles at the first point label are at least that many), each label
+    // one more obstacle for the next.
+    const GUIDES_AND_MARKER_PER_POINT = 3 + 1;
     expect(calls.filter((call) => call.candidates > 12)).toEqual([]);
     const labels = calls.slice(-points.length);
     const first = labels[0]!.obstacles;
-    expect(first).toBeGreaterThan(4 * points.length);
-    expect(labels.map(({ candidates, obstacles }) => ({ candidates, obstacles }))).toEqual(labels.map((_, i) => ({ candidates: 12, obstacles: first + i })));
+    expect(first).toBeGreaterThan(GUIDES_AND_MARKER_PER_POINT * points.length);
+    expect(firstMismatch(labels, (i) => ({ candidates: 12, obstacles: first + i }))).toEqual([]);
     expect(overBudget(calls, () => 12)).toEqual([]);
   });
 

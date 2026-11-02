@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { createGraph } from "../../src/graph";
 import { wrap } from "../../src/layout/kit/text";
 import { CALLER_TEXT_UNITS, LONG_TEXT, callerText, costlyXyDescription, costlyXyzDescription } from "../fixtures/costly-inputs";
-import { expectP95 } from "../helpers/bench";
+import { expectP95, fixedRuns } from "../helpers/bench";
 
 // The package's costliest hostile inputs stay within their time bound at p95 on a CI runner
 // (graph-library CPSE TICKET-010 code review CR-001, security review SEC-001). The tests count the
@@ -22,7 +22,7 @@ import { expectP95 } from "../helpers/bench";
 // words and whole-text bounds are wide: splitting the text 40 times over still passed them (code
 // review CR-001).
 //
-// Run by iterations alone (`time: 0`): exactly 21 timed runs, after 2 warm-up runs. The p95 of 21
+// Run by iterations alone (`fixedRuns`): exactly 21 timed runs, after 2 warm-up runs. The p95 of 21
 // runs is the second slowest, so one stray run (a collection, a load spike) cannot decide it alone.
 const SAMPLES = 21;
 const WARMUP = 2;
@@ -96,7 +96,7 @@ describe("hostile inputs' cost (CPSE-REQ-018; GSS TICKET-002 security review SEC
     // Twice what every call takes at the limit; a case slower than that fails as a time-out.
     test(`${name}: p95 at most ${limitMs} ms`, { timeout: 2 * (1 + WARMUP + SAMPLES) * limitMs }, async ({ bench }) => {
       prove();
-      const result = await bench(name, betweenRuns, run).run({ time: 0, iterations: SAMPLES, warmupTime: 0, warmupIterations: WARMUP });
+      const result = await bench(name, betweenRuns, run).run({ ...fixedRuns(SAMPLES), warmupTime: 0, warmupIterations: WARMUP });
       expectP95(result, { requirement, name, limitMs, minSamples: SAMPLES, note });
     });
   }

@@ -10,6 +10,7 @@ import { pictographLayout } from "../../src/layout/pictograph";
 import type { Layout } from "../../src/layout/registry";
 import { barGraphArb, lineGraphArb, pictographArb } from "../fixtures/data-graphs";
 import { loadExample } from "../fixtures/examples";
+import { expectCovered } from "../helpers/sampling";
 
 // DGP-NFR-003: the text alternative of every rendered data graph names every category and value in
 // the description. Each name is compared as `describe` states it, through `cleanText` and
@@ -153,7 +154,8 @@ const shared = (input: Record<string, unknown>): Record<string, boolean> => ({
   "a zero value": valuesOf(input).includes(0),
 });
 
-// Each threshold below is at least five standard deviations below the generator's rate, measured
+// Each threshold below is checked by `expectCovered` to be at most `fiveSigmaFloor` of the rate stated
+// for it (tests/helpers/sampling.ts), the generator's rate measured
 // over 15,000 samples of each type (2026-10-31; CPSE TICKET-010). Shared, the lowest of the three
 // types: decimal values 0.49, a name at the limit 0.41, a non-ASCII one 0.18, a name of stacked
 // marks 0.46, a quotation mark 0.36, a name that cleaning changes 0.073 (none in 500 about 1 in
@@ -161,14 +163,14 @@ const shared = (input: Record<string, unknown>): Record<string, boolean> => ({
 // below), a zero value 0.14.
 function expectShared(covered: Coverage): void {
   expect(covered.runs).toBe(RUNS);
-  expect(covered["decimal values"]).toBeGreaterThan(RUNS / 4);
-  expect(covered["a name at the limit"]).toBeGreaterThan(RUNS / 20);
-  expect(covered["a non-ASCII name at the limit"]).toBeGreaterThan(RUNS / 50);
-  expect(covered["a name of stacked marks"]).toBeGreaterThan(RUNS / 20);
+  expectCovered(covered["decimal values"], RUNS / 4, RUNS, 0.49);
+  expectCovered(covered["a name at the limit"], RUNS / 20, RUNS, 0.41);
+  expectCovered(covered["a non-ASCII name at the limit"], RUNS / 50, RUNS, 0.18);
+  expectCovered(covered["a name of stacked marks"], RUNS / 20, RUNS, 0.46);
   expect(covered["a name with a quotation mark"]).toBeGreaterThan(0);
   expect(covered["a name that cleaning changes"]).toBeGreaterThan(0);
   expect(covered["a single category"]).toBeGreaterThan(0);
-  expect(covered["ten or more categories"]).toBeGreaterThan(RUNS / 25);
+  expectCovered(covered["ten or more categories"], RUNS / 25, RUNS, 0.13);
   expect(covered["a zero value"]).toBeGreaterThan(0);
 }
 
@@ -188,10 +190,10 @@ describe("a line graph's text alternative names every category and value (DGP-NF
     expectShared(covered);
     // Measured: several series 0.75, negative values 0.95, a labeled series 0.95, two series sharing
     // a value 0.16 (79 expected, 38 five deviations below).
-    expect(covered["several series"]).toBeGreaterThan(RUNS / 4);
-    expect(covered["negative values"]).toBeGreaterThan(RUNS / 4);
-    expect(covered["a labeled series"]).toBeGreaterThan(RUNS / 4);
-    expect(covered["two series share a value at a category"]).toBeGreaterThan(RUNS / 20);
+    expectCovered(covered["several series"], RUNS / 4, RUNS, 0.75);
+    expectCovered(covered["negative values"], RUNS / 4, RUNS, 0.95);
+    expectCovered(covered["a labeled series"], RUNS / 4, RUNS, 0.95);
+    expectCovered(covered["two series share a value at a category"], RUNS / 20, RUNS, 0.16);
   });
 });
 
@@ -208,8 +210,8 @@ describe("a bar graph's text alternative names every category and value (DGP-NFR
     }));
     expectShared(covered);
     // Measured: bars across 0.33 (166 expected, 113 five deviations below), upright bars 0.67.
-    expect(covered["bars across"]).toBeGreaterThan(RUNS / 5);
-    expect(covered["upright bars"]).toBeGreaterThan(RUNS / 4);
+    expectCovered(covered["bars across"], RUNS / 5, RUNS, 0.33);
+    expectCovered(covered["upright bars"], RUNS / 4, RUNS, 0.67);
   });
 });
 
@@ -229,9 +231,9 @@ describe("a pictograph's text alternative names every category and value (DGP-NF
     expectShared(covered);
     // Measured: a unit label 0.78, stated once 0.33, with quotation marks 0.14 (68 expected, 29 five
     // deviations below), no unit label 0.22 (111 expected, 64 five deviations below).
-    expect(covered["a unit label"]).toBeGreaterThan(RUNS / 4);
+    expectCovered(covered["a unit label"], RUNS / 4, RUNS, 0.78);
     expect(covered["a unit label stated once"]).toBeGreaterThan(0);
-    expect(covered["a unit label with quotation marks"]).toBeGreaterThan(RUNS / 50);
-    expect(covered["no unit label"]).toBeGreaterThan(RUNS / 10);
+    expectCovered(covered["a unit label with quotation marks"], RUNS / 50, RUNS, 0.14);
+    expectCovered(covered["no unit label"], RUNS / 10, RUNS, 0.22);
   });
 });

@@ -8,6 +8,7 @@ import { namedColors } from "../../src/core/style";
 import { validateWith } from "../../src/core/validate/index";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions/index";
 import { createAjv } from "../helpers/ajv";
+import { expectCovered } from "../helpers/sampling";
 
 // GSV-NFR-003 (and GSV-REQ-011): no description the published schema rejects passes `validate`.
 // A counterexample is a description the validator accepts and the schema rejects, so the
@@ -25,7 +26,8 @@ const RUNS = 1_000;
  * The seed of the two checks that need a rare sample (CPSE TICKET-010): the negative control finds
  * its counterexample in 1.4% of samples and the list check reaches maxItems in 0.9% and one past it
  * in 0.8% (measured over 20,000 and 10,000 samples, 2026-10-31), so unseeded each missed about once
- * in 2 million, 9,000 and 2,500 runs.
+ * in 2 million, 9,000 and 2,500 runs. Re-pick the seed (any value for which the three checks below
+ * pass) if the generator or the schema changes: a different arbitrary meets different samples.
  */
 const RARE_SEED = 20_261_031;
 const ajv = createAjv();
@@ -195,8 +197,8 @@ describe("the published schema and the validator agree (GSV-NFR-003, GSV-REQ-011
         // Both sides of the boundary are exercised in earnest. Over 10,000 samples of each type
         // (2026-10-31; CPSE TICKET-010) the schema rejected 35% to 58% and both accepted 35% to 58%:
         // at the lowest, 347 of 1,000 expected and 272 five standard deviations below.
-        expect(schemaRejected, "descriptions the schema rejected").toBeGreaterThan(RUNS / 10);
-        expect(bothAccepted, `descriptions both accepted; check the ${type} base description`).toBeGreaterThan(RUNS / 10);
+        expectCovered(schemaRejected, RUNS / 10, RUNS, 0.35);
+        expectCovered(bothAccepted, RUNS / 10, RUNS, 0.35);
       });
     }
   }
@@ -210,7 +212,7 @@ describe("the published schema and the validator agree (GSV-NFR-003, GSV-REQ-011
     (numberLine["properties"] as Record<string, JsonSchema>)["tickCount"]!["maximum"] = 10;
     const base = fixtureExamples.find((example) => example.type === "number-line") as unknown as Json;
     const { outcome } = agreement("number-line", fixtureRegistry, base, strict, RARE_SEED);
-    expect(outcome.failed).toBe(true);
+    expect(outcome.failed, "no counterexample from RARE_SEED; re-pick the seed, see there").toBe(true);
   });
 
   it("reaches a list's maxItems and one past it", () => {
@@ -224,7 +226,7 @@ describe("the published schema and the validator agree (GSV-NFR-003, GSV-REQ-011
       }),
       { numRuns: RUNS, seed: RARE_SEED },
     );
-    expect(lengths.has(1_000)).toBe(true);
-    expect(lengths.has(1_001)).toBe(true);
+    expect(lengths.has(1_000), "maxItems not reached from RARE_SEED; re-pick the seed, see there").toBe(true);
+    expect(lengths.has(1_001), "one past maxItems not reached from RARE_SEED; re-pick the seed, see there").toBe(true);
   });
 });

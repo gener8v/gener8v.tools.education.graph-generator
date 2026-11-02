@@ -9,6 +9,7 @@ import { numberLineLayout } from "../../src/layout/number-line";
 import type { Scene, SceneNode } from "../../src/layout/scene";
 import { xyGraphLayout } from "../../src/layout/xy-graph";
 import { xyzGraphLayout } from "../../src/layout/xyz-graph";
+import { expectCovered } from "../helpers/sampling";
 import { numberLineArb, xyGraphArb, xyzGeometryTopArb, xyzGraphArb } from "../fixtures/nlc-generators";
 import { numberLineReference, xyReference, xyzReference } from "../fixtures/nlc-reference";
 import { attr, circles, isTick, lengthOf, lines, near as nearWithin, num } from "../fixtures/scene-readers";
@@ -36,7 +37,10 @@ const RUNS = 200;
  * leave 34, short of the threshold of 50, and 49 had been seen against it (CPSE TICKET-010). The
  * property itself runs unseeded, so it meets new descriptions on every run (CPSE TICKET-010 code
  * review CR-003). Every count in a property here is unseeded, its threshold at least five standard
- * deviations below its measured rate (each stated beside it).
+ * deviations below its measured rate (each stated beside it, and checked by `expectCovered`; see
+ * tests/helpers/sampling.ts). To re-pick the seed if the arbitrary changes, try seeds until
+ * `fc.sample(xyzGraphArb, { seed, numRuns: RUNS })` gives at least 65 with guide lines (a count
+ * above RUNS / 4 is what the test below needs; 64 is today's).
  */
 const XYZ_SEED = 20_261_031;
 const TOLERANCE = 0.5;
@@ -106,7 +110,7 @@ describe("a number line is drawn to scale with its values (NLC-NFR-001)", () => 
     });
     expect(covered.runs).toBe(RUNS);
     // Measured rate 0.81 (2026-10-31): 162 expected, 134 five standard deviations below.
-    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
+    expectCovered(covered.withPoints, RUNS / 2, RUNS, 0.80);
   });
 });
 
@@ -162,8 +166,8 @@ describe("an x,y graph is drawn to scale with its values (NLC-NFR-001)", () => {
     });
     expect(covered.runs).toBe(RUNS);
     // Measured rates 0.80 and 0.80 (2026-10-31): 160 expected, 132 five standard deviations below.
-    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
-    expect(covered.withSegments).toBeGreaterThan(RUNS / 2);
+    expectCovered(covered.withPoints, RUNS / 2, RUNS, 0.80);
+    expectCovered(covered.withSegments, RUNS / 2, RUNS, 0.80);
   });
 });
 
@@ -250,14 +254,14 @@ describe("an x,y,z graph is drawn to scale with its values (NLC-NFR-001)", () =>
     const covered = check(xyzGraphArb, expectXyzDrawnToScale);
     expect(covered.runs).toBe(RUNS);
     // Measured rate 0.80 (20,000 samples, 2026-10-31): 160 expected, 131 five standard deviations below.
-    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
+    expectCovered(covered.withPoints, RUNS / 2, RUNS, 0.80);
   });
 
   it(`gives that property guide lines in about a third of its descriptions (a sample of ${RUNS} from a fixed seed)`, () => {
     // From `XYZ_SEED`, so a fixed count (64): see there. Apart from the property, so the property keeps
     // its run-to-run variety (code review CR-003).
     const withGuides = fc.sample(xyzGraphArb, { seed: XYZ_SEED, numRuns: RUNS }).filter((input) => normalized<XyzGraph>(input).description.guideLines === true);
-    expect(withGuides.length).toBeGreaterThan(RUNS / 4);
+    expect(withGuides.length, "guide lines in the sample from XYZ_SEED; re-pick the seed, see there").toBeGreaterThan(RUNS / 4);
   });
 
   it(`fixes the whole figure's place, down to its height, by the description alone where geometry is topmost, over ${RUNS} generated descriptions`, () => {
@@ -266,6 +270,6 @@ describe("an x,y,z graph is drawn to scale with its values (NLC-NFR-001)", () =>
     // Every sample was checked against absolute positions, none against a mark read from the Scene.
     expect(covered.moveDownFromRules).toBe(RUNS);
     // Measured rate 0.80 (2026-10-31): 159 expected, 130 five standard deviations below.
-    expect(covered.withPoints).toBeGreaterThan(RUNS / 2);
+    expectCovered(covered.withPoints, RUNS / 2, RUNS, 0.80);
   });
 });

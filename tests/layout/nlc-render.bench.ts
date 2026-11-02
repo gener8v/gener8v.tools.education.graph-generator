@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 import { createGraph } from "../../src/graph";
 import { Graph } from "../../src/react/Graph";
 import { circles, isTick, lines, num } from "../fixtures/scene-readers";
-import { expectP95 } from "../helpers/bench";
+import { expectP95, fixedRuns } from "../helpers/bench";
 
 // NLC-NFR-004: rendering an x,y graph with 100 ticks per axis and 50 points to static markup in a
 // Node.js server render takes at most 50 ms at p95, over at least 100 timed runs (graph-library NLC
@@ -42,11 +42,10 @@ describe("graph rendering speed (NLC-NFR-004)", () => {
     expect(markup.match(/<circle /g)).toHaveLength(POINTS);
     expect(markup.match(/<line /g)).toHaveLength(lines(graph.scene).length);
     const name = `xy-graph ${TICKS} ticks, ${POINTS} points`;
-    // Run by iterations alone (`time: 0`): exactly 200 timed runs on any runner, however slow, so the
-    // p95 is always taken over enough of them (CPSE TICKET-010).
+    // Exactly 200 timed runs, whatever the runner (`fixedRuns`).
     const result = await bench(name, () => {
       render();
-    }).run({ time: 0, iterations: 200, warmupTime: 500, warmupIterations: 20 });
+    }).run({ ...fixedRuns(200), warmupTime: 500, warmupIterations: 20 });
     expectP95(result, { requirement: "NLC-NFR-004", name, limitMs: P95_LIMIT_MS, minSamples: 100 });
   });
 });

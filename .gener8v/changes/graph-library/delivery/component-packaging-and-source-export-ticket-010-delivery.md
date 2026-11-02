@@ -152,3 +152,9 @@ Run in the main session on 2026-10-31, after the code was written; logs kept per
 - CR-005: a retained title renamed.
 **Files:** `tests/layout/hostile-cost.bench.ts`, `tests/fixtures/costly-inputs.ts`, `tests/react/Graph.test.tsx`, `tests/layout/kit/text.test.ts`, `tests/helpers/bench.ts`, `tests/layout/nlc-accuracy.property.test.ts`, `tests/core/validate-structure.test.ts`
 **Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (the accepted `minimatch` advisory); vitest ×3, 2,342 passed each; `pnpm bench` 25 passed (load average 10 to 14). Mutants (each restored): every overlap test 30× slower → both layout benches fail; `wrap` split 40× → passes (the residual). gener8v-state lint 0 errors.
+
+### graph-library/component-packaging-and-source-export-ticket-010-quality-review/QR-001..QR-004, QR-006 (QR-005 dismissed)
+
+**Change:** `isIndex` and a defined "read" in the layout-cost counting (QR-001); `tests/helpers/sampling.ts` with `fiveSigmaFloor` and `expectCovered`, through which every coverage threshold is checked against its stated rate (QR-002); first-mismatch reporting and a named constant (QR-003); `fixedRuns(n)` shared by the bench files (QR-004); seed comments and messages (QR-006).
+**Files:** `tests/helpers/sampling.ts`, `tests/helpers/bench.ts`, `tests/react/Graph.test.tsx`, the four coverage suites, the four bench files
+**Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,342 passed each; `pnpm bench` 25 passed (load average 6.6 to 12.8). Mutants: a stated rate lowered → `expectCovered` fails; the expected obstacle count broken → one first-mismatch failure; `isIndex` matching nothing → both cost tests fail. gener8v-state lint 0 errors.

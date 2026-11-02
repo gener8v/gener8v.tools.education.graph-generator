@@ -5,7 +5,7 @@ import { CALLER_TEXT_LIMIT } from "../../src/core/definitions/shared";
 import { RULER_MAX_LENGTH } from "../../src/core/ruler";
 import { RulerGraph } from "../../src/react/graphs/RulerGraph";
 import { oneClusterTexts, wordsOf } from "../fixtures/plain-text";
-import { expectP95 } from "../helpers/bench";
+import { expectP95, fixedRuns } from "../helpers/bench";
 
 // NLC-NFR-008: a ruler of the maximum length in either unit, with an object, renders in at most
 // 50 ms at p95 in a server render on a CI runner. Each case is a whole server render, validation,
@@ -34,11 +34,10 @@ describe("ruler rendering speed (NLC-NFR-008)", () => {
     test(`${name}: p95 at most ${P95_LIMIT_MS} ms`, async ({ bench }) => {
       // A render that fell back to the invalid-description placeholder would time the wrong thing.
       expect(renderToStaticMarkup(createElement(RulerGraph, { description }))).toMatch(/^<svg role="img" aria-label="A ruler titled/);
-      // Run by iterations alone (`time: 0`): exactly 200 timed runs on any runner, however slow, so the
-      // p95 is always taken over enough of them (CPSE TICKET-010).
+      // Exactly 200 timed runs, whatever the runner (`fixedRuns`).
       const result = await bench(name, () => {
         renderToStaticMarkup(createElement(RulerGraph, { description }));
-      }).run({ time: 0, iterations: 200, warmupTime: 100 });
+      }).run({ ...fixedRuns(200), warmupTime: 100 });
       // Vitest warns that the render reads module export getters many times: the package's own
       // modules, as Vitest transforms them. The printed line says so, so the log explains itself.
       expectP95(result, {

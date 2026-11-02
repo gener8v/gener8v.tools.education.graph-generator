@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import { definitions, registeredTypes } from "../../src/core/definitions/index";
 import { validateWith } from "../../src/core/validate/index";
 import { fixtureExamples, fixtureRegistry } from "../fixtures/definitions/index";
-import { expectP95 } from "../helpers/bench";
+import { expectP95, fixedRuns } from "../helpers/bench";
 
 // GSV-NFR-001: validating one description of any type takes at most 5 ms at p95 in Node.js on a
 // CI runner. Vitest runs benchmarks in their own project, through `pnpm bench` (a CI step), not
@@ -24,11 +24,10 @@ const cases = [
 describe("validation speed (GSV-NFR-001)", () => {
   for (const { name, example, registry } of cases) {
     test(`${name}: p95 at most ${P95_LIMIT_MS} ms`, async ({ bench }) => {
-      // Run by iterations alone (`time: 0`): exactly 200 timed runs on any runner, however slow, so the
-      // p95 is always taken over enough of them (CPSE TICKET-010).
+      // Exactly 200 timed runs, whatever the runner (`fixedRuns`).
       const result = await bench(name, () => {
         validateWith(example, registry);
-      }).run({ time: 0, iterations: 200, warmupTime: 50 });
+      }).run({ ...fixedRuns(200), warmupTime: 50 });
       // Printed on every run, so the CI log records the measurement (quality review QR-002).
       expectP95(result, { requirement: "GSV-NFR-001", name, limitMs: P95_LIMIT_MS });
     });

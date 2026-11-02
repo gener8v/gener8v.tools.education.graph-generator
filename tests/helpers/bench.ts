@@ -24,6 +24,18 @@ export interface P95Check {
 }
 
 /**
+ * The run options that make a benchmark exactly `runs` timed runs long on any runner, however slow:
+ * spread them into `.run({ ...fixedRuns(n), warmupTime: ... })`. In tinybench's sequential mode both
+ * `time` and `iterations` are minimums (a task keeps running while `elapsed < time || samples <
+ * iterations`), so `time: 0` is what makes `iterations` the exact count; with the default `time` a
+ * fast task runs far more than `iterations` and a slow one is cut short of the samples a p95 needs
+ * (CPSE TICKET-010). Keep `runs` at or above the `minSamples` of the `expectP95` that follows.
+ */
+export function fixedRuns(runs: number): { time: 0; iterations: number } {
+  return { time: 0, iterations: runs };
+}
+
+/**
  * Asserts a benchmark's p95 is within its limit, and prints the measurement on every run so the CI
  * log records it. Latencies are in milliseconds, sorted ascending, kept by Vitest's
  * `benchmark.retainSamples`. The one p95 rule every benchmark uses (rulers NLC TICKET-004 quality
