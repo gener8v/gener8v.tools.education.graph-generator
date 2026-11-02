@@ -125,3 +125,9 @@ None — documentation and comments only; existing `@spec` lines unchanged.
 **Change:** The per-centimetre rule alone allowed too narrow a width for rulers of 11 cm or less, whose marks are all drawn at full tick width (about 128 px each under DEL-002's model). All three places now state a floor of about 130 px whatever the length, and about 11 px per centimetre for a centimetre ruler longer than about 12 cm; the test requires "about 130 px" everywhere.
 **Files:** `README.md`, `src/react/Graph.tsx`, `src/react/graphs/RulerGraph.tsx` (comments), `tests/package/checks.test.ts`
 **Re-verification:** `pnpm lint` 0; `tests/package/checks.test.ts` 26 passed.
+
+### graph-library/number-lines-and-coordinate-graphs-ticket-008-quality-review/QR-002 (QR-001, QR-003, QR-004 fixed by the code- and security-review changes)
+
+**Change:** The README names the remedy: give the ruler the full width of the screen or page rather than a column, or use a shorter ruler.
+**Files:** `README.md`
+**Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted); vitest ×3, 2,347 passed each; `pnpm bench` 25 passed; gener8v-state lint 0 errors.

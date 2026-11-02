@@ -37,8 +37,8 @@ for a 15 cm one. A 12 in ruler marked to sixteenths keeps it down to about 210 p
 Narrower than that, the finest marks render lighter than 3:1 against white. This applies to
 `<Graph>`, the per-type components and `createGraph` with your own printer. The figures are
 arithmetic, not a browser measurement, so treat them as a floor to stay above, not a guarantee.
-Show the ruler at least that wide, or scale it up, for example on a phone or in a two-column
-worksheet.
+Show the ruler at least that wide: on a phone or in a two-column worksheet, give it the full width
+of the screen or page rather than a column, or use a shorter ruler.
 
 ## Contributing
 
