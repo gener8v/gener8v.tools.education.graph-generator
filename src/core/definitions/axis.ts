@@ -115,7 +115,7 @@ function narrowRange(term: string, min: number, max: number): Issue {
  *   and the axis's default spacing when that draws the minimum, else nothing: leave the spacing out.
  * Work is constant, whatever the numbers.
  */
-// @spec NLC-REQ-004, NLC-REQ-008, NLC-REQ-009
+// @spec NLC-REQ-004, NLC-REQ-008, NLC-REQ-009, NLC-REQ-057
 export function axisChecks(term: string, axis: Axis): Issue[] {
   return [...axisRangeIssues(term, axis), ...axisSpacingIssues(term, axis)];
 }

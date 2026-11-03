@@ -9,7 +9,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 **Parent PRD:** Curricular Graph Generator
 **Requirement prefix:** NLC
 **Status:** Approved
-**Approved by:** Product Owner — Thomas Eaves, 2026-10-20 (`rulers` amendment; previously Product Owner — Thomas, 2026-10-04)
+**Approved by:** Product Owner — Thomas Eaves, 2026-11-02 (`graph-library` amendment adding NLC-REQ-057; previously Product Owner — Thomas Eaves, 2026-10-20, `rulers` amendment; Product Owner — Thomas, 2026-10-04)
 **Related Capabilities:** Graph Specification & Vocabulary (the unified description, validation, results, presentation options and default style these graph types rely on); Component Packaging & Source Export (the components and source export that render these graph types)
 
 ## Functional Requirements
@@ -84,6 +84,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 - **NLC-REQ-054** *(must · change: rulers)*: The system should accept an optional color and an optional label for an object, applied per GSV-REQ-040..045
 - **NLC-REQ-055** *(must · change: rulers)*: The system should not write an object's length on the figure, so that it is read from the ruler
 - **NLC-REQ-056** *(must · change: rulers)*: The system should give every rendered ruler a text alternative generated from its normalized description, stating the unit, the length, the smallest division and, when an object is present, its label and its start and end marks
+- **NLC-REQ-057** *(must · change: graph-library)*: The system should report a supplied tick spacing that leaves fewer than two drawn ticks within the axis range, with the issue code `too_few_ticks` at the axis's tick spacing, naming a tick spacing that fits — or, when none does, saying to leave the tick spacing out (Product Owner decision, 2026-10-26, on defect-sweep finding DS-002)
 
 ## Non-Functional Requirements
 
@@ -139,6 +140,7 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | Range is very narrow (for example, 0 to 0.001) | The system should accept it and choose a tick spacing per the default rule |
 | Tick spacing does not divide the range evenly | The system should accept it and place ticks at multiples only |
 | Tick spacing gives more than 100 ticks | The system should report it, stating the largest permitted tick count and a spacing that would fit |
+| Tick spacing leaves fewer than two ticks in the range (for example, 1 to 9 with a spacing of 10) | The system should report it (NLC-REQ-057), stating the number of ticks it would draw and a spacing that would fit, or saying to leave the spacing out |
 | Point outside the axis range | The system should report it, naming the point and the range it violates |
 | Number line with no marked points | The system should render the line, ticks and labels only |
 | x,y graph with no points or segments | The system should render empty axes and grid |
@@ -274,3 +276,4 @@ Defines the axis-based graph types: number lines, two-dimensional (x, y) coordin
 | NLC-REQ-038 | `src/core/definitions/xyz-graph.ts`:defineXyzGraphProperties (`guideLines`), xyzGraph.describe; `src/layout/xyz-graph.ts`:guideSegments |
 | NLC-REQ-039 | `src/core/definitions/xyz-graph.ts`:defineXyzGraphProperties, xyzRooms, xyzGraph.describe; `src/layout/xyz-graph.ts`:axesOf, tickLabels |
 | NLC-REQ-005 | `src/core/definitions/xyz-graph.ts`:xyzRooms (each axis's drawn length, graph-library NLC TICKET-004) |
+| NLC-REQ-057 | `src/core/definitions/axis.ts`:axisChecks, axisSpacingIssues; `src/core/issues.ts`:too_few_ticks; `tests/core/axis.test.ts`, `tests/core/number-line.test.ts` (graph-library NLC TICKET-007) |
