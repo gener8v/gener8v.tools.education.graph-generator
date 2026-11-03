@@ -126,7 +126,9 @@ const texts: Case[] = [
     return {
       requirement: "GSS TICKET-002 SEC-001",
       name: `wrap, 2,000,000 characters of ${JSON.stringify(unit)} cut to 4 lines`,
-      maxRatio: unit === "@" ? 7 : 0.5,
+      // Words: 1, not the 0.5 first set — CI run 41565297993 measured 0.13 to 0.35, too little
+      // headroom for a case this short (57 to 85 ms); still about five times tighter than 1,000 ms.
+      maxRatio: unit === "@" ? 7 : 1,
       note: `was 1,000 ms, the bound of its stops-early check; ${GETTERS}`,
       prove: () => expect(wrap(text, 160, 14, 4)).toHaveLength(4),
       run: () => {
