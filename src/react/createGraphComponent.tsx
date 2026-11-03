@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import type { Registry } from "../core/definitions/index";
 import type { DescriptionBase, GraphType, GraphTypeDefinition } from "../core/definitions/types";
+import { componentName } from "../core/definitions/names";
 import { describeValue } from "../core/issues";
 import type { Issue, Issues } from "../core/result";
 import type { Layout, LayoutRegistry } from "../layout/registry";
@@ -81,11 +82,8 @@ export type GraphComponent<T extends GraphType = GraphType> = ((props: GraphProp
   displayName?: string;
 };
 
-/** The component name for a graph type: "circle" → "CircleGraph", "bar-graph" → "BarGraph". */
-export function componentName(type: GraphType): string {
-  const pascal = type.replace(/(^|-)([a-z])/g, (_, __, letter: string) => letter.toUpperCase());
-  return pascal.endsWith("Graph") ? pascal : `${pascal}Graph`;
-}
+// The name is defined React-free, beside the definitions, so source export shares it (CPSE TICKET-005).
+export { componentName };
 
 /** A frozen one-entry record on a null prototype, like the package tables. */
 const only = <V,>(type: GraphType, value: V): Readonly<Partial<Record<GraphType, V>>> =>

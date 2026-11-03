@@ -62,6 +62,15 @@ describe("non-rendering entry points in plain Node.js (CPSE-REQ-006, prd/TC-005)
     expect(JSON.parse(output.trim())).toEqual({ valid: false, code: "unknown_graph_type" });
   });
 
+  it("exports a description as component source from ./export in plain Node.js (CPSE-REQ-019, AD-013)", () => {
+    const output = runWithHook(`
+      const { exportSource } = await import("@gener8v/graph-generator/export");
+      const result = exportSource({ type: "circle", radius: 5 });
+      console.log(JSON.stringify({ ok: result.ok, component: /export function CircleGraph\\(\\)/.test(result.source) }));
+    `);
+    expect(JSON.parse(output.trim())).toEqual({ ok: true, component: true });
+  });
+
   it("serves the schema and vocabulary from ./core and as static files (GSV-REQ-010)", () => {
     const output = runWithHook(`
       const core = await import("@gener8v/graph-generator/core");

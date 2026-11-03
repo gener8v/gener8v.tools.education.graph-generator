@@ -203,8 +203,11 @@ const TERM_SHAPE = /^[A-Za-z][A-Za-z0-9-]*(?:\.[A-Za-z][A-Za-z0-9-]*|\[\d+\])*$/
 // zero-width joiners too, so a message shows exactly what was supplied.
 const escapedInMessages = (code: number) => isUnsafeCodePoint(code) || code === 0x200c || code === 0x200d;
 
-/** Replace each escaped code point with JSON-style \uXXXX escapes, one per UTF-16 unit. */
-function escapeChars(text: string): string {
+/**
+ * Replace each escaped code point with JSON-style \uXXXX escapes, one per UTF-16 unit. Source
+ * export applies the same policy to the string literals and the comment it prints (CPSE TICKET-005).
+ */
+export function escapeChars(text: string): string {
   let result = "";
   forEachCodePoint(text, (code, char) => {
     if (!escapedInMessages(code)) result += char;

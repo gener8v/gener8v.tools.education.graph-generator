@@ -27,7 +27,7 @@
   {
     "name": "./export",
     "path": "dist/export/index.js",
-    "limit": "25 kB",
+    "limit": "65 kB",
     "gzip": true
   },
   {

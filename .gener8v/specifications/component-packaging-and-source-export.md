@@ -198,3 +198,11 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-NFR-002 | `.size-limit.json` (a budget per entry, `.` with one named import); `tests/package/per-type-bundle.test.ts`:"leaves the circle out of a consumer's bundle of every other built entry"; `src/core/definitions/circle.ts`:circle, defineCircle (graph-library/component-packaging-and-source-export/TICKET-004) |
 | CPSE-NFR-003 | `tests/smoke/run.ts`; `tests/smoke/render.mjs`; `tests/smoke/react18/package.json`; `tests/smoke/react19/package.json`; `.github/workflows/ci.yml`:smoke (graph-library/component-packaging-and-source-export/TICKET-004) |
 | CPSE-NFR-005 | `tests/e2e/hydration.spec.ts`; `tests/e2e/cross-engine.spec.ts`; `playwright.config.ts`; `.github/workflows/ci.yml`:e2e; `src/layout/cube.ts`:normalsOf, SIDE_TOLERANCE (graph-library/component-packaging-and-source-export/TICKET-004); `src/layout/triangle.ts`:thirdVertexFromSides, modelVertices (graph-library GSS TICKET-009) |
+| CPSE-REQ-019 | `src/export/exportSource.ts`:exportSource; `src/export/print.ts`:printScene (graph-library CPSE TICKET-005) |
+| CPSE-REQ-020 | `src/export/print.ts`:printScene (shared `ELEMENT_FOR_KIND`, `REACT_PROP`, `rootAttrs`, `textAlternativeFor`); `tests/export/equality.test.ts` (graph-library CPSE TICKET-005) |
+| CPSE-REQ-021 | `src/export/print.ts`:printScene; `src/export/exportSource.ts`:exportSource (React alone, automatic JSX runtime) (graph-library CPSE TICKET-005) |
+| CPSE-REQ-022 | `src/export/print.ts`:printScene (no props, no hooks) (graph-library CPSE TICKET-005) |
+| CPSE-REQ-023 | `src/export/print.ts`:printScene; `scripts/generated-files.ts`:versionModule; `src/generated/version.ts` (graph-library CPSE TICKET-005) |
+| CPSE-REQ-024 | `src/core/definitions/names.ts`:componentName; `src/export/exportSource.ts`:exportSource (graph-library CPSE TICKET-005) |
+| CPSE-REQ-025 | `src/export/exportSource.ts`:exportSource (graph-library CPSE TICKET-005) |
+| CPSE-NFR-001 | `tests/export/equality.test.ts` (every example, 15; renderToStaticMarkup identical, no React warnings) (graph-library CPSE TICKET-005) |
