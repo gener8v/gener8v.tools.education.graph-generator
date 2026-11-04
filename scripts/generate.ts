@@ -1,6 +1,7 @@
 // Writes the generated files from the graph-type definitions (AD-003, GSV-REQ-015): the
 // description types, the published schema and vocabulary (copied to dist/ by the build), the tool
-// schema, and the fixture types for the type-level test. The list is `generatedFiles()`. CI fails
+// schema, the fixture types for the type-level test, and the documentation site's example stories.
+// The list is `generatedFiles()`. CI fails
 // when a committed file differs from a fresh run (`pnpm generate`).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

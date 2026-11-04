@@ -1,0 +1,110 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+import { AllInputTables, ColorTable, GraphTypeTable, LimitFacts, TermTable } from "./components/ReferenceTables";
+
+<Meta title="Vocabulary" />
+
+# Vocabulary
+
+A description is a JSON object. Its `type` names the graph type, `version` optionally names the
+schema version it is written for, and every other key is a term of that type's vocabulary. The
+tables on this page are built from `vocabulary.json`, the file the package publishes as
+`@gener8v/graph-generator/vocabulary.json`, so they always match what the package accepts.
+
+```json
+{
+  "type": "number-line",
+  "axis": { "min": 0, "max": 10, "tickSpacing": 1 },
+  "points": [{ "value": 7, "label": "7" }],
+  "title": "Plot 7"
+}
+```
+
+## Graph types
+
+<GraphTypeTable />
+
+## Limits
+
+<LimitFacts />
+
+- Each list has its own most items, `maxItems`, given in each type's input table below. A longer
+  list is the issue `too_large`.
+- Titles, labels and names are at most 200 characters, and `unit` at most 20. Characters are
+  counted as code points, so an emoji counts once. Longer text is the issue `too_large`; it is
+  never cut short. The drawing still cuts long text at its line caps, while the text alternative
+  states it whole.
+- A description with more values than the limit is reported once, as `too_large` at the whole
+  description, and is not checked further.
+
+## Plain-text policy
+
+Every text in a description is plain text. Validation rejects text that holds:
+
+- control characters, and the line and paragraph separators (U+2028, U+2029);
+- text-direction overrides and isolates, which reorder text;
+- invisible format characters, which hide text or carry hidden text: the soft hyphen, the Arabic
+  letter mark, the Mongolian vowel separator, the zero-width space, direction marks, word joiners,
+  invisible operators, the deprecated format characters, the byte-order mark, the interlinear
+  annotation marks, tag characters (U+E0000 to U+E007F, which language models read as ASCII) and
+  the supplementary variation selectors;
+- half of a surrogate pair standing alone.
+
+The zero-width joiner and non-joiner (U+200C, U+200D) and the emoji variation selectors (U+FE00 to
+U+FE0F) are allowed, so emoji sequences work. Rejected text is the issue `wrong_kind`.
+
+## Colors
+
+A color is one of these names, in any letter case, or a hex code such as `#0072b2` or `#07b`.
+
+<ColorTable />
+
+## Checking a description
+
+The non-rendering entry point, `@gener8v/graph-generator/core`, checks a description without
+drawing it:
+
+- `validate(input)` never throws. It returns `{ valid: true, description, provenance }`, the
+  normalized description and which of its values were supplied or derived, or
+  `{ valid: false, issues }` with every issue found.
+- `normalize(input)` returns the normalized description: known terms only, derived values filled in,
+  colors resolved. It validates its input first, and throws for an invalid one. Call `validate` to
+  learn why.
+- `describe(input)` returns the plain-text alternative, the text a screen reader reads. It also
+  validates its input first, and throws for an invalid one. Call `validate` to learn why.
+
+```ts
+import { describe, validate } from "@gener8v/graph-generator/core";
+
+const result = validate(description);
+if (result.valid) {
+  // For the circle on the Components page: "A circle titled “Find the diameter” with radius 3 cm. Its radius is drawn."
+  console.log(describe(result.description));
+}
+```
+
+## The JSON Schema and the validator
+
+The package also publishes a JSON Schema, `@gener8v/graph-generator/schema.json`, for editors and
+other tools. It describes the shape of a description, but it does not hold every check:
+
+- It checks the plain-text policy only for characters up to U+FFFF. Tag characters, supplementary
+  variation selectors and lone surrogates are rejected only by `validate`.
+- It does not check that values agree with one another, such as a radius and a diameter, or the
+  other checks across values listed in each type's input table.
+
+Use `validate` as the gate for text from users or models, not the schema. The schema and the
+validator agree on the JSON form of a description. An `undefined`-valued key, which JSON cannot
+hold, is ignored by `validate` but rejected by a JSON Schema validator.
+
+## Terms
+
+Every term once, with the kind of value it takes and what it means.
+
+<TermTable />
+
+## Inputs by graph type
+
+Each type's terms, whether each is required, its kind, what it accepts and what it means. The same
+table is on each example's page under **Graph types**.
+
+<AllInputTables />

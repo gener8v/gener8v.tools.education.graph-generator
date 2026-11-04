@@ -1,0 +1,82 @@
+name: Docs
+
+# The documentation site (AD-016, prd/OC-005; graph-library CPSE TICKET-008): built and checked on
+# every pull request and push to main, and published to GitHub Pages from main. Publishing waits
+# until Pages is enabled with the source "GitHub Actions" and the repository variable
+# PAGES_ENABLED is set to "true".
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and check the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Actions are pinned to commit SHAs; Dependabot proposes updates (.github/dependabot.yml).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The version matches package.json `packageManager`.
+      - name: Install pnpm
+        run: npm install --global pnpm@10.28.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the package
+        run: pnpm build
+
+      # CPSE-REQ-046: every example and every JSON example in docs/ is a valid description.
+      - name: Documented examples are valid (CPSE-REQ-046)
+        run: pnpm exec vitest run tests/docs
+        env:
+          GRAPH_GENERATOR_PREBUILT: "1"
+
+      - name: Build the site
+        run: pnpm docs:build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # prd/CC-003: the site requests nothing outside its own files.
+      - name: The site makes no request outside its own files (prd/CC-003)
+        run: npx playwright test tests/e2e/docs-network.spec.ts --project chromium
+        env:
+          DOCS_SITE_REQUIRED: "1"
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: storybook-static
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

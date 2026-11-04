@@ -1,0 +1,79 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+import { IssueCodeTable } from "./components/ReferenceTables";
+
+<Meta title="Issue codes" />
+
+# Issue codes
+
+An invalid description reports every problem found, each as one issue. `validate` and `createGraph`
+return the issues, a component's fallback function receives them, and the model tool and the
+export command print them.
+
+An issue is plain JSON data:
+
+- `code`: one of the codes below.
+- `path`: a JSON Pointer to the property, such as `/radius` or `/points/2/x`. An empty path is the
+  whole description.
+- `message`: a plain-English message that names the property by its term and says what would make
+  the value acceptable.
+- Sometimes also `expected` (the kind of value accepted), `range`, `conflicts` (the paths of the
+  other properties involved), `suggestion` (the closest term to an unknown one) and `allowed` (the
+  accepted values).
+
+## Print issues with formatIssue
+
+An issue's `path` holds the caller's keys exactly as given. A key can hold line breaks and
+text-direction characters, which can make a log line or a page show something else. Print every
+issue with `formatIssue` from `./core`, never `issue.path` itself. It writes `path: message`. A
+path that is not a plain pointer is quoted, clipped to 64 characters and escaped.
+
+```ts
+import { formatIssue, validate } from "@gener8v/graph-generator/core";
+
+const result = validate({ type: "circle", radius: -3 });
+if (!result.valid) {
+  for (const issue of result.issues) console.log(formatIssue(issue));
+}
+```
+
+It prints:
+
+```text
+/radius: radius must be a number between 0.001 and 1000000; got -3.
+```
+
+The issue itself:
+
+```ts
+{
+  code: "out_of_range",
+  path: "/radius",
+  message: "radius must be a number between 0.001 and 1000000; got -3.",
+  range: { min: 0.001, max: 1000000 },
+}
+```
+
+## Limits and plain text
+
+- A list longer than its `maxItems`, a description with more than 10,000 values, or a text longer
+  than its limit is `too_large`. Titles, labels and names are at most 200 characters and `unit` at
+  most 20, counted as code points. Longer text is never cut short. Each type's limits are in its
+  input table on the **Vocabulary** page.
+- Text that holds a control, line-break, text-direction or invisible character is `wrong_kind`.
+  The zero-width joiner and non-joiner and the emoji variation selectors are allowed. The
+  **Vocabulary** page lists the characters.
+
+A message quotes and escapes such characters, so it shows exactly what was supplied:
+
+```text
+/title: title must be plain text without control, line-break, text-direction or invisible characters; got "a‮b".
+/title: title has 201 characters, more than the limit of 200; use fewer.
+```
+
+## Codes
+
+The set of codes is fixed. Renaming or removing a code is a breaking change, so code can test
+`issue.code` safely. `isIssueCode(value)` from `./core` says whether a value is one of them, and
+`issueDocs[code]` gives the meaning below.
+
+<IssueCodeTable />

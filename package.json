@@ -126,7 +126,9 @@
     "check:changesets": "tsx scripts/check-changesets.ts",
     "changeset": "changeset",
     "check:dist": "tsx scripts/check-dist.ts",
-    "check:images": "tsx scripts/check-image-licenses.ts"
+    "check:images": "tsx scripts/check-image-licenses.ts",
+    "docs": "storybook dev -p 6006",
+    "docs:build": "storybook build -o storybook-static"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
@@ -134,6 +136,8 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.64.1",
     "@size-limit/preset-small-lib": "^14.1.0",
+    "@storybook/addon-docs": "10.6.5",
+    "@storybook/react-vite": "10.6.5",
     "@types/jsdom": "^21.1.7",
     "@types/node": "~22.20.5",
     "@types/react": "^19.3.0",
@@ -149,6 +153,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "size-limit": "^14.1.0",
+    "storybook": "10.6.5",
     "tsup": "^8.5.1",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",

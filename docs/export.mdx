@@ -1,0 +1,125 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Source export" />
+
+# Source export
+
+Source export turns a description into the source of one standalone React component: a `.tsx` file
+that depends on React alone, takes no props, uses no hooks and renders the same markup the
+package's component renders. Use it to put a figure in a project that does not install this
+package, or to keep a figure that no longer changes with the package.
+
+## From code
+
+`exportSource(description, options)` from `@gener8v/graph-generator/export` needs Node.js 22 or later
+and no React. It checks the description with the components' validator, so it accepts exactly the
+descriptions the components draw.
+
+```json
+{
+  "type": "square",
+  "sideLength": 4,
+  "unit": "cm",
+  "labelSides": "all",
+  "title": "Aire du carré"
+}
+```
+
+```ts
+import { writeFileSync } from "node:fs";
+import { formatIssue } from "@gener8v/graph-generator/core";
+import { exportSource } from "@gener8v/graph-generator/export";
+
+const result = exportSource(description, { componentName: "SquareFigure" });
+if (result.ok) {
+  writeFileSync(`${result.componentName}.tsx`, result.source);
+} else {
+  for (const issue of result.issues) console.error(formatIssue(issue));
+}
+```
+
+- `componentName` is optional, a PascalCase identifier. By default it is the graph type's, such as
+  `SquareGraph`.
+- The result is `{ ok: true, source, componentName }`, or `{ ok: false, issues }` with every issue in
+  the description and in `componentName`.
+- It never throws. The same description and package version always give the same text.
+
+The file starts with a comment that names the package and version and holds the description, then
+the component (shortened here; the version is the package's):
+
+```tsx
+/*
+ * SquareFigure: a square exported by @gener8v/graph-generator <version> with exportSource.
+ * It depends on React alone, through the automatic JSX runtime, takes no props and uses no hooks.
+ * To change the graph, export the description again rather than editing the drawing.
+ *
+ * Description:
+ * {
+ *   "type": "square",
+ *   "sideLength": 4,
+ *   "unit": "cm",
+ *   "labelSides": "all",
+ *   "title": "Aire du carré"
+ * }
+ */
+export function SquareFigure() {
+  return (
+    <svg role={"img"} aria-label={"A square titled “Aire du carré” with side length 4 cm. All four sides are labeled."} viewBox={"0 0 400 315.2"} width={"100%"}>
+      <title>{"A square titled “Aire du carré” with side length 4 cm. All four sides are labeled."}</title>
+      ...
+    </svg>
+  );
+}
+```
+
+To change the figure, change the description and export it again, rather than editing the drawing.
+
+## From the command line
+
+`graph-generator export` turns a saved description into a component file, from a terminal or a
+build script. It needs Node.js 22 or later, not React, and makes no network requests. Install the
+package, then run its command with `npx`. Write the package name in every command: it runs the
+installed package's `graph-generator` command, while the bare short name can run a different
+package from the registry.
+
+```sh
+npm install --save-dev @gener8v/graph-generator
+npx @gener8v/graph-generator export square.json                 # writes SquareGraph.tsx beside it
+npx @gener8v/graph-generator export square.json --out src/SquareFigure.tsx --name SquareFigure
+```
+
+- `--out <file.tsx>` sets the output file. By default it is `<Name>.tsx` next to the description.
+  It cannot be the description file itself. Without `--out`, a name that Windows reserves for a
+  device (such as `CON` or `NUL`) is refused.
+- `--name <Name>` sets the component's name, a PascalCase identifier. By default it is the graph
+  type's.
+- An existing output file is replaced. The file is written to a temporary file beside it and
+  renamed, so a link at the output path is replaced, not followed.
+- The description must be a regular file of at most 3 MiB (3,145,728 bytes). The largest valid
+  description is about 1.6 MB.
+- For an invalid description it prints at most the first 20 issues, with `formatIssue`, then how
+  many more there are, and writes no file.
+- Exit status: 0 the file is written; 1 the description is not valid, or a file cannot be read or
+  written; 2 the command line is not valid, or the output is the description file.
+
+The file is the same text `exportSource` returns.
+
+## What the file needs
+
+- **React's automatic JSX runtime** (React 17 or later). The file has no `import React`. A project
+  that compiles with the classic transform (`"jsx": "react"` in `tsconfig.json`) gets
+  `React is not defined`. Use `"jsx": "react-jsx"`, or your framework's default.
+- **Nothing else.** It imports nothing, not even this package.
+
+## ASCII only
+
+Every exported file is ASCII only. Non-ASCII text, such as "é" or "“", is written as `\u` escapes,
+and so is every `@`. The text still renders exactly as described. So nothing invisible,
+line-breaking or reordering can hide in the file, and no text from a description can form a
+directive that a compiler or tool reads from a comment, which starts with `@`.
+
+## Pictures in a pictograph
+
+A pictograph's picture is embedded in the file as a drawing, not referenced, so the file needs no
+package or URL. The header comment names each embedded drawing, its author and license, and holds
+the full notice its license requires in every copy.

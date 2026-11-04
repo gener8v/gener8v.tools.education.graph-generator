@@ -1,0 +1,181 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+import { RulerWidthNote } from "./components/RulerWidthNote";
+
+<Meta title="Components" />
+
+# @gener8v/graph-generator
+
+Turn one JSON description of a mathematical graph or figure into a React component, for lessons,
+worksheets and assessments. Every graph type is described by the same kind of JSON object. A
+description can be drawn as a React component, exported as a standalone component file, or offered
+to a language model as a tool.
+
+These pages are the package's documentation:
+
+- **Components** (this page): drawing a description with React.
+- **Graph types**: every graph type with a working example, its graph and the inputs it accepts.
+- **Vocabulary**: every term, the limits, the plain-text policy and how a description is checked.
+- **Issue codes**: what an invalid description reports, and how to print it safely.
+- **Source export**: a description as a standalone `.tsx` file, from code or the command line.
+- **Model tool**: letting a language model draw graphs.
+
+The package makes no network requests and collects no data. This site makes no requests outside its
+own files.
+
+## Install
+
+The package needs React 18 or 19. The non-rendering entry points (`./core`, `./tool`, `./export`)
+need Node.js 22 or later and no React.
+
+```sh
+npm install @gener8v/graph-generator
+```
+
+## Draw a graph
+
+A description is a JSON object with a `type` and the values that type accepts:
+
+```json
+{
+  "type": "circle",
+  "radius": 3,
+  "showRadius": true,
+  "labelRadius": true,
+  "unit": "cm",
+  "title": "Find the diameter"
+}
+```
+
+Pass it to `Graph`, the entry component. It draws any graph type as an accessible SVG that scales to
+its container:
+
+```tsx
+import { Graph } from "@gener8v/graph-generator";
+
+export function Figure({ description }: { description: unknown }) {
+  return <Graph description={description} />;
+}
+```
+
+`Graph` takes these props:
+
+- `description`: any value. A valid description is drawn. An invalid one renders the fallback.
+- `textAlternative`: the graph's accessible name. When it is absent or blank, the package writes one
+  from the description.
+- `fallback`: what to render for an invalid description. `"placeholder"` (the default) is a visible
+  box that lists the issues, `"none"` renders nothing, and a function receives every issue and
+  returns what to render.
+
+`Graph` never throws because of its description. It has no hooks, state or effects, so it works as a
+React Server Component.
+
+## One graph type only
+
+Each graph type also has its own component and its own entry point, such as `CircleGraph` from
+`@gener8v/graph-generator/circle`. It takes the same props. Each per-type entry holds that type's
+code and no other graph type's, so a page that draws only circles does not load the other types. A
+description of another type is invalid for it.
+
+```tsx
+import { CircleGraph } from "@gener8v/graph-generator/circle";
+
+export function Circle({ description }: { description: unknown }) {
+  return <CircleGraph description={description} />;
+}
+```
+
+The entry points are `./circle`, `./square`, `./triangle`, `./cube`, `./cylinder`, `./number-line`,
+`./ruler`, `./xy-graph`, `./xyz-graph`, `./line-graph`, `./bar-graph` and `./pictograph`.
+
+## Invalid descriptions
+
+A fallback function is how your code learns the issues. It is called during render and must have no
+side effect. An issue's `path` holds the caller's keys exactly as given, and a key can hold line
+breaks and text-direction characters. Print every issue with `formatIssue` from `./core`, never
+`issue.path` itself:
+
+```tsx
+import { Graph } from "@gener8v/graph-generator";
+import { formatIssue } from "@gener8v/graph-generator/core";
+
+export function Figure({ description }: { description: unknown }) {
+  return (
+    <Graph
+      description={description}
+      fallback={(issues) => (
+        <ul>
+          {issues.map((issue, index) => (
+            <li key={index}>{formatIssue(issue)}</li>
+          ))}
+        </ul>
+      )}
+    />
+  );
+}
+```
+
+To log the issues, or act on them in another way, call `validate` yourself, outside render:
+
+```ts
+import { formatIssue, validate } from "@gener8v/graph-generator/core";
+
+const result = validate(description);
+if (!result.valid) {
+  for (const issue of result.issues) console.warn(formatIssue(issue));
+}
+```
+
+See **Issue codes** for every code and what it means.
+
+## Validation on every render
+
+The components validate the description each time they render: they are pure and keep nothing
+between renders. A page that re-renders often with a large description, such as an x,y graph with
+many points, does that work each time. Keep the element stable, for example by memoizing it in your
+own client component:
+
+```tsx
+"use client";
+import { useMemo } from "react";
+import { Graph } from "@gener8v/graph-generator";
+
+export function Figure({ description }: { description: unknown }) {
+  // Validated again only when the description changes.
+  return useMemo(() => <Graph description={description} />, [description]);
+}
+```
+
+Or call `createGraph` once. It returns `{ ok: true, description, provenance, scene }`, the
+normalized description, which values were derived and the drawing, or `{ ok: false, issues }`. It
+never throws.
+
+```ts
+import { createGraph } from "@gener8v/graph-generator";
+import { formatIssue } from "@gener8v/graph-generator/core";
+
+const result = createGraph(description);
+if (!result.ok) {
+  for (const issue of result.issues) console.warn(formatIssue(issue));
+}
+```
+
+## Servers
+
+The validator limits its own work, but it reads the whole input object. A server that draws
+descriptions it receives in requests must keep its own request-body size limit. The largest valid
+description is about 1.6 MB as JSON, so a limit of a few megabytes is enough.
+
+## Width of a ruler
+
+<RulerWidthNote />
+
+Show the ruler at least that wide. On a phone or in a two-column worksheet, give it the full width
+of the screen or page rather than a column, or use a shorter ruler.
+
+## Styling
+
+Graphs are inline SVG and take their look from the package, not from your page. One page style can
+change what a graph shows: a pictograph draws a value that is not a whole number of pictures as a
+cut-off picture, a nested `svg` that relies on the browser's default `overflow: hidden`. Do not
+apply `overflow: visible` to every `svg` on the page. Scope such a rule away from the graphs (for
+example `svg:not(.your-icon-class)`), or a value of 2.5 pictures is drawn as 3.

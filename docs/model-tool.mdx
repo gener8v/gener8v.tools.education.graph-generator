@@ -1,0 +1,166 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Model tool" />
+
+# Model tool
+
+`@gener8v/graph-generator/tool` lets a language model draw graphs. It needs Node.js 22 or later and
+no React. The package calls no model, makes no network request and depends on no provider's
+software.
+
+- `graphTool` is a tool definition in no provider's format: a `name` (`generate_graph`), a
+  plain-English `description` and an `inputSchema` (JSON Schema). Give these three values to your
+  provider's request.
+- `handleGraphToolCall(input)` takes a call's input, as an object or as JSON text, and never throws.
+
+The model sends the description in `graph`, with `null` for each value it does not set:
+
+```ts
+{ graph: { type: "circle", radius: 3, diameter: null, circumference: null, showRadius: true /* ... */ } }
+```
+
+The handler returns one of these:
+
+- `{ ok: true, description, provenance, textAlternative, summary }`: pass `description` to `Graph`
+  or `exportSource`.
+- `{ ok: false, issues, summary }`: `issues` holds every problem, with paths into the input such as
+  `/graph/radius`.
+
+Return `summary` to the model as the tool's result. It is plain text. On success, it gives the graph
+type and the text alternative:
+
+```text
+The circle was produced.
+Text alternative: A circle with radius 3.
+```
+
+On failure, it lists the first 20 issues, numbered, with path and message, then how many more there
+are. The model can correct them and call the tool again:
+
+```text
+The graph was not produced: 1 issue. Fix it and call generate_graph again with {"graph": <the description>}.
+1. /graph/radius: radius must be a number between 0.001 and 1000000; got -3.
+```
+
+## Handling the result
+
+- **Return `summary`, not `issues`.** `issues` is complete and can be megabytes for a large invalid
+  input. Return `summary` to the model as the tool's result, never `issues` or the whole result.
+- **The text is the model's.** `summary`, `textAlternative` and the text values of `description`
+  (titles, labels, names) hold text the model wrote, unchanged apart from removed control
+  characters. Escape them for HTML or Markdown, never insert them as markup, and treat them as data,
+  not instructions.
+- **`internal_error` is a defect in the package**, not a problem with the model's input. Report it
+  with the package version and the input.
+
+## With a provider
+
+The snippets below use each provider's own SDK, `client` or `ai`. That SDK is your application's
+dependency, which you install and set up; this package does not depend on it. Only `graphTool` and
+`handleGraphToolCall` come from this package:
+
+```ts
+import { graphTool, handleGraphToolCall } from "@gener8v/graph-generator/tool";
+```
+
+`inputSchema` is frozen. `structuredClone` gives an SDK whose types expect a mutable object its own
+copy.
+
+### Anthropic
+
+The Messages API, with the SDK `@anthropic-ai/sdk`:
+
+```ts
+const response = await client.messages.create({
+  model, // your model
+  max_tokens: 16000,
+  tools: [{ name: graphTool.name, description: graphTool.description, input_schema: structuredClone(graphTool.inputSchema) }],
+  messages,
+});
+for (const block of response.content) {
+  if (block.type !== "tool_use" || block.name !== graphTool.name) continue;
+  const result = handleGraphToolCall(block.input);
+  // Send back: { type: "tool_result", tool_use_id: block.id, content: result.summary, is_error: !result.ok }
+}
+```
+
+### OpenAI
+
+The Responses API in strict mode, with the SDK `openai`:
+
+```ts
+const response = await client.responses.create({
+  model, // your model
+  input,
+  tools: [{ type: "function", name: graphTool.name, description: graphTool.description, parameters: structuredClone(graphTool.inputSchema), strict: true }],
+});
+for (const item of response.output) {
+  if (item.type !== "function_call" || item.name !== graphTool.name) continue;
+  const result = handleGraphToolCall(item.arguments); // JSON text
+  // Send back: { type: "function_call_output", call_id: item.call_id, output: result.summary }
+}
+```
+
+### Google
+
+The Gemini API with `parametersJsonSchema`, with the SDK `@google/genai`:
+
+```ts
+const response = await ai.models.generateContent({
+  model, // your model
+  contents,
+  config: {
+    tools: [{ functionDeclarations: [{ name: graphTool.name, description: graphTool.description, parametersJsonSchema: structuredClone(graphTool.inputSchema) }] }],
+  },
+});
+for (const call of response.functionCalls ?? []) {
+  if (call.name !== graphTool.name) continue;
+  const result = handleGraphToolCall(call.args);
+  // Send back a functionResponse part: { name: call.name, response: { result: result.summary } }
+}
+```
+
+### Without an SDK
+
+Each request is plain JSON, so you can also send it with your own HTTP client. The tool goes in the
+request body as:
+
+- Anthropic: `{ name, description, input_schema }`.
+- OpenAI Responses: `{ type: "function", name, description, parameters, strict: true }`.
+- Gemini: `{ functionDeclarations: [{ name, description, parametersJsonSchema }] }` in `tools`.
+
+Each takes `graphTool.name`, `graphTool.description` and `graphTool.inputSchema`.
+
+## Supported modes
+
+The schema is checked against each provider's documented rules, as they stood on 2026-11-04:
+
+- Anthropic `input_schema` without `strict`.
+- OpenAI function calling with `strict: true`, in Chat Completions and Responses.
+- Gemini API `parametersJsonSchema`.
+
+Not supported:
+
+- Anthropic `strict: true`. Its subset rejects `maxLength`, `minimum`, `maximum` and `maxItems`, and
+  allows at most 16 parameters with a union type. This schema has about 140.
+- Gemini `parameters`, and Vertex AI function declarations. They take an OpenAPI subset that has
+  `nullable` in place of type arrays and has no `additionalProperties`.
+
+Some keywords are not documented for a supported mode, such as `maxLength` for OpenAI strict mode.
+Whatever the provider enforces, the handler validates every call.
+
+## Limits
+
+- JSON text longer than `TOOL_INPUT_LIMIT` (2,000,000 characters, counted as UTF-16 code units) is
+  refused as `too_large` and is not parsed. The largest valid description, sent with every optional
+  value as `null`, is about 876,000 characters as compact JSON and about 1,019,000 when indented by
+  two spaces. Text that writes every non-ASCII character as a `\u` escape can be several times
+  longer, so it can go past the limit.
+- An input object can hold at most 10,000 keys, the same as the values one description can hold.
+- `textAlternative`, and the text alternative in `summary`, stop after `TEXT_ALTERNATIVE_LIMIT`
+  (4,000) characters and end in "…". The largest graphs state more than 500,000 characters. To get
+  the full text, call `describe(description)` from `./core`.
+- Text that is not JSON gets an `invalid_json` issue, and the handler does not look for JSON in it.
+  This includes JSON inside prose or a code fence.
+- Text in the description follows the plain-text policy on the **Vocabulary** page, so a model
+  cannot pass hidden characters, such as tag characters, through a title or label.

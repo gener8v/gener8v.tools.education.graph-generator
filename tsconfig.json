@@ -17,5 +17,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["src", "tests", "scripts", "*.config.ts", ".changeset/*.d.cts"]
+  "include": ["src", "tests", "scripts", "docs", ".storybook", "*.config.ts", ".changeset/*.d.cts"]
 }

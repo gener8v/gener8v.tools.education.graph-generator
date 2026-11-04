@@ -54,7 +54,7 @@ jobs:
         run: |
           if [ -f scripts/generate.ts ]; then
             pnpm generate
-            changes="$(git status --porcelain -- src/generated tests/fixtures/generated)"
+            changes="$(git status --porcelain -- src/generated tests/fixtures/generated docs/stories)"
             if [ -n "$changes" ]; then
               echo "Generated files are out of date or untracked; run pnpm generate and commit:"
               echo "$changes"
