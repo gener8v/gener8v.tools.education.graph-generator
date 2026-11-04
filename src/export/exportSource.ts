@@ -15,8 +15,11 @@ export interface ExportSourceOptions {
   componentName?: string;
 }
 
-/** What `exportSource` returns: the component file's source text, or every issue that stops the export. Plain data. */
-export type ExportSourceResult = { ok: true; source: string } | { ok: false; issues: Issues };
+/**
+ * What `exportSource` returns: the component file's source text and the component's name (the
+ * chosen one, or the graph type's default), or every issue that stops the export. Plain data.
+ */
+export type ExportSourceResult = { ok: true; source: string; componentName: string } | { ok: false; issues: Issues };
 
 const PACKAGE_NAME = "@gener8v/graph-generator";
 
@@ -83,7 +86,7 @@ function serialized(description: unknown): string | undefined {
  * Exports a description as the source of one standalone React component (AD-013): a `.tsx` file
  * that depends on React alone, takes no props and renders the markup the package's component
  * renders for the description. Validates with the components' validator, so it accepts exactly the
- * descriptions the components draw. Returns `{ ok: true, source }`, or `{ ok: false, issues }` with
+ * descriptions the components draw. Returns `{ ok: true, source, componentName }`, or `{ ok: false, issues }` with
  * every issue in the description and in `componentName`, the name's last. The same description and
  * package version always give the same text. Never throws (CPSE-REQ-018).
  */
@@ -105,7 +108,7 @@ export function exportSource(description: unknown, options?: ExportSourceOptions
     if (!graph.ok) return { ok: false, issues: [...graph.issues, ...nameIssues] };
     if (chosen.issue !== undefined) return { ok: false, issues: [chosen.issue] };
     const componentName = chosen.name ?? defaultName(graph.description.type);
-    return { ok: true, source: printScene(graph.scene, componentName, headerFor(componentName, JSON.stringify(copy, null, 2), graph.description)) };
+    return { ok: true, source: printScene(graph.scene, componentName, headerFor(componentName, JSON.stringify(copy, null, 2), graph.description)), componentName };
   } catch {
     // An option that throws when read, or a package defect: its message never reaches the caller
     // (GSV TICKET-002 SEC-003).

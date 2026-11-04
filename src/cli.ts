@@ -1,9 +1,9 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { randomBytes } from "node:crypto";
+import { closeSync, constants, fstatSync, openSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { componentName } from "./core/definitions/names";
-import type { GraphType } from "./core/definitions/types";
-import { createIssue, formatIssue, quoteEscaped } from "./core/issues";
+import { createIssue, formatIssue, quoteForMessage } from "./core/issues";
 import type { Issue } from "./core/result";
 import { exportSource } from "./export/exportSource";
 import { PACKAGE_VERSION } from "./generated/version";
@@ -13,6 +13,17 @@ const MAX_ISSUES_PRINTED = 20;
 
 /** The longest file name printed whole; a path is longer than an issue's term. */
 const MAX_NAME_CHARS = 1024;
+
+/**
+ * The most bytes read from the description file: 3 MiB. The largest valid description, pretty-
+ * printed, is 1,649,745 bytes (the x,y graph at its limits: 1,000 labeled points and 740 labeled
+ * segments, every label 200 astral characters, measured 2026-11-04), so this is 1.9 times that
+ * (GSV CPSE TICKET-006 security review SEC-002).
+ */
+const MAX_INPUT_BYTES = 3 * 1024 * 1024;
+
+/** A name Windows opens as a device, whatever its extension: `CON.tsx` is not a file there. */
+const RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
 const OPTIONS = {
   out: { type: "string" },
@@ -35,12 +46,14 @@ Options:
   -h, --help           Print this help.
   -v, --version        Print the package version.
 
-An existing output file is overwritten. Exit status: 0 written; 1 the description or the file
-is not valid, or the file cannot be read or written; 2 the command line is not valid.
+An existing output file is replaced. The description must be a regular file of at most 3 MiB
+(3,145,728 bytes), and --out cannot be the description itself. Exit status: 0 written; 1 the
+description or the file is not valid, or the file cannot be read or written; 2 the command line
+is not valid, or names the description as the output.
 `;
 
 /** A file name as the issue messages show text: quoted, with control and invisible characters escaped. */
-const quoted = (text: string) => quoteEscaped(text, MAX_NAME_CHARS);
+const quoted = (text: string) => quoteForMessage(text, MAX_NAME_CHARS);
 
 /** The fixed sentence, then the error's code when it is a plain `E...` code; never its message or stack. */
 function failure(sentence: string, error: unknown): string {
@@ -64,14 +77,61 @@ const usageError = (): number => {
   return 2;
 };
 
+/** A refusal of the command line's meaning, with a fixed sentence: exit status 2. */
+const refuse = (sentence: string): number => {
+  process.stderr.write(`${sentence}\n`);
+  return 2;
+};
+
+/**
+ * The description file's text, or the exit status when it cannot be used. The file is opened once
+ * and checked by its handle, so what is checked is what is read: a directory, a pipe or a device
+ * is refused, and so is a file over `MAX_INPUT_BYTES`, before any of it is read. The open does not
+ * wait for a writer, so a named pipe cannot hold the command.
+ */
+function readInput(file: string): { text: string } | { status: number } {
+  let fd: number | undefined;
+  try {
+    fd = openSync(file, constants.O_RDONLY | (constants.O_NONBLOCK ?? 0));
+    const stats = fstatSync(fd);
+    if (!stats.isFile()) return { status: fail(`graph-generator: ${quoted(file)} is not a regular file.`) };
+    if (stats.size > MAX_INPUT_BYTES) return { status: fail(`graph-generator: ${quoted(file)} is larger than 3 MiB, the most the command reads.`) };
+    return { text: readFileSync(fd, "utf8") };
+  } catch (error) {
+    return { status: fail(failure(`graph-generator: cannot read ${quoted(file)}`, error)) };
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/** Whether `target` is the description file itself: the same file (a link, another spelling), or the same path. */
+function isSameFile(file: string, target: string): boolean {
+  try {
+    const input = statSync(file);
+    const output = statSync(target);
+    return input.dev === output.dev && input.ino === output.ino;
+  } catch {
+    // The target does not exist yet (or cannot be checked): compare the paths.
+    return resolve(file) === resolve(target);
+  }
+}
+
+/** Removes a temporary file that may not exist; a failure to remove it is not reported over the first. */
+function discard(path: string): void {
+  try {
+    rmSync(path, { force: true });
+  } catch {
+    // Nothing more can be done.
+  }
+}
+
 /** Reads, checks and writes one description. Returns the exit status. */
 function exportCommand(file: string, out: string | undefined, name: string | undefined): number {
-  let text: string;
-  try {
-    text = readFileSync(file, "utf8");
-  } catch (error) {
-    return fail(failure(`graph-generator: cannot read ${quoted(file)}`, error));
-  }
+  // Without --out the file is named after the component, and Windows cannot create a file by a device's name.
+  if (out === undefined && name !== undefined && RESERVED_NAME.test(name)) return refuse(`graph-generator: ${quoted(name)} is a reserved file name on Windows; give the file with --out.`);
+  const input = readInput(file);
+  if ("status" in input) return input.status;
+  const { text } = input;
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -83,11 +143,22 @@ function exportCommand(file: string, out: string | undefined, name: string | und
   }
   const result = exportSource(parsed, name === undefined ? undefined : { componentName: name });
   if (!result.ok) return fail(`graph-generator: ${quoted(file)} cannot be exported; nothing was written.\n${issueLines(result.issues)}`);
-  // The description is valid, so it has a graph type and the default name follows from it.
-  const target = out ?? join(dirname(file), `${name ?? componentName((parsed as { type: GraphType }).type)}.tsx`);
+  const target = out ?? join(dirname(file), `${result.componentName}.tsx`);
+  if (isSameFile(file, target)) return refuse(`graph-generator: ${quoted(target)} is the description file; give another file with --out. Nothing was written.`);
+  // Written beside the target and renamed over it, so a link at the target is replaced, not followed,
+  // and a failure leaves the target as it was (GSV CPSE TICKET-006 security review SEC-003).
+  const temporary = `${target}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
   try {
-    writeFileSync(target, result.source, "utf8");
+    writeFileSync(temporary, result.source, { encoding: "utf8", flag: "wx" });
   } catch (error) {
+    // An existing file of that name is not ours to remove.
+    if ((error as { code?: unknown } | null)?.code !== "EEXIST") discard(temporary);
+    return fail(failure(`graph-generator: cannot write ${quoted(target)}`, error));
+  }
+  try {
+    renameSync(temporary, target);
+  } catch (error) {
+    discard(temporary);
     return fail(failure(`graph-generator: cannot write ${quoted(target)}`, error));
   }
   process.stdout.write(`Wrote ${quoted(target)}.\n`);
@@ -122,4 +193,15 @@ export function main(argv: readonly string[]): number {
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+/** Whether this file is the module node was started with, through the `bin` link or not; false when that cannot be told. */
+function isEntryModule(): boolean {
+  try {
+    const entry = process.argv[1];
+    return entry !== undefined && import.meta.url === pathToFileURL(realpathSync(entry)).href;
+  } catch {
+    return false;
+  }
+}
+
+// Importing this module, as the tests do, only defines `main`.
+if (isEntryModule()) process.exitCode = main(process.argv.slice(2));

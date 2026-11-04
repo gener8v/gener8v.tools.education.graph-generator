@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkChangesetSummary } from "../../scripts/check-changesets";
 import { checkDependencies, justifiedDependencies } from "../../scripts/check-dependencies";
@@ -67,6 +67,19 @@ describe("repository files (CPSE-REQ-037, CPSE-REQ-039)", () => {
       expect(text, place).toMatch(/ruler/i);
       for (const figure of ["about 130 px", "about 330 px", "164 px", "about 210 px"]) expect(text, `${place}: ${figure}`).toContain(figure);
     }
+  });
+
+  it("names the package in every npx command in the README and docs (CPSE TICKET-006 security review SEC-001)", () => {
+    // `npx graph-generator` could run another registry package of that name; the package name runs the installed bin.
+    const docs = existsSync("docs") ? readdirSync("docs", { recursive: true, encoding: "utf8" }).filter((file) => /\.mdx?$/.test(file)).map((file) => `docs/${file}`) : [];
+    const commands: string[] = [];
+    for (const file of ["README.md", ...docs]) {
+      for (const line of readFileSync(file, "utf8").split("\n")) {
+        for (const match of line.matchAll(/\bnpx\s+(\S+)/g)) commands.push(`${file}: npx ${match[1]}`);
+      }
+    }
+    expect(commands.length).toBeGreaterThan(0);
+    for (const command of commands) expect(command, command).toMatch(/ npx @gener8v\/graph-generator$/);
   });
 
   it("CONTRIBUTING covers issues, changes and the local checks", () => {

@@ -20,7 +20,7 @@ describe("exportSource when the printer fails (CPSE-REQ-018; quality review QR-0
   const circle = loadExample("circle");
 
   it("exports through the printer while it works", () => {
-    expect(exportSource(circle)).toEqual({ ok: true, source: expect.stringContaining("export function CircleGraph()") });
+    expect(exportSource(circle)).toEqual({ ok: true, source: expect.stringContaining("export function CircleGraph()"), componentName: "CircleGraph" });
   });
 
   it("returns internal_error, not an exception, and leaks nothing of the failure", () => {

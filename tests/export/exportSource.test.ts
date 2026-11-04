@@ -45,7 +45,9 @@ describe("exportSource results (CPSE-REQ-019, CPSE-REQ-025)", () => {
   it("returns { ok: true, source } for a valid description", () => {
     const result = exportSource(circle);
     expect(result.ok).toBe(true);
-    expect(Object.keys(result).sort()).toEqual(["ok", "source"]);
+    expect(Object.keys(result).sort()).toEqual(["componentName", "ok", "source"]);
+    expect(result.ok && result.componentName).toBe("CircleGraph");
+    expect(exportSource(circle, { componentName: "UnitCircle" })).toMatchObject({ ok: true, componentName: "UnitCircle" });
   });
 
   it("returns { ok: false, issues } for an invalid description: the issues createGraph reports, and no source", () => {

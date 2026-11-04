@@ -27,19 +27,29 @@ The package makes no network requests and collects no data.
 `graph-generator export` turns a saved description into a component file, from a terminal or a
 build script. It needs Node.js 22 or later, not React, and makes no network requests.
 
+Install the package, then run its `graph-generator` command with `npx`. Write the package name
+in every command: it runs the installed package's `graph-generator` bin, while the bare short name
+can run a different package from the registry.
+
 ```sh
-npx graph-generator export description.json                 # writes CircleGraph.tsx beside it
-npx graph-generator export description.json --out src/Figure.tsx --name Figure
+npm install --save-dev @gener8v/graph-generator
+npx @gener8v/graph-generator export description.json                 # writes CircleGraph.tsx beside it
+npx @gener8v/graph-generator export description.json --out src/Figure.tsx --name Figure
 ```
 
 - `--out <file.tsx>` sets the output file. By default it is `<Name>.tsx` next to the description.
+  It cannot be the description file itself. Without `--out`, a name that Windows reserves for a
+  device (such as `CON` or `NUL`) is refused.
 - `--name <Name>` sets the component's name, a PascalCase identifier. By default it is the graph
   type's, such as `CircleGraph`.
-- An existing output file is overwritten.
+- An existing output file is replaced. The file is written to a temporary file beside it and
+  renamed, so a link at the output path is replaced, not followed.
+- The description must be a regular file of at most 3 MiB (3,145,728 bytes); the largest valid
+  description is about 1.6 MB. A larger file, a directory or a pipe is refused.
 - It prints at most the first 20 issues of an invalid description, then how many more there are,
   and writes no file.
 - Exit status: 0 the file is written; 1 the description is not valid, or a file cannot be read or
-  written; 2 the command line is not valid.
+  written; 2 the command line is not valid, or the output is the description file.
 
 The file is the same text `exportSource` from `./export` returns.
 

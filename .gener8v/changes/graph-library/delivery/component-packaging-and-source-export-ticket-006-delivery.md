@@ -158,4 +158,13 @@ Decisions to record: exit codes; a second Node build; `invalid_json` reused; an 
 
 ## Post-Review Amendments
 
-None
+### graph-library/component-packaging-and-source-export-ticket-006 security review SEC-001..SEC-004, code review CR-001, CR-002, quality review QR-001..QR-003 (one commit: the fixes share lines)
+
+**Change:**
+- SEC-001: README install step and `npx @gener8v/graph-generator export …`; a package test requires every `npx` line in the README (and `docs/`) to name the scoped package.
+- SEC-002: the input is opened `O_RDONLY | O_NONBLOCK`, `fstat`ed and refused unless a regular file of at most `MAX_INPUT_BYTES` = 3 MiB (1.9× the largest valid description pretty-printed, 1,649,745 bytes), then read from the same descriptor; in `--help` and the README.
+- SEC-003 / CR-001: write to a `wx` temp file beside the target, then rename (no symlink following, atomic); a target that is the input is refused, exit 2. A replaced file takes the default mode, not the old file's.
+- SEC-004: without `--out`, a Windows reserved device name as the component name is refused, exit 2.
+- CR-002 / QR-001: `main` runs only as the entry module (real path of `argv[1]`); `tests/cli/main.test.ts` drives the catch-all. QR-002: the bare copy is `dist/cli.js` alone, whose imports must all be Node built-ins. QR-003: `exportSource`'s success result carries `componentName` (additive); `quoteForMessage` replaces `quote` and the `quoteEscaped` wrapper.
+**Files:** `src/cli.ts`, `src/export/exportSource.ts`, `src/core/issues.ts`, `README.md`, `.changeset/export-source.md`, `tests/cli/export.test.ts`, `tests/cli/main.test.ts` (new), `tests/export/exportSource.test.ts`, `tests/export/exportSource-printer.test.ts`, `tests/package/checks.test.ts`
+**Re-verification:** full verification loop — all exit 0 except `pnpm audit` (accepted, CPSE TICKET-004 SEC-002); vitest ×3, 2,460 passed each; bench 25 passed. Mutants: no size check → the oversize test fails; direct write → the symlink test fails; no same-file check → three tests fail; stack printed in the catch-all → the in-process test fails; `main` run on import → the exit-status test fails. gener8v-state lint 0 errors.

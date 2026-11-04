@@ -215,18 +215,14 @@ function escapeChars(text: string): string {
 
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 3)}...` : text);
 
-/** Quoted, clipped, with every control and invisible character escaped. */
-function quote(text: string, max: number): string {
+/**
+ * Quoted, clipped to `max` characters, with every control and invisible character escaped: the
+ * messages' quoting, also for other text the package prints, such as the export command's file
+ * names. Internal: not exported from `./core`.
+ */
+export function quoteForMessage(text: string, max: number): string {
   // JSON.stringify escapes the C0 controls, quotes and backslashes.
   return escapeChars(JSON.stringify(clip(text, max)));
-}
-
-/**
- * A text quoted with the messages' escaping, clipped to `max` characters: for other text the
- * package prints, such as the export command's file names. Internal: not exported from `./core`.
- */
-export function quoteEscaped(text: string, max: number): string {
-  return quote(text, max);
 }
 
 /** A short, readable rendering of a supplied value for messages. Never throws. */
@@ -235,7 +231,7 @@ export function describeValue(value: unknown): string {
     case "undefined":
       return "nothing";
     case "string":
-      return quote(value, MAX_VALUE_CHARS);
+      return quoteForMessage(value, MAX_VALUE_CHARS);
     case "number":
     case "boolean":
       return String(value);
@@ -257,7 +253,7 @@ export function describeValue(value: unknown): string {
 
 /** A term as written when it looks like a vocabulary term or readable path; quoted otherwise. */
 export function describeTerm(term: string): string {
-  return term.length <= MAX_TERM_CHARS && TERM_SHAPE.test(term) ? term : quote(term, MAX_TERM_CHARS);
+  return term.length <= MAX_TERM_CHARS && TERM_SHAPE.test(term) ? term : quoteForMessage(term, MAX_TERM_CHARS);
 }
 
 /** Package-authored explanation, clipped, with control and invisible characters escaped. */
@@ -495,5 +491,5 @@ export function formatIssue(issue: Pick<Issue, "path" | "message">): string {
   const message = escapeChars(String(issue.message));
   const path = String(issue.path);
   if (path === "") return message;
-  return `${PLAIN_POINTER.test(path) ? path : quote(path, MAX_TERM_CHARS)}: ${message}`;
+  return `${PLAIN_POINTER.test(path) ? path : quoteForMessage(path, MAX_TERM_CHARS)}: ${message}`;
 }
