@@ -24,7 +24,7 @@ own files.
 
 ## Install
 
-The package needs React 18 or 19. The non-rendering entry points (`./core`, `./tool`, `./export`)
+The package needs React 18 or 19. The non-rendering entry points (`@gener8v/graph-generator/core`, `/tool` and `/export`)
 need Node.js 22 or later and no React.
 
 ```sh
@@ -91,7 +91,7 @@ The entry points are `./circle`, `./square`, `./triangle`, `./cube`, `./cylinder
 
 A fallback function is how your code learns the issues. It is called during render and must have no
 side effect. An issue's `path` holds the caller's keys exactly as given, and a key can hold line
-breaks and text-direction characters. Print every issue with `formatIssue` from `./core`, never
+breaks and text-direction characters. Print every issue with `formatIssue` from `@gener8v/graph-generator/core`, never
 `issue.path` itself:
 
 ```tsx

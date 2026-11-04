@@ -2,12 +2,15 @@ import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { GRAPH_TYPES } from "../../src/core/definitions/types";
 import { formatIssue, validate } from "../../src/core/index";
+import { descriptionFences, pages, read } from "./pages";
 
 // CPSE-REQ-046: every documented example is valid. The examples the site shows (examples/*.json,
 // one story each) and every ```json block in the documentation pages are descriptions, and each one
 // must pass `validate`; the counter-examples in examples/invalid/ must fail it (graph-library CPSE
-// TICKET-008). JSON on a page that is not a description, such as a tool call's input, is written in
-// a ```ts or ```text block.
+// TICKET-008). So is a block with no language, or a ts, js or text one, whose content is a JSON
+// object with a "type" key: a description cannot dodge the check by going unlabelled. JSON on a
+// page that is not a description, such as a tool call's input, has no "type" key at its top level
+// (the tool's input is wrapped: {"graph": ...}).
 
 const json = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"));
 const jsonFiles = (dir: string) =>
@@ -22,21 +25,8 @@ const why = (input: unknown) => {
   return result.valid ? "" : result.issues.map(formatIssue).join("\n");
 };
 
-/** The text of every ```json block in a page, indented or not, with the line it starts on. */
-function jsonBlocks(page: string): Array<{ line: number; text: string }> {
-  const blocks: Array<{ line: number; text: string }> = [];
-  for (const match of page.matchAll(/^[ \t]*```json[ \t]*\n([\s\S]*?)^[ \t]*```[ \t]*$/gm)) {
-    blocks.push({ line: page.slice(0, match.index).split("\n").length, text: match[1]! });
-  }
-  return blocks;
-}
-
 const examples = jsonFiles("examples");
 const invalid = jsonFiles("examples/invalid");
-const pages = readdirSync("docs", { recursive: true, encoding: "utf8" })
-  .filter((file) => /\.mdx?$/.test(file))
-  .map((file) => `docs/${file}`)
-  .sort();
 
 // @spec CPSE-REQ-046
 describe("documented examples (CPSE-REQ-046)", () => {
@@ -63,13 +53,12 @@ describe("documented examples (CPSE-REQ-046)", () => {
 
   it("finds JSON examples in the documentation pages", () => {
     expect(pages.length).toBeGreaterThan(0);
-    expect(pages.flatMap((page) => jsonBlocks(readFileSync(page, "utf8"))).length).toBeGreaterThan(0);
+    expect(pages.flatMap((page) => descriptionFences(read(page), page)).length).toBeGreaterThan(0);
   });
 
   for (const page of pages) {
-    it(`every json block in ${page} is a valid description`, () => {
-      for (const { line, text } of jsonBlocks(readFileSync(page, "utf8"))) {
-        const where = `${page}:${line}`;
+    it(`every description block in ${page} is a valid description`, () => {
+      for (const { where, text } of descriptionFences(read(page), page)) {
         let description: unknown;
         expect(() => (description = JSON.parse(text)), `${where} is not JSON`).not.toThrow();
         expect(why(description), where).toBe("");
@@ -78,10 +67,29 @@ describe("documented examples (CPSE-REQ-046)", () => {
   }
 
   it("reads every json block, indented or not", () => {
-    const page = "Text\n\n```json\n{ \"type\": \"square\" }\n```\n\n```ts\nconst a = 1;\n```\n\n- item\n\n  ```json  \n  {}\n  ```   \n";
-    expect(jsonBlocks(page)).toEqual([
+    const page = "Text\n\n```json\n{ \"type\": \"square\" }\n```\n\n```ts\nconst a = 1;\n```\n\n- item\n\n  ```json  \n  {}\n  ```   \n\n~~~json\n{}\n~~~\n";
+    expect(descriptionFences(page).map(({ line, text }) => ({ line, text }))).toEqual([
       { line: 3, text: '{ "type": "square" }\n' },
       { line: 13, text: "  {}\n" },
+      { line: 17, text: "{}\n" },
     ]);
+  });
+
+  it("also reads a block with no language, or a ts, js or text one, that is a JSON object with a type", () => {
+    const description = '{ "type": "circle", "radius": -3 }';
+    const page = [
+      `\`\`\`\n${description}\n\`\`\``,
+      `\`\`\`ts\n${description}\n\`\`\``,
+      `\`\`\`js\n${description}\n\`\`\``,
+      `\`\`\`text\n${description}\n\`\`\``,
+      // Not descriptions: no "type" key, not JSON, a list, another language.
+      '```text\n{ "graph": { "type": "circle" } }\n```',
+      "```ts\nconst a = { type: 1 };\n```",
+      `\`\`\`text\n[${description}]\n\`\`\``,
+      `\`\`\`sh\n${description}\n\`\`\``,
+    ].join("\n\n");
+    const found = descriptionFences(page);
+    expect(found.map(({ lang }) => lang)).toEqual(["", "ts", "js", "text"]);
+    for (const { text } of found) expect(validate(JSON.parse(text)).valid).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import { Meta } from "@storybook/addon-docs/blocks";
+import { Limit } from "./components/Limit";
 
 <Meta title="Source export" />
 
@@ -45,11 +46,13 @@ if (result.ok) {
 - It never throws. The same description and package version always give the same text.
 
 The file starts with a comment that names the package and version and holds the description, then
-the component (shortened here; the version is the package's):
+the component (shortened here; `<version>` stands for the package's version):
+
+{/* sample: export-square */}
 
 ```tsx
 /*
- * SquareFigure: a square exported by @gener8v/graph-generator <version> with exportSource.
+ * SquareFigure: a square exported by \u0040gener8v/graph-generator <version> with exportSource.
  * It depends on React alone, through the automatic JSX runtime, takes no props and uses no hooks.
  * To change the graph, export the description again rather than editing the drawing.
  *
@@ -59,18 +62,21 @@ the component (shortened here; the version is the package's):
  *   "sideLength": 4,
  *   "unit": "cm",
  *   "labelSides": "all",
- *   "title": "Aire du carré"
+ *   "title": "Aire du carr\u00e9"
  * }
  */
 export function SquareFigure() {
   return (
-    <svg role={"img"} aria-label={"A square titled “Aire du carré” with side length 4 cm. All four sides are labeled."} viewBox={"0 0 400 315.2"} width={"100%"}>
-      <title>{"A square titled “Aire du carré” with side length 4 cm. All four sides are labeled."}</title>
+    <svg role={"img"} aria-label={"A square titled \u201cAire du carr\u00e9\u201d with side length 4 cm. All four sides are labeled."} viewBox={"0 0 400 315.2"} width={"100%"}>
+      <title>{"A square titled \u201cAire du carr\u00e9\u201d with side length 4 cm. All four sides are labeled."}</title>
       ...
     </svg>
   );
 }
 ```
+
+The file is ASCII only, as the section below explains: the `@` and the accented letter are written
+as escapes, and the text renders as described.
 
 To change the figure, change the description and export it again, rather than editing the drawing.
 
@@ -95,9 +101,9 @@ npx @gener8v/graph-generator export square.json --out src/SquareFigure.tsx --nam
   type's.
 - An existing output file is replaced. The file is written to a temporary file beside it and
   renamed, so a link at the output path is replaced, not followed.
-- The description must be a regular file of at most 3 MiB (3,145,728 bytes). The largest valid
+- The description must be a regular file of at most <Limit name="MAX_INPUT_BYTES" />. The largest valid
   description is about 1.6 MB.
-- For an invalid description it prints at most the first 20 issues, with `formatIssue`, then how
+- For an invalid description it prints at most the first <Limit name="MAX_ISSUES_PRINTED" /> issues, with `formatIssue`, then how
   many more there are, and writes no file.
 - Exit status: 0 the file is written; 1 the description is not valid, or a file cannot be read or
   written; 2 the command line is not valid, or the output is the description file.

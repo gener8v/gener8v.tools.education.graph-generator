@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { type Server, createServer } from "node:http";
+import { limitText } from "../../docs/components/Limit";
 import type { AddressInfo } from "node:net";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,4 +98,15 @@ test.describe("documentation site (prd/CC-003)", () => {
       expect(outside, "requests outside the site").toEqual([]);
     });
   }
+
+  // The limits a page states come from the package's constants (`docs/components/Limit.tsx`); this
+  // checks they reach the built page as numbers (CPSE TICKET-008 code review CR-002).
+  test("Source export states the command's limits from the package", async ({ page }) => {
+    const exportPage = entries.find((entry) => entry.type === "docs" && entry.title === "Source export");
+    expect(exportPage, "a Source export page").toBeDefined();
+    await page.goto(`${origin}/index.html?path=/docs/${exportPage!.id}`, { waitUntil: "networkidle" });
+    const docs = page.frameLocator("#storybook-preview-iframe").locator("#storybook-docs");
+    await expect(docs).toContainText(limitText("MAX_INPUT_BYTES"));
+    await expect(docs).toContainText(`first ${limitText("MAX_ISSUES_PRINTED")} issues`);
+  });
 });

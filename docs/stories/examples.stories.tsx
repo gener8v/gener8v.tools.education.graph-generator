@@ -2,55 +2,116 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ExamplePage } from "../components/ExamplePage";
-import barGraph from "../../examples/bar-graph.json";
-import circle from "../../examples/circle.json";
-import cube from "../../examples/cube.json";
-import cylinder from "../../examples/cylinder.json";
-import lineGraph from "../../examples/line-graph.json";
-import numberLine from "../../examples/number-line.json";
-import pictograph from "../../examples/pictograph.json";
-import ruler from "../../examples/ruler.json";
-import square from "../../examples/square.json";
-import triangle from "../../examples/triangle.json";
-import triangleAsa from "../../examples/triangle-asa.json";
-import triangleSas from "../../examples/triangle-sas.json";
-import triangleVertices from "../../examples/triangle-vertices.json";
-import xyGraph from "../../examples/xy-graph.json";
-import xyzGraph from "../../examples/xyz-graph.json";
+import exampleBarGraph from "../../examples/bar-graph.json";
+import exampleCircle from "../../examples/circle.json";
+import exampleCube from "../../examples/cube.json";
+import exampleCylinder from "../../examples/cylinder.json";
+import exampleLineGraph from "../../examples/line-graph.json";
+import exampleNumberLine from "../../examples/number-line.json";
+import examplePictograph from "../../examples/pictograph.json";
+import exampleRuler from "../../examples/ruler.json";
+import exampleSquare from "../../examples/square.json";
+import exampleTriangle from "../../examples/triangle.json";
+import exampleTriangleAsa from "../../examples/triangle-asa.json";
+import exampleTriangleSas from "../../examples/triangle-sas.json";
+import exampleTriangleVertices from "../../examples/triangle-vertices.json";
+import exampleXyGraph from "../../examples/xy-graph.json";
+import exampleXyzGraph from "../../examples/xyz-graph.json";
 
 // One story per example: the description, its graph and its type's input table (CPSE-REQ-044).
+// Only the description is an arg; the file name is bound in `render`, so it is not one.
 const meta = { title: "Graph types", component: ExamplePage } satisfies Meta<typeof ExamplePage>;
 
 export default meta;
 
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<{ description: unknown }>;
 
-export const BarGraph: Story = { name: "bar-graph", args: { file: "bar-graph.json", description: barGraph } };
+export const BarGraph: Story = {
+  name: "bar-graph",
+  args: { description: exampleBarGraph },
+  render: (args) => <ExamplePage {...args} file="bar-graph.json" />,
+};
 
-export const Circle: Story = { name: "circle", args: { file: "circle.json", description: circle } };
+export const Circle: Story = {
+  name: "circle",
+  args: { description: exampleCircle },
+  render: (args) => <ExamplePage {...args} file="circle.json" />,
+};
 
-export const Cube: Story = { name: "cube", args: { file: "cube.json", description: cube } };
+export const Cube: Story = {
+  name: "cube",
+  args: { description: exampleCube },
+  render: (args) => <ExamplePage {...args} file="cube.json" />,
+};
 
-export const Cylinder: Story = { name: "cylinder", args: { file: "cylinder.json", description: cylinder } };
+export const Cylinder: Story = {
+  name: "cylinder",
+  args: { description: exampleCylinder },
+  render: (args) => <ExamplePage {...args} file="cylinder.json" />,
+};
 
-export const LineGraph: Story = { name: "line-graph", args: { file: "line-graph.json", description: lineGraph } };
+export const LineGraph: Story = {
+  name: "line-graph",
+  args: { description: exampleLineGraph },
+  render: (args) => <ExamplePage {...args} file="line-graph.json" />,
+};
 
-export const NumberLine: Story = { name: "number-line", args: { file: "number-line.json", description: numberLine } };
+export const NumberLine: Story = {
+  name: "number-line",
+  args: { description: exampleNumberLine },
+  render: (args) => <ExamplePage {...args} file="number-line.json" />,
+};
 
-export const Pictograph: Story = { name: "pictograph", args: { file: "pictograph.json", description: pictograph } };
+export const Pictograph: Story = {
+  name: "pictograph",
+  args: { description: examplePictograph },
+  render: (args) => <ExamplePage {...args} file="pictograph.json" />,
+};
 
-export const Ruler: Story = { name: "ruler", args: { file: "ruler.json", description: ruler } };
+export const Ruler: Story = {
+  name: "ruler",
+  args: { description: exampleRuler },
+  render: (args) => <ExamplePage {...args} file="ruler.json" />,
+};
 
-export const Square: Story = { name: "square", args: { file: "square.json", description: square } };
+export const Square: Story = {
+  name: "square",
+  args: { description: exampleSquare },
+  render: (args) => <ExamplePage {...args} file="square.json" />,
+};
 
-export const Triangle: Story = { name: "triangle", args: { file: "triangle.json", description: triangle } };
+export const Triangle: Story = {
+  name: "triangle",
+  args: { description: exampleTriangle },
+  render: (args) => <ExamplePage {...args} file="triangle.json" />,
+};
 
-export const TriangleAsa: Story = { name: "triangle-asa", args: { file: "triangle-asa.json", description: triangleAsa } };
+export const TriangleAsa: Story = {
+  name: "triangle-asa",
+  args: { description: exampleTriangleAsa },
+  render: (args) => <ExamplePage {...args} file="triangle-asa.json" />,
+};
 
-export const TriangleSas: Story = { name: "triangle-sas", args: { file: "triangle-sas.json", description: triangleSas } };
+export const TriangleSas: Story = {
+  name: "triangle-sas",
+  args: { description: exampleTriangleSas },
+  render: (args) => <ExamplePage {...args} file="triangle-sas.json" />,
+};
 
-export const TriangleVertices: Story = { name: "triangle-vertices", args: { file: "triangle-vertices.json", description: triangleVertices } };
+export const TriangleVertices: Story = {
+  name: "triangle-vertices",
+  args: { description: exampleTriangleVertices },
+  render: (args) => <ExamplePage {...args} file="triangle-vertices.json" />,
+};
 
-export const XyGraph: Story = { name: "xy-graph", args: { file: "xy-graph.json", description: xyGraph } };
+export const XyGraph: Story = {
+  name: "xy-graph",
+  args: { description: exampleXyGraph },
+  render: (args) => <ExamplePage {...args} file="xy-graph.json" />,
+};
 
-export const XyzGraph: Story = { name: "xyz-graph", args: { file: "xyz-graph.json", description: xyzGraph } };
+export const XyzGraph: Story = {
+  name: "xyz-graph",
+  args: { description: exampleXyzGraph },
+  render: (args) => <ExamplePage {...args} file="xyz-graph.json" />,
+};

@@ -52,12 +52,12 @@ jobs:
       - name: Build the site
         run: pnpm docs:build
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Chromium and WebKit
+        run: pnpm exec playwright install --with-deps chromium webkit
 
-      # prd/CC-003: the site requests nothing outside its own files.
+      # prd/CC-003: the site requests nothing outside its own files, in both engines.
       - name: The site makes no request outside its own files (prd/CC-003)
-        run: npx playwright test tests/e2e/docs-network.spec.ts --project chromium
+        run: pnpm exec playwright test tests/e2e/docs-network.spec.ts
         env:
           DOCS_SITE_REQUIRED: "1"
 

@@ -1,4 +1,5 @@
 import { Meta } from "@storybook/addon-docs/blocks";
+import { Limit } from "./components/Limit";
 import { IssueCodeTable } from "./components/ReferenceTables";
 
 <Meta title="Issue codes" />
@@ -24,7 +25,7 @@ An issue is plain JSON data:
 
 An issue's `path` holds the caller's keys exactly as given. A key can hold line breaks and
 text-direction characters, which can make a log line or a page show something else. Print every
-issue with `formatIssue` from `./core`, never `issue.path` itself. It writes `path: message`. A
+issue with `formatIssue` from `@gener8v/graph-generator/core`, never `issue.path` itself. It writes `path: message`. A
 path that is not a plain pointer is quoted, clipped to 64 characters and escaped.
 
 ```ts
@@ -38,11 +39,15 @@ if (!result.valid) {
 
 It prints:
 
+{/* sample: format-issue-radius */}
+
 ```text
 /radius: radius must be a number between 0.001 and 1000000; got -3.
 ```
 
 The issue itself:
+
+{/* sample: issue-radius */}
 
 ```ts
 {
@@ -55,9 +60,9 @@ The issue itself:
 
 ## Limits and plain text
 
-- A list longer than its `maxItems`, a description with more than 10,000 values, or a text longer
-  than its limit is `too_large`. Titles, labels and names are at most 200 characters and `unit` at
-  most 20, counted as code points. Longer text is never cut short. Each type's limits are in its
+- A list longer than its `maxItems`, a description with more than <Limit name="DESCRIPTION_VALUE_LIMIT" /> values, or a text longer
+  than its limit is `too_large`. Titles, labels and names are at most <Limit name="CALLER_TEXT_LIMIT" /> characters and `unit` at
+  most <Limit name="UNIT_TEXT_LIMIT" />, counted as code points. Longer text is never cut short. Each type's limits are in its
   input table on the **Vocabulary** page.
 - Text that holds a control, line-break, text-direction or invisible character is `wrong_kind`.
   The zero-width joiner and non-joiner and the emoji variation selectors are allowed. The
@@ -65,15 +70,17 @@ The issue itself:
 
 A message quotes and escapes such characters, so it shows exactly what was supplied:
 
+{/* sample: messages-plain-text */}
+
 ```text
-/title: title must be plain text without control, line-break, text-direction or invisible characters; got "a‮b".
+/title: title must be plain text without control, line-break, text-direction or invisible characters; got "a\u202eb".
 /title: title has 201 characters, more than the limit of 200; use fewer.
 ```
 
 ## Codes
 
-The set of codes is fixed. Renaming or removing a code is a breaking change, so code can test
-`issue.code` safely. `isIssueCode(value)` from `./core` says whether a value is one of them, and
+The set of codes is fixed. Renaming or removing a code is a breaking change, so your code can test
+`issue.code` safely. `isIssueCode(value)` from `@gener8v/graph-generator/core` says whether a value is one of them, and
 `issueDocs[code]` gives the meaning below.
 
 <IssueCodeTable />

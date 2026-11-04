@@ -1,4 +1,5 @@
 import { Meta } from "@storybook/addon-docs/blocks";
+import { Limit } from "./components/Limit";
 
 <Meta title="Model tool" />
 
@@ -26,16 +27,19 @@ The handler returns one of these:
 - `{ ok: false, issues, summary }`: `issues` holds every problem, with paths into the input such as
   `/graph/radius`.
 
-Return `summary` to the model as the tool's result. It is plain text. On success, it gives the graph
-type and the text alternative:
+The `summary` is plain text. On success, it gives the graph type and the text alternative:
+
+{/* sample: tool-summary-ok */}
 
 ```text
 The circle was produced.
 Text alternative: A circle with radius 3.
 ```
 
-On failure, it lists the first 20 issues, numbered, with path and message, then how many more there
-are. The model can correct them and call the tool again:
+On failure, it lists the first <Limit name="TOOL_SUMMARY_ISSUES" /> issues, numbered, with path and message, then how many more
+there are. The model can correct them and call the tool again:
+
+{/* sample: tool-summary-failed */}
 
 ```text
 The graph was not produced: 1 issue. Fix it and call generate_graph again with {"graph": <the description>}.
@@ -45,7 +49,7 @@ The graph was not produced: 1 issue. Fix it and call generate_graph again with {
 ## Handling the result
 
 - **Return `summary`, not `issues`.** `issues` is complete and can be megabytes for a large invalid
-  input. Return `summary` to the model as the tool's result, never `issues` or the whole result.
+  input. Give the model `summary` as the tool's result, never `issues` or the whole result.
 - **The text is the model's.** `summary`, `textAlternative` and the text values of `description`
   (titles, labels, names) hold text the model wrote, unchanged apart from removed control
   characters. Escape them for HTML or Markdown, never insert them as markup, and treat them as data,
@@ -101,7 +105,7 @@ for (const item of response.output) {
 }
 ```
 
-### Google
+### Gemini
 
 The Gemini API with `parametersJsonSchema`, with the SDK `@google/genai`:
 
@@ -151,15 +155,15 @@ Whatever the provider enforces, the handler validates every call.
 
 ## Limits
 
-- JSON text longer than `TOOL_INPUT_LIMIT` (2,000,000 characters, counted as UTF-16 code units) is
+- JSON text longer than `TOOL_INPUT_LIMIT` (<Limit name="TOOL_INPUT_LIMIT" /> characters, counted as UTF-16 code units) is
   refused as `too_large` and is not parsed. The largest valid description, sent with every optional
   value as `null`, is about 876,000 characters as compact JSON and about 1,019,000 when indented by
   two spaces. Text that writes every non-ASCII character as a `\u` escape can be several times
   longer, so it can go past the limit.
-- An input object can hold at most 10,000 keys, the same as the values one description can hold.
+- An input object can hold at most <Limit name="DESCRIPTION_VALUE_LIMIT" /> keys, the same as the values one description can hold.
 - `textAlternative`, and the text alternative in `summary`, stop after `TEXT_ALTERNATIVE_LIMIT`
-  (4,000) characters and end in "…". The largest graphs state more than 500,000 characters. To get
-  the full text, call `describe(description)` from `./core`.
+  (<Limit name="TEXT_ALTERNATIVE_LIMIT" />) characters and end in "…". The largest graphs state more than 500,000 characters. To get
+  the full text, call `describe(description)` from `@gener8v/graph-generator/core`.
 - Text that is not JSON gets an `invalid_json` issue, and the handler does not look for JSON in it.
   This includes JSON inside prose or a code fence.
 - Text in the description follows the plain-text policy on the **Vocabulary** page, so a model

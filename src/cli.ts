@@ -7,20 +7,12 @@ import { createIssue, formatIssue, quoteForMessage } from "./core/issues";
 import type { Issue } from "./core/result";
 import { exportSource } from "./export/exportSource";
 import { PACKAGE_VERSION } from "./generated/version";
+import { MAX_INPUT_BYTES, MAX_ISSUES_PRINTED } from "./cli-limits";
 
-/** The most issues printed; the rest are counted (GSV TICKET-002 security review SEC-002). */
-const MAX_ISSUES_PRINTED = 20;
+export { MAX_INPUT_BYTES, MAX_ISSUES_PRINTED };
 
 /** The longest file name printed whole; a path is longer than an issue's term. */
 const MAX_NAME_CHARS = 1024;
-
-/**
- * The most bytes read from the description file: 3 MiB. The largest valid description, pretty-
- * printed, is 1,649,745 bytes (the x,y graph at its limits: 1,000 labeled points and 740 labeled
- * segments, every label 200 astral characters, measured 2026-11-04), so this is 1.9 times that
- * (GSV CPSE TICKET-006 security review SEC-002).
- */
-const MAX_INPUT_BYTES = 3 * 1024 * 1024;
 
 /** A name Windows opens as a device, whatever its extension: `CON.tsx` is not a file there. */
 const RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;

@@ -1,0 +1,14 @@
+<!-- Runs before the preview's own scripts. A built Storybook preview accepts channel messages from
+     any origin, so another site could post into the preview and change what an example page shows.
+     This drops every message that does not come from the site's own origin, before Storybook's
+     listener sees it (security review SEC-002 on graph-library CPSE TICKET-008). The site uses no
+     composition (refs), so no legitimate message comes from elsewhere. -->
+<script>
+  window.addEventListener(
+    "message",
+    (event) => {
+      if (event.origin !== window.location.origin) event.stopImmediatePropagation();
+    },
+    true,
+  );
+</script>

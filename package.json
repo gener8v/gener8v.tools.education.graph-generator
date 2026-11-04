@@ -127,8 +127,8 @@
     "changeset": "changeset",
     "check:dist": "tsx scripts/check-dist.ts",
     "check:images": "tsx scripts/check-image-licenses.ts",
-    "docs": "storybook dev -p 6006",
-    "docs:build": "storybook build -o storybook-static"
+    "docs": "storybook dev -p 6006 --disable-telemetry --no-version-updates",
+    "docs:build": "storybook build -o storybook-static --disable-telemetry"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",

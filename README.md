@@ -13,7 +13,7 @@ component file, and can be offered to a language model as a tool.
 
 - **Source:** https://github.com/gener8v/gener8v.tools.education.graph-generator
 - **Issues:** https://github.com/gener8v/gener8v.tools.education.graph-generator/issues
-- **Documentation:** https://gener8v.github.io/gener8v.tools.education.graph-generator/
+- **Documentation:** https://gener8v.github.io/gener8v.tools.education.graph-generator/ (the site goes live once GitHub Pages is enabled for the repository; until then this link shows a 404 page)
 
 ## Requirements
 

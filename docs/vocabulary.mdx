@@ -1,4 +1,5 @@
 import { Meta } from "@storybook/addon-docs/blocks";
+import { Limit } from "./components/Limit";
 import { AllInputTables, ColorTable, GraphTypeTable, LimitFacts, TermTable } from "./components/ReferenceTables";
 
 <Meta title="Vocabulary" />
@@ -27,11 +28,11 @@ tables on this page are built from `vocabulary.json`, the file the package publi
 
 <LimitFacts />
 
-- Each list has its own most items, `maxItems`, given in each type's input table below. A longer
+- Each list has its own maximum length, `maxItems`, given in each type's input table below. A longer
   list is the issue `too_large`.
-- Titles, labels and names are at most 200 characters, and `unit` at most 20. Characters are
-  counted as code points, so an emoji counts once. Longer text is the issue `too_large`; it is
-  never cut short. The drawing still cuts long text at its line caps, while the text alternative
+- Titles, labels and names are at most <Limit name="CALLER_TEXT_LIMIT" /> characters, and `unit` at most{" "}
+  <Limit name="UNIT_TEXT_LIMIT" />. Characters are counted as code points, so an emoji counts once.
+  Longer text is the issue `too_large`; it is never cut short. The drawing still cuts long text at its line caps, while the text alternative
   states it whole.
 - A description with more values than the limit is reported once, as `too_large` at the whole
   description, and is not checked further.
@@ -77,9 +78,16 @@ import { describe, validate } from "@gener8v/graph-generator/core";
 
 const result = validate(description);
 if (result.valid) {
-  // For the circle on the Components page: "A circle titled “Find the diameter” with radius 3 cm. Its radius is drawn."
   console.log(describe(result.description));
 }
+```
+
+For the circle on the Components page, it prints:
+
+{/* sample: describe-circle */}
+
+```text
+A circle titled “Find the diameter” with radius 3 cm. Its radius is drawn.
 ```
 
 ## The JSON Schema and the validator

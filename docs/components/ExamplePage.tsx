@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { GRAPH_TYPES, type GraphType } from "../../src/core/definitions/types";
 import { Graph } from "../../src/index";
 import { InputTable } from "./InputTable";
+import { Limit } from "./Limit";
 import { RulerWidthNote } from "./RulerWidthNote";
 import { codeBlock, page } from "./styles";
 import { vocabulary } from "./vocabulary";
@@ -39,8 +40,8 @@ export function ExamplePage({ file, description }: { file: string; description: 
           <h3>Inputs</h3>
           <p>
             Every term a {type} description accepts. Leave out a term that is not required to use its default. Titles,
-            labels and names are at most 200 characters and a unit at most 20, counted as code points; longer text is an
-            issue, never cut.
+            labels and names are at most <Limit name="CALLER_TEXT_LIMIT" /> characters and a unit at most{" "}
+            <Limit name="UNIT_TEXT_LIMIT" />, counted as code points; longer text is an issue, never cut.
           </p>
           <InputTable type={type} />
         </>
