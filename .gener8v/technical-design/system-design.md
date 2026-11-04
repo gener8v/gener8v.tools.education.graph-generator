@@ -11,7 +11,7 @@ One open-source TypeScript package, built as a pipeline of pure stages: **descri
 **Dependency Map:** `.gener8v/dependencies/dependency-map.md` (Approved)
 **System Context:** `.gener8v/context.md`
 **Status:** Approved
-**Approved by:** Architect — Thomas Eaves, 2026-11-02
+**Approved by:** Architect — Thomas Eaves, 2026-11-04
 
 Starting point (Process step 1b): the repository holds only `.gener8v/` and `CLAUDE.md`. No code, build, CI or package exists, so this design assumes no existing infrastructure; everything it names is created by tickets. Single repository: every path below is relative to the repository root.
 
@@ -92,12 +92,12 @@ The result is `{ valid: true, description, provenance }` or `{ valid: false, iss
 - **Published schema** (`schema.json`, JSON Schema 2020-12): root `anyOf` of one closed object per graph type, each with `type` as a `const`; optional properties are simply not required. Because the `type` constants are disjoint, `anyOf` behaves as `oneOf` and works in more validators.
 - **Tool schema** (`graphTool.inputSchema`): root `{ type: "object", properties: { graph: <anyOf as above> }, required: ["graph"], additionalProperties: false }`, in the strict profile — every object closed, every property listed under `required`, optional properties typed as `[<kind>, "null"]`. No `oneOf`, `if`/`then`, `patternProperties` or format keywords.
 The tool handler unwraps `graph` and removes `null`-valued optional properties before validation.
-**Rationale:** One generated schema in the strict profile is accepted by the documented subsets of Anthropic, OpenAI strict mode and Google function declarations, so no per-provider adapters are needed (CPSE-REQ-029). The published schema stays idiomatic for everyone else.
+**Rationale:** One generated schema in the strict profile, with no per-provider adapters (CPSE-REQ-029). The published schema stays idiomatic for everyone else. *(amended 2026-11-04 by graph-library, CPSE TICKET-007 reconciliation, TQ-002)* The documentation re-check of 2026-11-04 found the schema accepted by Anthropic's default `input_schema`, by OpenAI function calling with `strict: true` (Chat Completions and Responses; `maxLength` and `title` are not in its documented keyword list) and, as far as documented, by Gemini's `parametersJsonSchema`. It does not fit Anthropic's `strict: true` subset (`maxLength`, `minimum`, `maximum` and `maxItems` unsupported; at most 16 `anyOf` or type-array parameters, where this schema has about 140), nor, probably, Gemini's OpenAPI-subset `parameters` and Vertex AI (type arrays rather than `nullable`; no `additionalProperties`). Those two modes are documented as unsupported rather than served by an adapter; whatever a provider enforces, the handler's `validate` is the gate.
 **Alternatives Considered:**
 - One schema for both purposes — either the published schema carries nullable noise, or the tool schema is rejected by strict providers
 - Per-provider adapters — more code and more to keep current; CPSE-REQ-029 prefers provider-neutral
 - Separate tools per graph type — avoids the union, but eleven tools with overlapping vocabulary, and against GSV-REQ-004's single entry
-**Consequences:** In the tool path, `null` means "absent" for optional properties; the published path rejects `null` where the property kind does not allow it. Provider limits must be re-checked against current documentation, and CI validates the tool schema against fixtures of each provider's rules (TR-001, TQ-002).
+**Consequences:** In the tool path, `null` means "absent" for optional properties; the published path rejects `null` where the property kind does not allow it. Provider limits must be re-checked against current documentation, and CI validates the tool schema against fixtures of each supported mode's documented rules (TR-001, TQ-002). The package documents the supported modes — Anthropic `input_schema` without `strict`, OpenAI `strict: true`, Gemini `parametersJsonSchema` — and the two unsupported ones.
 **Requirements Affected:** GSV-REQ-004, GSV-REQ-007, GSV-REQ-008, GSV-REQ-011, CPSE-REQ-027, CPSE-REQ-028, CPSE-REQ-029, CPSE-REQ-030
 
 ### AD-007: A fixed drawing space and one rounding function for every emitted number
@@ -463,7 +463,7 @@ The tool handler unwraps `graph` and removes `null`-valued optional properties b
 - **TR-001**: Provider tool-schema limits change, or the strict profile's nullable optional properties lower the quality of model output
   - *Likelihood:* Medium
   - *Impact:* The tool schema is rejected or models produce more invalid descriptions; CPSE-NFR-004 still passes while real integrations fail
-  - *Mitigation:* Re-check provider documentation before building the tool (TQ-002); keep rule fixtures per provider in CI; measure invalid-call rate on a small evaluation set of prompts during delivery of the tool
+  - *Mitigation:* Re-check provider documentation before building the tool (TQ-002, done 2026-11-04 from documentation only: Anthropic strict mode and Gemini OpenAPI `parameters` do not fit, see AD-006); keep rule fixtures per supported mode in CI, citing the documentation and the date checked; document the supported and unsupported modes; measure invalid-call rate on a small evaluation set of prompts during delivery of the tool
   - *Related Constraints:* prd/IC-001, prd/RF-002
   - *Related NFRs:* CPSE-NFR-004, CPSE-NFR-006
 
@@ -519,7 +519,7 @@ The tool handler unwraps `graph` and removes `null`-valued optional properties b
 ## Open Technical Questions
 
 - [ ] **TQ-001**: Package name and npm organization — is `@gener8v/graph-generator` acceptable and available? (constraints OQ-003)
-- [ ] **TQ-002**: Which providers must the tool schema be verified against? Current assumption: Anthropic, OpenAI (strict mode) and Google. Provider documentation must be re-checked when the tool is built (constraints OQ-002)
+- [x] **TQ-002**: Which providers must the tool schema be verified against? Current assumption: Anthropic, OpenAI (strict mode) and Google. Provider documentation must be re-checked when the tool is built (constraints OQ-002) — *Resolved 2026-11-04 (Engineer decision, CPSE TICKET-007 reconciliation): documentation re-checked that day; supported modes are Anthropic `input_schema` without `strict`, OpenAI `strict: true` and Gemini `parametersJsonSchema`; Anthropic `strict: true` and Gemini OpenAPI `parameters` are documented as unsupported (AD-006). No live API call was made; `maxLength`/`title` for OpenAI strict and the Gemini JSON Schema keyword list are undocumented and stay under TR-001.*
 - [x] **TQ-003**: Product Owner confirmation of AD-005 naming (camel-cased properties, kebab-case type values), which resolves GSV OQ-001
 - [x] **TQ-004**: Product Owner confirmation of isometric projection for cubes, cylinders and x,y,z graphs (AD-009)
 - [x] **TQ-005**: Should export also offer `.jsx` output? (CPSE OQ-003)
