@@ -40,9 +40,13 @@ jobs:
       pull-requests: write
     steps:
       # Actions are pinned to commit SHAs; Dependabot proposes updates (.github/dependabot.yml).
+      # Full history: `changeset version` looks up the commit that added each changeset, and on a
+      # shallow clone it tries to deepen it, which fails with no stored credential (main run
+      # 41900429749).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       # No cache: this job holds a write token, and other jobs can write the cache (SEC-002).
       - uses: ./.github/actions/setup

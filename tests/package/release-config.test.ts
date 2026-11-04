@@ -220,6 +220,8 @@ describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
   it("opens the version pull request from main with changesets/action v2 inputs, and never publishes there (SEC-008)", () => {
     const versionPr = job("version-pr");
     expect(versionPr.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
+    // `changeset version` reads each changeset's commit; a shallow clone makes it fetch with no credential.
+    expect(versionPr.steps.find((s) => s.uses?.startsWith("actions/checkout@"))?.with?.["fetch-depth"]).toBe(0);
     const changesets = versionPr.steps.find((s) => s.uses?.startsWith("changesets/action@"));
     expect(changesets?.uses).toBe("changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51");
     // The inputs that changesets/action v2.1.2 declares (action.yml at the pinned commit); v2 throws
