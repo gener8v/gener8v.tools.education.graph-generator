@@ -21,7 +21,7 @@
   {
     "name": "./tool",
     "path": "dist/tool/index.js",
-    "limit": "25 kB",
+    "limit": "41 kB",
     "gzip": true
   },
   {

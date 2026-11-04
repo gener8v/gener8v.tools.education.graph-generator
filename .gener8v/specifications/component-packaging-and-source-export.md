@@ -147,7 +147,7 @@ Defines how the graph generator reaches its users: as an open-source package on 
 - [ ] **OQ-005**: What package name is used on npm (for example, a scoped name under the organisation)?
 - [ ] **OQ-006**: Should the handler's success result also include exported source or rendered markup, so an application with no React runtime can use the tool directly?
 - [ ] **OQ-007**: Are the bundle-size budgets in CPSE-NFR-002 acceptable?
-- [ ] **OQ-008**: What size limit applies to tool input?
+- [x] **OQ-008**: What size limit applies to tool input? — *Resolved 2026-11-04 (CPSE TICKET-007 delivery record, DEL-001): `TOOL_INPUT_LIMIT`, 2,000,000 characters (UTF-16 code units) of JSON text, refused as `too_large` unparsed; at least 1.5× the largest valid description sent as tool JSON with every optional property null (876,079).*
 
 ## Assumptions
 
@@ -207,3 +207,15 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-025 | `src/export/exportSource.ts`:exportSource (graph-library CPSE TICKET-005) |
 | CPSE-REQ-026 | `src/cli.ts`:main; `tsup.config.ts` (the `cli` build); `package.json` (`bin.graph-generator`); `tests/cli/export.test.ts` (graph-library CPSE TICKET-006) |
 | CPSE-NFR-001 | `tests/export/equality.test.ts` (every example, 15; renderToStaticMarkup identical, no React warnings) (graph-library CPSE TICKET-005) |
+| CPSE-REQ-027 | `src/tool/graphTool.ts`:graphTool (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-028 | `src/tool/graphTool.ts`:graphTool (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-029 | `src/tool/graphTool.ts`:graphTool; `src/tool/index.ts`; `tests/tool/handleGraphToolCall.test.ts`:describe "the tool depends on no React, no model SDK and no provider" (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-030 | `src/tool/handleGraphToolCall.ts`:handleGraphToolCall, withoutNulls (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-031 | `src/tool/handleGraphToolCall.ts`:handleGraphToolCall (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-032 | `src/tool/handleGraphToolCall.ts`:handleGraphToolCall, handleInput (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-033 | `src/tool/handleGraphToolCall.ts`:handleGraphToolCall, handleInput (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-034 | `src/tool/handleGraphToolCall.ts`:handleGraphToolCall, handleInput (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-035 | `src/tool/handleGraphToolCall.ts`:handleGraphToolCall (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-REQ-036 | `src/tool/handleGraphToolCall.ts`:handleGraphToolCall; `src/tool/graphTool.ts`:graphTool; `src/tool/index.ts`; `eslint.config.js`:boundary rule block (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-NFR-004 | `tests/tool/graphTool.test.ts`:describe "the tool input schema is valid JSON Schema 2020-12"; `tests/tool/provider-rules/anthropic.ts`, `openai-strict.ts`, `google.ts` (graph-library/component-packaging-and-source-export/TICKET-007) |
+| CPSE-NFR-006 | `tests/tool/handleGraphToolCall.test.ts`:"returns a well-formed result for 10,000 generated inputs" (graph-library/component-packaging-and-source-export/TICKET-007) |
