@@ -32,10 +32,13 @@ interface Generated {
 
 const finite = (min: number, max: number) => fc.double({ min, max, noNaN: true, noDefaultInfinity: true });
 
-/** Angles A and B with every angle at least `MIN_ANGLE`, and a scale: the sides follow by the law of sines. */
-const triangles = (angleA = finite(MIN_ANGLE, 180 - 2 * MIN_ANGLE)): fc.Arbitrary<Generated> =>
+/**
+ * Angles A and B with every angle at least `MIN_ANGLE`, and a scale: the sides follow by the law of
+ * sines. B takes `share` of what A leaves above the floor, so a share near 0.5 makes B and C close.
+ */
+const triangles = (angleA = finite(MIN_ANGLE, 180 - 2 * MIN_ANGLE), share = finite(0, 1)): fc.Arbitrary<Generated> =>
   fc
-    .tuple(angleA, finite(0, 1), finite(0.01, 1_000_000))
+    .tuple(angleA, share, finite(0.01, 1_000_000))
     .map(([a, share, longest]) => {
       const b = MIN_ANGLE + share * (180 - 2 * MIN_ANGLE - a);
       const angles = [a, b, 180 - a - b] as const;
@@ -111,6 +114,24 @@ describe("triangle round trip (GSS-NFR-002)", () => {
 
   it("two sides and the angle between them", () => {
     fc.assert(fc.property(triangles(), (triangle) => roundTrips(triangle, ["sideB", "sideC", "angleA"], "SAS")), { numRuns: RUNS });
+  });
+
+  it("two nearly equal sides and a small angle between them (GSS TICKET-010)", () => {
+    // A triangle the property test found: sides b and c differ by 0.02% and the angle is at the floor,
+    // where sj − si·cos A cancels. It came back with relative error 1.31 × 10⁻⁹ on angleA.
+    const found: Generated = {
+      angles: [0.0201, 60.8999492592404, 119.07995074075959],
+      sides: [6.661047965292615, 16590.79378447575, 16594.032272024426],
+    };
+    roundTrips(found, ["sideB", "sideC", "angleA"], "SAS");
+  });
+
+  it("two nearly equal sides and an angle near the floor", () => {
+    // B ≈ C when the shares put the other two angles near each other: the sides differ by little.
+    const nearFloor = triangles(finite(MIN_ANGLE, 0.05));
+    fc.assert(fc.property(nearFloor, (triangle) => roundTrips(triangle, ["sideB", "sideC", "angleA"], "SAS")), { numRuns: RUNS });
+    const equalish = triangles(finite(MIN_ANGLE, 0.05), finite(0.49, 0.51));
+    fc.assert(fc.property(equalish, (triangle) => roundTrips(triangle, ["sideB", "sideC", "angleA"], "SAS")), { numRuns: RUNS });
   });
 
   it("two angles and the side between them", () => {

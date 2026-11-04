@@ -244,9 +244,11 @@ function fromTwoSidesAndIncluded(input: TriangleInput, given: readonly number[],
   const [si, sj, angle] = [given[i]!, given[j]!, input[ANGLES[k]]!];
   const half = sinDeg(angle / 2);
   const sk = Math.sqrt((si - sj) * (si - sj) + 4 * si * sj * half * half);
-  // With the vertex of the given angle at the origin and side i along the x axis.
-  const angleI = Math.atan2(si * sinDeg(angle), sj - si * cosDeg(angle)) * DEGREES;
-  const angleJ = Math.atan2(sj * sinDeg(angle), si - sj * cosDeg(angle)) * DEGREES;
+  // With the vertex of the given angle at the origin and side i along the x axis. The x distance
+  // sj − si·cos A is written (sj − si) + 2·si·sin²(A/2): the subtraction cancels for nearly equal
+  // sides and a tiny angle (graph-library GSS TICKET-010).
+  const angleI = Math.atan2(si * sinDeg(angle), sj - si + 2 * si * half * half) * DEGREES;
+  const angleJ = Math.atan2(sj * sinDeg(angle), si - sj + 2 * sj * half * half) * DEGREES;
   const sides: number[] = [];
   const angles: number[] = [];
   [sides[i], sides[j], sides[k]] = [si, sj, sk];
