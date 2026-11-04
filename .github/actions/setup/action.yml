@@ -1,0 +1,44 @@
+name: Set up pnpm, Node.js and the dependencies
+description: >-
+  Installs pnpm, sets up Node.js and installs the dependencies from the lockfile. One copy for every
+  job in the workflows (graph-library CPSE TICKET-009 QR-005).
+
+inputs:
+  node-version:
+    description: The Node.js version.
+    required: false
+    default: "22"
+  cache:
+    description: >-
+      "true" restores and saves the pnpm store in the Actions cache. Any other value installs every
+      package from the registry against the lockfile's integrity hashes, with no cache. A job that
+      holds a credential (an OIDC token or a write token) passes "false": other jobs can write the
+      cache (graph-library CPSE TICKET-009 SEC-002).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # The version matches package.json `packageManager`.
+    - name: Install pnpm
+      shell: bash
+      run: npm install --global pnpm@10.28.2
+
+    # Actions are pinned to commit SHAs; Dependabot proposes updates (.github/dependabot.yml).
+    - name: Set up Node.js with the pnpm store cache
+      if: inputs.cache == 'true'
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - name: Set up Node.js with no cache
+      if: inputs.cache != 'true'
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+        package-manager-cache: false
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

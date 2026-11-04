@@ -130,7 +130,8 @@ User steps (when ready; the main session guides and verifies): make the reposito
 
 | Requirement | Code Location | Annotation |
 |-------------|---------------|------------|
-| CPSE-REQ-042, CPSE-REQ-043 | `docs/versioning.md`; `scripts/group-changelog.ts` | documentation and release tooling; verified by `tests/package/release-config.test.ts` and `group-changelog.test.ts` |
+| CPSE-REQ-041, CPSE-REQ-042 | `scripts/group-changelog.ts`:groupNewestSection (the version step that turns changesets into a release) | `@spec CPSE-REQ-041, CPSE-REQ-042` |
+| CPSE-REQ-042, CPSE-REQ-043 | `docs/versioning.md` | documentation; verified by `tests/package/release-config.test.ts` and `group-changelog.test.ts` |
 
 CPSE-NFR-008 is verified by the workflow's post-publish step, not annotated in code.
 
@@ -141,4 +142,16 @@ CPSE-NFR-008 is verified by the workflow's post-publish step, not annotated in c
 
 ## Post-Review Amendments
 
-None
+### graph-library/component-packaging-and-source-export-ticket-009 security review SEC-001..SEC-009, code review CR-001..CR-007, quality review QR-001..QR-007 (one commit: the fixes share lines)
+
+**Change:**
+- SEC-001 / CR-006 / QR-001: `publish` in the `npm` environment; `checks` and `publish` require the tagged commit on `main`; no `${{ }}` in `run:`; the Engineer steps (environment, tag ruleset, branch protection, trusted-publisher environment name) in `docs/versioning.md` and CONTRIBUTING.
+- SEC-002: no cache in `publish` or `version-pr`. SEC-005 / CR-005 / QR-007: a separate `verify-provenance` job (no `id-token`) checks the SLSA statement's subject, digest, workflow and commit; `--ignore-scripts`; errors shown.
+- SEC-003: publish only on a pushed tag. SEC-004 / CR-004: `check:dist` and `publint` on the published build; `checks` matches `ci.yml`.
+- SEC-006: the first version through the workflow with a one-off `NPM_BOOTSTRAP_TOKEN` environment secret, then "disallow tokens". **DEL-001 is extended:** the gate also covers the bootstrap path.
+- SEC-008: `changesets/action` v2.1.2 inputs `version-script`, `commit-message`, `pr-title`; the script renamed `release:version` (CR-007). Without this the version job would have failed on every push to `main`.
+- CR-003: coverage rows for CPSE-REQ-042, CPSE-REQ-043, CPSE-NFR-008; CPSE-REQ-041 refreshed. CR-001 / CR-002 deferred to the first release.
+- QR-002: `npm publish` only in `publish` and (dry) in `dry-run`. QR-003: workflow tests parse YAML (`yaml` 2.9.1, a new dev dependency); an `actionlint` job in `ci.yml` (`rhysd/actionlint` 1.7.12 by image digest). QR-004: loop helpers. QR-005: `.github/actions/setup/action.yml` used across the workflows; Dependabot watches it. SEC-007, SEC-009 noted.
+- The gener8v lint asked for a `@spec CPSE-REQ-042` in source: added to `groupNewestSection`.
+**Files:** `.github/workflows/release.yml`, `ci.yml`, `docs.yml`, `.github/actions/setup/action.yml` (new), `.github/dependabot.yml`, `tests/package/release-config.test.ts`, `scripts/group-changelog.ts`, `docs/versioning.md`, `CONTRIBUTING.md`, `package.json`, `pnpm-lock.yaml`, `.gener8v/specifications/component-packaging-and-source-export.md`
+**Re-verification:** full verification loop — all exit 0 except `pnpm audit` (accepted advisories); vitest ×3, 2,598 passed each; bench 25 passed; actionlint 0 (local and the pinned image); the version step in a scratch copy: 0.0.0 → 0.1.0, changelog grouped, 15 changesets consumed. Mutants: cache in `publish`; `id-token` in `verify-provenance`; a manual run reaching `publish`; a bare `npm publish` in `checks`; `version:` for `version-script:` — each fails its test. The provenance steps rehearsed against nanoid 6.0.2 (pass with its identity; fail naming each mismatch with this repository's).

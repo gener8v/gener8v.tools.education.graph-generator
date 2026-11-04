@@ -50,21 +50,68 @@ the table above. Start the summary with `Added:`, `Changed:`, `Deprecated:`, `Re
 ## How a release is made
 
 Only the release workflow (`.github/workflows/release.yml`) publishes. Nobody publishes by hand.
+npm enforces this when the package's publishing access is set to "Require two-factor
+authentication and disallow tokens" (see the Engineer steps below).
 
 1. A push to `main` opens or updates the version pull request. It bumps the version, groups
    the changelog and refreshes `src/generated/version.ts`.
 2. A maintainer reviews and merges that pull request.
-3. A maintainer pushes the tag `v<version>`, for example `v0.3.0`. The tag must match the
-   version in `package.json`.
-4. The workflow runs every check, including the install and browser checks, in a job that
-   cannot publish.
-5. If they pass, a second job builds the package and publishes it with provenance. It uses npm
-   trusted publishing, so no npm token is stored in the repository.
-6. The job then checks that the registry holds the provenance attestation for that version. It
-   fails if the attestation is missing.
+3. A maintainer pushes the tag `v<version>` on the merged version commit on `main`, for example
+   `v0.3.0`. The tag must match the version in `package.json`. The workflow stops if the tagged
+   commit is not on `main`.
+4. The workflow runs every check that CI runs, including the install and browser checks, in a
+   job that cannot publish.
+5. If they pass, the publish job waits for a second maintainer to approve the `npm` environment.
+   It then builds the package, checks the built files and publishes them with provenance. It uses
+   npm trusted publishing, so no npm token is stored in the repository.
+6. A last job, which cannot publish, checks that the registry holds the provenance attestation
+   for that version. The attestation must name this repository, `.github/workflows/release.yml`,
+   the tag and the tagged commit. The job fails if the attestation is missing or names anything
+   else.
 
 Publishing is switched off until the repository variable `NPM_PUBLISH_ENABLED` is `true`. A manual
 run of the workflow does a dry run and never publishes.
+
+## Engineer steps before the first release
+
+These settings bind publishing to reviewed code on `main`. Do them in this order. Each one is a
+setting on GitHub or npm, not a file in the repository.
+
+1. **Make the repository public.** npm provenance needs a public repository.
+2. **Protect `main`.** Require the CI checks and a pull request review, and block force pushes
+   and deletion.
+3. **Protect the version tags.** Add a tag ruleset on `refs/tags/v*`. Limit tag creation to the
+   maintainers (the bypass list) and block updates and deletion, so a tag cannot move after the
+   checks ran.
+4. **Create the `npm` environment** (Settings, Environments):
+   - add a required reviewer (the other maintainer) and select "Prevent self-review";
+   - under deployment branches and tags, allow only the tag rule `v*`.
+5. **Publish the first version** (below).
+6. **Add the trusted publisher on npm** (the package's Settings, Trusted Publisher, GitHub Actions):
+   organization `gener8v`, repository `gener8v.tools.education.graph-generator`, workflow
+   filename `release.yml`, environment name `npm`. Under allowed actions, allow `npm publish`:
+   a trusted publisher made after 2026-09-03 allows only `npm stage publish` unless you choose
+   more. A new trusted publisher expires if it has not published within 2 days, so add it when
+   the next release is ready, or add it again if it expires.
+7. **Disallow tokens.** In the package's Settings, Publishing access, select "Require two-factor
+   authentication and disallow tokens". Trusted publishing still works; any npm token, leaked
+   or not, can no longer publish.
+
+### The first version
+
+npm can add a trusted publisher only to a package that exists, so the first version cannot use
+trusted publishing. It is still published by the release workflow, from a tag, with provenance.
+Before you start, read https://docs.npmjs.com/trusted-publishers again: if npm now allows a first
+publish by trusted publishing, use that and skip the token.
+
+1. On npm, create a granular access token with read and write access and the shortest expiry.
+   Limit it to `@gener8v/graph-generator` if npm lets you select it; if not, because the package
+   does not exist yet, limit it to the `@gener8v` scope.
+2. Store it as the secret `NPM_BOOTSTRAP_TOKEN` of the `npm` environment, not of the repository.
+   Only the publish step reads it, and only if it is present.
+3. Set `NPM_PUBLISH_ENABLED` to `true`, then release as above.
+4. Right after the publish job ends, revoke the token on npm and delete the secret.
+5. Continue with Engineer steps 6 and 7.
 
 ## What the provenance check proves
 
@@ -72,7 +119,9 @@ The attestation links the published files to one workflow run in this public rep
 commit. It proves the package was built by CI from public source. It does not prove the code
 is free of defects. It does not cover the packages this one depends on.
 
-To check a version yourself, install it and run `npm audit signatures`.
+To check a version yourself, install it and run `npm audit signatures`. To see which repository,
+workflow, tag and commit built it, run
+`npm view "@gener8v/graph-generator@<version>" dist.attestations` and open the attestation's `url`.
 
 ## Fixing a bad release
 

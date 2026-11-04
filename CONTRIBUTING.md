@@ -24,8 +24,23 @@ invalid, or draws it with a different meaning, is a breaking change.
 
 ## Releasing
 
-Only the release workflow publishes, from a version tag; never publish by hand. Maintainers: see
-[docs/versioning.md](docs/versioning.md) for the versioning policy and the release steps.
+Only the release workflow publishes, from a version tag on `main`; never publish by hand.
+Maintainers: see [docs/versioning.md](docs/versioning.md) for the versioning policy and the release
+steps.
+
+Before the first release, an Engineer makes these settings (details and the first-version steps
+are in [docs/versioning.md](docs/versioning.md#engineer-steps-before-the-first-release)):
+
+1. Make the repository public.
+2. Protect `main`: required CI checks and review, no force pushes, no deletion.
+3. Add a tag ruleset on `refs/tags/v*`: creation limited to the maintainers, no update, no deletion.
+4. Create the `npm` environment: a required reviewer, "Prevent self-review", and the deployment
+   tag rule `v*`.
+5. Publish the first version through the workflow with the one-off `NPM_BOOTSTRAP_TOKEN`
+   environment secret, then revoke the token and delete the secret.
+6. Add the trusted publisher on npm with the workflow `release.yml` and the environment `npm`, and
+   allow `npm publish`.
+7. Set the package's publishing access to "Require two-factor authentication and disallow tokens".
 
 ## Running the checks locally
 

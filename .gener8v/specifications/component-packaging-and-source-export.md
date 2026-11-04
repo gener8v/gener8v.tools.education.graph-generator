@@ -181,7 +181,7 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-038 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
 | CPSE-REQ-039 | `tests/package/checks.test.ts`:describe "repository files" (`CONTRIBUTING.md`, proven by test) |
 | CPSE-REQ-040 | `tests/package/checks.test.ts`:describe "package.json" (package.json field, proven by test) |
-| CPSE-REQ-041 | `scripts/check-changesets.ts`:checkChangesetSummary; `.changeset/changelog.cjs` |
+| CPSE-REQ-041 | `scripts/check-changesets.ts`:checkChangesetSummary; `.changeset/changelog.cjs`:getReleaseLine; `scripts/changelog-categories.json` (the one category list); `scripts/changelog-categories.ts`:CATEGORIES; `scripts/group-changelog.ts`:groupNewestSection; `tests/package/group-changelog.test.ts`; `tests/package/release-config.test.ts`:describe "changelog categories" (graph-library CPSE TICKET-009) |
 | CPSE-NFR-007 | `scripts/check-dependencies.ts`:checkDependencies |
 | CPSE-REQ-004 | `src/entries/circle.ts` (the `./circle` entry; graph-library/geometric-shapes-and-solids/TICKET-002) |
 | CPSE-REQ-007 | `src/react/graphs/CircleGraph.tsx`:CircleGraph (graph-library/geometric-shapes-and-solids/TICKET-002) |
@@ -222,3 +222,6 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-044 | `scripts/generated-files.ts`:exampleStories (`docs/stories/examples.stories.tsx`); `docs/components/ExamplePage.tsx`:ExamplePage; `docs/components/InputTable.tsx`:InputTable; `.storybook/main.ts` (graph-library CPSE TICKET-008) |
 | CPSE-REQ-045 | `docs/vocabulary.mdx`, `docs/issue-codes.mdx`, `docs/export.mdx`, `docs/model-tool.mdx`, `docs/components.mdx`; `docs/components/ReferenceTables.tsx` (graph-library CPSE TICKET-008) |
 | CPSE-REQ-046 | `tests/docs/examples-valid.test.ts` (every `examples/*.json` valid, every `examples/invalid/*.json` invalid, every ```json block in `docs/*.mdx` valid) (graph-library CPSE TICKET-008) |
+| CPSE-REQ-042 | `docs/versioning.md` ("The public contract", "What changes the version"); `.github/workflows/release.yml` (releases only from version tags) (graph-library CPSE TICKET-009) |
+| CPSE-REQ-043 | `docs/versioning.md` ("What changes the version": a breaking change is a minor release before `1.0.0`, a major release from `1.0.0`) (graph-library CPSE TICKET-009) |
+| CPSE-NFR-008 | `.github/workflows/release.yml`:publish (`npm publish --provenance` by trusted publishing), verify-provenance (attestation present, signatures verified, provenance names this repository, `release.yml`, the tag and the commit); `tests/package/release-config.test.ts`:describe "release workflow" (graph-library CPSE TICKET-009) |

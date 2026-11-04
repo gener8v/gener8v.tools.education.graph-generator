@@ -9,7 +9,7 @@ import { CATEGORIES } from "./changelog-categories";
  * older release untouched (CPSE-REQ-041, CPSE TICKET-001 CR-003). Empty groups are left out and
  * entries keep their order. Running it again changes nothing.
  */
-// @spec CPSE-REQ-041
+// @spec CPSE-REQ-041, CPSE-REQ-042
 export function groupNewestSection(changelog: string): string {
   const lines = changelog.split("\n");
   const at = (index: number): string => lines[index] ?? "";
@@ -18,14 +18,18 @@ export function groupNewestSection(changelog: string): string {
   const next = lines.findIndex((line, index) => index > start && /^## /.test(line));
   const end = next === -1 ? lines.length : next;
 
+  // Line `index` continues the entry above it when it is indented, or when it is empty and the
+  // line after it is indented (a second paragraph of the same entry).
+  const indented = (index: number): boolean => index < end && /^\s+\S/.test(at(index));
+  const continues = (index: number): boolean => indented(index) || (index < end && at(index).trim() === "" && indented(index + 1));
+
   const entries: string[][] = [];
   for (let i = start + 1; i < end; i++) {
     const line = at(i);
     if (line.trim() === "" || /^### /.test(line)) continue;
     if (/^- /.test(line)) {
       const entry = [line];
-      // An entry goes on while lines are indented, also across an empty line.
-      while (i + 1 < end && (/^\s+\S/.test(at(i + 1)) || (at(i + 1).trim() === "" && i + 2 < end && /^\s+\S/.test(at(i + 2))))) entry.push(at(++i));
+      while (continues(i + 1)) entry.push(at(++i));
       entries.push(entry);
     } else {
       throw new Error(`${at(start)}: cannot regroup, this line is not a changelog entry: ${line}`);

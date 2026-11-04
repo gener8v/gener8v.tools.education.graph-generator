@@ -28,17 +28,10 @@ jobs:
         with:
           persist-credentials: false
 
-      # The version matches package.json `packageManager`.
-      - name: Install pnpm
-        run: npm install --global pnpm@10.28.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup
         with:
+          cache: true
           node-version: ${{ matrix.node }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Use React 18
         if: matrix.react == 18
@@ -98,6 +91,22 @@ jobs:
       - name: Changesets carry a changelog category
         run: pnpm check:changesets
 
+  # The workflow files (graph-library CPSE TICKET-009 QR-003). actionlint runs from its official image,
+  # pinned by digest; the image holds shellcheck and pyflakes, so nothing else is downloaded.
+  actionlint:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: actionlint
+        uses: docker://rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # v1.7.12
+        with:
+          args: -color
+
   # CPSE-NFR-005 and TR-002: every example hydrates in Chromium and WebKit with no warning, and
   # Node.js, Chromium and WebKit render the examples and generated descriptions to the same markup
   # (graph-library CPSE TICKET-004).
@@ -114,17 +123,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # The version matches package.json `packageManager`.
-      - name: Install pnpm
-        run: npm install --global pnpm@10.28.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          cache: true
 
       - name: Use React 18
         if: matrix.react == 18
@@ -154,17 +155,10 @@ jobs:
         with:
           persist-credentials: false
 
-      # The version matches package.json `packageManager`.
-      - name: Install pnpm
-        run: npm install --global pnpm@10.28.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup
         with:
+          cache: true
           node-version: ${{ matrix.node }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build

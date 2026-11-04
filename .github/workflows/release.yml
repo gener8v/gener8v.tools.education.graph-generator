@@ -2,10 +2,12 @@ name: Release
 
 # Releases are made only by this workflow (prd/OC-002, prd/IC-003, CPSE-NFR-008, graph-library CPSE TICKET-009):
 #   - a push to main opens or updates the version pull request (Changesets);
-#   - a pushed version tag `v<version>` runs every check in job `checks`, then job `publish` publishes
-#     by npm trusted publishing (OIDC) with provenance and confirms the attestation on the registry;
+#   - a pushed version tag `v<version>` on a commit on main runs every check in job `checks`, then job
+#     `publish` publishes by npm trusted publishing (OIDC) with provenance, in the protected `npm`
+#     environment, and job `verify-provenance` confirms the attestation on the registry;
 #   - a manual run does a dry run only and never publishes.
-# Publishing stays off until the repository variable NPM_PUBLISH_ENABLED is `true`.
+# Publishing stays off until the repository variable NPM_PUBLISH_ENABLED is `true`. The Engineer steps
+# that bind publishing to this workflow (environment, tag ruleset, npm settings) are in docs/versioning.md.
 on:
   push:
     branches: [main]
@@ -42,51 +44,53 @@ jobs:
         with:
           persist-credentials: false
 
-      # The version matches package.json `packageManager`.
-      - name: Install pnpm
-        run: npm install --global pnpm@10.28.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      # No cache: this job holds a write token, and other jobs can write the cache (SEC-002).
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-          cache: pnpm
+          cache: false
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # `pnpm run version` is `changeset version && tsx scripts/group-changelog.ts && pnpm generate`:
+      # `pnpm run release:version` is `changeset version && tsx scripts/group-changelog.ts && pnpm generate`:
       # bump the version, group the changelog by category, refresh src/generated/version.ts.
       - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version: pnpm run version
-          commit: "Version the package"
-          title: "Version the package"
+          version-script: pnpm run release:version
+          commit-message: "Version the package"
+          pr-title: "Version the package"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Every check, with no publishing permission and no secret. It runs the smoke and browser checks,
-  # which run code from the npm registry and download browsers, so they must not run in `publish`
-  # (graph-library CPSE TICKET-004 SEC-001, SEC-003).
+  # Every check that CI runs, with no publishing permission and no secret. It runs the smoke and
+  # browser checks, which run code from the npm registry and download browsers, so they must not run
+  # in `publish` (graph-library CPSE TICKET-004 SEC-001, SEC-003).
   checks:
     name: Checks
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # The whole history, so that origin/main is there for the next step.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
-      - name: Install pnpm
-        run: npm install --global pnpm@10.28.2
+      # A release is made only from reviewed code (SEC-001). GITHUB_SHA is the tagged commit.
+      - name: The tagged commit is on main
+        if: github.event_name == 'push'
+        run: |
+          status=0
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || status=$?
+          if [ "$status" -eq 1 ]; then
+            echo "Tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main. Tag the merged version commit on main."
+            exit 1
+          elif [ "$status" -ne 0 ]; then
+            echo "Could not check that $GITHUB_SHA is on main (git exit status $status)."
+            exit "$status"
+          fi
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          cache: true
 
       - name: Lint
         run: pnpm lint
@@ -97,7 +101,7 @@ jobs:
       - name: Generated files are up to date
         run: |
           pnpm generate
-          changes="$(git status --porcelain -- src/generated tests/fixtures/generated)"
+          changes="$(git status --porcelain -- src/generated tests/fixtures/generated docs/stories)"
           if [ -n "$changes" ]; then
             echo "Generated files are out of date or untracked; run pnpm generate and commit:"
             echo "$changes"
@@ -112,6 +116,32 @@ jobs:
         env:
           GRAPH_GENERATOR_PREBUILT: "1"
 
+      - name: Benchmarks (GSV-NFR-001, NLC-NFR-008)
+        run: pnpm bench
+        env:
+          GRAPH_GENERATOR_PREBUILT: "1"
+
+      - name: Built output makes no network access
+        run: pnpm check:dist
+
+      - name: Package metadata (publint)
+        run: pnpm publint
+
+      - name: Type resolution (Are the Types Wrong)
+        run: pnpm attw
+
+      - name: Bundle size
+        run: pnpm size
+
+      - name: Runtime dependencies are justified
+        run: pnpm check:deps
+
+      - name: Image licenses are recorded
+        run: pnpm check:images
+
+      - name: Changesets carry a changelog category
+        run: pnpm check:changesets
+
       - name: Pack, install and render in React 18 and React 19 projects (CPSE-NFR-003)
         run: pnpm test:smoke
         env:
@@ -123,48 +153,42 @@ jobs:
       - name: Hydration and cross-engine markup (CPSE-NFR-005, TR-002)
         run: pnpm test:e2e
 
-      - name: Bundle size
-        run: pnpm size
-
-      - name: Package metadata (publint)
-        run: pnpm publint
-
-      - name: Type resolution (Are the Types Wrong)
-        run: pnpm attw
-
-  # Publishes from a version tag, only when the checks passed and publishing is switched on.
-  # It runs no smoke or browser check and holds no secret: the OIDC token is its only credential.
+  # Publishes from a version tag pushed on a commit on main, only when the checks passed and
+  # publishing is switched on. It runs in the `npm` environment, which needs a maintainer's approval
+  # and is the environment named in npm's trusted-publisher entry (SEC-001). It runs no smoke or
+  # browser check and uses no cache (SEC-002). The OIDC token is its only credential, except for the
+  # first version (SEC-006, below).
   publish:
     name: Publish
     needs: checks
-    if: startsWith(github.ref, 'refs/tags/v') && vars.NPM_PUBLISH_ENABLED == 'true'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.NPM_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@gener8v/graph-generator
     permissions:
       contents: read
       id-token: write
     steps:
+      # The whole history, so that origin/main is there for the next step.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
-      - name: Install pnpm
-        run: npm install --global pnpm@10.28.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: pnpm
-
-      # Trusted publishing needs npm 11.5.1 or later and Node.js 22.14.0 or later, on a GitHub-hosted runner:
-      # https://docs.npmjs.com/trusted-publishers (checked 2026-11-04). The latest 11.x release is pinned.
-      # With trusted publishing npm adds provenance by itself; `--provenance` below states it anyway
-      # and makes the publish fail if provenance cannot be made.
-      - name: Install npm with trusted publishing
-        run: npm install --global npm@11.21.1
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      # Both checks run before any dependency is installed.
+      - name: The tagged commit is on main
+        run: |
+          status=0
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || status=$?
+          if [ "$status" -eq 1 ]; then
+            echo "Tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not on main. Tag the merged version commit on main."
+            exit 1
+          elif [ "$status" -ne 0 ]; then
+            echo "Could not check that $GITHUB_SHA is on main (git exit status $status)."
+            exit "$status"
+          fi
 
       - name: The tag matches the package version
         run: |
@@ -174,40 +198,146 @@ jobs:
             exit 1
           fi
 
+      - uses: ./.github/actions/setup
+        with:
+          cache: false
+
+      # Trusted publishing needs npm 11.5.1 or later and Node.js 22.14.0 or later, on a GitHub-hosted runner:
+      # https://docs.npmjs.com/trusted-publishers (checked 2026-11-04). The latest 11.x release is pinned.
+      # With trusted publishing npm adds provenance by itself; `--provenance` below states it anyway
+      # and makes the publish fail if provenance cannot be made.
+      - name: Install npm with trusted publishing
+        run: npm install --global npm@11.21.1
+
       - name: Build
         run: pnpm build
 
-      - name: Publish with provenance
-        run: npm publish --provenance --access public
+      # The files that are published are the files that are checked (SEC-004, prd/CC-003).
+      - name: Built output makes no network access
+        run: pnpm check:dist
 
-      # CPSE-NFR-008: the registry must hold a provenance attestation for the version just published.
-      - name: Confirm the provenance attestation
+      - name: Package metadata (publint)
+        run: pnpm publint
+
+      # Every release after the first authenticates by trusted publishing (OIDC) and uses no token.
+      # The first version cannot: npm sets up a trusted publisher only for a package that exists. It
+      # is published here with a one-off granular token, kept as the `npm` environment secret
+      # NPM_BOOTSTRAP_TOKEN and revoked right after (docs/versioning.md, SEC-006). Without that secret
+      # no registry credential is configured.
+      - name: Publish with provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
         run: |
-          version="$(node -p "require('./package.json').version")"
-          name="@gener8v/graph-generator"
-          found=""
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            echo "NPM_BOOTSTRAP_TOKEN is set: publishing with the one-off first-version token. Revoke it after this run."
+            npmrc="$RUNNER_TEMP/bootstrap.npmrc"
+            # The file names the variable; npm reads the token from the environment.
+            # shellcheck disable=SC2016
+            echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$npmrc"
+            export NPM_CONFIG_USERCONFIG="$npmrc"
+          fi
+          npm publish --provenance --access public
+
+  # CPSE-NFR-008: the registry holds a provenance attestation for the version just published, and it
+  # names this repository, release.yml, the tag and the commit. A separate job with no id-token and
+  # no write permission: it installs the published package (SEC-005, CR-005).
+  verify-provenance:
+    name: Verify the provenance attestation
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: The registry lists a provenance attestation
+        env:
+          PACKAGE: "@gener8v/graph-generator"
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          attestations=""
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            attestations="$(npm view "$name@$version" dist.attestations --json 2>/dev/null || true)"
-            if [ -n "$attestations" ] && [ "$attestations" != "null" ]; then
-              found=yes
-              break
+            if output="$(npm view "$PACKAGE@$version" dist.attestations --json 2> npm-view.log)"; then
+              if [ -n "$output" ]; then
+                attestations="$output"
+                break
+              fi
+              echo "Attempt $attempt: $PACKAGE@$version has no attestation on the registry yet."
+            else
+              echo "Attempt $attempt: npm view failed with exit status $?:"
+              cat npm-view.log
             fi
-            echo "No attestation on the registry yet (attempt $attempt); waiting."
             sleep 15
           done
-          if [ -z "$found" ]; then
-            echo "The registry has no provenance attestation for $name@$version."
+          if [ -z "$attestations" ]; then
+            echo "The registry has no provenance attestation for $PACKAGE@$version."
             exit 1
           fi
-          echo "$attestations"
+          echo "$attestations" | tee dist-attestations.json
 
-          # Install the published version in an empty project and verify its signatures and attestation.
+      - name: Install the release with no scripts and verify its signatures
+        env:
+          PACKAGE: "@gener8v/graph-generator"
+        run: |
+          version="${GITHUB_REF_NAME#v}"
           project="$(mktemp -d)"
           cd "$project"
           npm init -y > /dev/null
-          npm install --omit=peer "$name@$version"
+          npm install --ignore-scripts --omit=peer --no-audit --no-fund "$PACKAGE@$version"
           npm audit signatures | tee audit.txt
-          grep -q "verified attestation" audit.txt
+          grep -Eq "[0-9]+ packages? (has a verified attestation|have verified attestations)" audit.txt
+
+      # The SLSA provenance statement (https://slsa.dev/provenance/v1, build type
+      # https://slsa-framework.github.io/github-actions-buildtypes/workflow/v1) is the payload of the
+      # attestation bundle that `npm audit signatures` verified above.
+      - name: The attestation names this repository, release.yml, the tag and the commit
+        env:
+          PACKAGE: "@gener8v/graph-generator"
+          REPOSITORY: gener8v/gener8v.tools.education.graph-generator
+          WORKFLOW: .github/workflows/release.yml
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          url="$(node -p 'require("./dist-attestations.json").url')"
+          curl --fail --silent --show-error --retry 3 --output attestations.json "$url"
+          integrity="$(npm view "$PACKAGE@$version" dist.integrity)"
+          VERSION="$version" INTEGRITY="$integrity" node <<'EOF'
+          const { readFileSync } = require("node:fs");
+          const { PACKAGE, REPOSITORY, WORKFLOW, VERSION, INTEGRITY, GITHUB_REF, GITHUB_SHA } = process.env;
+          const SLSA = "https://slsa.dev/provenance/v1";
+          const failures = [];
+          const expect = (what, found, expected) => {
+            if (found !== expected) failures.push(`${what}: expected ${JSON.stringify(expected)}, found ${JSON.stringify(found)}`);
+          };
+
+          expect("dist.attestations.provenance.predicateType", JSON.parse(readFileSync("dist-attestations.json", "utf8")).provenance?.predicateType, SLSA);
+          const provenance = JSON.parse(readFileSync("attestations.json", "utf8")).attestations.filter((a) => a.predicateType === SLSA);
+          if (provenance.length !== 1) {
+            console.error(`Expected one SLSA provenance attestation, found ${provenance.length}.`);
+            process.exit(1);
+          }
+          const statement = JSON.parse(Buffer.from(provenance[0].bundle.dsseEnvelope.payload, "base64").toString("utf8"));
+
+          const subjectName = `pkg:npm/${PACKAGE.replace(/^@/, "%40")}@${VERSION}`;
+          const subject = (statement.subject ?? []).find((s) => s.name === subjectName);
+          expect(`subject ${subjectName} sha512`, subject?.digest?.sha512, Buffer.from(INTEGRITY.replace(/^sha512-/, ""), "base64").toString("hex"));
+          const workflow = statement.predicate?.buildDefinition?.externalParameters?.workflow;
+          expect("workflow.repository", workflow?.repository, `https://github.com/${REPOSITORY}`);
+          expect("workflow.path", workflow?.path, WORKFLOW);
+          expect("workflow.ref", workflow?.ref, GITHUB_REF);
+          const source = statement.predicate?.buildDefinition?.resolvedDependencies?.[0];
+          expect("resolvedDependencies[0].uri", source?.uri, `git+https://github.com/${REPOSITORY}@${GITHUB_REF}`);
+          expect("resolvedDependencies[0].digest.gitCommit", source?.digest?.gitCommit, GITHUB_SHA);
+
+          if (failures.length > 0) {
+            console.error(`The provenance attestation of ${PACKAGE}@${VERSION} does not match this release:\n${failures.join("\n")}`);
+            process.exit(1);
+          }
+          console.log(`${PACKAGE}@${VERSION}: provenance names ${REPOSITORY}, ${WORKFLOW}, ${GITHUB_REF} and ${GITHUB_SHA}.`);
+          EOF
 
   # A manual run: build and `npm publish --dry-run` with no provenance, no id-token and no secret.
   dry-run:
@@ -221,16 +351,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install pnpm
-        run: npm install --global pnpm@10.28.2
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: ./.github/actions/setup
         with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          cache: true
 
       - name: Build
         run: pnpm build
