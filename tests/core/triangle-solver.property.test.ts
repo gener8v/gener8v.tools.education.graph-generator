@@ -126,10 +126,15 @@ describe("triangle round trip (GSS-NFR-002)", () => {
     roundTrips(found, ["sideB", "sideC", "angleA"], "SAS");
   });
 
-  it("two nearly equal sides and an angle near the floor", () => {
-    // B ≈ C when the shares put the other two angles near each other: the sides differ by little.
+  // Unseeded on purpose (GSS TICKET-010): a failure prints its seed and values; pin those as a
+  // regression test like the one above rather than seeding these properties.
+  it("two sides and an angle near the floor between them", () => {
     const nearFloor = triangles(finite(MIN_ANGLE, 0.05));
     fc.assert(fc.property(nearFloor, (triangle) => roundTrips(triangle, ["sideB", "sideC", "angleA"], "SAS")), { numRuns: RUNS });
+  });
+
+  it("two nearly equal sides and an angle near the floor between them", () => {
+    // B ≈ C when the share splits what A leaves evenly: the sides differ by little.
     const equalish = triangles(finite(MIN_ANGLE, 0.05), finite(0.49, 0.51));
     fc.assert(fc.property(equalish, (triangle) => roundTrips(triangle, ["sideB", "sideC", "angleA"], "SAS")), { numRuns: RUNS });
   });

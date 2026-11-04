@@ -105,4 +105,10 @@ GSS-NFR-002 is verified by the property test, not annotated in code.
 
 ## Post-Review Amendments
 
-None
+### graph-library/geometric-shapes-and-solids-ticket-010 code review CR-001, quality review QR-001, QR-002
+
+**Change:**
+- CR-001: TR-008's Mitigation states the cancellation-free x distance (Technical Design amendment, Architect-approved 2026-11-04).
+- QR-001: the near-floor properties are two tests, one property each. QR-002: a comment says they stay unseeded and a failure is pinned as a regression test.
+**Files:** `.gener8v/technical-design/system-design.md`, `tests/core/triangle-solver.property.test.ts`
+**Re-verification:** `npx vitest run --no-cache tests/core/triangle-solver.property.test.ts` ×3 — 9 passed each; `eslint` on the file and `pnpm typecheck` exit 0; gener8v-state lint 0 errors. Security review: no findings.
