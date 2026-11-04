@@ -1,8 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-
-export const CATEGORIES = ["Added", "Changed", "Deprecated", "Removed", "Fixed"] as const;
+import { CATEGORIES } from "./changelog-categories";
 
 /** The summary of a changeset file: everything after its front matter. */
 export function changesetSummary(text: string): string {
@@ -19,7 +18,7 @@ export function changesetSummary(text: string): string {
 export function checkChangesetSummary(text: string): string | null {
   const summary = changesetSummary(text);
   const category = /^(\w+):\s+\S/.exec(summary)?.[1];
-  if (category && (CATEGORIES as readonly string[]).includes(category)) return null;
+  if (category && CATEGORIES.includes(category)) return null;
   return `Changeset summary must start with one of ${CATEGORIES.map((c) => `"${c}:"`).join(", ")} followed by a description.`;
 }
 

@@ -22,6 +22,11 @@ The JSON description, the vocabulary, the issue codes, the tool definition and t
 inputs are the package's public contract. A change that makes a previously valid description
 invalid, or draws it with a different meaning, is a breaking change.
 
+## Releasing
+
+Only the release workflow publishes, from a version tag; never publish by hand. Maintainers: see
+[docs/versioning.md](docs/versioning.md) for the versioning policy and the release steps.
+
 ## Running the checks locally
 
 You need Node.js 22 or later and pnpm 10.

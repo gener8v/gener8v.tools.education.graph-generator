@@ -1,8 +1,11 @@
 // Changelog formatter for Changesets. Each changeset summary starts with a category
-// ("Added:", "Changed:", "Deprecated:", "Removed:", "Fixed:"), enforced by
-// scripts/check-changesets.ts; the category is written in bold at the start of the line.
+// ("Added:", "Changed:", ...), enforced by scripts/check-changesets.ts; the category is written
+// in bold at the start of the line. The categories come from scripts/changelog-categories.json,
+// the one list that check-changesets.ts and group-changelog.ts also read.
 // @spec CPSE-REQ-041
-const CATEGORY = /^(Added|Changed|Deprecated|Removed|Fixed):\s*/;
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS file reads JSON with require
+const CATEGORIES = require("../scripts/changelog-categories.json");
+const CATEGORY = new RegExp(`^(${CATEGORIES.join("|")}):\\s*`);
 
 async function getReleaseLine(changeset) {
   const [first = "", ...rest] = changeset.summary.trim().split("\n");
