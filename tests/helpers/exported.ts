@@ -14,12 +14,25 @@ export interface LoadedExport {
 }
 
 /**
- * An exported `.tsx` source compiled in memory with esbuild (TypeScript and the automatic JSX
- * runtime, as a consumer's toolchain compiles it) and run as a module, with `react/jsx-runtime` the
- * only module it can load (CPSE-NFR-001, CPSE-REQ-021). Nothing is written to disk.
+ * The two compilers a consumer's toolchain uses on an exported file, each with the automatic JSX
+ * runtime, to CommonJS: esbuild (Vite, Vitest, tsx) and TypeScript's own emit (`tsc`). Both read JSX
+ * pragmas from comments (CPSE TICKET-005 security review SEC-001).
  */
-export function loadExport(source: string): LoadedExport {
-  const { code } = transformSync(source, { loader: "tsx", jsx: "automatic", format: "cjs", target: "es2022" });
+const COMPILERS = {
+  esbuild: (source: string) => transformSync(source, { loader: "tsx", jsx: "automatic", format: "cjs", target: "es2022" }).code,
+  tsc: (source: string) =>
+    ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText,
+} as const;
+
+export type Compiler = keyof typeof COMPILERS;
+
+/**
+ * An exported `.tsx` source compiled in memory, with esbuild unless another compiler is named, and
+ * run as a module, with `react/jsx-runtime` the only module it can load (CPSE-NFR-001,
+ * CPSE-REQ-021). Nothing is written to disk.
+ */
+export function loadExport(source: string, compiler: Compiler = "esbuild"): LoadedExport {
+  const code = COMPILERS[compiler](source);
   const required: string[] = [];
   const load = (specifier: string): unknown => {
     required.push(specifier);
@@ -32,8 +45,8 @@ export function loadExport(source: string): LoadedExport {
 }
 
 /** The one component an exported file exports, by name. */
-export function exportedComponent(source: string, name: string): FunctionComponent {
-  const { exports } = loadExport(source);
+export function exportedComponent(source: string, name: string, compiler: Compiler = "esbuild"): FunctionComponent {
+  const { exports } = loadExport(source, compiler);
   const keys = Object.keys(exports);
   if (keys.length !== 1 || keys[0] !== name) throw new Error(`The exported file exports ${keys.join(", ")}, not ${name} alone`);
   return exports[name] as FunctionComponent;

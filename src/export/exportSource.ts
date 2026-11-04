@@ -3,6 +3,7 @@ import type { Pictograph } from "../core/definitions/pictograph";
 import type { DescriptionBase } from "../core/definitions/types";
 import { createIssue, pointer } from "../core/issues";
 import type { Issue, Issues } from "../core/result";
+import { validate } from "../core/validate/index";
 import { PACKAGE_VERSION } from "../generated/version";
 import { createGraph } from "../graph";
 import { IMAGE_LICENSE_NOTICES, type ImageAsset, type ImageLicense, images } from "../images/index";
@@ -40,20 +41,19 @@ function embeddedImages(description: DescriptionBase): ImageAsset[] {
 }
 
 /**
- * What the header comment says (CPSE-REQ-023): the package and version, the description as JSON,
- * and, for embedded drawings, that they are embedded, each one's name and author, and the full
- * notice its license requires in every copy (prd/CC-001; DGP TICKET-004 security review SEC-004).
- * `printScene` escapes it into the comment.
+ * What the header comment says (CPSE-REQ-023): the package and version, the description as JSON
+ * (`json`, the text that was validated and drawn), and, for embedded drawings, that they are
+ * embedded, each one's name and author, and the full notice its license requires in every copy
+ * (prd/CC-001; DGP TICKET-004 security review SEC-004). `printScene` escapes it into the comment.
  */
-function headerFor(name: string, input: unknown, description: DescriptionBase): string {
+function headerFor(name: string, json: string, description: DescriptionBase): string {
   const lines = [
     `${name}: a ${description.type} exported by ${PACKAGE_NAME} ${PACKAGE_VERSION} with exportSource.`,
     "It depends on React alone, through the automatic JSX runtime, takes no props and uses no hooks.",
     "To change the graph, export the description again rather than editing the drawing.",
     "",
     "Description:",
-    // A valid description is plain JSON data, so it prints as the caller wrote it.
-    JSON.stringify(input, null, 2),
+    json,
   ];
   const embedded = embeddedImages(description);
   if (embedded.length > 0) {
@@ -68,28 +68,47 @@ function headerFor(name: string, input: unknown, description: DescriptionBase): 
 const internalError = (): ExportSourceResult => ({ ok: false, issues: [createIssue("internal_error", pointer(), {})] });
 
 /**
+ * The description as JSON text, read once; `undefined` when it has none: a `toJSON` or a Proxy
+ * trap that throws, a cycle, a value JSON cannot hold.
+ */
+function serialized(description: unknown): string | undefined {
+  try {
+    return JSON.stringify(description) as string | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Exports a description as the source of one standalone React component (AD-013): a `.tsx` file
  * that depends on React alone, takes no props and renders the markup the package's component
- * renders for the description. Validates and lays out with `createGraph`, so it accepts exactly the
+ * renders for the description. Validates with the components' validator, so it accepts exactly the
  * descriptions the components draw. Returns `{ ok: true, source }`, or `{ ok: false, issues }` with
- * every issue in the description and in `componentName`. The same description and package version
- * always give the same text. Never throws (CPSE-REQ-018).
+ * every issue in the description and in `componentName`, the name's last. The same description and
+ * package version always give the same text. Never throws (CPSE-REQ-018).
  */
 // @spec CPSE-REQ-019, CPSE-REQ-021, CPSE-REQ-022, CPSE-REQ-023, CPSE-REQ-024, CPSE-REQ-025
 export function exportSource(description: unknown, options?: ExportSourceOptions): ExportSourceResult {
   try {
     const chosen = chosenName(options);
-    const graph = createGraph(description);
-    const issues: Issue[] = graph.ok ? [] : [...graph.issues];
-    if (chosen.issue !== undefined) issues.push(chosen.issue);
-    const [first, ...rest] = issues;
-    if (first !== undefined) return { ok: false, issues: [first, ...rest] };
-    if (!graph.ok) return internalError();
+    const nameIssues = chosen.issue === undefined ? [] : [chosen.issue];
+    // The description as given is checked first, so its issues are the ones the components report,
+    // and what the validator refuses (an accessor, a value JSON cannot hold) is never read further.
+    const checked = validate(description);
+    if (!checked.valid) return { ok: false, issues: [...checked.issues, ...nameIssues] };
+    // Then it is read once, as JSON, and that copy is what is validated, drawn and printed in the
+    // header, so the header is the description the file draws (security review SEC-002).
+    const json = serialized(description);
+    if (json === undefined) return internalError();
+    const copy: unknown = JSON.parse(json);
+    const graph = createGraph(copy);
+    if (!graph.ok) return { ok: false, issues: [...graph.issues, ...nameIssues] };
+    if (chosen.issue !== undefined) return { ok: false, issues: [chosen.issue] };
     const componentName = chosen.name ?? defaultName(graph.description.type);
-    return { ok: true, source: printScene(graph.scene, componentName, headerFor(componentName, description, graph.description)) };
+    return { ok: true, source: printScene(graph.scene, componentName, headerFor(componentName, JSON.stringify(copy, null, 2), graph.description)) };
   } catch {
-    // An option or description that throws when read again, or a package defect: its message never
-    // reaches the caller (GSV TICKET-002 SEC-003).
+    // An option that throws when read, or a package defect: its message never reaches the caller
+    // (GSV TICKET-002 SEC-003).
     return internalError();
   }
 }

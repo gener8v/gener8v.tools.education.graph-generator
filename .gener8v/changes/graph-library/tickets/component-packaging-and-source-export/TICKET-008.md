@@ -49,6 +49,7 @@
 - Carried from graph-library/graph-specification-and-vocabulary/TICKET-007 (GSV-REQ-052..054): document the text limits on the vocabulary and issue-code pages and in each type's input table (a `maxLength` column from `vocabulary.json`). Titles, labels and names are at most 200 characters and `unit` at most 20, counted as code points. Longer text is `too_large`, never cut; the drawing still cuts long text at its line caps while the text alternative states it whole. (ready-tickets reconciliation, 2026-10-21)
 - There are twelve graph types, not eleven: the ruler has `./ruler` and `examples/ruler.json`. (ready-tickets reconciliation, 2026-10-21)
 - Until the circle definition is a pure factory, do not claim that per-type entries contain no other type (see CPSE TICKET-004). (ready-tickets reconciliation, 2026-10-21)
+- Carried from graph-library/component-packaging-and-source-export-ticket-005-code-review/CR-002: an exported file relies on React's automatic JSX runtime (React 17+) and has no `import React`; a project compiling with the classic transform (`jsx: "react"`) gets `React is not defined`. Say so on the source-export page. Also say that every exported file is ASCII-only, with non-ASCII text and `@` written as `\u` escapes (CPSE TICKET-005 security review SEC-001, SEC-003).
 
 **Depends On:** TICKET-003
 **Blocks:** None

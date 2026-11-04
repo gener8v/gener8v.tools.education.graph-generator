@@ -46,6 +46,10 @@ describe("export equality (CPSE-NFR-001, CPSE-REQ-020)", () => {
     });
   }
 
+  it("exports files that are printable ASCII, with every other character and every @ as a \\u escape (security review SEC-001, SEC-003)", () => {
+    for (const example of examples) expect(exported(example), example).toMatch(/^[\n\x20-\x3f\x41-\x7e]*$/);
+  });
+
   it("exports files that type-check in a strict TypeScript project with React's types", () => {
     expect(typecheckExports(Object.fromEntries(examples.map((example) => [example, exported(example)])))).toEqual([]);
   });

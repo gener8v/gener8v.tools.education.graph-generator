@@ -1,5 +1,4 @@
-import { escapeChars } from "../core/issues";
-import { type AttrValue, ELEMENT_FOR_KIND, REACT_PROP, type Scene, type SceneNode, rootAttrs, textAlternativeFor } from "../layout/scene";
+import { ELEMENT_FOR_KIND, REACT_PROP, type Scene, type SceneNode, rootAttrs, textAlternativeFor } from "../layout/scene";
 
 // The JSX printer of source export (AD-002, AD-013): the second user of the node-to-element mapping
 // in src/layout/scene.ts, after `SceneSvg` (src/react/SceneSvg.tsx). It has no table of its own, so
@@ -14,24 +13,47 @@ const JSX_NAME = /^[A-Za-z][A-Za-z0-9-]*$/;
 
 const INDENT = "  ";
 
-/**
- * Text as a JavaScript string literal: `JSON.stringify` escapes quotes, backslashes, C0 controls and
- * lone surrogates, and the plain-text policy's escapes cover the rest (line and paragraph
- * separators, C1 controls, direction controls, invisible characters). Caller text in the file is
- * only ever this, inside an expression container, never JSX text or a quoted attribute, so it is
- * data, never code (GSV TICKET-001 security review SEC-001).
- */
-function literal(text: string): string {
-  return escapeChars(JSON.stringify(text));
+// Every UTF-16 unit the printed file writes as a `\u` escape: all but printable ASCII, so the file
+// is ASCII and nothing invisible, line-breaking or reordering hides in it (security review SEC-003),
+// and the at sign, which starts every directive a compiler or tool reads from a comment (the JSX
+// pragmas jsxImportSource, jsx, jsxFrag and jsxRuntime, TypeScript's ts-nocheck, a test runner's
+// environment, a license marker), so no caller text can form one (security review SEC-001). This
+// comment names them without it. Without the `u` flag, a surrogate pair is two units, two escapes.
+const ESCAPED = /[^\x20-\x3f\x41-\x7e]/g;
+
+/** Text with every `ESCAPED` unit as `\uXXXX`: the same string in a JavaScript or JSON string literal. */
+function ascii(text: string): string {
+  return text.replace(ESCAPED, (unit) => `\\u${unit.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
-function name(text: string): string {
-  if (!JSX_NAME.test(text)) throw new Error("printScene: not an element or attribute name");
+/**
+ * Text as a JavaScript string literal: `JSON.stringify` escapes quotes, backslashes, C0 controls and
+ * lone surrogates, and `ascii` the rest. Caller text in the file is only ever this, inside an
+ * expression container, never JSX text or a quoted attribute, so it is data, never code (GSV
+ * TICKET-001 security review SEC-001).
+ */
+function literal(text: string): string {
+  return ascii(JSON.stringify(text));
+}
+
+function name(text: unknown): string {
+  // `typeof` first: `test` would read `undefined`, a missing table entry, as the name "undefined".
+  if (typeof text !== "string" || !JSX_NAME.test(text)) throw new Error("printScene: not an element or attribute name");
   return text;
 }
 
-/** An attribute value as an expression container: a number as a number, as `SceneSvg` passes it, a string as a literal. */
-function value(attr: AttrValue | string): string {
+/** The element `SceneSvg` draws a node kind as (`ELEMENT_FOR_KIND`), own entries only. */
+function element(kind: string): string {
+  if (!Object.hasOwn(ELEMENT_FOR_KIND, kind)) throw new Error("printScene: a node kind with no element");
+  return name(ELEMENT_FOR_KIND[kind as keyof typeof ELEMENT_FOR_KIND]);
+}
+
+/**
+ * An attribute value as an expression container: a number as a number, as `SceneSvg` passes it, a
+ * string as a literal. Typed `unknown` because the Scene is checked, not trusted: anything else is
+ * refused at run time.
+ */
+function value(attr: unknown): string {
   if (typeof attr === "number") {
     if (!Number.isFinite(attr)) throw new Error("printScene: a number that is not finite");
     return `{${String(attr)}}`;
@@ -49,7 +71,7 @@ function prop(attr: string): string {
 /** One node and its children as lines: the element and children by node kind, exactly as `SceneSvg`'s `toElement`. */
 function printNode(node: SceneNode, depth: number, lines: string[]): void {
   const indent = INDENT.repeat(depth);
-  const tag = name(ELEMENT_FOR_KIND[node.kind]);
+  const tag = element(node.kind);
   const attrs = node.attrs.map(([attr, v]) => ` ${prop(attr)}=${value(v)}`).join("");
   if (node.kind === "text") {
     lines.push(`${indent}<${tag}${attrs}>{${literal(node.text)}}</${tag}>`);
@@ -63,12 +85,14 @@ function printNode(node: SceneNode, depth: number, lines: string[]): void {
 }
 
 /**
- * The header as a block comment. Each line goes through the same escapes as a string literal, so no
- * text can break a line or hide in it, and `*\/` is written `*\\/`, which closes no comment and
- * reads back as the same JSON (GSV TICKET-001 security review SEC-001).
+ * The header as a block comment. Each line goes through `ascii`, so no text can break a line, hide
+ * in it or form a compiler directive (no at sign is left), and `*\/` is written `*\\/`, which closes no
+ * comment. Inside the description's JSON both are escapes, so it reads back as the same JSON (GSV
+ * TICKET-001 security review SEC-001; CPSE TICKET-005 security review SEC-001). Every line starts
+ * ` * `, so no caller text starts a line.
  */
 function comment(header: string): string {
-  const lines = header.split("\n").map((line) => ` * ${escapeChars(line).replace(/\*\//g, "*\\/")}`.trimEnd());
+  const lines = header.split("\n").map((line) => ` * ${ascii(line).replace(/\*\//g, "*\\/")}`.trimEnd());
   return `/*\n${lines.join("\n")}\n */\n`;
 }
 

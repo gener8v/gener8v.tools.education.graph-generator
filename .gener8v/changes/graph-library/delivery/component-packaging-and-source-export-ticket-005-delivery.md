@@ -158,4 +158,13 @@ Run in the main session on 2026-11-03, after the code was written; logs kept per
 
 ## Post-Review Amendments
 
-None
+### graph-library/component-packaging-and-source-export-ticket-005 security review SEC-001..SEC-003, quality review QR-001..QR-004, code review CR-001, CR-002 (one commit: the fixes share lines)
+
+**Change:**
+- SEC-001 (Critical) / SEC-003: `ascii()` in `src/export/print.ts` writes every UTF-16 unit outside printable ASCII, and every `@`, as `\uXXXX`, in the header and in every string literal. No caller text can form a JSX pragma (`@jsxImportSource`, `@jsxRuntime`, `@jsx`, `@jsxFrag`) or any other directive read from comments or raw text (`@ts-nocheck`, `/// <reference`, `sourceMappingURL`, `@jest-environment`, `@__PURE__`, `@license`, `@flow`), and every exported file is pure ASCII. The header's package name now prints as `\u0040gener8v/graph-generator`. `#` is not escaped (colors stay readable; `#!` only acts at the file's start, which is always `/*`). `escapeChars` is private to `src/core/issues.ts` again.
+- SEC-002: `exportSource` validates the input as given, then serializes it once (a throw or `undefined` → `internal_error`) and checks, lays out and prints the parsed copy — header, validation and drawing come from one read. **DEL-003 is refined:** the header is the caller's input as serialized once, not a second read of it.
+- QR-001: a `printScene` refusal table (11 cases) and a printer-throw test (`tests/export/exportSource-printer.test.ts`). The table found a defect: a kind with no element printed `<undefined />`; `name()` now checks `typeof` and `element()` accepts only the table's entries.
+- QR-002: early return on an invalid description (issues, then the name's). QR-003: a test over every example's Scene asserts the header names each embedded image. QR-004: tidy-ups.
+- CR-001 noted (`wrong_kind` stands, DEL-002). CR-002 noted and carried to CPSE TICKET-008 as a Known Hazard.
+**Files:** `src/export/print.ts`, `src/export/exportSource.ts`, `src/core/issues.ts`, `tests/export/exportSource.test.ts`, `tests/export/exportSource-printer.test.ts` (new), `tests/export/equality.test.ts`, `tests/helpers/exported.ts`, `tests/fixtures/plain-text.ts`, `.gener8v/changes/graph-library/tickets/component-packaging-and-source-export/TICKET-008.md`
+**Re-verification:** full verification loop with logs — all exit 0 except `pnpm audit` (accepted, CPSE TICKET-004 SEC-002); vitest ×3, 2,424 passed each; `pnpm bench` 25 passed; `./export` 52.2 kB of 65 kB. Each export compiled with esbuild and TypeScript and loaded allowing only `react/jsx-runtime`. Mutants: raw `@` → the export imports `data:text/javascript,…` and the pragma tests fail; a second read → both Proxy tests fail; non-ASCII left raw → four ASCII tests fail. gener8v-state lint 0 errors.
