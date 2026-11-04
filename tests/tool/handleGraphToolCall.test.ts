@@ -453,6 +453,15 @@ describe("handleGraphToolCall never throws (CPSE-REQ-035, CPSE-NFR-006)", () => 
       for (let i = 0; i < depth; i++) value = i % 2 ? [value] : { graph: value };
       return value;
     });
+    // The same nesting as JSON text, written by a loop: `JSON.stringify` recurses, and a few thousand
+    // levels overflow the smaller stack of CI's Linux runners (main run 41877793915).
+    const deepText = fc.integer({ min: 1, max: 5000 }).map((depth) => {
+      const opening: string[] = [];
+      const closing: string[] = [];
+      for (let i = depth - 1; i >= 0; i--) opening.push(i % 2 ? "[" : '{"graph":');
+      for (let i = 0; i < depth; i++) closing.push(i % 2 ? "]" : "}");
+      return `${opening.join("")}null${closing.join("")}`;
+    });
     const input = fc.oneof(
       { arbitrary: fc.jsonValue(), weight: 10 },
       { arbitrary: fc.jsonValue().map((value) => ({ graph: value })), weight: 10 },
@@ -464,7 +473,7 @@ describe("handleGraphToolCall never throws (CPSE-REQ-035, CPSE-NFR-006)", () => 
       { arbitrary: anything, weight: 10 },
       { arbitrary: anything.map((value) => ({ graph: value })), weight: 10 },
       { arbitrary: deep, weight: 3 },
-      { arbitrary: deep.map((value) => JSON.stringify(value)), weight: 3 },
+      { arbitrary: deepText, weight: 3 },
       { arbitrary: fc.string({ minLength: 10_000, maxLength: 50_000 }), weight: 2 },
       // By index, looked up in the property: fast-check inspects what it generates, and a revoked
       // Proxy throws when inspected.

@@ -186,3 +186,10 @@ Decisions to record:
 - CR-001: AD-015 and the ToolResult entry amended (Architect-approved 2026-11-04). CR-002: a reconciliation note on TICKET-007. CR-003: a test ties the description's type list to the registry.
 **Files:** `README.md`, `src/core/issues.ts`, `src/tool/handleGraphToolCall.ts`, `tests/core/issues.test.ts`, `tests/tool/graphTool.test.ts`, `tests/tool/handleGraphToolCall.test.ts`, `.gener8v/technical-design/system-design.md`, `.gener8v/changes/graph-library/tickets/component-packaging-and-source-export/TICKET-007.md`
 **Re-verification:** full verification loop — all exit 0 except `pnpm audit` (accepted, CPSE TICKET-004 SEC-002); vitest ×3, 2,502 passed each; bench 25 passed. Mutants: keys listed before the kind check → the SEC-003 test fails; a type removed from the description → the CR-003 test fails; no tool wording → the invalid_json and QR-001 tests fail. gener8v-state lint 0 errors.
+
+### CI on `main` (run 41877793915): the never-throws property overflowed the test's own stack
+
+**Change:** the property's deep-text arm built its JSON with `JSON.stringify`, which recurses; at up to 5,000 levels it overflowed the smaller stack of CI's Linux runners inside fast-check's generator (`RangeError` at `tests/tool/handleGraphToolCall.test.ts:467`, all four Node jobs), before the handler ran. The arm now writes the same text with a loop (checked equal to `JSON.stringify` for depths 1, 2, 3, 7 and 100). The handler was not involved: with a worker stack of 200 kB the whole tool file passes, deep values included, with no `internal_error`.
+**Files:** `tests/tool/handleGraphToolCall.test.ts`
+**Re-verification:** reproduced locally with `--execArgv=--stack-size=400` (1 failed), then passing at 400 and 200 (27 of 27); the whole suite at `--stack-size=400`: 2,502 passed; eslint and typecheck exit 0.
+
