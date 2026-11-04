@@ -86,7 +86,18 @@ It returns one of these:
 
 Return `summary` to the model as the tool's result. It is plain text. On success, it gives the graph
 type and the text alternative. On failure, it lists the first 20 issues, numbered, with path and
-message, then how many more there are. The package calls no model, makes no network request and
+message, then how many more there are. `issues` is complete and can be megabytes: return `summary`,
+not `issues` or the whole result, to the model.
+
+`summary`, `textAlternative` and the text values of `description` hold text the model wrote,
+unchanged apart from removed control characters. Escape them for HTML or Markdown and never insert
+them as markup. A model can be steered into writing instructions there, so treat them as data, not
+instructions.
+
+An `internal_error` issue means a defect in the package. Report it with the package version and the
+input that caused it.
+
+The package calls no model, makes no network request and
 depends on no provider's software. The snippets below use each provider's own SDK, which you
 install.
 

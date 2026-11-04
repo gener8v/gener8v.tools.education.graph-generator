@@ -17,7 +17,9 @@ import { loadExample } from "../fixtures/examples";
 import { UNSAFE_CHARS, wordsOf } from "../fixtures/plain-text";
 
 // A switch that makes the text alternative throw, standing in for any package defect the handler
-// meets after validation (GSV TICKET-002 security review SEC-003).
+// meets after validation (GSV TICKET-002 security review SEC-003). Mocking `describeNormalized` is
+// the deliberate seam: it is the one call the handler makes after `validate`, so a test of the
+// defect path must change if the handler calls something else there.
 const fault = vi.hoisted(() => ({ on: false }));
 vi.mock("../../src/core/describe", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/core/describe")>();
@@ -33,6 +35,9 @@ vi.mock("../../src/core/describe", async (importOriginal) => {
 afterEach(() => {
   fault.on = false;
 });
+
+// The tool's own wording for its root failures (the tool input is not the description itself).
+const TOOL_INPUT_IS = 'the tool input is a JSON object with a "graph" property holding the description';
 
 const LEAKED_FRAME = /file:|\/node_modules\/| {4}at /;
 
@@ -117,7 +122,7 @@ describe("handleGraphToolCall: input forms (CPSE-REQ-030, CPSE-REQ-031)", () => 
       } catch (error) {
         parserMessage = (error as SyntaxError).message;
       }
-      expect(result.issues, text).toEqual([createIssue("invalid_json", "", { detail: parserMessage })]);
+      expect(result.issues, text).toEqual([createIssue("invalid_json", "", { detail: parserMessage, requirement: TOOL_INPUT_IS })]);
       expect(result.issues[0].message).toMatch(/not valid JSON/);
     }
   });
@@ -127,6 +132,21 @@ describe("handleGraphToolCall: input forms (CPSE-REQ-030, CPSE-REQ-031)", () => 
       const result = expectFailure(handleGraphToolCall(input));
       expect(result.issues.map((issue) => [issue.code, issue.path])).toEqual([["not_an_object", ""]]);
     }
+  });
+
+  it("words the tool input's own root failures for the tool: an object with a graph property, never a bare description (QR-001)", () => {
+    for (const input of ["[1]", "x", '"x"', "", "   ", "{", [1], "null", 5]) {
+      const result = expectFailure(handleGraphToolCall(input));
+      expect(result.issues, String(input)).toHaveLength(1);
+      expect(result.issues[0]!.path).toBe("");
+      const line = result.summary.split("\n")[1]!;
+      expect(line, String(input)).toMatch(/"graph" property/);
+      expect(line, String(input)).not.toMatch(/"type" field|a description is a JSON object/);
+    }
+    expect(expectFailure(handleGraphToolCall("[1]")).issues[0]!.message).toBe(
+      'The tool input must be a JSON object with a "graph" property holding the description; got a list.',
+    );
+    expect(expectFailure(handleGraphToolCall("")).issues[0]!.message).toMatch(/^The input is not valid JSON \(.*\); the tool input is a JSON object with a "graph" property holding the description\.$/);
   });
 
   it("returns missing_property at /graph without a graph, and names every other key; a bare description is reported that way", () => {
@@ -234,6 +254,26 @@ describe("handleGraphToolCall: null means not given, in the tool path only (AD-0
     expect(input).toEqual(before);
   });
 
+  it("passes a value that is not a list or plain object on without listing its keys (SEC-003)", () => {
+    // A Proxy over a Map is not a plain object, and its `ownKeys` trap counts every listing of its keys.
+    const listings = (graph: unknown) => {
+      let calls = 0;
+      const exotic = new Proxy(new Map(), { ownKeys: (target) => (calls++, Reflect.ownKeys(target)) });
+      const result = expectFailure(handleGraphToolCall({ graph: graph === undefined ? { type: "circle", radius: exotic } : graph }));
+      return { calls, result };
+    };
+    const { calls, result } = listings(undefined);
+    expect(result.issues.map((issue) => [issue.code, issue.path])).toEqual([["wrong_kind", "/graph/radius"]]);
+    // `validate` alone, measured, never lists the keys of the value it refuses as the wrong kind, so neither does the handler.
+    let validateAlone = 0;
+    const alone = new Proxy(new Map(), { ownKeys: (target) => (validateAlone++, Reflect.ownKeys(target)) });
+    expect(validate({ type: "circle", radius: alone }).valid).toBe(false);
+    expect(validateAlone).toBe(0);
+    expect(calls).toBe(validateAlone);
+    // A typed array is refused whole, as a wrong kind.
+    expect(expectFailure(handleGraphToolCall({ graph: { type: "circle", radius: new Uint8Array(1e6) } })).issues.map((issue) => issue.code)).toEqual(["wrong_kind"]);
+  });
+
   it("copies a getter inside graph unrun, for validate to refuse", () => {
     const getter = vi.fn(() => 5);
     const graph = Object.defineProperty({ type: "circle" }, "radius", { get: getter, enumerable: true });
@@ -272,6 +312,13 @@ describe("handleGraphToolCall: results and their summary (CPSE-REQ-032, CPSE-REQ
     expect(lines[0]).toBe(`The graph was not produced: ${direct.issues.length} issues. Fix them and call generate_graph again with {"graph": <the description>}.`);
     expect(lines.slice(1)).toEqual(result.issues.map((issue, i) => `${i + 1}. ${formatIssue(issue)}`));
     expect(lines.slice(1).every((line) => /^\d+\. \/graph\/\w+: /.test(line))).toBe(true);
+  });
+
+  it("puts each issue's path, and the paths it conflicts with, inside graph, as these fixed descriptions show (QR-002)", () => {
+    const paths = (description: Schema) => expectFailure(handleGraphToolCall({ graph: description })).issues.map((issue) => [issue.code, issue.path, issue.conflicts]);
+    expect(paths({ type: "circle", radius: "5" })).toEqual([["wrong_kind", "/graph/radius", undefined]]);
+    expect(paths({ type: "circle", radius: 1, diameter: 5 })).toEqual([["contradiction", "/graph/diameter", ["/graph/radius"]]]);
+    expect(paths({ type: "circle" })).toEqual([["insufficient", "/graph", undefined]]);
   });
 
   it("lists an over-limit text's too_large issue in the summary", () => {

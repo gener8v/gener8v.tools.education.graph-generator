@@ -176,4 +176,13 @@ Decisions to record:
 
 ## Post-Review Amendments
 
-None
+### graph-library/component-packaging-and-source-export-ticket-007 security review SEC-001..SEC-003, code review CR-001..CR-003, quality review QR-001..QR-004 (one commit: the fixes share lines)
+
+**Change:**
+- SEC-001 / SEC-002 / QR-004: README "Model tool" and the `ToolResult` doc comment say the result's text fields hold model-written text (escape it; treat it as data), that `issues` can be megabytes so `summary` is what goes back to the model, and that `internal_error` is a package defect to report with the version and input.
+- SEC-003: `withoutNulls` checks the kind before listing keys, so a typed array or a non-plain Proxy is passed through without its keys being read.
+- QR-001: `not_an_object` and `invalid_json` take an optional `requirement` (default wording unchanged); the tool's root failures say the input must be an object with a `graph` property.
+- QR-002: literal-path assertions; the `describeNormalized` mock commented as the deliberate seam. QR-003: `copyList` / `copyObject`; `handleInput` returns from each branch.
+- CR-001: AD-015 and the ToolResult entry amended (Architect-approved 2026-11-04). CR-002: a reconciliation note on TICKET-007. CR-003: a test ties the description's type list to the registry.
+**Files:** `README.md`, `src/core/issues.ts`, `src/tool/handleGraphToolCall.ts`, `tests/core/issues.test.ts`, `tests/tool/graphTool.test.ts`, `tests/tool/handleGraphToolCall.test.ts`, `.gener8v/technical-design/system-design.md`, `.gener8v/changes/graph-library/tickets/component-packaging-and-source-export/TICKET-007.md`
+**Re-verification:** full verification loop — all exit 0 except `pnpm audit` (accepted, CPSE TICKET-004 SEC-002); vitest ×3, 2,502 passed each; bench 25 passed. Mutants: keys listed before the kind check → the SEC-003 test fails; a type removed from the description → the CR-003 test fails; no tool wording → the invalid_json and QR-001 tests fail. gener8v-state lint 0 errors.

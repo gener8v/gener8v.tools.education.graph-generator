@@ -115,6 +115,24 @@ describe("issue-code set (GSV-REQ-030, GSV-REQ-034)", () => {
     expect(issueDocs.internal_error).toMatch(/not a problem with the description/);
   });
 
+  it("words not_an_object and invalid_json for another input when asked, and keeps the default wording otherwise", () => {
+    const requirement = 'The tool input must be a JSON object with a "graph" property holding the description';
+    expect(issueMessage("not_an_object", { got: [1] })).toBe('A graph description must be a JSON object with a "type" field; got a list.');
+    expect(issueMessage("not_an_object", { got: [1], requirement })).toBe(`${requirement}; got a list.`);
+    expect(issueMessage("invalid_json", {})).toBe("The input is not valid JSON; a description is a JSON object.");
+    expect(issueMessage("invalid_json", { detail: "bad", requirement: "the tool input is an object" })).toBe(
+      "The input is not valid JSON (bad); the tool input is an object.",
+    );
+    // The wording is escaped and clipped as a message detail is, and adds no field to the issue.
+    for (const hostile of ["a\u202Eb\nc", "k".repeat(10_000)]) {
+      for (const message of [issueMessage("not_an_object", { got: 1, requirement: hostile }), issueMessage("invalid_json", { requirement: hostile })]) {
+        expect([...message].every((char) => char.codePointAt(0)! > 0x1f && char !== "\u202e")).toBe(true);
+        expect(message.length).toBeLessThan(500);
+      }
+    }
+    expect(createIssue("not_an_object", "", { got: 1, requirement })).toEqual({ code: "not_an_object", path: "", message: `${requirement}; got 1.` });
+  });
+
   it("recognises issue codes and nothing else", () => {
     for (const code of ISSUE_CODES) expect(isIssueCode(code), code).toBe(true);
     for (const value of ["bogus", "constructor", "__proto__", "", 1, null, undefined, {}]) {

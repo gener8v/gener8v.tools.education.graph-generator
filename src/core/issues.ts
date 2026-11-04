@@ -111,7 +111,11 @@ type Term = string;
  */
 // @spec GSV-REQ-031, GSV-REQ-032
 export interface IssueParamsByCode {
-  not_an_object: { got: unknown };
+  /**
+   * `requirement` replaces the start of the message, "A graph description must be a JSON object
+   * with a "type" field", for an input that is not the description itself (the model tool's).
+   */
+  not_an_object: { got: unknown; requirement?: string };
   /** `got` is left out when the description has no `type`. */
   unknown_graph_type: { got?: unknown; allowed: Terms };
   unsupported_version: { got: unknown; allowed: Terms };
@@ -163,9 +167,10 @@ export interface IssueParamsByCode {
   unknown_color: { term: Term; got: unknown; allowed: Terms };
   /**
    * `detail` is the JSON parser's message, at most a short excerpt of the input. Never a stack
-   * trace.
+   * trace. `requirement` replaces the message's end, "a description is a JSON object", for an
+   * input that is not the description itself (the model tool's).
    */
-  invalid_json: { detail?: string };
+  invalid_json: { detail?: string; requirement?: string };
   /**
    * No inputs: the message is fixed so exception text and stack traces never reach a model or a
    * page (security review SEC-003).
@@ -345,7 +350,8 @@ type Templates = { readonly [C in IssueCode]: (p: IssueParamsByCode[C]) => strin
  */
 // @spec GSV-REQ-031
 const templates: Templates = {
-  not_an_object: (p) => `A graph description must be a JSON object with a "type" field; got ${describeValue(p.got)}.`,
+  not_an_object: (p) =>
+    `${p.requirement === undefined ? 'A graph description must be a JSON object with a "type" field' : describeDetail(p.requirement)}; got ${describeValue(p.got)}.`,
   unknown_graph_type: (p) =>
     p.got === undefined
       ? `type is required; use one of: ${list(p.allowed)}.`
@@ -398,7 +404,7 @@ const templates: Templates = {
   unknown_color: (p) =>
     `${describeTerm(p.term)} must be a color name (${list(p.allowed)}) or a hex code such as #0072b2; got ${describeValue(p.got)}.`,
   invalid_json: (p) =>
-    `The input is not valid JSON${p.detail === undefined ? "" : ` (${describeDetail(p.detail)})`}; a description is a JSON object.`,
+    `The input is not valid JSON${p.detail === undefined ? "" : ` (${describeDetail(p.detail)})`}; ${p.requirement === undefined ? "a description is a JSON object" : describeDetail(p.requirement)}.`,
   internal_error: () =>
     "The description could not be checked because of a defect in the package; please report it. The description itself may be valid.",
   too_large: (p) => {

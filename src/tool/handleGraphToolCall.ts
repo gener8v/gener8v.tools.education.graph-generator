@@ -45,9 +45,16 @@ const GRAPH_KEY = "graph";
 const ROOT_ALLOWED = [GRAPH_KEY] as const;
 const ROOT = "tool";
 
+/** What the root's own failures say the tool input is, in place of the description's wording. */
+const INPUT_NOT_OBJECT = `The tool input must be a JSON object with a "${GRAPH_KEY}" property holding the description`;
+const INPUT_IS_OBJECT = `the tool input is a JSON object with a "${GRAPH_KEY}" property holding the description`;
+
 /**
  * What `handleGraphToolCall` returns. Plain data. `summary` is plain text to return to the model as
- * the tool's result.
+ * the tool's result, not `issues` and not the whole result: `issues` is complete and can be
+ * megabytes. `summary`, `textAlternative` and the text values of `description` hold text the model
+ * wrote, unchanged apart from removed control characters: escape them for HTML or Markdown, never
+ * insert them as markup, and treat them as data, not instructions.
  * - Success: the normalized description, to pass to `<Graph>` or `exportSource`, which of its
  *   values were derived, and its text alternative (cut at `TEXT_ALTERNATIVE_LIMIT`).
  * - Failure: every issue, with paths into the tool input (`/graph/radius`). `summary` lists the
@@ -103,44 +110,53 @@ function inGraph(issue: Issue): Issue {
  * and never in `validate`. List elements that are `null` stay. Own properties are read once, through
  * their descriptors, so no getter runs; a getter or hidden property is copied as it is, for
  * `validate` to report. Anything that is not a plain object or list, or cannot be read, is passed on
- * as it is. Iterative, and stops copying after `COPY_LIMIT` keys and elements, so neither a deep nor
- * a wide input costs more than that.
+ * as it is, and its keys are not listed, whatever their number. Iterative, and stops copying after
+ * `COPY_LIMIT` keys and elements, so neither a deep nor a wide input costs more than that.
  */
 // @spec CPSE-REQ-030
 function withoutNulls(graph: unknown): unknown {
   let budget = COPY_LIMIT;
   const pending: Array<() => void> = [];
   const copy = (value: unknown): unknown => {
-    if (typeof value !== "object" || value === null || budget <= 0) return value;
+    // Budget spent: the rest goes to `validate` as it is.
+    if (budget <= 0) return value;
     try {
+      // A number, text, typed array, Map or the like: for `validate` to accept or refuse.
+      if (!(Array.isArray(value) || isPlainObject(value))) return value;
       const names = Object.getOwnPropertyNames(value);
       budget -= names.length;
+      // Too wide to copy: `validate` refuses the original as it is.
       if (budget < 0) return value;
-      if (Array.isArray(value)) {
-        const elements = readList(value);
-        if (elements === undefined) return value;
-        const target: unknown[] = [];
-        pending.push(() => {
-          for (const element of elements) target.push(copy(element));
-        });
-        return target;
-      }
-      if (!isPlainObject(value)) return value;
-      const descriptors = names.map((name) => [name, Object.getOwnPropertyDescriptor(value, name)] as const);
-      // A null prototype, so a `__proto__` key is an ordinary property, as `JSON.parse` makes it.
-      const target = Object.create(null) as Record<string, unknown>;
-      pending.push(() => {
-        for (const [name, descriptor] of descriptors) {
-          if (descriptor === undefined) continue;
-          if (!descriptor.enumerable || !("value" in descriptor)) Object.defineProperty(target, name, descriptor);
-          else if (descriptor.value !== null) target[name] = copy(descriptor.value);
-        }
-      });
-      return target;
+      return Array.isArray(value) ? copyList(value) : copyObject(value, names);
     } catch {
-      // A Proxy whose traps throw: `validate` reads it, and refuses it, as it would the original.
+      // A Proxy whose traps throw, or a revoked one: `validate` reads it, and refuses it, as it would the original.
       return value;
     }
+  };
+  /** A list's copy, its elements copied later; the list as it is when it has a getter or a hole. */
+  const copyList = (list: readonly unknown[]): unknown => {
+    const elements = readList(list);
+    // A getter, a hole or an extra property: not data, for `validate` to report.
+    if (elements === undefined) return list;
+    const target: unknown[] = [];
+    pending.push(() => {
+      for (const element of elements) target.push(copy(element));
+    });
+    return target;
+  };
+  /** An object's copy, its values copied later, without the properties whose value is `null`. */
+  const copyObject = (object: object, names: readonly string[]): unknown => {
+    const descriptors = names.map((name) => [name, Object.getOwnPropertyDescriptor(object, name)] as const);
+    // A null prototype, so a `__proto__` key is an ordinary property, as `JSON.parse` makes it.
+    const target = Object.create(null) as Record<string, unknown>;
+    pending.push(() => {
+      for (const [name, descriptor] of descriptors) {
+        if (descriptor === undefined) continue;
+        if (!descriptor.enumerable || !("value" in descriptor)) Object.defineProperty(target, name, descriptor);
+        else if (descriptor.value !== null) target[name] = copy(descriptor.value);
+      }
+    });
+    return target;
   };
   const result = copy(graph);
   while (pending.length > 0) pending.pop()!();
@@ -151,37 +167,33 @@ function withoutNulls(graph: unknown): unknown {
 // @spec CPSE-REQ-032, CPSE-REQ-033, CPSE-REQ-034
 function handleInput(input: unknown): ToolResult {
   const contents = isPlainObject(input) ? readObject(input) : undefined;
-  if (contents === undefined) return failure([createIssue("not_an_object", pointer(), { got: input })]);
+  if (contents === undefined) return failure([createIssue("not_an_object", pointer(), { got: input, requirement: INPUT_NOT_OBJECT })]);
   // As many keys as a description may hold values: past that, one issue rather than one per key.
   const keys = contents.values.size + contents.opaque.length;
   if (keys > DESCRIPTION_VALUE_LIMIT) {
     return failure([createIssue("too_large", pointer(), { term: "input", limit: DESCRIPTION_VALUE_LIMIT, unit: "values", count: keys })]);
   }
 
-  const issues: Issue[] = [];
   const graphPath = pointer(GRAPH_KEY);
   const graph = contents.values.get(GRAPH_KEY);
-  let checked: ReturnType<typeof validate> | undefined;
+  // The input's other keys, reported after the description's issues, so a description sent without
+  // the wrapper is reported first as a missing `graph`. An explicit `undefined` disappears in JSON,
+  // so it counts as absent, as in `validate`.
+  const others = [...contents.values].filter(([key, value]) => key !== GRAPH_KEY && value !== undefined).map(([key]) => key);
+  const otherKeys = [...others, ...contents.opaque.filter((key) => key !== GRAPH_KEY)].map((key) => {
+    const suggestion = closestTerm(key, ROOT_ALLOWED);
+    return createIssue("unknown_property", pointer(key), { term: key, graphType: ROOT, allowed: ROOT_ALLOWED, ...(suggestion === undefined ? {} : { suggestion }) });
+  });
+
   // Own keys only (`readObject`): a `graph` on a polluted prototype is not the model's input.
   if (contents.opaque.includes(GRAPH_KEY)) {
-    issues.push(createIssue("wrong_kind", graphPath, { term: GRAPH_KEY, got: undefined, expected: "plain JSON data" }));
-  } else if (graph === undefined) {
-    issues.push(createIssue("missing_property", graphPath, { term: GRAPH_KEY, graphType: ROOT }));
-  } else {
-    checked = validate(withoutNulls(graph));
-    if (!checked.valid) issues.push(...checked.issues.map(inGraph));
+    return failure([createIssue("wrong_kind", graphPath, { term: GRAPH_KEY, got: undefined, expected: "plain JSON data" }), ...otherKeys]);
   }
-  // The input's other keys, after the description's issues, so a description sent without the
-  // wrapper is reported first as a missing `graph`. An explicit `undefined` disappears in JSON, so
-  // it counts as absent, as in `validate`.
-  const others = [...contents.values].filter(([key, value]) => key !== GRAPH_KEY && value !== undefined).map(([key]) => key);
-  for (const key of [...others, ...contents.opaque.filter((key) => key !== GRAPH_KEY)]) {
-    const suggestion = closestTerm(key, ROOT_ALLOWED);
-    issues.push(
-      createIssue("unknown_property", pointer(key), { term: key, graphType: ROOT, allowed: ROOT_ALLOWED, ...(suggestion === undefined ? {} : { suggestion }) }),
-    );
-  }
-  if (issues.length > 0 || checked === undefined || !checked.valid) return failure(issues);
+  if (graph === undefined) return failure([createIssue("missing_property", graphPath, { term: GRAPH_KEY, graphType: ROOT }), ...otherKeys]);
+
+  const checked = validate(withoutNulls(graph));
+  if (!checked.valid) return failure([...checked.issues.map(inGraph), ...otherKeys]);
+  if (otherKeys.length > 0) return failure(otherKeys);
 
   const { description, provenance } = checked;
   // The validated description is described directly; `describe` would validate it again
@@ -212,7 +224,7 @@ export function handleGraphToolCall(input: unknown): ToolResult {
     } catch (error) {
       // Only the parser's message is passed on, as the issue's detail, which the issue escapes and clips.
       const detail = error instanceof SyntaxError ? error.message : undefined;
-      return failure([createIssue("invalid_json", pointer(), detail === undefined ? {} : { detail })]);
+      return failure([createIssue("invalid_json", pointer(), { requirement: INPUT_IS_OBJECT, ...(detail === undefined ? {} : { detail }) })]);
     }
     return handleInput(parsed);
   } catch {

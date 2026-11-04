@@ -194,7 +194,7 @@ The tool handler unwraps `graph` and removes `null`-valued optional properties b
 ### AD-015: Model tool definition and handler
 
 **Context:** CPSE-REQ-027..036: a provider-neutral tool definition, a handler that accepts an object or JSON text, returns success or structured issues with a text summary, never throws, and never calls a model.
-**Decision:** `./tool` exports `graphTool = { name: "generate_graph", description, inputSchema }` (inputSchema per AD-006) and `handleGraphToolCall(input: unknown) → ToolResult`. The handler parses text input (`invalid_json` issue on failure), unwraps `graph`, removes nulls from optional properties, validates, and returns `{ ok: true, description, provenance, summary }` or `{ ok: false, issues, summary }`. `summary` is plain text for returning to the model: the text alternative on success, a numbered issue list on failure. The whole handler is wrapped so that an unexpected internal error becomes an `internal_error` issue, never an exception. Documentation shows how to pass `graphTool` to Anthropic, OpenAI and Google APIs in a few lines each, without depending on their software.
+**Decision:** `./tool` exports `graphTool = { name: "generate_graph", description, inputSchema }` (inputSchema per AD-006) and `handleGraphToolCall(input: unknown) → ToolResult`. The handler parses text input (`invalid_json` issue on failure), unwraps `graph`, removes nulls from optional properties, validates, and returns `{ ok: true, description, provenance, textAlternative, summary }` or `{ ok: false, issues, summary }`. `summary` is plain text for returning to the model: the text alternative on success, a numbered issue list on failure. *(amended 2026-11-04 by graph-library, CPSE TICKET-007 code review CR-001: the success result also carries `textAlternative` in its own field, so caller text is not only inside the summary's prose; both are cut at 4,000 characters — `TEXT_ALTERNATIVE_LIMIT`, `src/tool/handleGraphToolCall.ts`, CPSE TICKET-007 DEL-002 — and text input over 2,000,000 characters is refused unparsed — `TOOL_INPUT_LIMIT`, DEL-001.)* The whole handler is wrapped so that an unexpected internal error becomes an `internal_error` issue, never an exception. Documentation shows how to pass `graphTool` to Anthropic, OpenAI and Google APIs in a few lines each, without depending on their software.
 **Rationale:** Satisfies every handler requirement with no provider dependency; the summary gives the model the same feedback a person would read.
 **Alternatives Considered:**
 - Returning rendered markup in the tool result — useful to applications without React, but large in a model's context; kept as an open question (CPSE OQ-006)
@@ -397,7 +397,7 @@ The tool handler unwraps `graph` and removes `null`-valued optional properties b
 ### ToolResult
 
 **Purpose:** The handler's return value (AD-015).
-**Key Fields:** `ok`, `description` + `provenance` (success) or `issues` (failure), `summary` (plain text)
+**Key Fields:** `ok`, `description` + `provenance` + `textAlternative` (success; the text alternative cut at 4,000 characters) or `issues` (failure, complete), `summary` (plain text, at most 20 issues) *(amended 2026-11-04, CPSE TICKET-007 code review CR-001)*
 **Relationships:** wraps ValidationResult
 **Source:** Model tool
 

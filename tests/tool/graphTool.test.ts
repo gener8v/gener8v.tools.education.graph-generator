@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { definitions, registeredTypes } from "../../src/core/definitions/index";
 import { getToolSchema } from "../../src/core/schema";
 import { graphTool } from "../../src/tool/index";
 import { createAjv } from "../helpers/ajv";
@@ -41,6 +42,27 @@ describe("graphTool (CPSE-REQ-027, CPSE-REQ-028)", () => {
     expect(graphTool.description).toMatch(/^[A-Z][^\n]{100,}\.$/);
     expect(Object.isFrozen(graphTool)).toBe(true);
     expect(Object.isFrozen(graphTool.inputSchema)).toBe(true);
+  });
+
+  it("names every registered graph type in its description, in the words it uses (CR-003)", () => {
+    // The phrase for each type, as the description says it. The table must cover exactly the registry's
+    // types, so a new type fails here until it has a phrase, and the description has it.
+    const phrases: Record<string, string> = {
+      "number-line": "number line",
+      ruler: "ruler",
+      "xy-graph": "x,y or x,y,z coordinate graph",
+      "xyz-graph": "x,y or x,y,z coordinate graph",
+      "line-graph": "line graph",
+      "bar-graph": "bar graph",
+      pictograph: "pictograph",
+      circle: "circle",
+      square: "square",
+      triangle: "triangle",
+      cube: "cube",
+      cylinder: "cylinder",
+    };
+    expect(Object.keys(phrases).sort()).toEqual([...registeredTypes(definitions)].sort());
+    for (const [type, phrase] of Object.entries(phrases)) expect(graphTool.description, type).toContain(phrase);
   });
 
   it("takes its input schema from the generated tool schema, never a hand-written copy", () => {

@@ -76,3 +76,5 @@
 **Size:** Medium
 
 **Notes:** Cross-area predecessors: `graph-library/graph-specification-and-vocabulary/TICKET-005` (tool schema) and its TICKET-003/TICKET-004 (validator), per DEP-006 and EXT-004. The handler needs no renderer, so it can be built before any graph type beyond the circle exists.
+
+**Reconciliation note (2026-11-04, CPSE TICKET-007 code review CR-002):** two acceptance criteria are met as decided, not as first written. Criterion 2 ("`inputSchema` passes all three"): the schema passes the documented rules of the supported modes — Anthropic `input_schema` without `strict`, OpenAI `strict: true`, Gemini `parametersJsonSchema`; Anthropic `strict: true` and Gemini's OpenAPI `parameters` are unsupported by the Engineer's decision (AD-006 amended 2026-11-04; delivery record Pre-Flight Reconciliation). Criterion 8 ("the meta-schema it declares"): the schema declares no `$schema`, so it is checked against JSON Schema 2020-12, the dialect its generator writes (`tests/tool/graphTool.test.ts`).
