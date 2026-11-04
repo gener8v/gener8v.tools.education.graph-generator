@@ -22,6 +22,27 @@ component file, and can be offered to a language model as a tool.
 
 The package makes no network requests and collects no data.
 
+## Command line
+
+`graph-generator export` turns a saved description into a component file, from a terminal or a
+build script. It needs Node.js 22 or later, not React, and makes no network requests.
+
+```sh
+npx graph-generator export description.json                 # writes CircleGraph.tsx beside it
+npx graph-generator export description.json --out src/Figure.tsx --name Figure
+```
+
+- `--out <file.tsx>` sets the output file. By default it is `<Name>.tsx` next to the description.
+- `--name <Name>` sets the component's name, a PascalCase identifier. By default it is the graph
+  type's, such as `CircleGraph`.
+- An existing output file is overwritten.
+- It prints at most the first 20 issues of an invalid description, then how many more there are,
+  and writes no file.
+- Exit status: 0 the file is written; 1 the description is not valid, or a file cannot be read or
+  written; 2 the command line is not valid.
+
+The file is the same text `exportSource` from `./export` returns.
+
 ## Styling
 
 Graphs are inline SVG and take their look from the package, not from your page. One page style

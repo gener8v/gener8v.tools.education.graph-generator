@@ -78,7 +78,7 @@ export const issueDocs: Readonly<Record<IssueCode, string>> = Object.freeze(
     series_length_mismatch: "A series has a different number of values than there are categories.",
     unknown_image: "A unit image name is not in the published image set.",
     unknown_color: "A color is neither a published color name nor a hexadecimal color code.",
-    invalid_json: "The model tool's input is text that is not valid JSON. Emitted only by the tool handler.",
+    invalid_json: "The model tool's input, or the file the export command reads, is text that is not valid JSON. Emitted only by the tool handler and the export command.",
     internal_error:
       "A defect in the package stopped the check. It is not a problem with the description; report it.",
     too_large: "A list, or the whole description, holds more values than its documented limit, or a text has more characters than its limit.",
@@ -219,6 +219,14 @@ const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0
 function quote(text: string, max: number): string {
   // JSON.stringify escapes the C0 controls, quotes and backslashes.
   return escapeChars(JSON.stringify(clip(text, max)));
+}
+
+/**
+ * A text quoted with the messages' escaping, clipped to `max` characters: for other text the
+ * package prints, such as the export command's file names. Internal: not exported from `./core`.
+ */
+export function quoteEscaped(text: string, max: number): string {
+  return quote(text, max);
 }
 
 /** A short, readable rendering of a supplied value for messages. Never throws. */
@@ -394,7 +402,7 @@ const templates: Templates = {
   unknown_color: (p) =>
     `${describeTerm(p.term)} must be a color name (${list(p.allowed)}) or a hex code such as #0072b2; got ${describeValue(p.got)}.`,
   invalid_json: (p) =>
-    `The tool input is not valid JSON${p.detail === undefined ? "" : ` (${describeDetail(p.detail)})`}; send a JSON object.`,
+    `The input is not valid JSON${p.detail === undefined ? "" : ` (${describeDetail(p.detail)})`}; a description is a JSON object.`,
   internal_error: () =>
     "The description could not be checked because of a defect in the package; please report it. The description itself may be valid.",
   too_large: (p) => {

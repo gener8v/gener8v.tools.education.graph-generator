@@ -205,4 +205,5 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-023 | `src/export/print.ts`:printScene; `scripts/generated-files.ts`:versionModule; `src/generated/version.ts` (graph-library CPSE TICKET-005) |
 | CPSE-REQ-024 | `src/core/definitions/names.ts`:componentName; `src/export/exportSource.ts`:exportSource (graph-library CPSE TICKET-005) |
 | CPSE-REQ-025 | `src/export/exportSource.ts`:exportSource (graph-library CPSE TICKET-005) |
+| CPSE-REQ-026 | `src/cli.ts`:main; `tsup.config.ts` (the `cli` build); `package.json` (`bin.graph-generator`); `tests/cli/export.test.ts` (graph-library CPSE TICKET-006) |
 | CPSE-NFR-001 | `tests/export/equality.test.ts` (every example, 15; renderToStaticMarkup identical, no React warnings) (graph-library CPSE TICKET-005) |

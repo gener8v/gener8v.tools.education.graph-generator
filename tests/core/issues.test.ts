@@ -173,7 +173,7 @@ describe("issue messages (GSV-REQ-031)", () => {
         "inapplicable_property": "xAxisLabel does not apply for a circle; remove it.",
         "insufficient": "triangle cannot be determined: three angles fix its shape but not its size; add the missing value.",
         "internal_error": "The description could not be checked because of a defect in the package; please report it. The description itself may be valid.",
-        "invalid_json": "The tool input is not valid JSON (Unexpected token '}' at position 14); send a JSON object.",
+        "invalid_json": "The input is not valid JSON (Unexpected token '}' at position 14); a description is a JSON object.",
         "missing_property": "radius is required for a circle; add it.",
         "not_a_triangle": "sideLengths cannot form a triangle: 3 + 4 is not greater than 9; change the values so they do.",
         "not_an_object": "A graph description must be a JSON object with a "type" field; got a list.",
@@ -228,7 +228,7 @@ describe("issue messages (GSV-REQ-031)", () => {
         "xAxis is required for an xy-graph; add it.",
         "zAxis is required for an xyz-graph; add it.",
         "series[0].values has 1 value but there is 1 category; give one value per category.",
-        "The tool input is not valid JSON; send a JSON object.",
+        "The input is not valid JSON; a description is a JSON object.",
       ]
     `);
   });

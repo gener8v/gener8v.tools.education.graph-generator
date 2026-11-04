@@ -4,7 +4,7 @@ import { defineConfig } from "tsup";
 // One entry per public entry point (AD-001). Per-type entries (`src/entries/<type>.ts`)
 // are added here by each graph-type ticket.
 // @spec CPSE-REQ-003, CPSE-REQ-004
-export default defineConfig({
+const library = defineConfig({
   entry: {
     index: "src/index.ts",
     "core/index": "src/core/index.ts",
@@ -40,3 +40,21 @@ export default defineConfig({
     copyFileSync("src/generated/vocabulary.json", "dist/vocabulary.json");
   },
 });
+
+// @spec CPSE-REQ-026
+// The `graph-generator` command: one Node-only file, run through `bin`. It bundles
+// what it uses, so a copy of `dist/` runs without `node_modules`. tsup runs the two builds at
+// once, so the library's `clean` leaves `cli.js` alone rather than depend on which finishes first.
+const cli = defineConfig({
+  entry: { cli: "src/cli.ts" },
+  format: ["esm"],
+  platform: "node",
+  target: "node22",
+  banner: { js: "#!/usr/bin/env node" },
+  dts: false,
+  splitting: false,
+  clean: false,
+  sourcemap: false,
+});
+
+export default [{ ...library, clean: ["dist/**", "!dist/cli.js"] }, cli];
