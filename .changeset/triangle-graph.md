@@ -2,4 +2,4 @@
 "@gener8v/graph-generator": patch
 ---
 
-Added: the `triangle` type, a triangle drawn to scale from three sides, two sides and the angle between them, two angles and a side, or its three vertices, standing on its first given side or keeping its vertices' positions, with optional side, angle and vertex labels (the value and unit, degrees, or custom text) and a right-angle mark on a labeled 90° angle, as `<TriangleGraph>` and the `./triangle` entry. The square's `labelSides` description now covers both figures.
+Added: the `triangle` type, as `<TriangleGraph>` and the `./triangle` entry. A triangle is drawn to scale from three sides, two sides and the angle between them, two angles and a side, or its three vertices. It stands on its first given side, or keeps the positions of its vertices. You can label sides, angles and vertices (with the value and unit, degrees, or your own text). A labeled 90° angle gets a right-angle mark. The `labelSides` description covers both the square and the triangle.

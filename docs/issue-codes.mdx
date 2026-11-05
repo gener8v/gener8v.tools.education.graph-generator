@@ -6,27 +6,27 @@ import { IssueCodeTable } from "./components/ReferenceTables";
 
 # Issue codes
 
-An invalid description reports every problem found, each as one issue. `validate` and `createGraph`
-return the issues, a component's fallback function receives them, and the model tool and the
-export command print them.
+An invalid description reports each problem as an issue. `validate` and `createGraph` return the
+issues. A component's fallback function receives them. The model tool and the export command print
+them.
 
 An issue is plain JSON data:
 
 - `code`: one of the codes below.
 - `path`: a JSON Pointer to the property, such as `/radius` or `/points/2/x`. An empty path is the
   whole description.
-- `message`: a plain-English message that names the property by its term and says what would make
-  the value acceptable.
-- Sometimes also `expected` (the kind of value accepted), `range`, `conflicts` (the paths of the
-  other properties involved), `suggestion` (the closest term to an unknown one) and `allowed` (the
-  accepted values).
+- `message`: a plain-English message that names the term and says what value would be accepted.
+- Some issues also have `expected` (the kind of value accepted), `range`, `conflicts` (the paths of
+  the other properties involved), `suggestion` (the closest term to an unknown one) or `allowed`
+  (the accepted values).
 
 ## Print issues with formatIssue
 
-An issue's `path` holds the caller's keys exactly as given. A key can hold line breaks and
-text-direction characters, which can make a log line or a page show something else. Print every
-issue with `formatIssue` from `@gener8v/graph-generator/core`, never `issue.path` itself. It writes `path: message`. A
-path that is not a plain pointer is quoted, clipped to 64 characters and escaped.
+An issue's `path` contains the caller's keys exactly as given. A key can contain line breaks or
+text-direction characters that make a log line or a page show something misleading. Print issues
+with `formatIssue` from `@gener8v/graph-generator/core`, never with `issue.path` directly.
+`formatIssue` writes `path: message`. A path that is not a plain pointer is
+quoted, clipped to 64 characters and escaped.
 
 ```ts
 import { formatIssue, validate } from "@gener8v/graph-generator/core";
@@ -60,15 +60,16 @@ The issue itself:
 
 ## Limits and plain text
 
-- A list longer than its `maxItems`, a description with more than <Limit name="DESCRIPTION_VALUE_LIMIT" /> values, or a text longer
-  than its limit is `too_large`. Titles, labels and names are at most <Limit name="CALLER_TEXT_LIMIT" /> characters and `unit` at
-  most <Limit name="UNIT_TEXT_LIMIT" />, counted as code points. Longer text is never cut short. Each type's limits are in its
-  input table on the **Vocabulary** page.
-- Text that holds a control, line-break, text-direction or invisible character is `wrong_kind`.
-  The zero-width joiner and non-joiner and the emoji variation selectors are allowed. The
+- `too_large`: a list longer than its `maxItems`, a description with more than{" "}
+  <Limit name="DESCRIPTION_VALUE_LIMIT" /> values, or text longer than its limit. Titles, labels
+  and names are at most <Limit name="CALLER_TEXT_LIMIT" /> characters and `unit` at most{" "}
+  <Limit name="UNIT_TEXT_LIMIT" />, counted as code points. Longer text is rejected, never cut
+  short. Each type's limits are in its input table on the **Vocabulary** page.
+- `wrong_kind`: text with a control, line-break, text-direction or invisible character. The
+  zero-width joiner and non-joiner and the emoji variation selectors are allowed. The
   **Vocabulary** page lists the characters.
 
-A message quotes and escapes such characters, so it shows exactly what was supplied:
+Messages quote and escape these characters, so they show exactly what was supplied:
 
 {/* sample: messages-plain-text */}
 
@@ -79,8 +80,8 @@ A message quotes and escapes such characters, so it shows exactly what was suppl
 
 ## Codes
 
-The set of codes is fixed. Renaming or removing a code is a breaking change, so your code can test
-`issue.code` safely. `isIssueCode(value)` from `@gener8v/graph-generator/core` says whether a value is one of them, and
-`issueDocs[code]` gives the meaning below.
+The set of codes is fixed, and renaming or removing one is a breaking change. Your code can safely
+test `issue.code`. `isIssueCode(value)` from `@gener8v/graph-generator/core` tells you whether a
+value is a code, and `issueDocs[code]` gives the meaning shown below.
 
 <IssueCodeTable />

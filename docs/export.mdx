@@ -5,16 +5,16 @@ import { Limit } from "./components/Limit";
 
 # Source export
 
-Source export turns a description into the source of one standalone React component: a `.tsx` file
-that depends on React alone, takes no props, uses no hooks and renders the same markup the
-package's component renders. Use it to put a figure in a project that does not install this
-package, or to keep a figure that no longer changes with the package.
+Source export turns a description into one standalone React component, a `.tsx` file. The file
+depends only on React, takes no props, uses no hooks and renders the same markup as the package's
+component. Use it to add a figure to a project that does not install this package, or to freeze a
+figure so package updates do not change it.
 
 ## From code
 
 `exportSource(description, options)` from `@gener8v/graph-generator/export` needs Node.js 22 or later
-and no React. It checks the description with the components' validator, so it accepts exactly the
-descriptions the components draw.
+and no React. It uses the same validator as the components, so it accepts exactly the descriptions
+they draw.
 
 ```json
 {
@@ -39,14 +39,14 @@ if (result.ok) {
 }
 ```
 
-- `componentName` is optional, a PascalCase identifier. By default it is the graph type's, such as
-  `SquareGraph`.
-- The result is `{ ok: true, source, componentName }`, or `{ ok: false, issues }` with every issue in
-  the description and in `componentName`.
+- `componentName` is optional and must be a PascalCase identifier. The default comes from the
+  graph type, such as `SquareGraph`.
+- The result is `{ ok: true, source, componentName }`, or `{ ok: false, issues }` with every issue
+  in the description and in `componentName`.
 - It never throws. The same description and package version always give the same text.
 
-The file starts with a comment that names the package and version and holds the description, then
-the component (shortened here; `<version>` stands for the package's version):
+The file starts with a comment that names the package and version and contains the description.
+The component follows. Here it is shortened, and `<version>` stands for the package version:
 
 {/* sample: export-square */}
 
@@ -75,17 +75,17 @@ export function SquareFigure() {
 }
 ```
 
-The file is ASCII only, as the section below explains: the `@` and the accented letter are written
-as escapes, and the text renders as described.
+The `@` and the accented letter are written as escapes because the file is ASCII only (see below).
+The text still renders as described.
 
-To change the figure, change the description and export it again, rather than editing the drawing.
+To change the figure, change the description and export it again. Do not edit the drawing.
 
 ## From the command line
 
-`graph-generator export` turns a saved description into a component file, from a terminal or a
-build script. It needs Node.js 22 or later, not React, and makes no network requests. Install the
-package, then run its command with `npx`. Write the package name in every command: it runs the
-installed package's `graph-generator` command, while the bare short name can run a different
+`graph-generator export` writes a saved description out as a component file. It needs Node.js 22
+or later, not React, and makes no network requests.
+
+Always run it with the full package name. The bare command name can run a different
 package from the registry.
 
 ```sh
@@ -94,38 +94,38 @@ npx @gener8v/graph-generator export square.json                 # writes SquareG
 npx @gener8v/graph-generator export square.json --out src/SquareFigure.tsx --name SquareFigure
 ```
 
-- `--out <file.tsx>` sets the output file. By default it is `<Name>.tsx` next to the description.
-  It cannot be the description file itself. Without `--out`, a name that Windows reserves for a
-  device (such as `CON` or `NUL`) is refused.
-- `--name <Name>` sets the component's name, a PascalCase identifier. By default it is the graph
-  type's.
-- An existing output file is replaced. The file is written to a temporary file beside it and
-  renamed, so a link at the output path is replaced, not followed.
-- The description must be a regular file of at most <Limit name="MAX_INPUT_BYTES" />. The largest valid
-  description is about 1.6 MB.
-- For an invalid description it prints at most the first <Limit name="MAX_ISSUES_PRINTED" /> issues, with `formatIssue`, then how
-  many more there are, and writes no file.
-- Exit status: 0 the file is written; 1 the description is not valid, or a file cannot be read or
-  written; 2 the command line is not valid, or the output is the description file.
+- `--out <file.tsx>` sets the output file. The default is `<Name>.tsx` next to the description.
+  It cannot be the description file. Without `--out`, Windows device names such as `CON` or `NUL`
+  are refused.
+- `--name <Name>` sets the component name, a PascalCase identifier. The default comes from the
+  graph type.
+- An existing output file is replaced. The command writes a temporary file and renames it, so a
+  link at the output path is replaced, not followed.
+- The description must be a regular file of at most <Limit name="MAX_INPUT_BYTES" />. The largest
+  valid description is about 1.6 MB.
+- For an invalid description it prints the first <Limit name="MAX_ISSUES_PRINTED" /> issues with
+  `formatIssue` and a count of the rest, and writes nothing.
+- Exit status: 0 when the file is written. 1 when the description is invalid or a file cannot be
+  read or written. 2 when the command line is invalid or the output is the description file.
 
-The file is the same text `exportSource` returns.
+The output is the same text that `exportSource` returns.
 
 ## What the file needs
 
-- **React's automatic JSX runtime** (React 17 or later). The file has no `import React`. A project
-  that compiles with the classic transform (`"jsx": "react"` in `tsconfig.json`) gets
-  `React is not defined`. Use `"jsx": "react-jsx"`, or your framework's default.
+- **React's automatic JSX runtime** (React 17 or later). The file has no `import React`, so the
+  classic transform (`"jsx": "react"` in `tsconfig.json`) fails with `React is not defined`. Use
+  `"jsx": "react-jsx"` or your framework's default.
 - **Nothing else.** It imports nothing, not even this package.
 
 ## ASCII only
 
-Every exported file is ASCII only. Non-ASCII text, such as "é" or "“", is written as `\u` escapes,
-and so is every `@`. The text still renders exactly as described. So nothing invisible,
-line-breaking or reordering can hide in the file, and no text from a description can form a
-directive that a compiler or tool reads from a comment, which starts with `@`.
+Every exported file is ASCII only. Non-ASCII text such as "é" or "“" is written as `\u` escapes,
+and so is every `@`. The text still renders exactly as described. No invisible, line-breaking or
+reordering character can hide in the file. Text from a description also cannot form a comment
+directive (these start with `@`) that a compiler or tool would read.
 
 ## Pictures in a pictograph
 
-A pictograph's picture is embedded in the file as a drawing, not referenced, so the file needs no
-package or URL. The header comment names each embedded drawing, its author and license, and holds
-the full notice its license requires in every copy.
+A pictograph's picture is embedded in the file as a drawing, so the file needs no package or URL.
+The header comment names each embedded drawing with its author and license, and includes the full
+notice the license requires in every copy.
