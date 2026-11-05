@@ -64,9 +64,14 @@ below).
 5. If they pass, the publish job waits for the required reviewer to approve the `npm` environment.
    It then builds the package, checks the built files and publishes them with provenance. It uses
    npm trusted publishing, so the repository stores no npm token.
-6. A final job, which cannot publish, checks that the registry has the provenance attestation for
+6. Another job, which cannot publish, checks that the registry has the provenance attestation for
    that version. The attestation must name this repository, `.github/workflows/release.yml`, the
    tag and the tagged commit. The job fails if the attestation is missing or names anything else.
+7. A last job installs the version just published from npm into an empty project with React. It
+   checks the registry signatures, runs the `graph-generator export` command and imports every
+   entry point. If npm does not serve the new version yet, it keeps trying for 10 minutes. If any check fails,
+   the run fails. The version stays published, so fix forward with a new version or deprecate it.
+   Run `pnpm test:published <version>` to make the same check on your own machine.
 
 Publishing is off until the repository variable `NPM_PUBLISH_ENABLED` is `true`. A manual run of
 the workflow is a dry run and never publishes.

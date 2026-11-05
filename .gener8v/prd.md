@@ -1,7 +1,7 @@
 # Curricular Graph Generator
 
 **Status:** Approved
-**Approved by:** Product Owner — Thomas Eaves, 2026-10-19
+**Approved by:** Product Owner — Thomas Eaves, 2026-11-05
 
 ## Problem Context
 
@@ -62,6 +62,7 @@ Authors of curricular materials (lessons, worksheets, assessments) need many sma
 ### Component Packaging & Source Export
 
 - The system should be installable as a package from the public npm registry
+- Every published version should be proven to install and work from the public npm registry before the release is considered done
 - The system should provide a React component for every supported graph type that accepts the graph description as its inputs
 - The system should provide a single entry component and a single entry function that each accept the unified JSON description of any graph type
 - The system should provide a ready-made tool definition, derived from the unified schema, that lets a language model be given graph generation as a tool, along with a handler that takes the model's tool input and returns either the rendered graph or the structured validation errors
@@ -128,3 +129,4 @@ A team publishes an assessment in a separate project that should not depend on t
 - 2026-10-04 — opened; capability areas Graph Specification & Vocabulary, Number Lines & Coordinate Graphs, Data Graphs & Pictographs, Geometric Shapes & Solids, Component Packaging & Source Export (Planning, change: graph-library)
 - 2026-10-04 — approved by Product Owner; Graph Specification & Vocabulary and Component Packaging & Source Export amended: unified JSON description with a single entry point and published schema, structured validation results, model tool definition and handler, open-source distribution (Planning, change: graph-library)
 - 2026-10-19 — Number Lines & Coordinate Graphs amended: rulers in centimetres and in inches, and an object lying along a ruler from any start mark to any end mark; scenario, scope boundaries and open questions added (Planning, change: rulers)
+- 2026-11-05 — Component Packaging & Source Export amended: every published version is proven to install and work from the public registry (Planning, change: release-install-check)
