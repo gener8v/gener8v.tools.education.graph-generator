@@ -220,23 +220,41 @@ describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
     expect(runs(job("publish")).join("\n")).not.toMatch(/npm install (?!--global npm@)|npm audit|dist\.attestations/);
   });
 
-  // @spec CPSE-REQ-047
-  // @spec CPSE-REQ-052
-  it("checks the published package in its own job: the exact version, no scripts, a 10-minute retry cap, no failure swallowed (CPSE-REQ-047 to 052)", () => {
+  // @spec CPSE-REQ-047, CPSE-REQ-048, CPSE-REQ-050, CPSE-REQ-052
+  it("checks the published package in its own job: the exact version, saved, no scripts, every package audited, a 10-minute cap on not-found only (CPSE-REQ-047 to 052)", () => {
     const check = job("install-check");
     const checkout = check.steps.find((s) => s.uses?.startsWith("actions/checkout@"));
     expect(checkout?.with).toEqual({ "persist-credentials": false });
     expect(runs(check)).toEqual(['node tests/smoke/published.mjs "${GITHUB_REF_NAME#v}"']);
     expect(check.env).toBeUndefined();
 
-    const script = readFileSync("tests/smoke/published.mjs", "utf8");
-    expect(script).toContain("--ignore-scripts");
-    expect(script).toContain("`${PACKAGE}@${version}`");
-    expect(script).toContain("npm");
-    expect(script).toContain('"audit", "signatures"');
-    expect(script).toContain("--no-install");
-    expect(script).toContain("INSTALL_DEADLINE_MS = 600_000");
-    expect(script).not.toMatch(/\|\| true|shell:\s*true/);
+    // Code lines only, so a string that survives only in a comment does not count (code review CR-003, SEC-004).
+    const code = readFileSync("tests/smoke/published.mjs", "utf8")
+      .split("\n")
+      .filter((line) => !/^\s*(\/\/|\/?\*)/.test(line))
+      .map((line) => line.trim());
+    const npmInstalls = code.filter((line) => /"(ci|install)",/.test(line));
+    expect(npmInstalls).toEqual([
+      'run(step, "npm", ["ci", "--no-audit", "--no-fund", "--ignore-scripts"], work);',
+      'const args = ["install", "--save-exact", "--no-audit", "--no-fund", "--ignore-scripts", `${PACKAGE}@${version}`];',
+    ]);
+    expect(code).toContain("const INSTALL_DEADLINE_MS = 600_000;");
+    expect(code).toContain("const NOT_YET_PUBLISHED = /\\b(E404|ETARGET|notarget)\\b/;");
+    expect(code).toContain("if (!NOT_YET_PUBLISHED.test(error.message)) throw error;");
+    expect(code).toContain('const output = run(step, "npm", ["audit", "signatures"], work);');
+    expect(code).toContain("if (audited !== installed) throw new StepFailure(step, `npm audited ${audited} packages, but ${installed} are installed`);");
+    expect(code).toContain('const SLSA_PROVENANCE = "https://slsa.dev/provenance/v1";');
+    expect(code.some((line) => line.startsWith('run(step, "npx", ["--no-install", PACKAGE, "export",'))).toBe(true);
+    // npm runs against the public registry with none of the caller's configuration (security review SEC-003).
+    expect(code).toContain('const PUBLIC_REGISTRY = "https://registry.npmjs.org/";');
+    expect(code).toContain("environment = { ...Object.fromEntries(inherited), npm_config_userconfig: userconfig, npm_config_globalconfig: globalconfig, npm_config_registry: PUBLIC_REGISTRY };");
+    expect(code).toContain("isolateNpm(work);");
+    expect(code).toContain('return execFileSync(command, args, { cwd, timeout, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });');
+    // The entry points expected are the checked-out source's, not the installed package's own (QR-001).
+    expect(code).toContain('source = JSON.parse(readFileSync(join(repository, "package.json"), "utf8"));');
+    expect(code).toContain("const expected = Object.keys(source.exports);");
+    expect(code.join("\n")).not.toMatch(/node_modules", PACKAGE, "package\.json/);
+    expect(code.join("\n")).not.toMatch(/\|\| true|shell:\s*true|--no-save|--package-lock=false/);
   });
 
   it("opens the version pull request from main with changesets/action v2 inputs, and never publishes there (SEC-008)", () => {

@@ -233,7 +233,7 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-042 | `docs/versioning.md` ("The public contract", "What changes the version"); `.github/workflows/release.yml` (releases only from version tags) (graph-library CPSE TICKET-009) |
 | CPSE-REQ-043 | `docs/versioning.md` ("What changes the version": a breaking change is a minor release before `1.0.0`, a major release from `1.0.0`) (graph-library CPSE TICKET-009) |
 | CPSE-NFR-008 | `.github/workflows/release.yml`:publish (`npm publish --provenance` by trusted publishing), verify-provenance (attestation present, signatures verified, provenance names this repository, `release.yml`, the tag and the commit); `tests/package/release-config.test.ts`:describe "release workflow" (graph-library CPSE TICKET-009) |
-| CPSE-REQ-047, CPSE-REQ-052 | `tests/smoke/published.mjs`:installFromRegistry (release-install-check CPSE TICKET-001) |
+| CPSE-REQ-047, CPSE-REQ-052 | `tests/smoke/published.mjs`:installFromRegistry, isolateNpm (CPSE-REQ-047 only) (release-install-check CPSE TICKET-001) |
 | CPSE-REQ-048 | `tests/smoke/published.mjs`:verifySignatures (release-install-check CPSE TICKET-001) |
 | CPSE-REQ-049 | `tests/smoke/published.mjs`:runExport (release-install-check CPSE TICKET-001) |
 | CPSE-REQ-050 | `tests/smoke/published.mjs`:importEntryPoints (release-install-check CPSE TICKET-001) |

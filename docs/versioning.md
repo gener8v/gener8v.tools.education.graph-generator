@@ -69,9 +69,12 @@ below).
    tag and the tagged commit. The job fails if the attestation is missing or names anything else.
 7. A last job installs the version just published from npm into an empty project with React. It
    checks the registry signatures, runs the `graph-generator export` command and imports every
-   entry point. If npm does not serve the new version yet, it keeps trying for 10 minutes. If any check fails,
-   the run fails. The version stays published, so fix forward with a new version or deprecate it.
-   Run `pnpm test:published <version>` to make the same check on your own machine.
+   entry point. If npm does not serve the new version yet, it keeps trying for 10 minutes. If any
+   check fails, the run fails. The version stays published, so fix forward with a new version or
+   deprecate it. To make the same check on your own machine, check out the version's tag and run
+   `pnpm test:published <version>`. It uses the public registry and ignores your npm settings. It
+   runs the published package's code as you, so check a release you suspect in a throwaway
+   environment.
 
 Publishing is off until the repository variable `NPM_PUBLISH_ENABLED` is `true`. A manual run of
 the workflow is a dry run and never publishes.
