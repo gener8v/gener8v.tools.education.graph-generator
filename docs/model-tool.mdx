@@ -6,15 +6,15 @@ import { Limit } from "./components/Limit";
 # Model tool
 
 `@gener8v/graph-generator/tool` lets a language model draw graphs. It needs Node.js 22 or later and
-no React. The package calls no model, makes no network request and depends on no provider's
-software.
+no React. The package calls no model, makes no network requests and does not depend on any
+provider's software.
 
-- `graphTool` is a tool definition in no provider's format: a `name` (`generate_graph`), a
-  plain-English `description` and an `inputSchema` (JSON Schema). Give these three values to your
-  provider's request.
-- `handleGraphToolCall(input)` takes a call's input, as an object or as JSON text, and never throws.
+- `graphTool` is a provider-neutral tool definition: a `name` (`generate_graph`), a plain-English
+  `description` and an `inputSchema` (JSON Schema). Put these three values in your provider's
+  request.
+- `handleGraphToolCall(input)` takes a call's input as an object or as JSON text. It never throws.
 
-The model sends the description in `graph`, with `null` for each value it does not set:
+The model sends the description in `graph`, with `null` for each value it leaves out:
 
 ```ts
 { graph: { type: "circle", radius: 3, diameter: null, circumference: null, showRadius: true /* ... */ } }
@@ -22,12 +22,12 @@ The model sends the description in `graph`, with `null` for each value it does n
 
 The handler returns one of these:
 
-- `{ ok: true, description, provenance, textAlternative, summary }`: pass `description` to `Graph`
+- `{ ok: true, description, provenance, textAlternative, summary }`. Pass `description` to `Graph`
   or `exportSource`.
-- `{ ok: false, issues, summary }`: `issues` holds every problem, with paths into the input such as
+- `{ ok: false, issues, summary }`. `issues` lists every problem, with paths into the input such as
   `/graph/radius`.
 
-The `summary` is plain text. On success, it gives the graph type and the text alternative:
+`summary` is plain text. On success it gives the graph type and the text alternative:
 
 {/* sample: tool-summary-ok */}
 
@@ -36,8 +36,8 @@ The circle was produced.
 Text alternative: A circle with radius 3.
 ```
 
-On failure, it lists the first <Limit name="TOOL_SUMMARY_ISSUES" /> issues, numbered, with path and message, then how many more
-there are. The model can correct them and call the tool again:
+On failure it lists the first <Limit name="TOOL_SUMMARY_ISSUES" /> issues, numbered, with path and
+message, and a count of the rest. The model can fix them and call the tool again:
 
 {/* sample: tool-summary-failed */}
 
@@ -48,27 +48,26 @@ The graph was not produced: 1 issue. Fix it and call generate_graph again with {
 
 ## Handling the result
 
-- **Return `summary`, not `issues`.** `issues` is complete and can be megabytes for a large invalid
-  input. Give the model `summary` as the tool's result, never `issues` or the whole result.
-- **The text is the model's.** `summary`, `textAlternative` and the text values of `description`
-  (titles, labels, names) hold text the model wrote, unchanged apart from removed control
-  characters. Escape them for HTML or Markdown, never insert them as markup, and treat them as data,
-  not instructions.
-- **`internal_error` is a defect in the package**, not a problem with the model's input. Report it
-  with the package version and the input.
+- **Send `summary` back, not `issues`.** Use `summary` as the tool result. Do not send `issues` or
+  the whole result. `issues` is complete and can run to megabytes for a large invalid input.
+- **The text comes from the model.** `summary`, `textAlternative` and the text values in
+  `description` (titles, labels, names) contain text the model wrote. The only change is that
+  control characters are removed. Escape this text for HTML or Markdown, never insert it as markup,
+  and treat it as data, not instructions.
+- **`internal_error` is a bug in the package**, not a problem with the model's input. Please report
+  it with the package version and the input.
 
 ## With a provider
 
-The snippets below use each provider's own SDK, `client` or `ai`. That SDK is your application's
-dependency, which you install and set up; this package does not depend on it. Only `graphTool` and
-`handleGraphToolCall` come from this package:
+The snippets below use each provider's own SDK client (`client` or `ai`), which you install and set
+up yourself. Only `graphTool` and `handleGraphToolCall` come from this package:
 
 ```ts
 import { graphTool, handleGraphToolCall } from "@gener8v/graph-generator/tool";
 ```
 
-`inputSchema` is frozen. `structuredClone` gives an SDK whose types expect a mutable object its own
-copy.
+`inputSchema` is frozen. Pass `structuredClone(graphTool.inputSchema)` to SDKs whose types expect a
+mutable object.
 
 ### Anthropic
 
@@ -126,8 +125,8 @@ for (const call of response.functionCalls ?? []) {
 
 ### Without an SDK
 
-Each request is plain JSON, so you can also send it with your own HTTP client. The tool goes in the
-request body as:
+Each request is plain JSON, so you can also use your own HTTP client. Put the tool in the request
+body like this:
 
 - Anthropic: `{ name, description, input_schema }`.
 - OpenAI Responses: `{ type: "function", name, description, parameters, strict: true }`.
@@ -137,7 +136,7 @@ Each takes `graphTool.name`, `graphTool.description` and `graphTool.inputSchema`
 
 ## Supported modes
 
-The schema is checked against each provider's documented rules, as they stood on 2026-11-04:
+The schema is tested against each provider's documented rules as of 2026-11-04:
 
 - Anthropic `input_schema` without `strict`.
 - OpenAI function calling with `strict: true`, in Chat Completions and Responses.
@@ -147,24 +146,26 @@ Not supported:
 
 - Anthropic `strict: true`. Its subset rejects `maxLength`, `minimum`, `maximum` and `maxItems`, and
   allows at most 16 parameters with a union type. This schema has about 140.
-- Gemini `parameters`, and Vertex AI function declarations. They take an OpenAPI subset that has
-  `nullable` in place of type arrays and has no `additionalProperties`.
+- Gemini `parameters`, and Vertex AI function declarations. They use an OpenAPI subset with
+  `nullable` instead of type arrays and no `additionalProperties`.
 
-Some keywords are not documented for a supported mode, such as `maxLength` for OpenAI strict mode.
-Whatever the provider enforces, the handler validates every call.
+Some keywords, such as `maxLength` in OpenAI strict mode, are not documented for a supported mode.
+The handler validates every call either way.
 
 ## Limits
 
-- JSON text longer than `TOOL_INPUT_LIMIT` (<Limit name="TOOL_INPUT_LIMIT" /> characters, counted as UTF-16 code units) is
-  refused as `too_large` and is not parsed. The largest valid description, sent with every optional
-  value as `null`, is about 876,000 characters as compact JSON and about 1,019,000 when indented by
-  two spaces. Text that writes every non-ASCII character as a `\u` escape can be several times
-  longer, so it can go past the limit.
-- An input object can hold at most <Limit name="DESCRIPTION_VALUE_LIMIT" /> keys, the same as the values one description can hold.
+- JSON text longer than `TOOL_INPUT_LIMIT` (<Limit name="TOOL_INPUT_LIMIT" /> characters, counted
+  as UTF-16 code units) is refused as `too_large` without being parsed. The largest valid
+  description, with every optional value sent as `null`, is about 876,000 characters as compact
+  JSON and about 1,019,000 with two-space indentation. Text that escapes every non-ASCII character
+  as `\u` can be several times longer and go over the limit.
+- An input object can hold at most <Limit name="DESCRIPTION_VALUE_LIMIT" /> keys, the same limit
+  as for values in a description.
 - `textAlternative`, and the text alternative in `summary`, stop after `TEXT_ALTERNATIVE_LIMIT`
-  (<Limit name="TEXT_ALTERNATIVE_LIMIT" />) characters and end in "…". The largest graphs state more than 500,000 characters. To get
-  the full text, call `describe(description)` from `@gener8v/graph-generator/core`.
-- Text that is not JSON gets an `invalid_json` issue, and the handler does not look for JSON in it.
-  This includes JSON inside prose or a code fence.
-- Text in the description follows the plain-text policy on the **Vocabulary** page, so a model
-  cannot pass hidden characters, such as tag characters, through a title or label.
+  (<Limit name="TEXT_ALTERNATIVE_LIMIT" />) characters and end in "…".
+  The largest graphs need more than 500,000 characters. For the full text, call
+  `describe(description)` from `@gener8v/graph-generator/core`.
+- Text that is not JSON gets an `invalid_json` issue. The handler does not search it for JSON, so
+  JSON inside prose or a code fence is rejected.
+- Text in the description must follow the plain-text policy on the **Vocabulary** page. A model
+  cannot slip hidden characters, such as tag characters, into a title or label.
