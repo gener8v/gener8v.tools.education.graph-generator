@@ -1,15 +1,19 @@
 // Checks the version of @gener8v/graph-generator that the release workflow just published, as a
 // user gets it from the npm registry (CPSE-REQ-047 to CPSE-REQ-052; change release-install-check).
 // In a fresh temporary project it installs React from the react19 smoke template's lockfile, waits
-// for the exact version to be installable, installs it with no lifecycle scripts, checks the
-// registry signatures and provenance attestations, runs the installed `export` command on
-// examples/circle.json, and runs tests/smoke/render.mjs with the entry points named in the
-// installed package.json, which imports every one of them and renders every example.
+// for the exact version to be installable, installs it as a saved dependency with no lifecycle
+// scripts, checks the registry signatures and provenance attestations of every installed package
+// (this one included), runs the installed `export` command on examples/circle.json, and runs
+// tests/smoke/render.mjs with the entry points named in the checked-out package.json, which imports
+// every one of them and renders every example.
 // Usage: node tests/smoke/published.mjs <version>   (for example 0.1.0; `pnpm test:published 0.1.0`)
 // Exits 0 when every check passes, 1 naming the version and the failed step, 2 on a bad argument.
 // Plain Node with node: built-ins only, so the release job needs no install of the repository.
+// npm runs against the public registry with none of the caller's npm configuration. The check runs
+// the published package's code with the caller's privileges: on your own machine, use a throwaway
+// environment for a release you suspect.
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +28,10 @@ const INSTALL_DEADLINE_MS = 600_000;
 /** How long one npm call may take. */
 const NPM_TIMEOUT_MS = 180_000;
 const VERIFIED_ATTESTATIONS = /\d+ packages? (has a verified attestation|have verified attestations)/;
+/** npm's errors for a package or version the registry does not serve (yet); any other error fails at once. */
+const NOT_YET_PUBLISHED = /\b(E404|ETARGET|notarget)\b/;
+/** The predicate type of the provenance attestation the release workflow publishes. */
+const SLSA_PROVENANCE = "https://slsa.dev/provenance/v1";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const repository = fileURLToPath(new URL("../..", import.meta.url));
@@ -39,10 +47,29 @@ class StepFailure extends Error {
 const messageOf = (error) => (error instanceof Error ? error.message.split("\n")[0] : String(error));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** The public registry; the check tests what users get from it, whatever the caller's npm configuration says. */
+const PUBLIC_REGISTRY = "https://registry.npmjs.org/";
+/** The environment every command runs with; set by `isolateNpm` before the first one. */
+let environment = process.env;
+
+/**
+ * Makes every later npm and npx call use the public registry and no configuration of the caller's:
+ * an empty user and global npmrc in `work`, and none of the caller's `npm_config_*` variables, so a
+ * scoped registry or a mirror set up for other work cannot decide what is installed (security review SEC-003).
+ */
+// @spec CPSE-REQ-047
+function isolateNpm(work) {
+  // Two files: npm refuses to load one file as both the user and the global configuration.
+  const [userconfig, globalconfig] = ["user.npmrc", "global.npmrc"].map((name) => join(work, name));
+  for (const file of [userconfig, globalconfig]) writeFileSync(file, "");
+  const inherited = Object.entries(process.env).filter(([name]) => !/^npm_config_/i.test(name));
+  environment = { ...Object.fromEntries(inherited), npm_config_userconfig: userconfig, npm_config_globalconfig: globalconfig, npm_config_registry: PUBLIC_REGISTRY };
+}
+
 /** Runs a command with an argument array (never a shell), capturing its output; returns stdout. */
 function run(step, command, args, cwd, timeout = NPM_TIMEOUT_MS) {
   try {
-    return execFileSync(command, args, { cwd, timeout, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    return execFileSync(command, args, { cwd, timeout, env: environment, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   } catch (error) {
     const detail = [error.stderr, error.stdout].filter((text) => typeof text === "string" && text.trim() !== "").join("\n").trim();
     throw new StepFailure(step, detail === "" ? messageOf(error) : `${messageOf(error)}\n${detail}`);
@@ -61,17 +88,23 @@ function installReact(work) {
   run(step, "npm", ["ci", "--no-audit", "--no-fund", "--ignore-scripts"], work);
 }
 
-/** Installs exactly `version` from the registry with no scripts, trying again every 15 s for at most 10 minutes. */
+/**
+ * Installs exactly `version` from the registry with no scripts, as a saved dependency so that npm
+ * audits it (an extraneous package is skipped) and React stays on the template's lockfile. Tries
+ * again every 15 s for at most 10 minutes while the registry does not serve the version yet; any
+ * other install error fails at once.
+ */
 // @spec CPSE-REQ-047, CPSE-REQ-052
 async function installFromRegistry(work, version) {
   const step = "install from the registry";
-  const args = ["install", "--no-save", "--no-audit", "--no-fund", "--ignore-scripts", "--package-lock=false", `${PACKAGE}@${version}`];
+  const args = ["install", "--save-exact", "--no-audit", "--no-fund", "--ignore-scripts", `${PACKAGE}@${version}`];
   const deadline = Date.now() + INSTALL_DEADLINE_MS;
   for (;;) {
     try {
       run(step, "npm", args, work);
       return;
     } catch (error) {
+      if (!NOT_YET_PUBLISHED.test(error.message)) throw error;
       if (Date.now() + INSTALL_RETRY_MS >= deadline) {
         throw new StepFailure(step, `not installable within ${INSTALL_DEADLINE_MS / 60_000} minutes: ${error.message}`);
       }
@@ -81,13 +114,29 @@ async function installFromRegistry(work, version) {
   }
 }
 
-/** Requires the registry signatures and provenance attestations of the installed packages to verify. */
+/**
+ * Requires the registry signatures and attestations of every installed package to verify, this
+ * package included: npm must audit as many packages as the lockfile holds, and the registry must
+ * list this version's provenance attestation, which `npm audit signatures` then verified.
+ */
 // @spec CPSE-REQ-048
-function verifySignatures(work) {
+function verifySignatures(work, version) {
   const step = "verify signatures";
+  let installed;
+  try {
+    installed = Object.keys(JSON.parse(readFileSync(join(work, "package-lock.json"), "utf8")).packages).filter((key) => key !== "").length;
+  } catch (error) {
+    throw new StepFailure(step, `cannot count the installed packages in package-lock.json: ${messageOf(error)}`);
+  }
   const output = run(step, "npm", ["audit", "signatures"], work);
   console.log(output.trimEnd());
+  const audited = Number(/audited (\d+) packages?/.exec(output)?.[1]);
+  if (audited !== installed) throw new StepFailure(step, `npm audited ${audited} packages, but ${installed} are installed`);
+  const signed = Number(/(\d+) packages? ha(?:s|ve) verified registry signatures?/.exec(output)?.[1]);
+  if (signed !== installed) throw new StepFailure(step, `${signed} of ${installed} installed packages have verified registry signatures`);
   if (!VERIFIED_ATTESTATIONS.test(output)) throw new StepFailure(step, "npm audit signatures reported no verified attestation");
+  const predicateType = run(step, "npm", ["view", `${PACKAGE}@${version}`, "dist.attestations.provenance.predicateType"], work).trim();
+  if (predicateType !== SLSA_PROVENANCE) throw new StepFailure(step, `the registry lists no ${SLSA_PROVENANCE} attestation for this version (found "${predicateType}")`);
 }
 
 /** Runs the installed `export` command on a sample and requires a non-empty component file. */
@@ -100,18 +149,25 @@ function runExport(work) {
   if (!/export (default )?function\b/.test(readFileSync(out, "utf8"))) throw new StepFailure(step, "the file it wrote exports no component function");
 }
 
-/** Imports every entry point named in the installed package.json, and renders every example. */
+/**
+ * Imports every public entry point and renders every example. The entry points expected are those of
+ * the checked-out repository's package.json, the release's own source, so render.mjs fails when the
+ * installed package lacks one or has one more (quality review QR-001).
+ */
 // @spec CPSE-REQ-050
-function importEntryPoints(work) {
+function importEntryPoints(work, version) {
   const step = "import and render";
-  let entries;
+  let source;
   try {
-    const manifest = JSON.parse(readFileSync(join(work, "node_modules", PACKAGE, "package.json"), "utf8"));
-    entries = Object.keys(manifest.exports);
+    source = JSON.parse(readFileSync(join(repository, "package.json"), "utf8"));
   } catch (error) {
-    throw new StepFailure(step, `cannot read the installed package.json exports: ${messageOf(error)}`);
+    throw new StepFailure(step, `cannot read the repository's package.json: ${messageOf(error)}`);
   }
-  const output = run(step, "node", ["render.mjs", join(repository, "examples"), JSON.stringify(entries)], work);
+  if (source.version !== version) {
+    throw new StepFailure(step, `the checked-out package.json is version ${source.version}; check out the tag v${version} to check ${version}`);
+  }
+  const expected = Object.keys(source.exports);
+  const output = run(step, "node", ["render.mjs", join(repository, "examples"), JSON.stringify(expected)], work);
   console.log(output.trimEnd());
 }
 
@@ -125,11 +181,12 @@ async function main(argv) {
   }
   const work = mkdtempSync(join(tmpdir(), "graph-generator-published-"));
   try {
+    isolateNpm(work);
     installReact(work);
     await installFromRegistry(work, version);
-    verifySignatures(work);
+    verifySignatures(work, version);
     runExport(work);
-    importEntryPoints(work);
+    importEntryPoints(work, version);
     console.log(`${PACKAGE}@${version} passed every check: it installs from the registry, its signatures verify, the export command works and every entry point imports and renders.`);
     return 0;
   } catch (error) {
