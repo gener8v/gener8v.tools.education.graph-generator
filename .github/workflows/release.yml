@@ -4,7 +4,8 @@ name: Release
 #   - a push to main opens or updates the version pull request (Changesets);
 #   - a pushed version tag `v<version>` on a commit on main runs every check in job `checks`, then job
 #     `publish` publishes by npm trusted publishing (OIDC) with provenance, in the protected `npm`
-#     environment, and job `verify-provenance` confirms the attestation on the registry;
+#     environment, job `verify-provenance` confirms the attestation on the registry, and job
+#     `install-check` installs the published version and checks that it works;
 #   - a manual run does a dry run only and never publishes.
 # Publishing stays off until the repository variable NPM_PUBLISH_ENABLED is `true`. The Engineer steps
 # that bind publishing to this workflow (environment, tag ruleset, npm settings) are in docs/versioning.md.
@@ -342,6 +343,31 @@ jobs:
           }
           console.log(`${PACKAGE}@${VERSION}: provenance names ${REPOSITORY}, ${WORKFLOW}, ${GITHUB_REF} and ${GITHUB_SHA}.`);
           EOF
+
+  # CPSE-REQ-047 to CPSE-REQ-052 (change release-install-check): installs the version just published,
+  # from the registry, into an empty project with React and checks it: signatures, the export command
+  # and every entry point. It waits up to 10 minutes for the registry. A failure fails the run, but the
+  # version stays published. A separate job with no id-token and no write permission, like
+  # verify-provenance. The checkout is the tag, so the script and the examples are the release's own.
+  install-check:
+    name: Check the published package installs and works
+    needs: verify-provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Install the published version and check it
+        run: node tests/smoke/published.mjs "${GITHUB_REF_NAME#v}"
 
   # A manual run: build and `npm publish --dry-run` with no provenance, no id-token and no secret.
   dry-run:

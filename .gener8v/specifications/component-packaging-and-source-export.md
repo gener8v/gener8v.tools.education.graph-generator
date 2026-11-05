@@ -9,7 +9,7 @@ Defines how the graph generator reaches its users: as an open-source package on 
 **Parent PRD:** Curricular Graph Generator
 **Requirement prefix:** CPSE
 **Status:** Approved
-**Approved by:** Product Owner — Thomas, 2026-10-04
+**Approved by:** Product Owner — Thomas Eaves, 2026-11-05
 **Related Capabilities:** Graph Specification & Vocabulary (supplies the unified description, the schema, validation and issue reporting this area exposes: GSV-REQ-004, GSV-REQ-007, GSV-REQ-027..034); Number Lines & Coordinate Graphs, Data Graphs & Pictographs, Geometric Shapes & Solids (supply the rendering this area packages)
 
 ## Functional Requirements
@@ -74,6 +74,12 @@ Defines how the graph generator reaches its users: as an open-source package on 
 - **CPSE-REQ-041** *(must · change: graph-library)*: Each release should be recorded in a changelog that lists added, changed, deprecated and removed behavior
 - **CPSE-REQ-042** *(must · change: graph-library)*: Releases should follow semantic versioning, treating the unified description, the vocabulary, the issue codes, the tool definition and the public component inputs as the public contract
 - **CPSE-REQ-043** *(must · change: graph-library)*: A change that makes a previously valid description invalid, or renders it differently in meaning, should be released only in a new major version
+- **CPSE-REQ-047** *(must · change: release-install-check)*: After a version is published, the release run should install that exact version from the public registry into an empty project that has no other copy of the package
+- **CPSE-REQ-048** *(must · change: release-install-check)*: The post-publish check should verify the registry signatures and provenance attestations of the installed packages
+- **CPSE-REQ-049** *(must · change: release-install-check)*: The post-publish check should run the installed package's export command on a sample description and confirm the component file is written
+- **CPSE-REQ-050** *(must · change: release-install-check)*: The post-publish check should import every public entry point of the installed package
+- **CPSE-REQ-051** *(must · change: release-install-check)*: The release run should fail, naming the version and the step that failed, when any post-publish check fails
+- **CPSE-REQ-052** *(must · change: release-install-check)*: The post-publish check should retry while the just-published version is not yet installable, for at most 10 minutes, then fail as CPSE-REQ-051 describes
 
 ### Documentation
 
@@ -123,6 +129,8 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | Export requested for a description with a pictograph image | The exported source should embed the image or reference it as the description does, and say which in its comment |
 | Consumer uses an unsupported React major version | The package manager should warn through the peer-dependency range; no runtime check is made |
 | Placeholder rendered in print | The placeholder should remain readable in greyscale |
+| Published version not yet installable from the registry | The post-publish check should retry for at most 10 minutes, then fail the release run naming the version (CPSE-REQ-052) |
+| Post-publish check finds the published version broken | The release run should fail; the version stays published, and a maintainer decides whether to deprecate it or publish a fix |
 
 ## Data Requirements
 
@@ -225,3 +233,8 @@ Defines how the graph generator reaches its users: as an open-source package on 
 | CPSE-REQ-042 | `docs/versioning.md` ("The public contract", "What changes the version"); `.github/workflows/release.yml` (releases only from version tags) (graph-library CPSE TICKET-009) |
 | CPSE-REQ-043 | `docs/versioning.md` ("What changes the version": a breaking change is a minor release before `1.0.0`, a major release from `1.0.0`) (graph-library CPSE TICKET-009) |
 | CPSE-NFR-008 | `.github/workflows/release.yml`:publish (`npm publish --provenance` by trusted publishing), verify-provenance (attestation present, signatures verified, provenance names this repository, `release.yml`, the tag and the commit); `tests/package/release-config.test.ts`:describe "release workflow" (graph-library CPSE TICKET-009) |
+| CPSE-REQ-047, CPSE-REQ-052 | `tests/smoke/published.mjs`:installFromRegistry (release-install-check CPSE TICKET-001) |
+| CPSE-REQ-048 | `tests/smoke/published.mjs`:verifySignatures (release-install-check CPSE TICKET-001) |
+| CPSE-REQ-049 | `tests/smoke/published.mjs`:runExport (release-install-check CPSE TICKET-001) |
+| CPSE-REQ-050 | `tests/smoke/published.mjs`:importEntryPoints (release-install-check CPSE TICKET-001) |
+| CPSE-REQ-051 | `tests/smoke/published.mjs`:main; `tests/package/release-config.test.ts` (release-install-check CPSE TICKET-001) |

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
@@ -62,8 +63,8 @@ const ON_MAIN = 'git merge-base --is-ancestor "$GITHUB_SHA" origin/main';
 
 // @spec CPSE-NFR-008
 describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
-  it("has exactly the version-pr, checks, publish, verify-provenance and dry-run jobs", () => {
-    expect(Object.keys(release.jobs).sort()).toEqual(["checks", "dry-run", "publish", "verify-provenance", "version-pr"]);
+  it("has exactly the version-pr, checks, publish, verify-provenance, install-check and dry-run jobs", () => {
+    expect(Object.keys(release.jobs).sort()).toEqual(["checks", "dry-run", "install-check", "publish", "verify-provenance", "version-pr"]);
     for (const [name, j] of Object.entries(release.jobs)) {
       expect(j["runs-on"], name).toBe("ubuntu-latest");
       expect(j.steps.length, name).toBeGreaterThan(0);
@@ -87,11 +88,12 @@ describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
     expect(release.permissions).toEqual({ contents: "read" });
     expect(job("publish").permissions).toEqual({ contents: "read", "id-token": "write" });
     expect(job("verify-provenance").permissions).toEqual({ contents: "read" });
+    expect(job("install-check").permissions).toEqual({ contents: "read" });
     expect(job("version-pr").permissions).toEqual({ contents: "write", "pull-requests": "write" });
     expect(job("checks").permissions).toBeUndefined();
     expect(job("dry-run").permissions).toBeUndefined();
     // Every job is listed above, so no other job can hold id-token.
-    expect(Object.keys(release.jobs)).toHaveLength(5);
+    expect(Object.keys(release.jobs)).toHaveLength(6);
   });
 
   it("publishes in the protected npm environment, and no other job names an environment (SEC-001)", () => {
@@ -103,6 +105,7 @@ describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
     expect(job("publish").if).toBe("github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.NPM_PUBLISH_ENABLED == 'true'");
     expect(job("publish").needs).toBe("checks");
     expect(job("verify-provenance").needs).toBe("publish");
+    expect(job("install-check").needs).toBe("verify-provenance");
     expect(release.on.push?.tags).toEqual(["v*"]);
   });
 
@@ -174,7 +177,7 @@ describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
   });
 
   it("uses no cache in the jobs that hold a credential (SEC-002)", () => {
-    for (const name of ["publish", "version-pr", "verify-provenance"]) {
+    for (const name of ["publish", "version-pr", "verify-provenance", "install-check"]) {
       for (const s of job(name).steps) {
         if (s.uses === SETUP) expect(s.with, name).toEqual({ cache: false });
         else if (s.uses?.startsWith("actions/setup-node@")) {
@@ -215,6 +218,25 @@ describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
 
     // Nothing from the registry is installed in the job that holds the OIDC token.
     expect(runs(job("publish")).join("\n")).not.toMatch(/npm install (?!--global npm@)|npm audit|dist\.attestations/);
+  });
+
+  // @spec CPSE-REQ-047
+  // @spec CPSE-REQ-052
+  it("checks the published package in its own job: the exact version, no scripts, a 10-minute retry cap, no failure swallowed (CPSE-REQ-047 to 052)", () => {
+    const check = job("install-check");
+    const checkout = check.steps.find((s) => s.uses?.startsWith("actions/checkout@"));
+    expect(checkout?.with).toEqual({ "persist-credentials": false });
+    expect(runs(check)).toEqual(['node tests/smoke/published.mjs "${GITHUB_REF_NAME#v}"']);
+    expect(check.env).toBeUndefined();
+
+    const script = readFileSync("tests/smoke/published.mjs", "utf8");
+    expect(script).toContain("--ignore-scripts");
+    expect(script).toContain("`${PACKAGE}@${version}`");
+    expect(script).toContain("npm");
+    expect(script).toContain('"audit", "signatures"');
+    expect(script).toContain("--no-install");
+    expect(script).toContain("INSTALL_DEADLINE_MS = 600_000");
+    expect(script).not.toMatch(/\|\| true|shell:\s*true/);
   });
 
   it("opens the version pull request from main with changesets/action v2 inputs, and never publishes there (SEC-008)", () => {
@@ -268,8 +290,8 @@ describe("release workflow (CPSE-NFR-008, prd/OC-002, prd/IC-003)", () => {
         if (s.uses?.startsWith("actions/setup-node@")) directSetupNode.push(name);
       }
     }
-    // verify-provenance needs Node.js and npm only, and must not check out the repository to run the action.
-    expect(directSetupNode).toEqual(["verify-provenance"]);
+    // verify-provenance and install-check need Node.js and npm only, and verify-provenance must not check out the repository to run the action.
+    expect(directSetupNode).toEqual(["verify-provenance", "install-check"]);
   });
 
   it("pins the npm version that publishes", () => {
@@ -303,5 +325,15 @@ describe("changelog categories (one list, many readers)", () => {
       expect(readFileSync(file, "utf8"), file).not.toMatch(/Added\W+Changed\W+Deprecated/);
     }
     expect(readFileSync(".changeset/README.md", "utf8")).toContain("scripts/changelog-categories.json");
+  });
+});
+
+// @spec CPSE-REQ-051
+describe("published-package check script (CPSE-REQ-051)", () => {
+  it.each([[[]], [["1.0; rm -rf /"]], [["latest"]]])("refuses the argument %j with exit status 2 and the usage, before any network use", (args) => {
+    const result = spawnSync(process.execPath, ["tests/smoke/published.mjs", ...args], { encoding: "utf8", timeout: 20_000 });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("usage: node tests/smoke/published.mjs <version>");
+    expect(result.stdout).toBe("");
   });
 });
