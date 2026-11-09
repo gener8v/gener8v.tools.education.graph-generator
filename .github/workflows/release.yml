@@ -7,8 +7,8 @@ name: Release
 #     environment, job `verify-provenance` confirms the attestation on the registry, and job
 #     `install-check` installs the published version and checks that it works;
 #   - a manual run does a dry run only and never publishes.
-# Publishing stays off until the repository variable NPM_PUBLISH_ENABLED is `true`. The Engineer steps
-# that bind publishing to this workflow (environment, tag ruleset, npm settings) are in docs/versioning.md.
+# Publishing is on while the repository variable NPM_PUBLISH_ENABLED is `true`. The settings that bind
+# publishing to this workflow (environment, tag ruleset, npm settings) are in docs/versioning.md.
 on:
   push:
     branches: [main]
