@@ -1,5 +1,11 @@
 # @gener8v/graph-generator
 
+## 0.1.1
+
+### Fixed
+
+- **Fixed:** the package's `bin` entry is written as `dist/cli.js`, the form npm keeps as is, so publishing no longer warns that the `graph-generator` command's path was invalid. The command works the same.
+
 ## 0.1.0
 
 ### Added

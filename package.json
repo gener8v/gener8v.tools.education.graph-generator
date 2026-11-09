@@ -1,6 +1,6 @@
 {
   "name": "@gener8v/graph-generator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Turn one JSON description of a mathematical graph or figure into a React component, for curricular materials.",
   "keywords": [
     "react",
