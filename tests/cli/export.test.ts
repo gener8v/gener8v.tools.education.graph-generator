@@ -74,7 +74,7 @@ function largestDescription(label: string): Record<string, unknown> {
 describe("graph-generator export", () => {
   it("is an executable with a node shebang", () => {
     expect(readFileSync(cli, "utf8").startsWith("#!/usr/bin/env node\n")).toBe(true);
-    expect(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).bin).toEqual({ "graph-generator": "./dist/cli.js" });
+    expect(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).bin).toEqual({ "graph-generator": "dist/cli.js" });
   });
 
   it("writes <Name>.tsx beside the input, with exportSource's text unchanged", () => {
