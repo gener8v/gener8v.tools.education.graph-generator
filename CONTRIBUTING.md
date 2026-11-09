@@ -28,18 +28,16 @@ Only the release workflow publishes, from a version tag on `main`. Never publish
 Maintainers: [docs/versioning.md](docs/versioning.md) has the versioning policy and the release
 steps.
 
-The repository and npm settings that protect publishing are listed in
-[docs/versioning.md](docs/versioning.md#engineer-steps-before-the-first-release):
+The repository and npm settings that protect publishing are described in
+[docs/versioning.md](docs/versioning.md#repository-and-npm-settings):
 
 1. The repository is public.
 2. A ruleset protects `main`: pull request and CI checks required, no force pushes, no deletion.
 3. A tag ruleset on `refs/tags/v*`: only admins create tags, and tags cannot be updated or deleted.
-4. The `npm` environment: a required reviewer, and only `v*` tags may deploy.
-5. The first version is published through the workflow with the one-off `NPM_BOOTSTRAP_TOKEN`
-   environment secret. The token is then revoked and the secret deleted.
-6. A trusted publisher on npm for the workflow `release.yml` and the environment `npm`, allowed to
-   run `npm publish`.
-7. The package's publishing access is "Require two-factor authentication and disallow tokens".
+4. The `npm` environment: a required reviewer, only `v*` tags may deploy, and no secrets.
+5. A trusted publisher on npm for the workflow `release.yml` and the environment `npm`, allowed to
+   run `npm publish`. Releases authenticate with it alone; no npm token is stored anywhere.
+6. The package's publishing access is "Require two-factor authentication and disallow tokens".
 
 ## Running the checks locally
 

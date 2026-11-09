@@ -50,8 +50,8 @@ table above. Start the summary with `Added:`, `Changed:`, `Deprecated:`, `Remove
 ## How a release is made
 
 Only the release workflow (`.github/workflows/release.yml`) publishes. Nobody publishes by hand,
-and npm enforces this through the package's publishing access setting (see the Engineer steps
-below).
+and npm enforces this through the package's publishing access setting (see
+[Repository and npm settings](#repository-and-npm-settings)).
 
 1. A push to `main` opens or updates the version pull request. It bumps the version, groups the
    changelog and refreshes `src/generated/version.ts`.
@@ -76,56 +76,58 @@ below).
    runs the published package's code as you, so check a release you suspect in a throwaway
    environment.
 
-Publishing is off until the repository variable `NPM_PUBLISH_ENABLED` is `true`. A manual run of
-the workflow is a dry run and never publishes.
+Publishing is on while the repository variable `NPM_PUBLISH_ENABLED` is `true`. Set it to `false`
+to stop all publishing. A manual run of the workflow is a dry run and never publishes.
 
-## Engineer steps before the first release
+## Repository and npm settings
 
 These settings tie publishing to reviewed code on `main`. They are GitHub and npm settings, not
-files in the repository. Do them in this order. The repository has one maintainer, and the
-settings below are what is configured today.
+files in the repository, so a change to them does not show up in a pull request. The repository
+has one maintainer, and this is the configuration.
 
-1. **Make the repository public.** npm provenance needs a public repository.
-2. **Protect `main`.** Add a branch ruleset for `main` that:
+1. **The repository is public.** npm provenance needs a public repository.
+2. **`main` is protected.** A branch ruleset for `main`:
    - Requires a pull request, with 0 approvals.
    - Requires the 9 CI checks to pass.
    - Blocks force pushes and deletion.
    - Lets repository admins bypass it only by merging a pull request.
-3. **Protect the version tags.** Add a tag ruleset on `refs/tags/v*`. Only repository admins can
+3. **Version tags are protected.** A tag ruleset on `refs/tags/v*` lets only repository admins
    create tags (the bypass list), and tags cannot be updated or deleted. A tag cannot move after
    the checks ran.
-4. **Create the `npm` environment** (Settings, Environments):
-   - Add the maintainer as the required reviewer, and leave "Prevent self-review" off.
-   - Under deployment branches and tags, allow only the tag rule `v*`.
-5. **Publish the first version** (below).
-6. **Add the trusted publisher on npm** (the package's Settings, Trusted Publisher, GitHub Actions):
-   organization `gener8v`, repository `gener8v.tools.education.graph-generator`, workflow
-   filename `release.yml`, environment name `npm`. Under allowed actions, allow `npm publish`.
-   A trusted publisher created after 2026-09-03 allows only `npm stage publish` unless you choose
-   more. A new trusted publisher expires if it does not publish within 2 days. Add it when the
-   next release is ready, or add it again if it expires.
-7. **Disallow tokens.** In the package's Settings, Publishing access, select "Require two-factor
-   authentication and disallow tokens". Trusted publishing still works, and no npm token can
-   publish, leaked or not.
+4. **The `npm` environment** (Settings, Environments):
+   - The maintainer is the required reviewer, and "Prevent self-review" is off.
+   - Only the tag rule `v*` may deploy.
+   - It holds no secrets.
+5. **npm trusts the release workflow.** The package's trusted publisher (its Settings, Trusted
+   Publisher, GitHub Actions) is organization `gener8v`, repository
+   `gener8v.tools.education.graph-generator`, workflow filename `release.yml`, environment name
+   `npm`, with `npm publish` allowed.
+6. **npm refuses tokens.** The package's publishing access is "Require two-factor authentication
+   and disallow tokens". Trusted publishing still works, and no npm token can publish, leaked or
+   not.
 
 With a second maintainer, require one approval on `main` and turn on "Prevent self-review" for the
 `npm` environment.
 
-### The first version
+### If the trusted publisher must be added again
 
-npm can only add a trusted publisher to a package that already exists, so the first version cannot
-use trusted publishing. The release workflow still publishes it, from a tag, with provenance.
-Before you start, check https://docs.npmjs.com/trusted-publishers. If npm now allows a first
-publish through trusted publishing, use that and skip the token.
+npm does not check a trusted publisher's values when you save it, so a typo shows up only as a
+failed publish. A new trusted publisher also expires if it does not publish within 2 days. So add
+it again only when a release is ready, with exactly the values in step 5, and allow `npm publish`:
+a trusted publisher created after 2026-09-03 allows only `npm stage publish` unless you choose
+more. A failed publish publishes nothing; fix the values and re-run the job on the same tag.
 
-1. On npm, create a granular access token with read and write access and the shortest expiry.
-   Limit it to `@gener8v/graph-generator` if npm lets you. If it does not, because the package
-   does not exist yet, limit it to the `@gener8v` scope.
-2. Store it as the secret `NPM_BOOTSTRAP_TOKEN` of the `npm` environment, not of the repository.
-   Only the publish step reads it, and only if it is there.
-3. Set `NPM_PUBLISH_ENABLED` to `true`, then release as above.
-4. As soon as the publish job ends, revoke the token on npm and delete the secret.
-5. Continue with Engineer steps 6 and 7.
+### How the first version was published
+
+npm adds a trusted publisher only to a package that already exists, so 0.1.0 could not use
+trusted publishing. The release workflow published it from the `v0.1.0` tag, with provenance,
+using a one-off granular token kept as the `npm` environment secret `NPM_BOOTSTRAP_TOKEN`. The
+secret was then deleted and the token revoked. 0.1.1 was the first version published by trusted
+publishing.
+
+The publish step still reads `NPM_BOOTSTRAP_TOKEN` if the secret exists, for a package that does
+not exist yet. This package never needs it again. Do not add the secret: while it is set, the
+workflow publishes with the token instead of trusted publishing.
 
 ## What the provenance check proves
 
